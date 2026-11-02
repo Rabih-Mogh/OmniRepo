@@ -2,6 +2,13 @@ package app.fajralarm.core
 
 import java.time.DayOfWeek
 
+/** What you have to do before the alarm will turn off. */
+enum class DismissMission(val displayName: String, val description: String) {
+    NONE("None", "Tap to dismiss"),
+    MATH("Solve a sum", "Solve a quick sum to turn it off"),
+    SINK_PHOTO("Photo of your sink", "Get up and photograph your sink to turn it off"),
+}
+
 /** What the alarm time is measured from. */
 enum class AlarmAnchor(val displayName: String) {
     FAJR("Fajr"),
@@ -28,8 +35,9 @@ data class AlarmSettings(
     /** 0 disables snooze. */
     val snoozeMinutes: Int = 5,
     val maxSnoozes: Int = 3,
-    /** Require solving a sum before the alarm can be dismissed. */
-    val wakeUpChallenge: Boolean = false,
+    val dismissMission: DismissMission = DismissMission.NONE,
+    /** How closely the wake-up photo must match the reference sink photos. */
+    val photoStrictness: MatchStrictness = MatchStrictness.NORMAL,
 ) {
     val hasLocation: Boolean get() = latitude != null && longitude != null
 

@@ -17,15 +17,33 @@ alarm follows the prayer time as it moves through the year.
   - plays on the alarm stream with any alarm sound or ringtone on the phone (pick your own adhan file if you have one)
   - optional fade-in and vibration
 - **Snooze** with a configurable length and a cap on how many times you can snooze.
-- **Wake-up challenge**: solve a quick sum before it turns off. There's no notification shortcut to dismiss it, so you can't switch it off half-asleep.
-- **Auto-stop** after 10 minutes. It snoozes if snoozes are left, otherwise it stops.
+- **Dismiss missions**: choose what it takes to turn the alarm off.
+  - **Photo of your sink**: the alarm only stops once you take a live photo of your own sink that matches your reference photos. See below.
+  - **Solve a sum**.
+  - **None**: a normal dismiss button.
+
+  With a mission on, the notification has no dismiss button, so the alarm screen is the only way to turn it off.
+- **Auto-stop**: after 10 minutes normally, or 60 minutes with the sink-photo mission, so a phone left at home doesn't ring all day. When it auto-stops it snoozes if snoozes are left, otherwise it stops.
 - **"Test the alarm now"** button.
+
+## Sink-photo mission
+
+1. In **To turn the alarm off → Mission**, pick **Photo of your sink**. The setup screen opens.
+2. Take 1–3 reference photos standing at your sink with the light on: tap, basin edge, tiles or mirror frame in shot, and no towels or things that move. **Test a wake-up photo** shows the match score you'd get.
+3. When the alarm rings, it keeps ringing while you walk to the sink. Photograph it in the in-app camera, lined up with the faint outline of your reference, and the alarm stops.
+
+How it works and its limits:
+- **Live camera only**: there's no gallery picker, so an old photo can't be reused. All photos stay on the phone.
+- **What's compared**: the edges (tap, basin rim, tile lines) are compared over small shifts, zooms and tilts, which ignores brightness. A colour check comes on top. **Match strictness** (Relaxed / Normal / Strict) sets how close it must be.
+- **Tuning**: thresholds were tuned on synthetic bathroom scenes in the unit tests, not real photos. If real shots fail too often, use Relaxed or add another reference from where you usually stand.
+- **Fallback**: if the camera permission is off or no reference photo exists, the alarm falls back to the sum, so you're never stuck with an alarm you can't stop.
+- **Not tamper-proof**: a determined person can still snooze (set Snooze to Off), photograph a printout of the sink, or force-stop the app from system settings.
 
 ## Project layout
 
 ```
 fajr-alarm/
-├── core/   Pure Kotlin/JVM: prayer-time astronomy, alarm planning (unit-tested)
+├── core/   Pure Kotlin/JVM: prayer-time astronomy, alarm planning, photo matching (unit-tested)
 └── app/    Android app (Kotlin, Jetpack Compose, Material 3)
     ├── alarm/  AlarmScheduler (AlarmManager.setAlarmClock), receivers, ringing service
     ├── data/   SharedPreferences settings, one-shot location
@@ -55,6 +73,7 @@ Or open `fajr-alarm/` in Android Studio and press Run. Min Android version: 8.0 
 | `FOREGROUND_SERVICE(_MEDIA_PLAYBACK)` | Keep playing the alarm sound |
 | `RECEIVE_BOOT_COMPLETED` | Re-queue the alarm after a restart |
 | `ACCESS_COARSE_LOCATION` | Optional; you can type coordinates instead |
+| `CAMERA` | Sink-photo mission (optional) |
 | `WAKE_LOCK`, `VIBRATE` | Ringing |
 
 The app shows a banner if notifications, exact alarms or full-screen alarms are blocked,

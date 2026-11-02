@@ -23,6 +23,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import app.fajralarm.FajrAlarmApp
 import app.fajralarm.R
+import app.fajralarm.core.DismissMission
 import app.fajralarm.data.SettingsStore
 import app.fajralarm.ui.AlarmActivity
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,11 +65,15 @@ class AlarmService : Service() {
         if (_ringing.value) return // already ringing (e.g. test pressed twice)
         _ringing.value = true
 
+        val settings = SettingsStore(this).load()
+        // The sink-photo mission is meant to be impossible to sleep through, so it keeps
+        // ringing much longer; the cap only stops a phone left at home ringing all day.
+        val ringLimit = if (settings.dismissMission == DismissMission.SINK_PHOTO) PHOTO_AUTO_STOP_MS else AUTO_STOP_MS
+
         wakeLock = getSystemService(PowerManager::class.java)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "FajrAlarm:ringing")
-            .apply { acquire(AUTO_STOP_MS + 5_000) }
+            .apply { acquire(ringLimit + 5_000) }
 
-        val settings = SettingsStore(this).load()
         playSound(settings.soundUri, settings.gradualVolume)
         if (settings.vibrate) startVibration()
 
@@ -79,7 +84,7 @@ class AlarmService : Service() {
             // Background activity starts may be blocked; the full-screen notification covers it.
         }
 
-        handler.postDelayed({ timeout() }, AUTO_STOP_MS)
+        handler.postDelayed({ timeout() }, ringLimit)
     }
 
     private fun playSound(soundUri: String?, gradual: Boolean) {
@@ -222,9 +227,9 @@ class AlarmService : Service() {
         if (canSnooze(this)) {
             b.addAction(0, "Snooze", servicePendingIntent(this, ACTION_SNOOZE, 12))
         }
-        // With the wake-up challenge on, turning the alarm off is only possible from
-        // the alarm screen, so there's no notification shortcut to dismiss it.
-        if (!settings.wakeUpChallenge) {
+        // With a mission (sum or sink photo) the alarm can only be turned off from the
+        // alarm screen, so there's no notification shortcut to dismiss it.
+        if (settings.dismissMission == DismissMission.NONE) {
             b.addAction(0, "Dismiss", servicePendingIntent(this, ACTION_DISMISS, 13))
         }
         return b.build()
@@ -234,6 +239,7 @@ class AlarmService : Service() {
         private const val NOTIFICATION_ID = 42
         private const val SNOOZE_NOTIFICATION_ID = 43
         private const val AUTO_STOP_MS = 10 * 60 * 1000L
+        private const val PHOTO_AUTO_STOP_MS = 60 * 60 * 1000L
 
         const val ACTION_START = "app.fajralarm.action.START"
         const val ACTION_SNOOZE = "app.fajralarm.action.SNOOZE"

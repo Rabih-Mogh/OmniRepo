@@ -70,10 +70,13 @@ import app.fajralarm.core.AlarmAnchor
 import app.fajralarm.core.AlarmPlanner
 import app.fajralarm.core.AlarmSettings
 import app.fajralarm.core.CalculationMethod
+import app.fajralarm.core.DismissMission
+import app.fajralarm.core.MatchStrictness
 import app.fajralarm.core.HighLatitudeRule
 import app.fajralarm.core.PrayerTimeCalculator
 import app.fajralarm.data.LocationHelper
 import app.fajralarm.data.SettingsStore
+import app.fajralarm.data.SinkPhotos
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
@@ -310,11 +313,62 @@ private fun SettingsScreen() {
                 Stepper("Max snoozes", settings.maxSnoozes, "", 1..10) { update(settings.copy(maxSnoozes = it)) }
             }
 
-            SwitchRow(
-                "Wake-up challenge",
-                settings.wakeUpChallenge,
-                subtitle = "Solve a quick sum before the alarm turns off",
-            ) { update(settings.copy(wakeUpChallenge = it)) }
+        }
+
+        Section("To turn the alarm off") {
+            ChoiceRow(
+                title = "Mission",
+                current = settings.dismissMission,
+                options = DismissMission.values().toList(),
+                label = { it.displayName },
+            ) { mission ->
+                update(settings.copy(dismissMission = mission))
+                if (mission == DismissMission.SINK_PHOTO && SinkPhotos.count(context) == 0) {
+                    context.startActivity(Intent(context, SinkSetupActivity::class.java))
+                }
+            }
+            Text(
+                settings.dismissMission.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            if (settings.dismissMission == DismissMission.SINK_PHOTO) {
+                val photoCount = remember(resumeTick) { SinkPhotos.count(context) }
+                val cameraOk = remember(resumeTick) {
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        if (photoCount == 0) "No sink photos yet" else "$photoCount reference photo${if (photoCount == 1) "" else "s"}",
+                        Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { context.startActivity(Intent(context, SinkSetupActivity::class.java)) }) {
+                        Text(if (photoCount == 0) "Set up" else "Manage / test")
+                    }
+                }
+                if (photoCount == 0 || !cameraOk) {
+                    Text(
+                        if (!cameraOk) "Camera permission is off. Until it's on, the alarm falls back to a sum."
+                        else "Until you add a photo, the alarm falls back to a sum.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                ChoiceRow(
+                    title = "Match strictness",
+                    current = settings.photoStrictness,
+                    options = MatchStrictness.values().toList(),
+                    label = { it.displayName },
+                ) { update(settings.copy(photoStrictness = it)) }
+                if (settings.snoozeMinutes > 0) {
+                    Text(
+                        "Tip: set Snooze to Off so the photo is the only way to stop the alarm.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
 
         OutlinedButton(

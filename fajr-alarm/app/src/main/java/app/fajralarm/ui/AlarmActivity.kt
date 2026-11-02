@@ -1,7 +1,10 @@
 package app.fajralarm.ui
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
@@ -15,7 +18,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -27,19 +33,29 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.fajralarm.alarm.AlarmService
+import app.fajralarm.core.AlarmSettings
+import app.fajralarm.core.DismissMission
+import app.fajralarm.core.ImageMatcher
 import app.fajralarm.core.MathChallenge
 import app.fajralarm.data.SettingsStore
+import app.fajralarm.data.SinkPhotos
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.DateFormat
 import java.util.Date
 
@@ -73,10 +89,8 @@ class AlarmActivity : ComponentActivity() {
                 }
                 BackHandler { /* the alarm must be snoozed or dismissed explicitly */ }
                 AlarmScreen(
-                    subtitle = settings.describeOffset(),
+                    settings = settings,
                     canSnooze = AlarmService.canSnooze(this),
-                    snoozeMinutes = settings.snoozeMinutes,
-                    challenge = settings.wakeUpChallenge,
                     onSnooze = { send(AlarmService.ACTION_SNOOZE) },
                     onDismiss = { send(AlarmService.ACTION_DISMISS) },
                 )
@@ -96,15 +110,26 @@ class AlarmActivity : ComponentActivity() {
     }
 }
 
+/** Which mission actually runs: the sink photo needs reference photos and the camera. */
+private fun effectiveMission(context: Context, s: AlarmSettings): Pair<DismissMission, String?> {
+    if (s.dismissMission != DismissMission.SINK_PHOTO) return s.dismissMission to null
+    val camera = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+    return when {
+        !camera -> DismissMission.MATH to "Camera permission is off, so solve a sum instead."
+        SinkPhotos.count(context) == 0 -> DismissMission.MATH to "No sink photos are set up, so solve a sum instead."
+        else -> DismissMission.SINK_PHOTO to null
+    }
+}
+
 @Composable
 private fun AlarmScreen(
-    subtitle: String,
+    settings: AlarmSettings,
     canSnooze: Boolean,
-    snoozeMinutes: Int,
-    challenge: Boolean,
     onSnooze: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val (mission, fallbackNote) = remember { effectiveMission(context, settings) }
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -112,70 +137,149 @@ private fun AlarmScreen(
             now = System.currentTimeMillis()
         }
     }
-    var problem by remember { mutableStateOf(MathChallenge.random()) }
-    var answer by remember { mutableStateOf("") }
-    var wrong by remember { mutableStateOf(false) }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(32.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = if (mission == DismissMission.SINK_PHOTO) Arrangement.Top else Arrangement.Center,
         ) {
+            val compact = mission == DismissMission.SINK_PHOTO
             Text(
                 DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(now)),
-                fontSize = 72.sp,
+                fontSize = if (compact) 48.sp else 72.sp,
                 fontWeight = FontWeight.Light,
             )
-            Spacer(Modifier.height(8.dp))
             Text("Time for Fajr", style = MaterialTheme.typography.headlineMedium)
-            Text(subtitle, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(12.dp))
+            Text(
+                settings.describeOffset(),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Text(
                 "Prayer is better than sleep",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 8.dp),
             )
-            Spacer(Modifier.height(48.dp))
+            Spacer(Modifier.height(if (compact) 16.dp else 40.dp))
 
-            if (challenge) {
-                Text("Solve to turn off the alarm", style = MaterialTheme.typography.bodyLarge)
-                Spacer(Modifier.height(8.dp))
-                Text("${problem.question} = ?", style = MaterialTheme.typography.headlineLarge)
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = answer,
-                    onValueChange = { v -> answer = v.filter { it.isDigit() }.take(4); wrong = false },
-                    singleLine = true,
-                    isError = wrong,
-                    supportingText = { if (wrong) Text("Not quite — try this one") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            fallbackNote?.let {
+                Text(it, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
                 Spacer(Modifier.height(8.dp))
             }
 
-            Button(
-                onClick = {
-                    if (!challenge || answer.toIntOrNull() == problem.answer) {
-                        onDismiss()
-                    } else {
-                        wrong = true
-                        answer = ""
-                        problem = MathChallenge.random()
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-            ) { Text("I'm up — dismiss") }
+            when (mission) {
+                DismissMission.NONE -> DismissButton("I'm up, dismiss", onDismiss)
+                DismissMission.MATH -> MathMission(onDismiss)
+                DismissMission.SINK_PHOTO -> SinkPhotoMission(settings, onDismiss)
+            }
 
             if (canSnooze) {
                 Spacer(Modifier.height(12.dp))
                 OutlinedButton(
                     onClick = onSnooze,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
-                ) { Text("Snooze $snoozeMinutes min") }
+                ) { Text("Snooze ${settings.snoozeMinutes} min") }
             }
         }
+    }
+}
+
+@Composable
+private fun DismissButton(label: String, onClick: () -> Unit) {
+    Button(onClick = onClick, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text(label) }
+}
+
+@Composable
+private fun MathMission(onDismiss: () -> Unit) {
+    var problem by remember { mutableStateOf(MathChallenge.random()) }
+    var answer by remember { mutableStateOf("") }
+    var wrong by remember { mutableStateOf(false) }
+
+    Text("Solve to turn off the alarm", style = MaterialTheme.typography.bodyLarge)
+    Spacer(Modifier.height(8.dp))
+    Text("${problem.question} = ?", style = MaterialTheme.typography.headlineLarge)
+    Spacer(Modifier.height(8.dp))
+    OutlinedTextField(
+        value = answer,
+        onValueChange = { v -> answer = v.filter { it.isDigit() }.take(4); wrong = false },
+        singleLine = true,
+        isError = wrong,
+        supportingText = { if (wrong) Text("Not quite, try this one") },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Spacer(Modifier.height(8.dp))
+    DismissButton("Turn off") {
+        if (answer.toIntOrNull() == problem.answer) {
+            onDismiss()
+        } else {
+            wrong = true
+            answer = ""
+            problem = MathChallenge.random()
+        }
+    }
+}
+
+@Composable
+private fun SinkPhotoMission(settings: AlarmSettings, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var references by remember { mutableStateOf<List<ImageMatcher.Features>?>(null) }
+    var ghost by remember { mutableStateOf<Bitmap?>(null) }
+    var checking by remember { mutableStateOf(false) }
+    var feedback by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        val (g, refs) = withContext(Dispatchers.IO) {
+            SinkPhotos.list(context).firstOrNull()?.let(SinkPhotos::load) to SinkPhotos.referenceFeatures(context)
+        }
+        ghost = g
+        references = refs
+    }
+
+    Text(
+        "Go to your sink and take a photo of it to turn the alarm off.",
+        style = MaterialTheme.typography.titleMedium,
+        textAlign = TextAlign.Center,
+    )
+    Text(
+        "Line it up with the faint outline of your reference photo.",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+    )
+    Spacer(Modifier.height(12.dp))
+
+    CameraCapture(
+        ghost = ghost,
+        buttonLabel = if (checking) "Checking…" else "Take photo of sink",
+        enabled = references != null && !checking,
+        onCaptured = { photo ->
+            val refs = references ?: return@CameraCapture
+            checking = true
+            scope.launch {
+                val result = withContext(Dispatchers.Default) {
+                    ImageMatcher.bestMatch(refs, SinkPhotos.features(photo), settings.photoStrictness)
+                }
+                checking = false
+                when {
+                    result.matched -> onDismiss()
+                    result.unusable -> feedback = "Too dark to tell. Turn the bathroom light on."
+                    else -> feedback = "That doesn't look like your sink (${result.percent}% match). " +
+                        "Stand where you took the reference photo and try again."
+                }
+            }
+        },
+    )
+    feedback?.let {
+        Spacer(Modifier.height(8.dp))
+        Text(it, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
     }
 }

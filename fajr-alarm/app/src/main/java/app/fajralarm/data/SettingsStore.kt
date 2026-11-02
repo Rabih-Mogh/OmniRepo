@@ -3,6 +3,7 @@ package app.fajralarm.data
 import android.content.Context
 import android.content.SharedPreferences
 import app.fajralarm.core.AlarmSettings
+import app.fajralarm.core.DismissMission
 import java.time.DayOfWeek
 
 /** Persists [AlarmSettings] and a little runtime state in SharedPreferences. */
@@ -30,7 +31,12 @@ class SettingsStore(context: Context) {
             gradualVolume = prefs.getBoolean(K_GRADUAL, d.gradualVolume),
             snoozeMinutes = prefs.getInt(K_SNOOZE, d.snoozeMinutes),
             maxSnoozes = prefs.getInt(K_MAX_SNOOZES, d.maxSnoozes),
-            wakeUpChallenge = prefs.getBoolean(K_CHALLENGE, d.wakeUpChallenge),
+            dismissMission = enumOr(
+                prefs.getString(K_MISSION, null),
+                // Earlier versions stored a simple "math challenge" on/off switch.
+                if (prefs.getBoolean(K_CHALLENGE, false)) DismissMission.MATH else d.dismissMission,
+            ),
+            photoStrictness = enumOr(prefs.getString(K_PHOTO_STRICTNESS, null), d.photoStrictness),
         )
     }
 
@@ -52,7 +58,9 @@ class SettingsStore(context: Context) {
             putBoolean(K_GRADUAL, s.gradualVolume)
             putInt(K_SNOOZE, s.snoozeMinutes)
             putInt(K_MAX_SNOOZES, s.maxSnoozes)
-            putBoolean(K_CHALLENGE, s.wakeUpChallenge)
+            putString(K_MISSION, s.dismissMission.name)
+            putString(K_PHOTO_STRICTNESS, s.photoStrictness.name)
+            remove(K_CHALLENGE)
         }.apply()
     }
 
@@ -97,7 +105,9 @@ class SettingsStore(context: Context) {
         const val K_GRADUAL = "gradual_volume"
         const val K_SNOOZE = "snooze_minutes"
         const val K_MAX_SNOOZES = "max_snoozes"
-        const val K_CHALLENGE = "challenge"
+        const val K_CHALLENGE = "challenge" // legacy
+        const val K_MISSION = "dismiss_mission"
+        const val K_PHOTO_STRICTNESS = "photo_strictness"
         const val K_NEXT_AT = "next_alarm_at"
         const val K_SNOOZE_UNTIL = "snooze_until"
         const val K_SNOOZE_COUNT = "snooze_count"
