@@ -46,8 +46,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import java.util.concurrent.Executors
 
 /**
- * Live back-camera preview with a shutter button. Photos come only from the live
- * camera (no gallery), so an old picture can't be reused. If [ghost] is given it
+ * Live back-camera preview, with a shutter button when [onCaptured] is given. Photos
+ * come only from the live camera (no gallery), so an old picture can't be reused. If [ghost] is given it
  * is drawn faintly over the preview to help line the shot up with the reference.
  *
  * If [onFrame] is given, live preview frames are also handed to it on a background
@@ -57,10 +57,10 @@ import java.util.concurrent.Executors
 @Composable
 fun CameraCapture(
     ghost: Bitmap?,
-    buttonLabel: String,
-    enabled: Boolean,
-    onCaptured: (Bitmap) -> Unit,
     modifier: Modifier = Modifier,
+    buttonLabel: String = "",
+    enabled: Boolean = true,
+    onCaptured: ((Bitmap) -> Unit)? = null,
     onFrame: ((Bitmap) -> Unit)? = null,
     frameIntervalMs: Long = 333,
 ) {
@@ -70,6 +70,7 @@ fun CameraCapture(
     var busy by remember { mutableStateOf(false) }
     val currentOnFrame by rememberUpdatedState(onFrame)
     val analyze = onFrame != null
+    val capture = onCaptured != null
 
     val previewView = remember {
         PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
@@ -87,7 +88,7 @@ fun CameraCapture(
             .build()
     }
 
-    DisposableEffect(lifecycleOwner, analyze) {
+    DisposableEffect(lifecycleOwner, analyze, capture) {
         val future = ProcessCameraProvider.getInstance(context)
         var provider: ProcessCameraProvider? = null
         val analysisExecutor = if (analyze) Executors.newSingleThreadExecutor() else null
@@ -122,7 +123,7 @@ fun CameraCapture(
                         }
                 }
                 p.unbindAll()
-                val useCases = listOfNotNull(preview, imageCapture, analysis).toTypedArray()
+                val useCases = listOfNotNull(preview, imageCapture.takeIf { capture }, analysis).toTypedArray()
                 p.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, *useCases)
                 error = null
             } catch (e: Exception) {
@@ -156,7 +157,7 @@ fun CameraCapture(
         error?.let {
             Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
         }
-        Button(
+        if (onCaptured != null) Button(
             enabled = enabled && !busy && error == null,
             onClick = {
                 busy = true
