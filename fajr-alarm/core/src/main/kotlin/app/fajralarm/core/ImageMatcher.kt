@@ -51,7 +51,7 @@ object ImageMatcher {
         /** Gradient field (gx, gy interleaved) of each centre crop. */
         internal val crops: List<FloatArray>,
         internal val histogram: DoubleArray,
-        internal val unusable: Boolean,
+        val unusable: Boolean,
     )
 
     fun extract(img: RgbImage): Features {
