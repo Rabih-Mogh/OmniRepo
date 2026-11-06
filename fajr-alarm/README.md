@@ -18,7 +18,7 @@ alarm follows the prayer time as it moves through the year.
   - optional fade-in and vibration
 - **Snooze** with a configurable length and a cap on how many times you can snooze.
 - **Dismiss missions**: choose what it takes to turn the alarm off.
-  - **Photo of your sink**: the alarm only stops once you take a live photo of your own sink that matches your reference photos. See below.
+  - **Photo of your sink**: the alarm only stops once the live camera sees your own sink matching your reference photos. See below.
   - **Solve a sum**.
   - **None**: a normal dismiss button.
 
@@ -30,7 +30,7 @@ alarm follows the prayer time as it moves through the year.
 
 1. In **To turn the alarm off → Mission**, pick **Photo of your sink**. The setup screen opens.
 2. Take 1–3 reference photos standing at your sink with the light on: tap, basin edge, tiles or mirror frame in shot, and no towels or things that move. **Test a wake-up photo** shows the match score you'd get.
-3. When the alarm rings, it keeps ringing while you walk to the sink. Photograph it in the in-app camera, lined up with the faint outline of your reference, and the alarm stops.
+3. When the alarm rings, it keeps ringing while you walk to the sink. Point the in-app camera at it, lined up with the faint outline of your reference, and hold still: the alarm stops on its own once about a second of frames in a row match (3 checks a second). **Take photo of sink** still works as a manual fallback.
 
 How it works and its limits:
 - **Live camera only**: there's no gallery picker, so an old photo can't be reused. All photos stay on the phone.

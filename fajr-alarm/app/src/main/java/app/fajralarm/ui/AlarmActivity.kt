@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -49,6 +50,7 @@ import app.fajralarm.alarm.AlarmService
 import app.fajralarm.core.AlarmSettings
 import app.fajralarm.core.DismissMission
 import app.fajralarm.core.ImageMatcher
+import app.fajralarm.core.MatchResult
 import app.fajralarm.core.MathChallenge
 import app.fajralarm.data.SettingsStore
 import app.fajralarm.data.SinkPhotos
@@ -227,14 +229,28 @@ private fun MathMission(onDismiss: () -> Unit) {
     }
 }
 
+/** Consecutive matching live frames needed to dismiss on its own (~1 s at 3 frames/s). */
+private const val AUTO_MATCH_STREAK = 3
+
 @Composable
 private fun SinkPhotoMission(settings: AlarmSettings, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val mainExecutor = remember { ContextCompat.getMainExecutor(context) }
     var references by remember { mutableStateOf<List<ImageMatcher.Features>?>(null) }
     var ghost by remember { mutableStateOf<Bitmap?>(null) }
     var checking by remember { mutableStateOf(false) }
     var feedback by remember { mutableStateOf<String?>(null) }
+    // Live matching: one lucky frame isn't enough, the sink has to match several in a row.
+    var streak by remember { mutableIntStateOf(0) }
+    var live by remember { mutableStateOf<MatchResult?>(null) }
+    var dismissed by remember { mutableStateOf(false) }
+    val dismissOnce = {
+        if (!dismissed) {
+            dismissed = true
+            onDismiss()
+        }
+    }
 
     LaunchedEffect(Unit) {
         val (g, refs) = withContext(Dispatchers.IO) {
@@ -245,12 +261,12 @@ private fun SinkPhotoMission(settings: AlarmSettings, onDismiss: () -> Unit) {
     }
 
     Text(
-        "Go to your sink and take a photo of it to turn the alarm off.",
+        "Go to your sink and point the camera at it. The alarm turns off once it recognises your sink.",
         style = MaterialTheme.typography.titleMedium,
         textAlign = TextAlign.Center,
     )
     Text(
-        "Line it up with the faint outline of your reference photo.",
+        "Line it up with the faint outline of your reference photo and hold still for a second.",
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center,
@@ -270,14 +286,38 @@ private fun SinkPhotoMission(settings: AlarmSettings, onDismiss: () -> Unit) {
                 }
                 checking = false
                 when {
-                    result.matched -> onDismiss()
+                    result.matched -> dismissOnce()
                     result.unusable -> feedback = "Too dark to tell. Turn the bathroom light on."
                     else -> feedback = "That doesn't look like your sink (${result.percent}% match). " +
                         "Stand where you took the reference photo and try again."
                 }
             }
         },
+        // Runs on the camera's analysis thread; state is only touched back on the main thread.
+        onFrame = references?.let { refs ->
+            { frame: Bitmap ->
+                val result = ImageMatcher.bestMatch(refs, SinkPhotos.features(frame), settings.photoStrictness)
+                mainExecutor.execute {
+                    if (dismissed || checking) return@execute
+                    live = result
+                    streak = if (result.matched) streak + 1 else 0
+                    if (streak >= AUTO_MATCH_STREAK) dismissOnce()
+                }
+            }
+        },
     )
+    live?.let {
+        Spacer(Modifier.height(8.dp))
+        Text(
+            when {
+                it.unusable -> "Too dark to tell. Turn the bathroom light on."
+                it.matched -> "Sink found, hold still…"
+                else -> "Looking for your sink… ${it.percent}% match"
+            },
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+    }
     feedback?.let {
         Spacer(Modifier.height(8.dp))
         Text(it, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)

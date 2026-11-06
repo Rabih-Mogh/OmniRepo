@@ -2,8 +2,10 @@ package app.fajralarm.ui
 
 import android.graphics.Bitmap
 import android.graphics.Matrix
+import android.os.SystemClock
 import android.util.Size
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
@@ -28,6 +30,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,11 +43,16 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import java.util.concurrent.Executors
 
 /**
  * Live back-camera preview with a shutter button. Photos come only from the live
  * camera (no gallery), so an old picture can't be reused. If [ghost] is given it
  * is drawn faintly over the preview to help line the shot up with the reference.
+ *
+ * If [onFrame] is given, live preview frames are also handed to it on a background
+ * thread, at most one every [frameIntervalMs]. Frames that arrive while it is still
+ * running are dropped, so a slow check never queues up.
  */
 @Composable
 fun CameraCapture(
@@ -53,11 +61,15 @@ fun CameraCapture(
     enabled: Boolean,
     onCaptured: (Bitmap) -> Unit,
     modifier: Modifier = Modifier,
+    onFrame: ((Bitmap) -> Unit)? = null,
+    frameIntervalMs: Long = 333,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    val currentOnFrame by rememberUpdatedState(onFrame)
+    val analyze = onFrame != null
 
     val previewView = remember {
         PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
@@ -75,22 +87,52 @@ fun CameraCapture(
             .build()
     }
 
-    DisposableEffect(lifecycleOwner) {
+    DisposableEffect(lifecycleOwner, analyze) {
         val future = ProcessCameraProvider.getInstance(context)
         var provider: ProcessCameraProvider? = null
+        val analysisExecutor = if (analyze) Executors.newSingleThreadExecutor() else null
         future.addListener({
             try {
                 val p = future.get()
                 provider = p
                 val preview = Preview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
+                val analysis = analysisExecutor?.let { executor ->
+                    var lastFrameAt = 0L
+                    ImageAnalysis.Builder()
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                        .setResolutionSelector(
+                            ResolutionSelector.Builder()
+                                .setResolutionStrategy(
+                                    ResolutionStrategy(Size(640, 480), ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER),
+                                )
+                                .build(),
+                        )
+                        .build()
+                        .also {
+                            it.setAnalyzer(executor) { image ->
+                                image.use { frame ->
+                                    val now = SystemClock.elapsedRealtime()
+                                    if (now - lastFrameAt < frameIntervalMs) return@use
+                                    lastFrameAt = now
+                                    val bitmap = frame.toBitmap().rotated(frame.imageInfo.rotationDegrees)
+                                    currentOnFrame?.invoke(bitmap)
+                                }
+                            }
+                        }
+                }
                 p.unbindAll()
-                p.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageCapture)
+                val useCases = listOfNotNull(preview, imageCapture, analysis).toTypedArray()
+                p.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, *useCases)
                 error = null
             } catch (e: Exception) {
                 error = "Camera unavailable: ${e.message ?: e.javaClass.simpleName}"
             }
         }, ContextCompat.getMainExecutor(context))
-        onDispose { provider?.unbindAll() }
+        onDispose {
+            provider?.unbindAll()
+            analysisExecutor?.shutdown()
+        }
     }
 
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
