@@ -1,9 +1,11 @@
 package app.fajralarm.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -44,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import app.fajralarm.core.ImageMatcher
 import app.fajralarm.data.SettingsStore
 import app.fajralarm.data.SinkPhotos
@@ -77,6 +80,12 @@ private fun SinkSetupScreen(onDone: () -> Unit) {
     var message by remember { mutableStateOf<String?>(null) }
     var working by remember { mutableStateOf(false) }
     var toDelete by remember { mutableStateOf<File?>(null) }
+    var resumeTick by remember { mutableIntStateOf(0) }
+
+    LifecycleResumeEffect(Unit) {
+        resumeTick++
+        onPauseOrDispose { }
+    }
 
     var hasCamera by remember {
         mutableStateOf(
@@ -124,13 +133,20 @@ private fun SinkSetupScreen(onDone: () -> Unit) {
     ) {
         Text("Your sink", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
         Text(
-            "When the alarm rings it only turns off once you photograph this sink. " +
+            "When the alarm rings it only turns off once the camera recognises this sink. " +
                 "Take the photos the way you will half-asleep: standing at the sink with the light on, " +
                 "phone upright. Get the tap, basin edge and tiles or mirror frame in shot, " +
                 "and leave out towels and things that move. Taking 2–3 photos from slightly different spots helps.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+
+        // The mission is useless if the alarm screen can't open by itself, so repeat the checks here.
+        PermissionWarnings(context, resumeTick, onRequestNotifications = {
+            context.startActivity(
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+            )
+        })
 
         if (thumbs.isNotEmpty()) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

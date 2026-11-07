@@ -75,10 +75,13 @@ Or open `fajr-alarm/` in Android Studio and press Run. Min Android version: 8.0 
 | `ACCESS_COARSE_LOCATION` | Optional; you can type coordinates instead |
 | `CAMERA` | Sink-photo mission (optional) |
 | `WAKE_LOCK`, `VIBRATE` | Ringing |
+| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | One-tap fix when battery optimisation could put the alarm to sleep |
 
-The app shows a banner if notifications, exact alarms or full-screen alarms are blocked,
-with a button that opens the right settings page. On some phones (Xiaomi, Huawei,
-Samsung "deep sleep") you may also need to exempt the app from battery optimisation.
+The app shows a banner, on the main screen and on sink setup, if notifications, exact alarms
+or full-screen alarms are blocked or battery optimisation is on, with a button that opens the
+right settings page. On Samsung phones it also reminds you once to add the app to
+**Never sleeping apps**, since apps can't check that list. Other brands (Xiaomi, Huawei, Oppo)
+have similar autostart and background switches in the app's system settings.
 
 ## Accuracy
 

@@ -1,8 +1,6 @@
 package app.fajralarm.ui
 
 import android.Manifest
-import android.app.AlarmManager
-import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -10,7 +8,6 @@ import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -454,50 +451,6 @@ private fun relativeDay(t: ZonedDateTime, now: ZonedDateTime, fmt: DateTimeForma
         today -> "Today"
         today.plusDays(1) -> "Tomorrow"
         else -> t.format(fmt)
-    }
-}
-
-@Composable
-private fun PermissionWarnings(
-    context: Context,
-    @Suppress("UNUSED_PARAMETER") tick: Int,
-    onRequestNotifications: () -> Unit,
-) {
-    val notificationsOff = !NotificationManagerCompat.from(context).areNotificationsEnabled()
-    val exactOff = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-        !context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
-    val fullScreenOff = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
-        !context.getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
-
-    if (notificationsOff) {
-        Warning("Notifications are off, so the alarm can't show.", "Allow", onRequestNotifications)
-    }
-    if (exactOff && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        Warning("Exact alarms are not allowed; the alarm may ring late.", "Fix") {
-            context.startActivity(
-                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")),
-            )
-        }
-    }
-    if (fullScreenOff && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        Warning("Full-screen alarms are blocked; you'll only get a notification.", "Fix") {
-            context.startActivity(
-                Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:${context.packageName}")),
-            )
-        }
-    }
-}
-
-@Composable
-private fun Warning(text: String, action: String, onClick: () -> Unit) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(text, Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
-            TextButton(onClick = onClick) { Text(action) }
-        }
     }
 }
 
