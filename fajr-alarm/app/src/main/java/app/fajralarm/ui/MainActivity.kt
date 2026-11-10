@@ -56,6 +56,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -445,13 +446,13 @@ private fun SummaryCard(context: Context, settings: AlarmSettings, tick: Int, on
     val timeFmt = remember { android.text.format.DateFormat.getTimeFormat(context) }
     fun fmt(t: ZonedDateTime?) = t?.let { timeFmt.format(Date.from(it.toInstant())) } ?: "—"
     val dayFmt = remember { DateTimeFormatter.ofPattern("EEEE d MMM", Locale.getDefault()) }
-    val onHero = Color.White
+    val onHero = Silhouette
 
     Box(
         Modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.large)
-            .background(DawnGradient),
+            .background(GoldenMorning),
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -461,7 +462,15 @@ private fun SummaryCard(context: Context, settings: AlarmSettings, tick: Int, on
                     color = onHero.copy(alpha = 0.75f),
                     modifier = Modifier.weight(1f),
                 )
-                Switch(checked = settings.enabled, onCheckedChange = onEnabledChange)
+                Switch(
+                    checked = settings.enabled,
+                    onCheckedChange = onEnabledChange,
+                    colors = SwitchDefaults.colors(
+                        checkedTrackColor = Silhouette,
+                        checkedThumbColor = Color(0xFFFFE59A),
+                        checkedIconColor = Silhouette,
+                    ),
+                )
             }
             when {
                 !settings.hasLocation -> Text("Set your location to calculate Fajr.", style = MaterialTheme.typography.titleLarge, color = onHero)
@@ -506,11 +515,11 @@ private fun TimePill(label: String, value: String, modifier: Modifier = Modifier
     Column(
         modifier
             .clip(MaterialTheme.shapes.medium)
-            .background(Color.White.copy(alpha = 0.12f))
+            .background(Color.White.copy(alpha = 0.38f))
             .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.75f))
-        Text(value, style = MaterialTheme.typography.titleLarge, color = Color.White)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = Silhouette.copy(alpha = 0.75f))
+        Text(value, style = MaterialTheme.typography.titleLarge, color = Silhouette)
     }
 }
 

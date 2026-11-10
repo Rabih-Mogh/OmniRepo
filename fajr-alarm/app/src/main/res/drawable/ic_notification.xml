@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Monochrome crescent for the status bar (cut-out drawn with evenOdd fill). -->
+<!-- Monochrome twin minarets for the status bar, cropped from the launcher artwork. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:fillType="evenOdd"
-        android:pathData="M11,12 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0 Z M14,10 m-7,0 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M19,3 L19.9,5.1 L22,6 L19.9,6.9 L19,9 L18.1,6.9 L16,6 L18.1,5.1 Z" />
+    android:viewportWidth="56"
+    android:viewportHeight="56">
+    <group
+        android:translateX="-26"
+        android:translateY="-28">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M27.5,78 H80.5 V82 H27.5 Z M38,68 H70 V80 H38 Z M39,69 A15,15 0 0,1 69,69 Z M53.3,47 h1.4 v7 h-1.4 Z M28.5,42 L32.5,32 L36.5,42 Z M29.5,42 h6 v38 h-6 Z M27.5,52 h10 v2.4 h-10 Z M28.5,64 h8 v2 h-8 Z M71.5,42 L75.5,32 L79.5,42 Z M72.5,42 h6 v38 h-6 Z M70.5,52 h10 v2.4 h-10 Z M71.5,64 h8 v2 h-8 Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M54,41 A3,3 0 1,0 56.77,45.15 A2.5,2.5 0 0,1 54,41 Z" />
+    </group>
 </vector>

@@ -15,42 +15,42 @@ import androidx.compose.ui.unit.sp
 // Every role is set: anything left out falls back to Material's purple baseline,
 // which is what made chips, switches and dialogs look off-palette.
 private val NightColors = darkColorScheme(
-    primary = Color(0xFFF5B96E),            // first light of dawn
-    onPrimary = Color(0xFF2B1700),
-    primaryContainer = Color(0xFF4A3216),
-    onPrimaryContainer = Color(0xFFFFDDB8),
-    inversePrimary = Color(0xFF85531B),
-    secondary = Color(0xFFA9C3F0),          // pre-dawn sky
-    onSecondary = Color(0xFF0E2546),
-    secondaryContainer = Color(0xFF243A5E),
-    onSecondaryContainer = Color(0xFFD6E3FF),
+    primary = Color(0xFFFFD27A),            // golden horizon, as in the icon
+    onPrimary = Color(0xFF1A2D52),
+    primaryContainer = Color(0xFF4D3B1C),
+    onPrimaryContainer = Color(0xFFFFE59A),
+    inversePrimary = Color(0xFF7A5A12),
+    secondary = Color(0xFFC9BCEB),          // violet top of the sky
+    onSecondary = Color(0xFF2A2150),
+    secondaryContainer = Color(0xFF3A3262),
+    onSecondaryContainer = Color(0xFFE6DEFF),
     tertiary = Color(0xFFE6B3C9),           // the pink band before sunrise
     onTertiary = Color(0xFF3A1F2C),
     tertiaryContainer = Color(0xFF55354A),
     onTertiaryContainer = Color(0xFFFFD8E8),
-    background = Color(0xFF0A1322),
+    background = Color(0xFF0E1830),
     onBackground = Color(0xFFE6EBF4),
-    surface = Color(0xFF0A1322),
+    surface = Color(0xFF0E1830),
     onSurface = Color(0xFFE6EBF4),
-    surfaceVariant = Color(0xFF1E2C43),
-    onSurfaceVariant = Color(0xFFB0BCD0),
-    surfaceTint = Color(0xFFF5B96E),
+    surfaceVariant = Color(0xFF242C4C),
+    onSurfaceVariant = Color(0xFFBCB8D4),
+    surfaceTint = Color(0xFFFFD27A),
     inverseSurface = Color(0xFFE6EBF4),
     inverseOnSurface = Color(0xFF1B2638),
     error = Color(0xFFFFB4AB),
     onError = Color(0xFF690005),
     errorContainer = Color(0xFF5C1A17),
     onErrorContainer = Color(0xFFFFDAD6),
-    outline = Color(0xFF56657E),
-    outlineVariant = Color(0xFF2A3850),
+    outline = Color(0xFF5E5F84),
+    outlineVariant = Color(0xFF2E3558),
     scrim = Color(0xFF000000),
-    surfaceBright = Color(0xFF2A3850),
-    surfaceDim = Color(0xFF0A1322),
-    surfaceContainerLowest = Color(0xFF060D18),
-    surfaceContainerLow = Color(0xFF0F1A2C),
-    surfaceContainer = Color(0xFF132036),
-    surfaceContainerHigh = Color(0xFF1A2840),
-    surfaceContainerHighest = Color(0xFF22314B),
+    surfaceBright = Color(0xFF2E3558),
+    surfaceDim = Color(0xFF0E1830),
+    surfaceContainerLowest = Color(0xFF080F20),
+    surfaceContainerLow = Color(0xFF131D38),
+    surfaceContainer = Color(0xFF17223F),
+    surfaceContainerHigh = Color(0xFF1E2948),
+    surfaceContainerHighest = Color(0xFF263152),
 )
 
 private val base = Typography()
@@ -76,12 +76,25 @@ private val FajrShapes = Shapes(
     extraLarge = RoundedCornerShape(32.dp),
 )
 
-/** Night sky fading to dawn, behind the next-alarm card and the ringing screen. */
+/** Night sky fading to dawn, behind the ringing screen. Dark enough for light text. */
 val DawnGradient = Brush.verticalGradient(
     0f to Color(0xFF1A2D52),
-    0.55f to Color(0xFF3A3560),
-    1f to Color(0xFF8A5A4E),
+    0.55f to Color(0xFF4A3E6E),
+    1f to Color(0xFF9A6478),
 )
+
+/**
+ * The launcher icon's sky behind the next-alarm card, without the icon's violet top
+ * so [Silhouette] text stays readable from the first line down.
+ */
+val GoldenMorning = Brush.verticalGradient(
+    0f to Color(0xFFE6B3C9),
+    0.55f to Color(0xFFFFC98A),
+    1f to Color(0xFFFFE59A),
+)
+
+/** The icon's mosque-and-minarets navy, used for text on [GoldenMorning]. */
+val Silhouette = Color(0xFF1A2D52)
 
 /** A single dark, night-sky theme: the app is mostly used in the dark. */
 @Composable

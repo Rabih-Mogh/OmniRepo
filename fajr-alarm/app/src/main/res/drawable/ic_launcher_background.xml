@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Golden morning sky: violet at the top through pink to warm yellow at the horizon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:pathData="M0,0 H108 V108 H0 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="0"
+                android:startY="0"
+                android:endX="0"
+                android:endY="108">
+                <item android:offset="0" android:color="#FF4A3E6E" />
+                <item android:offset="0.35" android:color="#FFE6B3C9" />
+                <item android:offset="0.6" android:color="#FFFFC98A" />
+                <item android:offset="1" android:color="#FFFFE59A" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>
