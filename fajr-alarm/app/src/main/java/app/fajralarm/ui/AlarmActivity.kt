@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
@@ -34,7 +33,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -52,14 +50,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.fajralarm.alarm.AlarmService
 import app.fajralarm.core.AlarmSettings
 import app.fajralarm.core.DismissMission
-import app.fajralarm.core.ImageMatcher
-import app.fajralarm.core.MatchResult
 import app.fajralarm.core.MathChallenge
 import app.fajralarm.data.SettingsStore
-import app.fajralarm.data.SinkPhotos
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import java.text.DateFormat
 import java.util.Date
 
@@ -133,13 +126,12 @@ class AlarmActivity : ComponentActivity() {
     }
 }
 
-/** Which mission actually runs: the sink photo needs reference photos and the camera. */
+/** Which mission actually runs: finding a sink needs the camera. */
 private fun effectiveMission(context: Context, s: AlarmSettings): Pair<DismissMission, String?> {
     if (s.dismissMission != DismissMission.SINK_PHOTO) return s.dismissMission to null
     val camera = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
     return when {
         !camera -> DismissMission.MATH to "Camera permission is off, so solve a sum instead."
-        SinkPhotos.count(context) == 0 -> DismissMission.MATH to "No sink photos are set up, so solve a sum instead."
         else -> DismissMission.SINK_PHOTO to null
     }
 }
@@ -207,7 +199,7 @@ private fun AlarmScreen(
             when (mission) {
                 DismissMission.NONE -> DismissButton("I'm up, dismiss", onDismiss)
                 DismissMission.MATH -> MathMission(onDismiss)
-                DismissMission.SINK_PHOTO -> SinkPhotoMission(settings, onDismiss)
+                DismissMission.SINK_PHOTO -> SinkMission(onDismiss)
             }
 
             if (canSnooze) {
@@ -257,66 +249,21 @@ private fun MathMission(onDismiss: () -> Unit) {
     }
 }
 
-/** Consecutive matching live frames needed to dismiss on its own (~1 s at 3 frames/s). */
-private const val AUTO_MATCH_STREAK = 3
-
 @Composable
-private fun SinkPhotoMission(settings: AlarmSettings, onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    val mainExecutor = remember { ContextCompat.getMainExecutor(context) }
-    var references by remember { mutableStateOf<List<ImageMatcher.Features>?>(null) }
-    var ghost by remember { mutableStateOf<Bitmap?>(null) }
-    // Live matching: one lucky frame isn't enough, the sink has to match several in a row.
-    var streak by remember { mutableIntStateOf(0) }
-    var live by remember { mutableStateOf<MatchResult?>(null) }
-    var dismissed by remember { mutableStateOf(false) }
-    val dismissOnce = {
-        if (!dismissed) {
-            dismissed = true
-            onDismiss()
-        }
+private fun SinkMission(onDismiss: () -> Unit) {
+    // If the detector can't run on this phone, a sum still stops the alarm.
+    var unavailable by remember { mutableStateOf(false) }
+    if (unavailable) {
+        Text("The sink detector couldn't start, so solve a sum instead.", color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(8.dp))
+        MathMission(onDismiss)
+        return
     }
-
-    LaunchedEffect(Unit) {
-        val (g, refs) = withContext(Dispatchers.IO) {
-            SinkPhotos.list(context).firstOrNull()?.let(SinkPhotos::load) to SinkPhotos.referenceFeatures(context)
-        }
-        ghost = g
-        references = refs
-    }
-
     Text(
-        "Point the camera at your sink",
+        "Go to a sink and point the camera at it",
         style = MaterialTheme.typography.titleMedium,
         textAlign = TextAlign.Center,
     )
     Spacer(Modifier.height(12.dp))
-
-    CameraCapture(
-        ghost = ghost,
-        // Runs on the camera's analysis thread; state is only touched back on the main thread.
-        onFrame = references?.let { refs ->
-            { frame: Bitmap ->
-                val result = ImageMatcher.bestMatch(refs, SinkPhotos.features(frame), settings.photoStrictness)
-                mainExecutor.execute {
-                    if (dismissed) return@execute
-                    live = result
-                    streak = if (result.matched) streak + 1 else 0
-                    if (streak >= AUTO_MATCH_STREAK) dismissOnce()
-                }
-            }
-        },
-    )
-    val status = live
-    Spacer(Modifier.height(8.dp))
-    Text(
-        when {
-            status == null -> "Looking for your sink…"
-            status.unusable -> "Too dark. Turn the light on."
-            status.matched -> "Found it, hold still…"
-            else -> "Looking for your sink… ${status.percent}%"
-        },
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = TextAlign.Center,
-    )
+    SinkFinder(onConfirmed = onDismiss, onUnavailable = { unavailable = true })
 }

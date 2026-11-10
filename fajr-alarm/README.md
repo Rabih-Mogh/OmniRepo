@@ -18,35 +18,36 @@ alarm follows the prayer time as it moves through the year.
   - optional fade-in and vibration
 - **Snooze** with a configurable length and a cap on how many times you can snooze.
 - **Dismiss missions**: choose what it takes to turn the alarm off.
-  - **Photo of your sink**: the alarm only stops once the live camera sees your own sink matching your reference photos. See below.
+  - **Find a sink**: the alarm only stops once the live camera recognises a real sink. See below.
   - **Solve a sum**.
   - **None**: a normal dismiss button.
 
   With a mission on, the notification has no dismiss button, so the alarm screen is the only way to turn it off.
-- **Auto-stop**: after 10 minutes normally, or 60 minutes with the sink-photo mission, so a phone left at home doesn't ring all day. When it auto-stops it snoozes if snoozes are left, otherwise it stops.
+- **Auto-stop**: after 10 minutes normally, or 60 minutes with the sink mission, so a phone left at home doesn't ring all day. When it auto-stops it snoozes if snoozes are left, otherwise it stops.
 - **"Test the alarm now"** button.
 
-## Sink-photo mission
+## Sink mission
 
-1. In **To turn the alarm off → Mission**, pick **Photo of your sink**. The setup screen opens.
-2. Take 1–3 reference photos standing at your sink with the light on: tap, basin edge, tiles or mirror frame in shot, and no towels or things that move. **Test a wake-up photo** shows the match score you'd get.
-3. When the alarm rings, it keeps ringing while you walk to the sink. Point the in-app camera at it, lined up with the faint outline of your reference, and hold still: the alarm stops on its own once about a second of frames in a row match (3 checks a second).
+1. In **To turn the alarm off → Mission**, pick **Find a sink**. No photos are needed. **Test it** opens a dry run where you can check that your sink is recognised.
+2. When the alarm rings, it keeps ringing while you walk to a sink: any bathroom or kitchen sink works. Point the in-app camera at it, with the basin in view, and keep it there for about 2 seconds. The alarm stops on its own.
 
 How it works and its limits:
-- **Live camera only**: there's no gallery picker, so an old photo can't be reused. All photos stay on the phone.
-- **What's compared**: the edges (tap, basin rim, tile lines) are compared over small shifts, zooms and tilts, which ignores brightness. A colour check comes on top. **Match strictness** (Relaxed / Normal / Strict) sets how close it must be.
-- **Tuning**: thresholds were tuned on synthetic bathroom scenes in the unit tests, not real photos. If real shots fail too often, use Relaxed or add another reference from where you usually stand.
-- **Fallback**: if the camera permission is off or no reference photo exists, the alarm falls back to the sum, so you're never stuck with an alarm you can't stop.
-- **Not tamper-proof**: a determined person can still snooze (set Snooze to Off), photograph a printout of the sink, or force-stop the app from system settings.
+- **On-phone recognition**: a bundled object-detection model (EfficientDet-Lite0, trained on the 80 everyday COCO objects, "sink" among them) runs on the phone through LiteRT, 3 times a second. Nothing leaves the phone, and nothing is saved.
+- **Why no photos**: there's nothing to set up, so there's no way to register a bedside object as "the sink".
+- **Cheating checks**: a sink that sits inside a detected phone, TV or laptop screen doesn't count. The sink must stay in view for 2 seconds while the camera moves slightly, as it does in a hand. Dark frames reset the check.
+- **Accuracy**: works best with the light on and most of the basin in view. A close-up of just the tap, or a very dark room, may not be recognised. The thresholds haven't been tuned on many real sinks yet.
+- **Fallback**: if the camera permission is off or the detector can't start, the alarm falls back to the sum, so you're never stuck with an alarm you can't stop.
+- **Not tamper-proof**: a determined person can still snooze (set Snooze to Off), show the camera a printed photo of a sink, or force-stop the app from system settings.
 
 ## Project layout
 
 ```
 fajr-alarm/
-├── core/   Pure Kotlin/JVM: prayer-time astronomy, alarm planning, photo matching (unit-tested)
+├── core/   Pure Kotlin/JVM: prayer-time astronomy, alarm planning, sink check logic (unit-tested)
 └── app/    Android app (Kotlin, Jetpack Compose, Material 3)
     ├── alarm/  AlarmScheduler (AlarmManager.setAlarmClock), receivers, ringing service
     ├── data/   SharedPreferences settings, one-shot location
+    ├── detect/ On-phone sink detector (LiteRT + bundled model in assets/)
     └── ui/     Settings screen, lock-screen alarm screen, theme
 ```
 
@@ -61,6 +62,9 @@ cd fajr-alarm
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
+The APKs are built for 64-bit ARM phones only (`arm64-v8a`), which keeps the detection runtime
+to one copy. Remove the `abiFilters` line in `app/build.gradle.kts` to build for every phone.
+
 Or open `fajr-alarm/` in Android Studio and press Run. Min Android version: 8.0 (API 26).
 
 ## Permissions and why
@@ -73,11 +77,11 @@ Or open `fajr-alarm/` in Android Studio and press Run. Min Android version: 8.0 
 | `FOREGROUND_SERVICE(_MEDIA_PLAYBACK)` | Keep playing the alarm sound |
 | `RECEIVE_BOOT_COMPLETED` | Re-queue the alarm after a restart |
 | `ACCESS_COARSE_LOCATION` | Optional; you can type coordinates instead |
-| `CAMERA` | Sink-photo mission (optional) |
+| `CAMERA` | Sink mission (optional) |
 | `WAKE_LOCK`, `VIBRATE` | Ringing |
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | One-tap fix when battery optimisation could put the alarm to sleep |
 
-The app shows a banner, on the main screen and on sink setup, if notifications, exact alarms
+The app shows a banner, on the main screen and on the sink test screen, if notifications, exact alarms
 or full-screen alarms are blocked or battery optimisation is on, with a button that opens the
 right settings page. On Samsung phones it also reminds you once to add the app to
 **Never sleeping apps**, since apps can't check that list. Other brands (Xiaomi, Huawei, Oppo)

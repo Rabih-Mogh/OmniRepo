@@ -27,6 +27,9 @@ class FajrAlarmApp : Application() {
         ).apply { description = "Snooze and missed-alarm notices" }
         nm.createNotificationChannels(listOf(ringing, info))
 
+        // Sink reference photos from older versions are no longer used; don't keep them around.
+        java.io.File(filesDir, "sink").takeIf { it.exists() }?.deleteRecursively()
+
         // Make sure an alarm is always queued while the app process is alive.
         AlarmScheduler.reschedule(this)
     }

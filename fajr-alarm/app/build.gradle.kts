@@ -16,12 +16,14 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+        // The detection runtime ships native code; only 64-bit ARM phones (the A05 included) are built for.
+        ndk { abiFilters += "arm64-v8a" }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // Signed with the debug key so `assembleRelease` produces an installable APK.
             // Replace with your own signing config before publishing.
             signingConfig = signingConfigs.getByName("debug")
@@ -35,6 +37,11 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    // The model is memory-mapped straight out of the APK, so it must stay uncompressed.
+    androidResources {
+        noCompress += "tflite"
     }
 }
 
@@ -56,6 +63,9 @@ dependencies {
     implementation("androidx.camera:camera-camera2:$cameraX")
     implementation("androidx.camera:camera-lifecycle:$cameraX")
     implementation("androidx.camera:camera-view:$cameraX")
+
+    // On-device object detection (TensorFlow Lite, now called LiteRT) for the sink mission.
+    implementation("com.google.ai.edge.litert:litert:1.0.1")
 
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.compose.ui:ui")

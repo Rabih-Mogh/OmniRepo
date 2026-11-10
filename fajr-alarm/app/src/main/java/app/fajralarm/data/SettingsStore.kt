@@ -36,7 +36,6 @@ class SettingsStore(context: Context) {
                 // Earlier versions stored a simple "math challenge" on/off switch.
                 if (prefs.getBoolean(K_CHALLENGE, false)) DismissMission.MATH else d.dismissMission,
             ),
-            photoStrictness = enumOr(prefs.getString(K_PHOTO_STRICTNESS, null), d.photoStrictness),
         )
     }
 
@@ -59,7 +58,6 @@ class SettingsStore(context: Context) {
             putInt(K_SNOOZE, s.snoozeMinutes)
             putInt(K_MAX_SNOOZES, s.maxSnoozes)
             putString(K_MISSION, s.dismissMission.name)
-            putString(K_PHOTO_STRICTNESS, s.photoStrictness.name)
             remove(K_CHALLENGE)
         }.apply()
     }
@@ -107,7 +105,6 @@ class SettingsStore(context: Context) {
         const val K_MAX_SNOOZES = "max_snoozes"
         const val K_CHALLENGE = "challenge" // legacy
         const val K_MISSION = "dismiss_mission"
-        const val K_PHOTO_STRICTNESS = "photo_strictness"
         const val K_NEXT_AT = "next_alarm_at"
         const val K_SNOOZE_UNTIL = "snooze_until"
         const val K_SNOOZE_COUNT = "snooze_count"

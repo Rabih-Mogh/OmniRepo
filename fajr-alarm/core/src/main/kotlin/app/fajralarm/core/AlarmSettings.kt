@@ -6,7 +6,8 @@ import java.time.DayOfWeek
 enum class DismissMission(val displayName: String, val description: String) {
     NONE("None", "Tap to dismiss"),
     MATH("Solve a sum", "Solve a quick sum to turn it off"),
-    SINK_PHOTO("Photo of your sink", "Get up and photograph your sink to turn it off"),
+    // Stored by name, so it keeps its old name even though no photo is taken any more.
+    SINK_PHOTO("Find a sink", "Get up and point the camera at a sink to turn it off"),
 }
 
 /** What the alarm time is measured from. */
@@ -36,8 +37,6 @@ data class AlarmSettings(
     val snoozeMinutes: Int = 5,
     val maxSnoozes: Int = 3,
     val dismissMission: DismissMission = DismissMission.NONE,
-    /** How closely the wake-up photo must match the reference sink photos. */
-    val photoStrictness: MatchStrictness = MatchStrictness.NORMAL,
 ) {
     val hasLocation: Boolean get() = latitude != null && longitude != null
 
