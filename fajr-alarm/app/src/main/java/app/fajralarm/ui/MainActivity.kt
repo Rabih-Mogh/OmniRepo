@@ -12,34 +12,47 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -53,9 +66,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -68,8 +86,8 @@ import app.fajralarm.core.AlarmPlanner
 import app.fajralarm.core.AlarmSettings
 import app.fajralarm.core.CalculationMethod
 import app.fajralarm.core.DismissMission
-import app.fajralarm.core.MatchStrictness
 import app.fajralarm.core.HighLatitudeRule
+import app.fajralarm.core.MatchStrictness
 import app.fajralarm.core.PrayerTimeCalculator
 import app.fajralarm.data.LocationHelper
 import app.fajralarm.data.SettingsStore
@@ -87,6 +105,7 @@ import kotlin.math.roundToInt
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent {
             FajrTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -97,6 +116,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsScreen() {
     val context = LocalContext.current
@@ -147,7 +167,11 @@ private fun SettingsScreen() {
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Fajr Alarm", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
+        Text(
+            "Fajr Alarm",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 4.dp),
+        )
 
         // resumeTick makes this re-read permission state whenever we return to the screen.
         PermissionWarnings(context, resumeTick, onRequestNotifications = {
@@ -156,33 +180,37 @@ private fun SettingsScreen() {
             }
         })
 
-        SummaryCard(context, settings, resumeTick)
+        SummaryCard(context, settings, resumeTick) { on ->
+            if (on && !settings.hasLocation) {
+                Toast.makeText(context, "Set your location first", Toast.LENGTH_SHORT).show()
+            }
+            if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                !NotificationManagerCompat.from(context).areNotificationsEnabled()
+            ) {
+                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            update(settings.copy(enabled = on))
+        }
 
         Section("Alarm") {
-            SwitchRow("Wake me for Fajr", settings.enabled) { on ->
-                if (on && !settings.hasLocation) {
-                    Toast.makeText(context, "Set your location first", Toast.LENGTH_SHORT).show()
-                }
-                if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                    !NotificationManagerCompat.from(context).areNotificationsEnabled()
-                ) {
-                    notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-                update(settings.copy(enabled = on))
-            }
-
             Text("Ring relative to", style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AlarmAnchor.values().forEach { a ->
-                    FilterChip(
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                val anchors = AlarmAnchor.values()
+                anchors.forEachIndexed { i, a ->
+                    SegmentedButton(
                         selected = settings.anchor == a,
                         onClick = { update(settings.copy(anchor = a)) },
-                        label = { Text(a.displayName) },
-                    )
+                        shape = SegmentedButtonDefaults.itemShape(i, anchors.size),
+                    ) { Text(a.displayName) }
                 }
             }
 
-            Text(settings.describeOffset(), style = MaterialTheme.typography.titleMedium)
+            Text(
+                settings.describeOffset(),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 8.dp),
+            )
             Slider(
                 value = settings.offsetMinutes.toFloat(),
                 onValueChange = { v ->
@@ -193,12 +221,12 @@ private fun SettingsScreen() {
                 valueRange = -120f..60f,
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("2 h before", style = MaterialTheme.typography.bodySmall)
-                Text("1 h after", style = MaterialTheme.typography.bodySmall)
+                Text("2 h before", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("1 h after", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
-            Text("Days", style = MaterialTheme.typography.labelLarge)
-            DayChips(settings.days) { update(settings.copy(days = it)) }
+            Text("Days", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+            DayPicker(settings.days) { update(settings.copy(days = it)) }
         }
 
         Section("Location") {
@@ -211,7 +239,7 @@ private fun SettingsScreen() {
                 },
                 style = MaterialTheme.typography.bodyMedium,
             )
-            Button(
+            FilledTonalButton(
                 enabled = !locating,
                 onClick = {
                     if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
@@ -228,7 +256,11 @@ private fun SettingsScreen() {
                         locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
                     }
                 },
-            ) { Text(if (locating) "Locating…" else "Use my current location") }
+            ) {
+                Icon(Icons.Rounded.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(if (locating) "Locating…" else "Use my current location")
+            }
 
             ManualLocation(settings) { lat, lng ->
                 update(settings.copy(latitude = lat, longitude = lng, locationLabel = "Manual"))
@@ -294,8 +326,8 @@ private fun SettingsScreen() {
                     .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text("Alarm sound")
-                Text(soundName, color = MaterialTheme.colorScheme.primary)
+                Text("Alarm sound", style = MaterialTheme.typography.bodyLarge)
+                ValueWithChevron(soundName)
             }
             SwitchRow("Vibrate", settings.vibrate) { update(settings.copy(vibrate = it)) }
             SwitchRow("Gentle start (fade in volume)", settings.gradualVolume) { update(settings.copy(gradualVolume = it)) }
@@ -378,8 +410,12 @@ private fun SettingsScreen() {
                     ContextCompat.startForegroundService(context, AlarmService.startIntent(context))
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Test the alarm now") }
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+        ) {
+            Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Test the alarm now")
+        }
 
         Spacer(Modifier.height(24.dp))
     }
@@ -397,7 +433,7 @@ private fun fetchLocation(context: Context, done: (Double?, Double?) -> Unit) {
 }
 
 @Composable
-private fun SummaryCard(context: Context, settings: AlarmSettings, tick: Int) {
+private fun SummaryCard(context: Context, settings: AlarmSettings, tick: Int, onEnabledChange: (Boolean) -> Unit) {
     val zone = ZoneId.systemDefault()
     val now = remember(settings, tick) { ZonedDateTime.now(zone) }
     val params = settings.calcParams()
@@ -409,38 +445,72 @@ private fun SummaryCard(context: Context, settings: AlarmSettings, tick: Int) {
     val timeFmt = remember { android.text.format.DateFormat.getTimeFormat(context) }
     fun fmt(t: ZonedDateTime?) = t?.let { timeFmt.format(Date.from(it.toInstant())) } ?: "—"
     val dayFmt = remember { DateTimeFormatter.ofPattern("EEEE d MMM", Locale.getDefault()) }
+    val onHero = Color.White
 
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-        modifier = Modifier.fillMaxWidth(),
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.large)
+            .background(DawnGradient),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (settings.enabled) "NEXT ALARM" else "ALARM OFF",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = onHero.copy(alpha = 0.75f),
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(checked = settings.enabled, onCheckedChange = onEnabledChange)
+            }
             when {
-                !settings.hasLocation -> Text("Set your location to calculate Fajr.", style = MaterialTheme.typography.titleMedium)
+                !settings.hasLocation -> Text("Set your location to calculate Fajr.", style = MaterialTheme.typography.titleLarge, color = onHero)
                 planned != null -> {
-                    Text("Next alarm", style = MaterialTheme.typography.labelLarge)
-                    Text(fmt(planned.triggerAt), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Medium)
-                    Text(relativeDay(planned.triggerAt, now, dayFmt), style = MaterialTheme.typography.bodyLarge)
+                    Text(fmt(planned.triggerAt), style = MaterialTheme.typography.displayLarge, color = onHero)
+                    Text(relativeDay(planned.triggerAt, now, dayFmt), style = MaterialTheme.typography.titleMedium, color = onHero.copy(alpha = 0.85f))
                 }
-                settings.enabled && settings.days.isEmpty() -> Text("No days selected.", style = MaterialTheme.typography.titleMedium)
+                settings.enabled && settings.days.isEmpty() -> Text("No days selected.", style = MaterialTheme.typography.titleLarge, color = onHero)
                 settings.enabled -> Text(
                     "Fajr can't be determined at this location right now (polar day/night).",
                     style = MaterialTheme.typography.titleMedium,
+                    color = onHero,
                 )
-                else -> Text("Alarm is off", style = MaterialTheme.typography.titleMedium)
+                else -> Text("Turn it on to wake for Fajr.", style = MaterialTheme.typography.titleLarge, color = onHero)
             }
             if (times != null) {
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TimePill("Fajr", fmt(times.fajr), Modifier.weight(1f))
+                    TimePill("Sunrise", fmt(times.sunrise), Modifier.weight(1f))
+                }
                 Text(
-                    "${relativeDay(times.date.atStartOfDay(zone), now, dayFmt)} · Fajr ${fmt(times.fajr)} · Sunrise ${fmt(times.sunrise)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    "Prayer times for ${relativeDay(times.date.atStartOfDay(zone), now, dayFmt).lowercase(Locale.getDefault())}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = onHero.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(top = 4.dp),
                 )
             }
             if (snoozeUntil > System.currentTimeMillis()) {
-                Text("Snoozed until ${timeFmt.format(Date(snoozeUntil))}", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    "Snoozed until ${timeFmt.format(Date(snoozeUntil))}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = onHero,
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun TimePill(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .clip(MaterialTheme.shapes.medium)
+            .background(Color.White.copy(alpha = 0.12f))
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.75f))
+        Text(value, style = MaterialTheme.typography.titleLarge, color = Color.White)
     }
 }
 
@@ -456,14 +526,21 @@ private fun relativeDay(t: ZonedDateTime, now: ZonedDateTime, fmt: DateTimeForma
 
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
-            content()
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            title.uppercase(Locale.getDefault()),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 8.dp, top = 12.dp),
+        )
+        Card(
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                content()
+            }
         }
     }
 }
@@ -487,20 +564,44 @@ private fun SwitchRow(title: String, checked: Boolean, subtitle: String? = null,
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/** Seven equal circles on one line, whatever the screen width or language. */
 @Composable
-private fun DayChips(days: Set<DayOfWeek>, onChange: (Set<DayOfWeek>) -> Unit) {
+private fun DayPicker(days: Set<DayOfWeek>, onChange: (Set<DayOfWeek>) -> Unit) {
     // Start the week on the user's locale-preferred first day.
     val first = java.time.temporal.WeekFields.of(Locale.getDefault()).firstDayOfWeek
     val ordered = (0L until 7L).map { first.plus(it) }
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         ordered.forEach { d ->
-            FilterChip(
-                selected = d in days,
-                onClick = { onChange(if (d in days) days - d else days + d) },
-                label = { Text(d.getDisplayName(TextStyle.SHORT, Locale.getDefault())) },
-            )
+            val on = d in days
+            Box(
+                Modifier
+                    .weight(1f)
+                    .aspectRatio(1f)
+                    .clip(CircleShape)
+                    .background(if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .toggleable(value = on, role = Role.Checkbox) { onChange(if (on) days - d else days + d) }
+                    .semantics { contentDescription = d.getDisplayName(TextStyle.FULL, Locale.getDefault()) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    d.getDisplayName(TextStyle.NARROW, Locale.getDefault()),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun ValueWithChevron(value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+        Icon(
+            Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -519,10 +620,11 @@ private fun <T> ChoiceRow(
             .clickable { open = true }
             .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title)
+        Text(title, style = MaterialTheme.typography.bodyLarge)
         Spacer(Modifier.width(16.dp))
-        Text(label(current), color = MaterialTheme.colorScheme.primary)
+        ValueWithChevron(label(current))
     }
     if (open) {
         AlertDialog(
@@ -534,6 +636,7 @@ private fun <T> ChoiceRow(
                         Row(
                             Modifier
                                 .fillMaxWidth()
+                                .clip(MaterialTheme.shapes.small)
                                 .selectable(selected = opt == current, onClick = { onSelect(opt); open = false })
                                 .padding(vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -553,13 +656,15 @@ private fun <T> ChoiceRow(
 @Composable
 private fun Stepper(title: String, value: Int, suffix: String, range: IntRange, onChange: (Int) -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, Modifier.weight(1f))
-        TextButton(onClick = { onChange((value - 1).coerceIn(range)) }, enabled = value > range.first) { Text("−") }
+        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        FilledTonalIconButton(onClick = { onChange((value - 1).coerceIn(range)) }, enabled = value > range.first) { Text("−") }
         Text(
             (if (value > 0 && range.first < 0) "+$value" else "$value") + if (suffix.isNotEmpty()) " $suffix" else "",
-            Modifier.width(64.dp),
+            Modifier.width(72.dp),
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
         )
-        TextButton(onClick = { onChange((value + 1).coerceIn(range)) }, enabled = value < range.last) { Text("+") }
+        FilledTonalIconButton(onClick = { onChange((value + 1).coerceIn(range)) }, enabled = value < range.last) { Text("+") }
     }
 }
 

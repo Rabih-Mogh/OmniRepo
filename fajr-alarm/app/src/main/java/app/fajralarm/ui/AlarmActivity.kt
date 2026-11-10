@@ -7,10 +7,13 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -37,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -62,8 +66,11 @@ import java.util.Date
 /** Full-screen alarm shown over the lock screen while the alarm rings. */
 class AlarmActivity : ComponentActivity() {
 
+    private var screenLock: PowerManager.WakeLock? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
@@ -75,6 +82,14 @@ class AlarmActivity : ComponentActivity() {
             )
         }
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // Over the lock screen some phones (Samsung) apply the short lock-screen timeout
+        // and ignore FLAG_KEEP_SCREEN_ON, so also hold a bright-screen wake lock while
+        // the alarm screen is up. It's deprecated but still honoured, and the only API
+        // that keeps the display on regardless of the keyguard.
+        @Suppress("DEPRECATION")
+        screenLock = getSystemService(PowerManager::class.java)
+            .newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP, "FajrAlarm:screen")
+            .apply { acquire(SCREEN_LOCK_MAX_MS) }
 
         val settings = SettingsStore(this).load()
         setContent {
@@ -103,7 +118,15 @@ class AlarmActivity : ComponentActivity() {
         finish()
     }
 
+    override fun onDestroy() {
+        screenLock?.let { if (it.isHeld) it.release() }
+        super.onDestroy()
+    }
+
     companion object {
+        /** Just over the longest the alarm can ring (the sink mission's 60 minutes). */
+        private const val SCREEN_LOCK_MAX_MS = 61 * 60 * 1000L
+
         fun intent(context: Context): Intent =
             Intent(context, AlarmActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION)
@@ -138,7 +161,11 @@ private fun AlarmScreen(
         }
     }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    Surface(
+        modifier = Modifier.fillMaxSize().background(DawnGradient),
+        color = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onBackground,
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()

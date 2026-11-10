@@ -73,7 +73,10 @@ fun CameraCapture(
     val capture = onCaptured != null
 
     val previewView = remember {
-        PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
+        PreviewView(context).apply {
+            scaleType = PreviewView.ScaleType.FILL_CENTER
+            keepScreenOn = true
+        }
     }
     val imageCapture = remember {
         ImageCapture.Builder()
