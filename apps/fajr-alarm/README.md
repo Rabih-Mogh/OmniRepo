@@ -24,7 +24,7 @@ alarm follows the prayer time as it moves through the year.
 
   With a mission on, the notification has no dismiss button, so the alarm screen is the only way to turn it off.
 - **Auto-stop**: after 10 minutes normally, or 60 minutes with the sink mission, so a phone left at home doesn't ring all day. When it auto-stops it snoozes if snoozes are left, otherwise it stops.
-- **Last alarm**: the main screen shows when the alarm last rang and how it stopped (sink, sum, snooze, ringing out, or Android closing the app).
+- **Last alarm**: the main screen shows when the alarm last rang and how it stopped (sink, sum, snooze, ringing out, or Android closing the app). On Android 11 and later it also says whether the app crashed, froze or was force-stopped.
 - **"Test the alarm now"** button.
 
 ## Sink mission
@@ -33,7 +33,7 @@ alarm follows the prayer time as it moves through the year.
 2. When the alarm rings, it keeps ringing while you walk to a sink: any bathroom or kitchen sink works. Point the in-app camera at it, with the basin in view, and keep it there for about 2 seconds. The alarm stops on its own.
 
 How it works and its limits:
-- **On-phone recognition**: a bundled object-detection model (EfficientDet-Lite0, trained on the 80 everyday COCO objects, "sink" among them) runs on the phone through LiteRT, 3 times a second. Nothing leaves the phone. The one frame that turned the alarm off is kept on the phone and shown under **Last alarm**, so a wrong call can be seen.
+- **On-phone recognition**: a bundled object-detection model (EfficientDet-Lite0, trained on the 80 everyday COCO objects, "sink" among them) runs on the phone through LiteRT, 3 times a second. It is the TensorFlow Lite build with box decoding built in; if the detector fails to start or errors, the alarm screen switches to a sum instead of closing. Nothing leaves the phone. The one frame that turned the alarm off is kept on the phone and shown under **Last alarm**, so a wrong call can be seen.
 - **Why no photos**: there's nothing to set up, so there's no way to register a bedside object as "the sink".
 - **Cheating checks**: nothing counts until the phone has been picked up (tilted at least 25° from where it lay, measured with the accelerometer; the alarm's vibration doesn't count). A sink that sits inside a detected phone, TV or laptop screen doesn't count. The sink must stay in view for 2 seconds while the camera moves by at least 5% of the frame, as it does in a hand. Dark frames reset the check.
 - **Accuracy**: works best with the light on and most of the basin in view. A close-up of just the tap, or a very dark room, may not be recognised. The thresholds haven't been tuned on many real sinks yet.

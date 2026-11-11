@@ -97,6 +97,7 @@ import app.fajralarm.data.LocationHelper
 import app.fajralarm.data.SettingsStore
 import app.fajralarm.data.SinkProof
 import app.fajralarm.data.StopReason
+import app.fajralarm.data.appExitSince
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
@@ -513,6 +514,7 @@ private fun SummaryCard(context: Context, settings: AlarmSettings, tick: Int, on
 private fun LastAlarmCard(context: Context, tick: Int) {
     val last = remember(tick) { SettingsStore(context).lastAlarm() } ?: return
     if (AlarmService.ringing.value) return
+    val exit = remember(tick) { if (last.reason == null) appExitSince(context, last.rangAt) else null }
     val proof = remember(tick) {
         SinkProof.path(context)?.takeIf { last.reason == StopReason.SINK }
             ?.let { runCatching { BitmapFactory.decodeFile(it.path)?.asImageBitmap() }.getOrNull() }
@@ -526,6 +528,7 @@ private fun LastAlarmCard(context: Context, tick: Int) {
                 last.reason != null && last.stoppedAt > 0 ->
                     "$rang and ${last.reason.description} at ${timeFmt.format(Date(last.stoppedAt))}."
                 // The app was closed while ringing without getting the chance to note why.
+                exit != null -> "$rang and stopped because $exit while it rang."
                 else -> "$rang. There's no record of how it stopped, so Android most likely closed the app while it rang."
             },
             style = MaterialTheme.typography.bodyMedium,

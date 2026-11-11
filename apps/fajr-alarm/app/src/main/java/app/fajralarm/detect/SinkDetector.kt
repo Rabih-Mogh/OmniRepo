@@ -15,7 +15,9 @@ import java.nio.channels.FileChannel
 
 /**
  * Runs the bundled EfficientDet-Lite0 model (trained on the 80 everyday COCO objects,
- * "sink" among them) over camera frames, entirely on the phone.
+ * "sink" among them) over camera frames, entirely on the phone. The model must be the
+ * TensorFlow Lite build with box decoding and non-max suppression built in (outputs:
+ * boxes, classes, scores, count); MediaPipe's build leaves that out and won't load.
  *
  * Not safe to share between threads except for [close], which waits for a running
  * [detect] to finish.
@@ -33,6 +35,11 @@ class SinkDetector private constructor(
     private var closed = false
 
     init {
+        // Output shapes are only known once tensors are allocated.
+        interpreter.allocateTensors()
+        require(interpreter.outputTensorCount == 4) {
+            "Expected a detector with built-in box decoding (4 outputs), got ${interpreter.outputTensorCount}"
+        }
         val shape = interpreter.getInputTensor(0).shape() // [1, h, w, 3], uint8
         inputH = shape[1]
         inputW = shape[2]

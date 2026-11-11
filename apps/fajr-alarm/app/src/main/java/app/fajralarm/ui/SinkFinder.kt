@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Live camera that looks for a real sink and calls [onConfirmed] once, with the frame
  * that settled it, when one has been held in view long enough. Nothing counts until
  * the phone has been picked up, so a phone left ringing on the nightstand can't
- * mistake something for a sink. Calls [onUnavailable] if the detector can't start.
+ * mistake something for a sink. Calls [onUnavailable] if the detector can't start or fails.
  */
 @Composable
 fun SinkFinder(onConfirmed: (Bitmap) -> Unit, onUnavailable: () -> Unit = {}) {
@@ -54,6 +54,7 @@ fun SinkFinder(onConfirmed: (Bitmap) -> Unit, onUnavailable: () -> Unit = {}) {
     var status by remember { mutableStateOf<SinkStatus>(SinkStatus.Searching) }
     var done by remember { mutableStateOf(false) }
     val currentOnConfirmed by rememberUpdatedState(onConfirmed)
+    val currentOnUnavailable by rememberUpdatedState(onUnavailable)
     val pickedUp = remember { AtomicBoolean(false) }
     DisposableEffect(Unit) { onDispose(watchForPickup(context) { pickedUp.set(true) }) }
 
@@ -62,7 +63,13 @@ fun SinkFinder(onConfirmed: (Bitmap) -> Unit, onUnavailable: () -> Unit = {}) {
             verifier.reset()
             SinkStatus.Resting
         } else {
-            val result = detector.detect(frame) ?: return@CameraCapture
+            // The alarm rings in this same process, so an uncaught error here would silence it.
+            val result = try {
+                detector.detect(frame)
+            } catch (e: Exception) {
+                mainExecutor.execute { if (!done) { done = true; currentOnUnavailable() } }
+                return@CameraCapture
+            } ?: return@CameraCapture
             verifier.offer(result)
         }
         mainExecutor.execute {
