@@ -57,7 +57,7 @@ fajr-alarm/
 Requirements: Android Studio (Ladybug or newer) or the Android SDK with platform 35, and JDK 17+.
 
 ```bash
-cd fajr-alarm
+cd apps/fajr-alarm
 ./gradlew :core:test          # prayer-time unit tests (no Android SDK needed)
 ./gradlew :app:assembleDebug  # → app/build/outputs/apk/debug/app-debug.apk
 adb install app/build/outputs/apk/debug/app-debug.apk
@@ -66,7 +66,7 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 The APKs are built for 64-bit ARM phones only (`arm64-v8a`), which keeps the detection runtime
 to one copy. Remove the `abiFilters` line in `app/build.gradle.kts` to build for every phone.
 
-Or open `fajr-alarm/` in Android Studio and press Run. Min Android version: 8.0 (API 26).
+Or open `apps/fajr-alarm/` in Android Studio and press Run. Min Android version: 8.0 (API 26).
 
 ## Permissions and why
 

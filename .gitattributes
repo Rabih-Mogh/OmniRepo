@@ -1,0 +1,3 @@
+# Built apps are binaries: never diff or merge them as text
+*.apk binary
+*.aab binary

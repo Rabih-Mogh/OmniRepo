@@ -1,0 +1,4 @@
+# Editor and OS clutter; each app ignores its own build output in apps/<name>/.gitignore
+.DS_Store
+.idea/
+*.iml
