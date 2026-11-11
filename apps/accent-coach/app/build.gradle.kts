@@ -54,6 +54,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    // Runs the model download in the background, resuming after interruptions.
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
 
     // Runs the phoneme recogniser (wav2vec2, ONNX) on the phone.
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")

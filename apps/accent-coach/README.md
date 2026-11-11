@@ -33,8 +33,10 @@ away a non-native accent, with a tip for each.
   doesn't guess the word you meant, which is why a non-native sound shows up as a
   different symbol.
 - **Download:** the model is 318 MB, too big to ship in the APK, so the app downloads
-  it once on first launch. The download is pinned to one revision and checked against
-  its SHA-256.
+  it once on first launch. The download runs in the background with its progress in a
+  notification, so you can leave the app or turn the screen off. If the connection drops
+  or Android stops it, it starts again once there's a network and resumes from where it
+  stopped. It is pinned to one revision and checked against its SHA-256.
 - **Offline:** after that everything runs on the phone with ONNX Runtime. Audio never
   leaves the device.
 
@@ -103,3 +105,5 @@ To change the sentences, edit `tools/sentences.txt`, then run
 |---|---|
 | `RECORD_AUDIO` | Hearing you read the sentence. Audio stays on the phone. |
 | `INTERNET` | Downloading the speech model once. |
+| `POST_NOTIFICATIONS` | Showing the download's progress. The download runs without it too. |
+| `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC` | Keeping the download going in the background. |

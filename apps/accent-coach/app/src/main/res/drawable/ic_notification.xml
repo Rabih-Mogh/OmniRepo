@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar icon: a speech bubble with sound bars. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M4,3h16a2,2 0,0 1,2 2v11a2,2 0,0 1,-2 2h-9l-5,4v-4h-2a2,2 0,0 1,-2 -2v-11a2,2 0,0 1,2 -2zM7,9v3h2v-3zM11,6v9h2v-9zM15,8v5h2v-5z" />
+</vector>

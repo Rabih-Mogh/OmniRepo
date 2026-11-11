@@ -8,10 +8,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import app.accentcoach.core.Assessment
 import app.accentcoach.core.Assessor
 import app.accentcoach.core.Sentence
 import app.accentcoach.data.SentenceBank
+import app.accentcoach.speech.ModelDownloadWorker
 import app.accentcoach.speech.ModelStore
 import app.accentcoach.speech.PhonemeRecognizer
 import app.accentcoach.speech.Playback
@@ -26,7 +29,8 @@ import java.util.Locale
 
 sealed interface ModelState {
     data object Missing : ModelState
-    data class Downloading(val progress: Float) : ModelState
+    /** [waiting] is true while the download waits for a connection to come back. */
+    data class Downloading(val progress: Float, val waiting: Boolean = false) : ModelState
     data class Failed(val message: String) : ModelState
     data object Loading : ModelState
     data object Ready : ModelState
@@ -74,22 +78,44 @@ class PracticeViewModel(app: Application) : AndroidViewModel(app) {
     val hasRecording: Boolean get() = lastRecording.isNotEmpty()
 
     init {
-        if (store.isReady) loadModel()
+        if (store.isReady) loadModel() else watchDownload()
         tts = TextToSpeech(app) { status ->
             ttsReady = status == TextToSpeech.SUCCESS
             tts?.language = Locale.US
         }
     }
 
+    /** Starts the background download; [watchDownload] follows it from here. */
     fun downloadModel() {
-        model = ModelState.Downloading(0f)
+        model = ModelState.Downloading(store.partialProgress)
+        ModelDownloadWorker.start(getApplication())
+    }
+
+    /** Mirrors the background download, which keeps going while the app is closed. */
+    private fun watchDownload() {
         viewModelScope.launch {
-            try {
-                store.download { p -> viewModelScope.launch { model = ModelState.Downloading(p) } }
-                loadModel()
-            } catch (e: Exception) {
-                model = ModelState.Failed(e.message ?: "Download failed")
-            }
+            WorkManager.getInstance(getApplication())
+                .getWorkInfosForUniqueWorkFlow(ModelDownloadWorker.WORK_NAME)
+                .collect { infos ->
+                    val info = infos.lastOrNull() ?: return@collect
+                    if (model == ModelState.Loading || model == ModelState.Ready) return@collect
+                    model = when (info.state) {
+                        WorkInfo.State.RUNNING -> ModelState.Downloading(
+                            info.progress.getFloat(ModelDownloadWorker.PROGRESS, store.partialProgress),
+                        )
+                        // Queued again after a dropped connection, or waiting for one.
+                        WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED ->
+                            ModelState.Downloading(store.partialProgress, waiting = info.runAttemptCount > 0)
+                        WorkInfo.State.SUCCEEDED -> {
+                            if (store.isReady) loadModel()
+                            return@collect
+                        }
+                        WorkInfo.State.FAILED -> ModelState.Failed(
+                            info.outputData.getString(ModelDownloadWorker.ERROR) ?: "Download failed",
+                        )
+                        WorkInfo.State.CANCELLED -> ModelState.Missing
+                    }
+                }
         }
     }
 

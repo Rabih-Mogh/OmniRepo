@@ -15,7 +15,7 @@ import kotlin.coroutines.coroutineContext
 /**
  * The phoneme recogniser is too big to ship inside the app (GitHub won't store a
  * 330 MB APK), so it's downloaded once, checked against a fixed checksum, and kept in
- * the app's private storage.
+ * the app's private storage. [ModelDownloadWorker] runs the download in the background.
  */
 class ModelStore(context: Context) {
 
@@ -24,6 +24,9 @@ class ModelStore(context: Context) {
     private val partFile = File(dir, "phonemes_int8.onnx.part")
 
     val isReady: Boolean get() = modelFile.length() == MODEL_BYTES
+
+    /** How much of an unfinished download is already on the phone, 0..1. */
+    val partialProgress: Float get() = (partFile.length().toFloat() / MODEL_BYTES).coerceIn(0f, 1f)
 
     /**
      * Downloads the model, resuming a partial download, and reports progress 0..1.
