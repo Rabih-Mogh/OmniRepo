@@ -1,0 +1,3042 @@
+[
+ {
+  "id": "s001",
+  "focus": "TH (think, this)",
+  "text": "I think there are three of them.",
+  "words": [
+   {
+    "text": "I",
+    "phonemes": [
+     "aɪ"
+    ]
+   },
+   {
+    "text": "think",
+    "phonemes": [
+     "θ",
+     "ɪ",
+     "ŋ",
+     "k"
+    ]
+   },
+   {
+    "text": "there",
+    "phonemes": [
+     "ð",
+     "ɛ",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "are",
+    "phonemes": [
+     "ɑː",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "three",
+    "phonemes": [
+     "θ",
+     "ɹ",
+     "iː"
+    ]
+   },
+   {
+    "text": "of",
+    "phonemes": [
+     "ʌ",
+     "v"
+    ]
+   },
+   {
+    "text": "them.",
+    "phonemes": [
+     "ð",
+     "ɛ",
+     "m"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s002",
+  "focus": "TH (think, this)",
+  "text": "They thought this was the thirtieth.",
+  "words": [
+   {
+    "text": "They",
+    "phonemes": [
+     "ð",
+     "eɪ"
+    ]
+   },
+   {
+    "text": "thought",
+    "phonemes": [
+     "θ",
+     "ɔː",
+     "t"
+    ]
+   },
+   {
+    "text": "this",
+    "phonemes": [
+     "ð",
+     "ɪ",
+     "s"
+    ]
+   },
+   {
+    "text": "was",
+    "phonemes": [
+     "w",
+     "ʌ",
+     "z"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "thirtieth.",
+    "phonemes": [
+     "θ",
+     "ɜː",
+     "ɾ",
+     "iə",
+     "θ"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s003",
+  "focus": "TH (think, this)",
+  "text": "Both brothers were there that Thursday.",
+  "words": [
+   {
+    "text": "Both",
+    "phonemes": [
+     "b",
+     "oʊ",
+     "θ"
+    ]
+   },
+   {
+    "text": "brothers",
+    "phonemes": [
+     "b",
+     "ɹ",
+     "ʌ",
+     "ð",
+     "ə",
+     "ɹ",
+     "z"
+    ]
+   },
+   {
+    "text": "were",
+    "phonemes": [
+     "w",
+     "ɜː"
+    ]
+   },
+   {
+    "text": "there",
+    "phonemes": [
+     "ð",
+     "ɛ",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "that",
+    "phonemes": [
+     "ð",
+     "æ",
+     "t"
+    ]
+   },
+   {
+    "text": "Thursday.",
+    "phonemes": [
+     "θ",
+     "ɜː",
+     "z",
+     "d",
+     "eɪ"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s004",
+  "focus": "TH (think, this)",
+  "text": "Thank you for the birthday breakfast.",
+  "words": [
+   {
+    "text": "Thank",
+    "phonemes": [
+     "θ",
+     "æ",
+     "ŋ",
+     "k"
+    ]
+   },
+   {
+    "text": "you",
+    "phonemes": [
+     "j",
+     "uː"
+    ]
+   },
+   {
+    "text": "for",
+    "phonemes": [
+     "f",
+     "ə",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "birthday",
+    "phonemes": [
+     "b",
+     "ɜː",
+     "θ",
+     "d",
+     "eɪ"
+    ]
+   },
+   {
+    "text": "breakfast.",
+    "phonemes": [
+     "b",
+     "ɹ",
+     "ɛ",
+     "k",
+     "f",
+     "ə",
+     "s",
+     "t"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s005",
+  "focus": "TH (think, this)",
+  "text": "The weather is better than they said.",
+  "words": [
+   {
+    "text": "The",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "weather",
+    "phonemes": [
+     "w",
+     "ɛ",
+     "ð",
+     "ə",
+     "ɹ",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "is",
+    "phonemes": [
+     "ɪ",
+     "z"
+    ]
+   },
+   {
+    "text": "better",
+    "phonemes": [
+     "b",
+     "ɛ",
+     "ɾ",
+     "ə",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "than",
+    "phonemes": [
+     "ð",
+     "ɐ",
+     "n"
+    ]
+   },
+   {
+    "text": "they",
+    "phonemes": [
+     "ð",
+     "eɪ"
+    ]
+   },
+   {
+    "text": "said.",
+    "phonemes": [
+     "s",
+     "ɛ",
+     "d"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s006",
+  "focus": "American R",
+  "text": "The red car is around the corner.",
+  "words": [
+   {
+    "text": "The",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "red",
+    "phonemes": [
+     "ɹ",
+     "ɛ",
+     "d"
+    ]
+   },
+   {
+    "text": "car",
+    "phonemes": [
+     "k",
+     "ɑː",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "is",
+    "phonemes": [
+     "ɪ",
+     "z"
+    ]
+   },
+   {
+    "text": "around",
+    "phonemes": [
+     "ə",
+     "ɹ",
+     "ɹ",
+     "aʊ",
+     "n",
+     "d"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "corner.",
+    "phonemes": [
+     "k",
+     "ɔː",
+     "ɹ",
+     "n",
+     "ə",
+     "ɹ"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s007",
+  "focus": "American R",
+  "text": "Our rare bird is very early.",
+  "words": [
+   {
+    "text": "Our",
+    "phonemes": [
+     "aʊ",
+     "ə",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "rare",
+    "phonemes": [
+     "ɹ",
+     "ɛ",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "bird",
+    "phonemes": [
+     "b",
+     "ɜː",
+     "d"
+    ]
+   },
+   {
+    "text": "is",
+    "phonemes": [
+     "ɪ",
+     "z"
+    ]
+   },
+   {
+    "text": "very",
+    "phonemes": [
+     "v",
+     "ɛ",
+     "ɹ",
+     "i"
+    ]
+   },
+   {
+    "text": "early.",
+    "phonemes": [
+     "ɜː",
+     "l",
+     "i"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s008",
+  "focus": "American R",
+  "text": "Rory wrote a really short report.",
+  "words": [
+   {
+    "text": "Rory",
+    "phonemes": [
+     "ɹ",
+     "ɔː",
+     "ɹ",
+     "i"
+    ]
+   },
+   {
+    "text": "wrote",
+    "phonemes": [
+     "ɹ",
+     "oʊ",
+     "t"
+    ]
+   },
+   {
+    "text": "a",
+    "phonemes": [
+     "ɐ"
+    ]
+   },
+   {
+    "text": "really",
+    "phonemes": [
+     "ɹ",
+     "iə",
+     "l",
+     "i"
+    ]
+   },
+   {
+    "text": "short",
+    "phonemes": [
+     "ʃ",
+     "ɔː",
+     "ɹ",
+     "t"
+    ]
+   },
+   {
+    "text": "report.",
+    "phonemes": [
+     "ɹ",
+     "ᵻ",
+     "p",
+     "ɔː",
+     "ɹ",
+     "t"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s009",
+  "focus": "American R",
+  "text": "Turn right after the third tree.",
+  "words": [
+   {
+    "text": "Turn",
+    "phonemes": [
+     "t",
+     "ɜː",
+     "n"
+    ]
+   },
+   {
+    "text": "right",
+    "phonemes": [
+     "ɹ",
+     "aɪ",
+     "t"
+    ]
+   },
+   {
+    "text": "after",
+    "phonemes": [
+     "æ",
+     "f",
+     "t",
+     "ə",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "third",
+    "phonemes": [
+     "θ",
+     "ɜː",
+     "d"
+    ]
+   },
+   {
+    "text": "tree.",
+    "phonemes": [
+     "t",
+     "ɹ",
+     "iː"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s010",
+  "focus": "American R",
+  "text": "Her order arrived on Thursday morning.",
+  "words": [
+   {
+    "text": "Her",
+    "phonemes": [
+     "h",
+     "ɜː",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "order",
+    "phonemes": [
+     "ɔː",
+     "ɹ",
+     "d",
+     "ə",
+     "ɹ",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "arrived",
+    "phonemes": [
+     "ə",
+     "ɹ",
+     "ɹ",
+     "aɪ",
+     "v",
+     "d"
+    ]
+   },
+   {
+    "text": "on",
+    "phonemes": [
+     "ɔ",
+     "n"
+    ]
+   },
+   {
+    "text": "Thursday",
+    "phonemes": [
+     "θ",
+     "ɜː",
+     "z",
+     "d",
+     "eɪ"
+    ]
+   },
+   {
+    "text": "morning.",
+    "phonemes": [
+     "m",
+     "ɔː",
+     "ɹ",
+     "n",
+     "ɪ",
+     "ŋ"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s011",
+  "focus": "L and dark L",
+  "text": "Little Lily likes yellow lemons.",
+  "words": [
+   {
+    "text": "Little",
+    "phonemes": [
+     "l",
+     "ɪ",
+     "ɾ",
+     "ə",
+     "l"
+    ]
+   },
+   {
+    "text": "Lily",
+    "phonemes": [
+     "l",
+     "ɪ",
+     "l",
+     "i"
+    ]
+   },
+   {
+    "text": "likes",
+    "phonemes": [
+     "l",
+     "aɪ",
+     "k",
+     "s"
+    ]
+   },
+   {
+    "text": "yellow",
+    "phonemes": [
+     "j",
+     "ɛ",
+     "l",
+     "oʊ"
+    ]
+   },
+   {
+    "text": "lemons.",
+    "phonemes": [
+     "l",
+     "ɛ",
+     "m",
+     "ə",
+     "n",
+     "z"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s012",
+  "focus": "L and dark L",
+  "text": "Please fill the bottle with cold milk.",
+  "words": [
+   {
+    "text": "Please",
+    "phonemes": [
+     "p",
+     "l",
+     "iː",
+     "z"
+    ]
+   },
+   {
+    "text": "fill",
+    "phonemes": [
+     "f",
+     "ɪ",
+     "l"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "bottle",
+    "phonemes": [
+     "b",
+     "ɑː",
+     "ɾ",
+     "ə",
+     "l"
+    ]
+   },
+   {
+    "text": "with",
+    "phonemes": [
+     "w",
+     "ɪ",
+     "ð"
+    ]
+   },
+   {
+    "text": "cold",
+    "phonemes": [
+     "k",
+     "oʊ",
+     "l",
+     "d"
+    ]
+   },
+   {
+    "text": "milk.",
+    "phonemes": [
+     "m",
+     "ɪ",
+     "l",
+     "k"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s013",
+  "focus": "L and dark L",
+  "text": "The hall was full of tall people.",
+  "words": [
+   {
+    "text": "The",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "hall",
+    "phonemes": [
+     "h",
+     "ɔː",
+     "l"
+    ]
+   },
+   {
+    "text": "was",
+    "phonemes": [
+     "w",
+     "ʌ",
+     "z"
+    ]
+   },
+   {
+    "text": "full",
+    "phonemes": [
+     "f",
+     "ʊ",
+     "l"
+    ]
+   },
+   {
+    "text": "of",
+    "phonemes": [
+     "ʌ",
+     "v"
+    ]
+   },
+   {
+    "text": "tall",
+    "phonemes": [
+     "t",
+     "ɔː",
+     "l"
+    ]
+   },
+   {
+    "text": "people.",
+    "phonemes": [
+     "p",
+     "iː",
+     "p",
+     "ə",
+     "l"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s014",
+  "focus": "L and dark L",
+  "text": "Lucy will call you later.",
+  "words": [
+   {
+    "text": "Lucy",
+    "phonemes": [
+     "l",
+     "uː",
+     "s",
+     "i"
+    ]
+   },
+   {
+    "text": "will",
+    "phonemes": [
+     "w",
+     "ɪ",
+     "l"
+    ]
+   },
+   {
+    "text": "call",
+    "phonemes": [
+     "k",
+     "ɔː",
+     "l"
+    ]
+   },
+   {
+    "text": "you",
+    "phonemes": [
+     "j",
+     "uː"
+    ]
+   },
+   {
+    "text": "later.",
+    "phonemes": [
+     "l",
+     "eɪ",
+     "ɾ",
+     "ə",
+     "ɹ"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s015",
+  "focus": "V and W",
+  "text": "We visited a very wide valley.",
+  "words": [
+   {
+    "text": "We",
+    "phonemes": [
+     "w",
+     "iː"
+    ]
+   },
+   {
+    "text": "visited",
+    "phonemes": [
+     "v",
+     "ɪ",
+     "z",
+     "ɪ",
+     "ɾ",
+     "ᵻ",
+     "d"
+    ]
+   },
+   {
+    "text": "a",
+    "phonemes": [
+     "ɐ"
+    ]
+   },
+   {
+    "text": "very",
+    "phonemes": [
+     "v",
+     "ɛ",
+     "ɹ",
+     "i"
+    ]
+   },
+   {
+    "text": "wide",
+    "phonemes": [
+     "w",
+     "aɪ",
+     "d"
+    ]
+   },
+   {
+    "text": "valley.",
+    "phonemes": [
+     "v",
+     "æ",
+     "l",
+     "i"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s016",
+  "focus": "V and W",
+  "text": "Victor waved when the van went by.",
+  "words": [
+   {
+    "text": "Victor",
+    "phonemes": [
+     "v",
+     "ɪ",
+     "k",
+     "t",
+     "ə",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "waved",
+    "phonemes": [
+     "w",
+     "eɪ",
+     "v",
+     "d"
+    ]
+   },
+   {
+    "text": "when",
+    "phonemes": [
+     "w",
+     "ɛ",
+     "n"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "van",
+    "phonemes": [
+     "v",
+     "æ",
+     "n"
+    ]
+   },
+   {
+    "text": "went",
+    "phonemes": [
+     "w",
+     "ɛ",
+     "n",
+     "t"
+    ]
+   },
+   {
+    "text": "by.",
+    "phonemes": [
+     "b",
+     "aɪ"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s017",
+  "focus": "V and W",
+  "text": "Would you leave the window open?",
+  "words": [
+   {
+    "text": "Would",
+    "phonemes": [
+     "w",
+     "ʊ",
+     "d"
+    ]
+   },
+   {
+    "text": "you",
+    "phonemes": [
+     "j",
+     "uː"
+    ]
+   },
+   {
+    "text": "leave",
+    "phonemes": [
+     "l",
+     "iː",
+     "v"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "window",
+    "phonemes": [
+     "w",
+     "ɪ",
+     "n",
+     "d",
+     "oʊ"
+    ]
+   },
+   {
+    "text": "open?",
+    "phonemes": [
+     "oʊ",
+     "p",
+     "ə",
+     "n"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s018",
+  "focus": "V and W",
+  "text": "The wolf was very wary of the village.",
+  "words": [
+   {
+    "text": "The",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "wolf",
+    "phonemes": [
+     "w",
+     "ʊ",
+     "l",
+     "f"
+    ]
+   },
+   {
+    "text": "was",
+    "phonemes": [
+     "w",
+     "ʌ",
+     "z"
+    ]
+   },
+   {
+    "text": "very",
+    "phonemes": [
+     "v",
+     "ɛ",
+     "ɹ",
+     "i"
+    ]
+   },
+   {
+    "text": "wary",
+    "phonemes": [
+     "w",
+     "ɛ",
+     "ɹ",
+     "i"
+    ]
+   },
+   {
+    "text": "of",
+    "phonemes": [
+     "ʌ",
+     "v"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "village.",
+    "phonemes": [
+     "v",
+     "ɪ",
+     "l",
+     "ɪ",
+     "dʒ"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s019",
+  "focus": "Short i and long ee",
+  "text": "Sit in this seat, please.",
+  "words": [
+   {
+    "text": "Sit",
+    "phonemes": [
+     "s",
+     "ɪ",
+     "t"
+    ]
+   },
+   {
+    "text": "in",
+    "phonemes": [
+     "ɪ",
+     "n"
+    ]
+   },
+   {
+    "text": "this",
+    "phonemes": [
+     "ð",
+     "ɪ",
+     "s"
+    ]
+   },
+   {
+    "text": "seat,",
+    "phonemes": [
+     "s",
+     "iː",
+     "t"
+    ]
+   },
+   {
+    "text": "please.",
+    "phonemes": [
+     "p",
+     "l",
+     "iː",
+     "z"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s020",
+  "focus": "Short i and long ee",
+  "text": "He will leave in a minute.",
+  "words": [
+   {
+    "text": "He",
+    "phonemes": [
+     "h",
+     "iː"
+    ]
+   },
+   {
+    "text": "will",
+    "phonemes": [
+     "w",
+     "ɪ",
+     "l"
+    ]
+   },
+   {
+    "text": "leave",
+    "phonemes": [
+     "l",
+     "iː",
+     "v"
+    ]
+   },
+   {
+    "text": "in",
+    "phonemes": [
+     "ɪ",
+     "n"
+    ]
+   },
+   {
+    "text": "a",
+    "phonemes": [
+     "ɐ"
+    ]
+   },
+   {
+    "text": "minute.",
+    "phonemes": [
+     "m",
+     "ɪ",
+     "n",
+     "ɪ",
+     "t"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s021",
+  "focus": "Short i and long ee",
+  "text": "The ship is cheap but the sheep is not.",
+  "words": [
+   {
+    "text": "The",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "ship",
+    "phonemes": [
+     "ʃ",
+     "ɪ",
+     "p"
+    ]
+   },
+   {
+    "text": "is",
+    "phonemes": [
+     "ɪ",
+     "z"
+    ]
+   },
+   {
+    "text": "cheap",
+    "phonemes": [
+     "tʃ",
+     "iː",
+     "p"
+    ]
+   },
+   {
+    "text": "but",
+    "phonemes": [
+     "b",
+     "ʌ",
+     "t"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "sheep",
+    "phonemes": [
+     "ʃ",
+     "iː",
+     "p"
+    ]
+   },
+   {
+    "text": "is",
+    "phonemes": [
+     "ɪ",
+     "z"
+    ]
+   },
+   {
+    "text": "not.",
+    "phonemes": [
+     "n",
+     "ɑː",
+     "t"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s022",
+  "focus": "Short i and long ee",
+  "text": "Fill the green bin with leaves.",
+  "words": [
+   {
+    "text": "Fill",
+    "phonemes": [
+     "f",
+     "ɪ",
+     "l"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "green",
+    "phonemes": [
+     "ɡ",
+     "ɹ",
+     "iː",
+     "n"
+    ]
+   },
+   {
+    "text": "bin",
+    "phonemes": [
+     "b",
+     "ɪ",
+     "n"
+    ]
+   },
+   {
+    "text": "with",
+    "phonemes": [
+     "w",
+     "ɪ",
+     "ð"
+    ]
+   },
+   {
+    "text": "leaves.",
+    "phonemes": [
+     "l",
+     "iː",
+     "v",
+     "z"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s023",
+  "focus": "Cat vowel (æ)",
+  "text": "That black cat sat on my hat.",
+  "words": [
+   {
+    "text": "That",
+    "phonemes": [
+     "ð",
+     "æ",
+     "t"
+    ]
+   },
+   {
+    "text": "black",
+    "phonemes": [
+     "b",
+     "l",
+     "æ",
+     "k"
+    ]
+   },
+   {
+    "text": "cat",
+    "phonemes": [
+     "k",
+     "æ",
+     "t"
+    ]
+   },
+   {
+    "text": "sat",
+    "phonemes": [
+     "s",
+     "æ",
+     "t"
+    ]
+   },
+   {
+    "text": "on",
+    "phonemes": [
+     "ɔ",
+     "n"
+    ]
+   },
+   {
+    "text": "my",
+    "phonemes": [
+     "m",
+     "aɪ"
+    ]
+   },
+   {
+    "text": "hat.",
+    "phonemes": [
+     "h",
+     "æ",
+     "t"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s024",
+  "focus": "Cat vowel (æ)",
+  "text": "Ask Sam to pass the jam.",
+  "words": [
+   {
+    "text": "Ask",
+    "phonemes": [
+     "æ",
+     "s",
+     "k"
+    ]
+   },
+   {
+    "text": "Sam",
+    "phonemes": [
+     "s",
+     "æ",
+     "m"
+    ]
+   },
+   {
+    "text": "to",
+    "phonemes": [
+     "t",
+     "ə"
+    ]
+   },
+   {
+    "text": "pass",
+    "phonemes": [
+     "p",
+     "æ",
+     "s"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "jam.",
+    "phonemes": [
+     "dʒ",
+     "æ",
+     "m"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s025",
+  "focus": "Cat vowel (æ)",
+  "text": "The man had a bad map.",
+  "words": [
+   {
+    "text": "The",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "man",
+    "phonemes": [
+     "m",
+     "æ",
+     "n"
+    ]
+   },
+   {
+    "text": "had",
+    "phonemes": [
+     "h",
+     "æ",
+     "d"
+    ]
+   },
+   {
+    "text": "a",
+    "phonemes": [
+     "ɐ"
+    ]
+   },
+   {
+    "text": "bad",
+    "phonemes": [
+     "b",
+     "æ",
+     "d"
+    ]
+   },
+   {
+    "text": "map.",
+    "phonemes": [
+     "m",
+     "æ",
+     "p"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s026",
+  "focus": "Cat vowel (æ)",
+  "text": "Can you hand me that bag?",
+  "words": [
+   {
+    "text": "Can",
+    "phonemes": [
+     "k",
+     "æ",
+     "n"
+    ]
+   },
+   {
+    "text": "you",
+    "phonemes": [
+     "j",
+     "uː"
+    ]
+   },
+   {
+    "text": "hand",
+    "phonemes": [
+     "h",
+     "æ",
+     "n",
+     "d"
+    ]
+   },
+   {
+    "text": "me",
+    "phonemes": [
+     "m",
+     "iː"
+    ]
+   },
+   {
+    "text": "that",
+    "phonemes": [
+     "ð",
+     "æ",
+     "t"
+    ]
+   },
+   {
+    "text": "bag?",
+    "phonemes": [
+     "b",
+     "æ",
+     "ɡ"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s027",
+  "focus": "Cup vowel (ʌ) and cot vowel (ɑ)",
+  "text": "My brother lost his gloves on Sunday.",
+  "words": [
+   {
+    "text": "My",
+    "phonemes": [
+     "m",
+     "aɪ"
+    ]
+   },
+   {
+    "text": "brother",
+    "phonemes": [
+     "b",
+     "ɹ",
+     "ʌ",
+     "ð",
+     "ə",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "lost",
+    "phonemes": [
+     "l",
+     "ɔ",
+     "s",
+     "t"
+    ]
+   },
+   {
+    "text": "his",
+    "phonemes": [
+     "h",
+     "ɪ",
+     "z"
+    ]
+   },
+   {
+    "text": "gloves",
+    "phonemes": [
+     "ɡ",
+     "l",
+     "ʌ",
+     "v",
+     "z"
+    ]
+   },
+   {
+    "text": "on",
+    "phonemes": [
+     "ɔ",
+     "n"
+    ]
+   },
+   {
+    "text": "Sunday.",
+    "phonemes": [
+     "s",
+     "ʌ",
+     "n",
+     "d",
+     "eɪ"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s028",
+  "focus": "Cup vowel (ʌ) and cot vowel (ɑ)",
+  "text": "Come up and have some lunch.",
+  "words": [
+   {
+    "text": "Come",
+    "phonemes": [
+     "k",
+     "ʌ",
+     "m"
+    ]
+   },
+   {
+    "text": "up",
+    "phonemes": [
+     "ʌ",
+     "p"
+    ]
+   },
+   {
+    "text": "and",
+    "phonemes": [
+     "æ",
+     "n",
+     "d"
+    ]
+   },
+   {
+    "text": "have",
+    "phonemes": [
+     "h",
+     "æ",
+     "v"
+    ]
+   },
+   {
+    "text": "some",
+    "phonemes": [
+     "s",
+     "ʌ",
+     "m"
+    ]
+   },
+   {
+    "text": "lunch.",
+    "phonemes": [
+     "l",
+     "ʌ",
+     "n",
+     "tʃ"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s029",
+  "focus": "Cup vowel (ʌ) and cot vowel (ɑ)",
+  "text": "Bob got a hot coffee from the shop.",
+  "words": [
+   {
+    "text": "Bob",
+    "phonemes": [
+     "b",
+     "ɑː",
+     "b"
+    ]
+   },
+   {
+    "text": "got",
+    "phonemes": [
+     "ɡ",
+     "ɑː",
+     "t"
+    ]
+   },
+   {
+    "text": "a",
+    "phonemes": [
+     "ɐ"
+    ]
+   },
+   {
+    "text": "hot",
+    "phonemes": [
+     "h",
+     "ɑː",
+     "t"
+    ]
+   },
+   {
+    "text": "coffee",
+    "phonemes": [
+     "k",
+     "ɔ",
+     "f",
+     "i"
+    ]
+   },
+   {
+    "text": "from",
+    "phonemes": [
+     "f",
+     "ɹ",
+     "ʌ",
+     "m"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "shop.",
+    "phonemes": [
+     "ʃ",
+     "ɑː",
+     "p"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s030",
+  "focus": "Cup vowel (ʌ) and cot vowel (ɑ)",
+  "text": "The cup is in the box on top.",
+  "words": [
+   {
+    "text": "The",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "cup",
+    "phonemes": [
+     "k",
+     "ʌ",
+     "p"
+    ]
+   },
+   {
+    "text": "is",
+    "phonemes": [
+     "ɪ",
+     "z"
+    ]
+   },
+   {
+    "text": "in",
+    "phonemes": [
+     "ɪ",
+     "n"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "box",
+    "phonemes": [
+     "b",
+     "ɑː",
+     "k",
+     "s"
+    ]
+   },
+   {
+    "text": "on",
+    "phonemes": [
+     "ɔ",
+     "n"
+    ]
+   },
+   {
+    "text": "top.",
+    "phonemes": [
+     "t",
+     "ɑː",
+     "p"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s031",
+  "focus": "Glides (ay, oh)",
+  "text": "Take the late train to Spain.",
+  "words": [
+   {
+    "text": "Take",
+    "phonemes": [
+     "t",
+     "eɪ",
+     "k"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "late",
+    "phonemes": [
+     "l",
+     "eɪ",
+     "t"
+    ]
+   },
+   {
+    "text": "train",
+    "phonemes": [
+     "t",
+     "ɹ",
+     "eɪ",
+     "n"
+    ]
+   },
+   {
+    "text": "to",
+    "phonemes": [
+     "t",
+     "ə"
+    ]
+   },
+   {
+    "text": "Spain.",
+    "phonemes": [
+     "s",
+     "p",
+     "eɪ",
+     "n"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s032",
+  "focus": "Glides (ay, oh)",
+  "text": "Go home and close the window slowly.",
+  "words": [
+   {
+    "text": "Go",
+    "phonemes": [
+     "ɡ",
+     "oʊ"
+    ]
+   },
+   {
+    "text": "home",
+    "phonemes": [
+     "h",
+     "oʊ",
+     "m"
+    ]
+   },
+   {
+    "text": "and",
+    "phonemes": [
+     "æ",
+     "n",
+     "d"
+    ]
+   },
+   {
+    "text": "close",
+    "phonemes": [
+     "k",
+     "l",
+     "oʊ",
+     "s"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "window",
+    "phonemes": [
+     "w",
+     "ɪ",
+     "n",
+     "d",
+     "oʊ"
+    ]
+   },
+   {
+    "text": "slowly.",
+    "phonemes": [
+     "s",
+     "l",
+     "oʊ",
+     "l",
+     "i"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s033",
+  "focus": "Glides (ay, oh)",
+  "text": "They may stay a day or so.",
+  "words": [
+   {
+    "text": "They",
+    "phonemes": [
+     "ð",
+     "eɪ"
+    ]
+   },
+   {
+    "text": "may",
+    "phonemes": [
+     "m",
+     "eɪ"
+    ]
+   },
+   {
+    "text": "stay",
+    "phonemes": [
+     "s",
+     "t",
+     "eɪ"
+    ]
+   },
+   {
+    "text": "a",
+    "phonemes": [
+     "ɐ"
+    ]
+   },
+   {
+    "text": "day",
+    "phonemes": [
+     "d",
+     "eɪ"
+    ]
+   },
+   {
+    "text": "or",
+    "phonemes": [
+     "ɔː",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "so.",
+    "phonemes": [
+     "s",
+     "oʊ"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s034",
+  "focus": "Glides (ay, oh)",
+  "text": "Don't throw the phone in the boat.",
+  "words": [
+   {
+    "text": "Don't",
+    "phonemes": [
+     "d",
+     "oʊ",
+     "n",
+     "t"
+    ]
+   },
+   {
+    "text": "throw",
+    "phonemes": [
+     "θ",
+     "ɹ",
+     "oʊ"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "phone",
+    "phonemes": [
+     "f",
+     "oʊ",
+     "n"
+    ]
+   },
+   {
+    "text": "in",
+    "phonemes": [
+     "ɪ",
+     "n"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "boat.",
+    "phonemes": [
+     "b",
+     "oʊ",
+     "t"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s035",
+  "focus": "Flap T (water, better)",
+  "text": "Put a little water in the kettle.",
+  "words": [
+   {
+    "text": "Put",
+    "phonemes": [
+     "p",
+     "ʊ",
+     "t"
+    ]
+   },
+   {
+    "text": "a",
+    "phonemes": [
+     "ɐ"
+    ]
+   },
+   {
+    "text": "little",
+    "phonemes": [
+     "l",
+     "ɪ",
+     "ɾ",
+     "ə",
+     "l"
+    ]
+   },
+   {
+    "text": "water",
+    "phonemes": [
+     "w",
+     "ɔː",
+     "ɾ",
+     "ə",
+     "ɹ",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "in",
+    "phonemes": [
+     "ɪ",
+     "n"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "kettle.",
+    "phonemes": [
+     "k",
+     "ɛ",
+     "ɾ",
+     "ə",
+     "l"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s036",
+  "focus": "Flap T (water, better)",
+  "text": "I'd rather get a better city map.",
+  "words": [
+   {
+    "text": "I'd",
+    "phonemes": [
+     "aɪ",
+     "d"
+    ]
+   },
+   {
+    "text": "rather",
+    "phonemes": [
+     "ɹ",
+     "æ",
+     "ð",
+     "ə",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "get",
+    "phonemes": [
+     "ɡ",
+     "ɛ",
+     "t"
+    ]
+   },
+   {
+    "text": "a",
+    "phonemes": [
+     "ɐ"
+    ]
+   },
+   {
+    "text": "better",
+    "phonemes": [
+     "b",
+     "ɛ",
+     "ɾ",
+     "ə",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "city",
+    "phonemes": [
+     "s",
+     "ɪ",
+     "ɾ",
+     "i"
+    ]
+   },
+   {
+    "text": "map.",
+    "phonemes": [
+     "m",
+     "æ",
+     "p"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s037",
+  "focus": "Flap T (water, better)",
+  "text": "Peter bought a lot of butter.",
+  "words": [
+   {
+    "text": "Peter",
+    "phonemes": [
+     "p",
+     "iː",
+     "ɾ",
+     "ə",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "bought",
+    "phonemes": [
+     "b",
+     "ɔː",
+     "t"
+    ]
+   },
+   {
+    "text": "a",
+    "phonemes": [
+     "ɐ"
+    ]
+   },
+   {
+    "text": "lot",
+    "phonemes": [
+     "l",
+     "ɑː",
+     "t"
+    ]
+   },
+   {
+    "text": "of",
+    "phonemes": [
+     "ʌ",
+     "v"
+    ]
+   },
+   {
+    "text": "butter.",
+    "phonemes": [
+     "b",
+     "ʌ",
+     "ɾ",
+     "ə",
+     "ɹ"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s038",
+  "focus": "Flap T (water, better)",
+  "text": "What a pretty little kitty.",
+  "words": [
+   {
+    "text": "What",
+    "phonemes": [
+     "w",
+     "ʌ",
+     "t"
+    ]
+   },
+   {
+    "text": "a",
+    "phonemes": [
+     "ɐ"
+    ]
+   },
+   {
+    "text": "pretty",
+    "phonemes": [
+     "p",
+     "ɹ",
+     "ɪ",
+     "ɾ",
+     "i"
+    ]
+   },
+   {
+    "text": "little",
+    "phonemes": [
+     "l",
+     "ɪ",
+     "ɾ",
+     "ə",
+     "l"
+    ]
+   },
+   {
+    "text": "kitty.",
+    "phonemes": [
+     "k",
+     "ɪ",
+     "ɾ",
+     "i"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s039",
+  "focus": "Final consonants",
+  "text": "I asked him to fix the desk.",
+  "words": [
+   {
+    "text": "I",
+    "phonemes": [
+     "aɪ"
+    ]
+   },
+   {
+    "text": "asked",
+    "phonemes": [
+     "æ",
+     "s",
+     "k",
+     "t"
+    ]
+   },
+   {
+    "text": "him",
+    "phonemes": [
+     "h",
+     "ɪ",
+     "m"
+    ]
+   },
+   {
+    "text": "to",
+    "phonemes": [
+     "t",
+     "ə"
+    ]
+   },
+   {
+    "text": "fix",
+    "phonemes": [
+     "f",
+     "ɪ",
+     "k",
+     "s"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "desk.",
+    "phonemes": [
+     "d",
+     "ɛ",
+     "s",
+     "k"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s040",
+  "focus": "Final consonants",
+  "text": "She helped them build the bridge.",
+  "words": [
+   {
+    "text": "She",
+    "phonemes": [
+     "ʃ",
+     "iː"
+    ]
+   },
+   {
+    "text": "helped",
+    "phonemes": [
+     "h",
+     "ɛ",
+     "l",
+     "p",
+     "t"
+    ]
+   },
+   {
+    "text": "them",
+    "phonemes": [
+     "ð",
+     "ɛ",
+     "m"
+    ]
+   },
+   {
+    "text": "build",
+    "phonemes": [
+     "b",
+     "ɪ",
+     "l",
+     "d"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "bridge.",
+    "phonemes": [
+     "b",
+     "ɹ",
+     "ɪ",
+     "dʒ"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s041",
+  "focus": "Final consonants",
+  "text": "The kids played in the cold wind.",
+  "words": [
+   {
+    "text": "The",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "kids",
+    "phonemes": [
+     "k",
+     "ɪ",
+     "d",
+     "z"
+    ]
+   },
+   {
+    "text": "played",
+    "phonemes": [
+     "p",
+     "l",
+     "eɪ",
+     "d"
+    ]
+   },
+   {
+    "text": "in",
+    "phonemes": [
+     "ɪ",
+     "n"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "cold",
+    "phonemes": [
+     "k",
+     "oʊ",
+     "l",
+     "d"
+    ]
+   },
+   {
+    "text": "wind.",
+    "phonemes": [
+     "w",
+     "ɪ",
+     "n",
+     "d"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s042",
+  "focus": "Final consonants",
+  "text": "He looked at the old maps.",
+  "words": [
+   {
+    "text": "He",
+    "phonemes": [
+     "h",
+     "iː"
+    ]
+   },
+   {
+    "text": "looked",
+    "phonemes": [
+     "l",
+     "ʊ",
+     "k",
+     "t"
+    ]
+   },
+   {
+    "text": "at",
+    "phonemes": [
+     "æ",
+     "t"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ɪ"
+    ]
+   },
+   {
+    "text": "old",
+    "phonemes": [
+     "oʊ",
+     "l",
+     "d"
+    ]
+   },
+   {
+    "text": "maps.",
+    "phonemes": [
+     "m",
+     "æ",
+     "p",
+     "s"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s043",
+  "focus": "H and NG",
+  "text": "His house is behind the hill.",
+  "words": [
+   {
+    "text": "His",
+    "phonemes": [
+     "h",
+     "ɪ",
+     "z"
+    ]
+   },
+   {
+    "text": "house",
+    "phonemes": [
+     "h",
+     "aʊ",
+     "s"
+    ]
+   },
+   {
+    "text": "is",
+    "phonemes": [
+     "ɪ",
+     "z"
+    ]
+   },
+   {
+    "text": "behind",
+    "phonemes": [
+     "b",
+     "ᵻ",
+     "h",
+     "aɪ",
+     "n",
+     "d"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "hill.",
+    "phonemes": [
+     "h",
+     "ɪ",
+     "l"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s044",
+  "focus": "H and NG",
+  "text": "How long have you been singing?",
+  "words": [
+   {
+    "text": "How",
+    "phonemes": [
+     "h",
+     "aʊ"
+    ]
+   },
+   {
+    "text": "long",
+    "phonemes": [
+     "l",
+     "ɔ",
+     "ŋ"
+    ]
+   },
+   {
+    "text": "have",
+    "phonemes": [
+     "h",
+     "æ",
+     "v"
+    ]
+   },
+   {
+    "text": "you",
+    "phonemes": [
+     "j",
+     "uː"
+    ]
+   },
+   {
+    "text": "been",
+    "phonemes": [
+     "b",
+     "ɪ",
+     "n"
+    ]
+   },
+   {
+    "text": "singing?",
+    "phonemes": [
+     "s",
+     "ɪ",
+     "ŋ",
+     "ɪ",
+     "ŋ"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s045",
+  "focus": "H and NG",
+  "text": "The king is bringing something.",
+  "words": [
+   {
+    "text": "The",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "king",
+    "phonemes": [
+     "k",
+     "ɪ",
+     "ŋ"
+    ]
+   },
+   {
+    "text": "is",
+    "phonemes": [
+     "ɪ",
+     "z"
+    ]
+   },
+   {
+    "text": "bringing",
+    "phonemes": [
+     "b",
+     "ɹ",
+     "ɪ",
+     "ŋ",
+     "ɪ",
+     "ŋ"
+    ]
+   },
+   {
+    "text": "something.",
+    "phonemes": [
+     "s",
+     "ʌ",
+     "m",
+     "θ",
+     "ɪ",
+     "ŋ"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s046",
+  "focus": "H and NG",
+  "text": "Harry hopes to have a holiday.",
+  "words": [
+   {
+    "text": "Harry",
+    "phonemes": [
+     "h",
+     "æ",
+     "ɹ",
+     "i"
+    ]
+   },
+   {
+    "text": "hopes",
+    "phonemes": [
+     "h",
+     "oʊ",
+     "p",
+     "s"
+    ]
+   },
+   {
+    "text": "to",
+    "phonemes": [
+     "t",
+     "ə"
+    ]
+   },
+   {
+    "text": "have",
+    "phonemes": [
+     "h",
+     "æ",
+     "v"
+    ]
+   },
+   {
+    "text": "a",
+    "phonemes": [
+     "ɐ"
+    ]
+   },
+   {
+    "text": "holiday.",
+    "phonemes": [
+     "h",
+     "ɑː",
+     "l",
+     "ɪ",
+     "d",
+     "eɪ"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s047",
+  "focus": "Everyday sentences",
+  "text": "Could you tell me where the station is?",
+  "words": [
+   {
+    "text": "Could",
+    "phonemes": [
+     "k",
+     "ʊ",
+     "d"
+    ]
+   },
+   {
+    "text": "you",
+    "phonemes": [
+     "j",
+     "uː"
+    ]
+   },
+   {
+    "text": "tell",
+    "phonemes": [
+     "t",
+     "ɛ",
+     "l"
+    ]
+   },
+   {
+    "text": "me",
+    "phonemes": [
+     "m",
+     "iː"
+    ]
+   },
+   {
+    "text": "where",
+    "phonemes": [
+     "w",
+     "ɛ",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "station",
+    "phonemes": [
+     "s",
+     "t",
+     "eɪ",
+     "ʃ",
+     "ə",
+     "n"
+    ]
+   },
+   {
+    "text": "is?",
+    "phonemes": [
+     "ɪ",
+     "z"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s048",
+  "focus": "Everyday sentences",
+  "text": "I would like a cup of coffee, please.",
+  "words": [
+   {
+    "text": "I",
+    "phonemes": [
+     "aɪ"
+    ]
+   },
+   {
+    "text": "would",
+    "phonemes": [
+     "w",
+     "ʊ",
+     "d"
+    ]
+   },
+   {
+    "text": "like",
+    "phonemes": [
+     "l",
+     "aɪ",
+     "k"
+    ]
+   },
+   {
+    "text": "a",
+    "phonemes": [
+     "ɐ"
+    ]
+   },
+   {
+    "text": "cup",
+    "phonemes": [
+     "k",
+     "ʌ",
+     "p"
+    ]
+   },
+   {
+    "text": "of",
+    "phonemes": [
+     "ʌ",
+     "v"
+    ]
+   },
+   {
+    "text": "coffee,",
+    "phonemes": [
+     "k",
+     "ɔ",
+     "f",
+     "i"
+    ]
+   },
+   {
+    "text": "please.",
+    "phonemes": [
+     "p",
+     "l",
+     "iː",
+     "z"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s049",
+  "focus": "Everyday sentences",
+  "text": "It's nice to meet you.",
+  "words": [
+   {
+    "text": "It's",
+    "phonemes": [
+     "ɪ",
+     "ts"
+    ]
+   },
+   {
+    "text": "nice",
+    "phonemes": [
+     "n",
+     "aɪ",
+     "s"
+    ]
+   },
+   {
+    "text": "to",
+    "phonemes": [
+     "t",
+     "ə"
+    ]
+   },
+   {
+    "text": "meet",
+    "phonemes": [
+     "m",
+     "iː",
+     "t"
+    ]
+   },
+   {
+    "text": "you.",
+    "phonemes": [
+     "j",
+     "uː"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s050",
+  "focus": "Everyday sentences",
+  "text": "What time does the meeting start?",
+  "words": [
+   {
+    "text": "What",
+    "phonemes": [
+     "w",
+     "ʌ",
+     "t"
+    ]
+   },
+   {
+    "text": "time",
+    "phonemes": [
+     "t",
+     "aɪ",
+     "m"
+    ]
+   },
+   {
+    "text": "does",
+    "phonemes": [
+     "d",
+     "ʌ",
+     "z"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "meeting",
+    "phonemes": [
+     "m",
+     "iː",
+     "ɾ",
+     "ɪ",
+     "ŋ"
+    ]
+   },
+   {
+    "text": "start?",
+    "phonemes": [
+     "s",
+     "t",
+     "ɑː",
+     "ɹ",
+     "t"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "s051",
+  "focus": "Everyday sentences",
+  "text": "I'm going to the store this afternoon.",
+  "words": [
+   {
+    "text": "I'm",
+    "phonemes": [
+     "aɪ",
+     "m"
+    ]
+   },
+   {
+    "text": "going",
+    "phonemes": [
+     "ɡ",
+     "oʊ",
+     "ɪ",
+     "ŋ"
+    ]
+   },
+   {
+    "text": "to",
+    "phonemes": [
+     "t",
+     "ə"
+    ]
+   },
+   {
+    "text": "the",
+    "phonemes": [
+     "ð",
+     "ə"
+    ]
+   },
+   {
+    "text": "store",
+    "phonemes": [
+     "s",
+     "t",
+     "ɔː",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "this",
+    "phonemes": [
+     "ð",
+     "ɪ",
+     "s"
+    ]
+   },
+   {
+    "text": "afternoon.",
+    "phonemes": [
+     "æ",
+     "f",
+     "t",
+     "ə",
+     "ɹ",
+     "n",
+     "uː",
+     "n"
+    ]
+   }
+  ]
+ }
+]

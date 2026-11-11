@@ -1,0 +1,78 @@
+# Practice sentences, one per line, grouped under "## <focus>" headings.
+# tools/make_sentences.py turns this into app/src/main/assets/sentences.json
+# with the native General American phonemes for every word.
+
+## TH (think, this)
+I think there are three of them.
+They thought this was the thirtieth.
+Both brothers were there that Thursday.
+Thank you for the birthday breakfast.
+The weather is better than they said.
+
+## American R
+The red car is around the corner.
+Our rare bird is very early.
+Rory wrote a really short report.
+Turn right after the third tree.
+Her order arrived on Thursday morning.
+
+## L and dark L
+Little Lily likes yellow lemons.
+Please fill the bottle with cold milk.
+The hall was full of tall people.
+Lucy will call you later.
+
+## V and W
+We visited a very wide valley.
+Victor waved when the van went by.
+Would you leave the window open?
+The wolf was very wary of the village.
+
+## Short i and long ee
+Sit in this seat, please.
+He will leave in a minute.
+The ship is cheap but the sheep is not.
+Fill the green bin with leaves.
+
+## Cat vowel (æ)
+That black cat sat on my hat.
+Ask Sam to pass the jam.
+The man had a bad map.
+Can you hand me that bag?
+
+## Cup vowel (ʌ) and cot vowel (ɑ)
+My brother lost his gloves on Sunday.
+Come up and have some lunch.
+Bob got a hot coffee from the shop.
+The cup is in the box on top.
+
+## Glides (ay, oh)
+Take the late train to Spain.
+Go home and close the window slowly.
+They may stay a day or so.
+Don't throw the phone in the boat.
+
+## Flap T (water, better)
+Put a little water in the kettle.
+I'd rather get a better city map.
+Peter bought a lot of butter.
+What a pretty little kitty.
+
+## Final consonants
+I asked him to fix the desk.
+She helped them build the bridge.
+The kids played in the cold wind.
+He looked at the old maps.
+
+## H and NG
+His house is behind the hill.
+How long have you been singing?
+The king is bringing something.
+Harry hopes to have a holiday.
+
+## Everyday sentences
+Could you tell me where the station is?
+I would like a cup of coffee, please.
+It's nice to meet you.
+What time does the meeting start?
+I'm going to the store this afternoon.
