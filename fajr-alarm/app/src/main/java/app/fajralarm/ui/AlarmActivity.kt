@@ -52,6 +52,8 @@ import app.fajralarm.core.AlarmSettings
 import app.fajralarm.core.DismissMission
 import app.fajralarm.core.MathChallenge
 import app.fajralarm.data.SettingsStore
+import app.fajralarm.data.SinkProof
+import app.fajralarm.data.StopReason
 import kotlinx.coroutines.delay
 import java.text.DateFormat
 import java.util.Date
@@ -99,15 +101,15 @@ class AlarmActivity : ComponentActivity() {
                 AlarmScreen(
                     settings = settings,
                     canSnooze = AlarmService.canSnooze(this),
-                    onSnooze = { send(AlarmService.ACTION_SNOOZE) },
-                    onDismiss = { send(AlarmService.ACTION_DISMISS) },
+                    onSnooze = { send(AlarmService.ACTION_SNOOZE, StopReason.SNOOZED) },
+                    onDismiss = { reason -> send(AlarmService.ACTION_DISMISS, reason) },
                 )
             }
         }
     }
 
-    private fun send(action: String) {
-        startService(AlarmService.commandIntent(this, action))
+    private fun send(action: String, reason: StopReason) {
+        startService(AlarmService.commandIntent(this, action, reason))
         finish()
     }
 
@@ -141,7 +143,7 @@ private fun AlarmScreen(
     settings: AlarmSettings,
     canSnooze: Boolean,
     onSnooze: () -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: (StopReason) -> Unit,
 ) {
     val context = LocalContext.current
     val (mission, fallbackNote) = remember { effectiveMission(context, settings) }
@@ -197,8 +199,8 @@ private fun AlarmScreen(
             }
 
             when (mission) {
-                DismissMission.NONE -> DismissButton("I'm up, dismiss", onDismiss)
-                DismissMission.MATH -> MathMission(onDismiss)
+                DismissMission.NONE -> DismissButton("I'm up, dismiss") { onDismiss(StopReason.BUTTON) }
+                DismissMission.MATH -> MathMission { onDismiss(StopReason.SUM) }
                 DismissMission.SINK_PHOTO -> SinkMission(onDismiss)
             }
 
@@ -250,13 +252,14 @@ private fun MathMission(onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun SinkMission(onDismiss: () -> Unit) {
+private fun SinkMission(onDismiss: (StopReason) -> Unit) {
+    val context = LocalContext.current
     // If the detector can't run on this phone, a sum still stops the alarm.
     var unavailable by remember { mutableStateOf(false) }
     if (unavailable) {
         Text("The sink detector couldn't start, so solve a sum instead.", color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
         Spacer(Modifier.height(8.dp))
-        MathMission(onDismiss)
+        MathMission { onDismiss(StopReason.SUM) }
         return
     }
     Text(
@@ -265,5 +268,12 @@ private fun SinkMission(onDismiss: () -> Unit) {
         textAlign = TextAlign.Center,
     )
     Spacer(Modifier.height(12.dp))
-    SinkFinder(onConfirmed = onDismiss, onUnavailable = { unavailable = true })
+    SinkFinder(
+        onConfirmed = { frame ->
+            // Keep what the camera took for a sink, so a wrong call can be seen afterwards.
+            SinkProof.save(context, frame)
+            onDismiss(StopReason.SINK)
+        },
+        onUnavailable = { unavailable = true },
+    )
 }

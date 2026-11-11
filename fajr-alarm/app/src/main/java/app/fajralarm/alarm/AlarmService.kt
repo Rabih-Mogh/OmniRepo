@@ -25,6 +25,8 @@ import app.fajralarm.FajrAlarmApp
 import app.fajralarm.R
 import app.fajralarm.core.DismissMission
 import app.fajralarm.data.SettingsStore
+import app.fajralarm.data.SinkProof
+import app.fajralarm.data.StopReason
 import app.fajralarm.ui.AlarmActivity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,9 +50,10 @@ class AlarmService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val reason = intent?.getStringExtra(EXTRA_REASON)?.let { n -> StopReason.values().firstOrNull { it.name == n } }
         when (intent?.action) {
-            ACTION_SNOOZE -> snooze()
-            ACTION_DISMISS -> dismiss()
+            ACTION_SNOOZE -> snooze(reason ?: StopReason.SNOOZED)
+            ACTION_DISMISS -> dismiss(reason ?: StopReason.NOTIFICATION)
             else -> startRinging()
         }
         return START_NOT_STICKY
@@ -65,7 +68,11 @@ class AlarmService : Service() {
         if (_ringing.value) return // already ringing (e.g. test pressed twice)
         _ringing.value = true
 
-        val settings = SettingsStore(this).load()
+        val store = SettingsStore(this)
+        store.recordRinging(System.currentTimeMillis())
+        // A sink photo from an earlier alarm would be misleading next to this one.
+        SinkProof.clear(this)
+        val settings = store.load()
         // The sink-photo mission is meant to be impossible to sleep through, so it keeps
         // ringing much longer; the cap only stops a phone left at home ringing all day.
         val ringLimit = if (settings.dismissMission == DismissMission.SINK_PHOTO) PHOTO_AUTO_STOP_MS else AUTO_STOP_MS
@@ -146,13 +153,14 @@ class AlarmService : Service() {
         v.vibrate(effect, attrs)
     }
 
-    private fun snooze() {
+    private fun snooze(reason: StopReason) {
         val store = SettingsStore(this)
         val settings = store.load()
         if (!canSnooze(this)) {
-            dismiss()
+            dismiss(if (reason == StopReason.TIMED_OUT_SNOOZED) StopReason.TIMED_OUT else reason)
             return
         }
+        if (_ringing.value) store.recordStop(reason, System.currentTimeMillis())
         AlarmScheduler.scheduleSnooze(this, settings.snoozeMinutes)
         stopRinging()
         val until = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(store.snoozeUntil))
@@ -166,7 +174,9 @@ class AlarmService : Service() {
         getSystemService(NotificationManager::class.java).notify(SNOOZE_NOTIFICATION_ID, n)
     }
 
-    private fun dismiss() {
+    private fun dismiss(reason: StopReason) {
+        // A dismiss can also arrive from the "Snoozed until" notice, when nothing is ringing.
+        if (_ringing.value) SettingsStore(this).recordStop(reason, System.currentTimeMillis())
         AlarmScheduler.cancelSnooze(this)
         getSystemService(NotificationManager::class.java).cancel(SNOOZE_NOTIFICATION_ID)
         stopRinging()
@@ -175,7 +185,7 @@ class AlarmService : Service() {
     private fun timeout() {
         if (!_ringing.value) return
         // Nobody responded: snooze once if allowed, otherwise give up quietly.
-        if (canSnooze(this)) snooze() else dismiss()
+        if (canSnooze(this)) snooze(StopReason.TIMED_OUT_SNOOZED) else dismiss(StopReason.TIMED_OUT)
     }
 
     private fun stopRinging() {
@@ -199,6 +209,7 @@ class AlarmService : Service() {
 
     override fun onDestroy() {
         if (_ringing.value) {
+            SettingsStore(this).recordStop(StopReason.STOPPED_BY_ANDROID, System.currentTimeMillis())
             handler.removeCallbacksAndMessages(null)
             player?.release()
             vibrator?.cancel()
@@ -244,6 +255,7 @@ class AlarmService : Service() {
         const val ACTION_START = "app.fajralarm.action.START"
         const val ACTION_SNOOZE = "app.fajralarm.action.SNOOZE"
         const val ACTION_DISMISS = "app.fajralarm.action.DISMISS"
+        private const val EXTRA_REASON = "reason"
 
         private val _ringing = MutableStateFlow(false)
 
@@ -253,8 +265,10 @@ class AlarmService : Service() {
         fun startIntent(context: Context): Intent =
             Intent(context, AlarmService::class.java).setAction(ACTION_START)
 
-        fun commandIntent(context: Context, action: String): Intent =
-            Intent(context, AlarmService::class.java).setAction(action)
+        fun commandIntent(context: Context, action: String, reason: StopReason? = null): Intent =
+            Intent(context, AlarmService::class.java).setAction(action).apply {
+                reason?.let { putExtra(EXTRA_REASON, it.name) }
+            }
 
         fun canSnooze(context: Context): Boolean {
             val store = SettingsStore(context)

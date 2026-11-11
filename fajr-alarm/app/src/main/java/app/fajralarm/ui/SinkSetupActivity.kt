@@ -85,7 +85,8 @@ private fun SinkTestScreen(onDone: () -> Unit) {
         Text(
             "When the alarm rings it only turns off once the camera sees a real sink: any bathroom " +
                 "or kitchen sink works, no photos needed. Try it here with the light on, standing " +
-                "where you can see the basin and tap. A sink shown on a phone or TV screen doesn't count.",
+                "where you can see the basin and tap. It only starts looking once the phone has been " +
+                "picked up, and a sink shown on a phone or TV screen doesn't count.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

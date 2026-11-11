@@ -77,6 +77,26 @@ class SettingsStore(context: Context) {
         get() = prefs.getInt(K_SNOOZE_COUNT, 0)
         set(value) = prefs.edit().putInt(K_SNOOZE_COUNT, value).apply()
 
+    /** The latest ringing, or null if the alarm has never rung. */
+    fun lastAlarm(): LastAlarm? {
+        val rang = prefs.getLong(K_LAST_RANG, 0L)
+        if (rang == 0L) return null
+        return LastAlarm(
+            rangAt = rang,
+            stoppedAt = prefs.getLong(K_LAST_STOPPED, 0L),
+            reason = prefs.getString(K_LAST_REASON, null)?.let { n -> StopReason.values().firstOrNull { it.name == n } },
+        )
+    }
+
+    fun recordRinging(at: Long) {
+        // commit(), not apply(): if Android kills the app mid-ring, this must already be on disk.
+        prefs.edit().putLong(K_LAST_RANG, at).remove(K_LAST_STOPPED).remove(K_LAST_REASON).commit()
+    }
+
+    fun recordStop(reason: StopReason, at: Long) {
+        prefs.edit().putLong(K_LAST_STOPPED, at).putString(K_LAST_REASON, reason.name).commit()
+    }
+
     private inline fun <reified E : Enum<E>> enumOr(name: String?, fallback: E): E =
         name?.let { n -> enumValues<E>().firstOrNull { it.name == n } } ?: fallback
 
@@ -108,6 +128,9 @@ class SettingsStore(context: Context) {
         const val K_NEXT_AT = "next_alarm_at"
         const val K_SNOOZE_UNTIL = "snooze_until"
         const val K_SNOOZE_COUNT = "snooze_count"
+        const val K_LAST_RANG = "last_rang_at"
+        const val K_LAST_STOPPED = "last_stopped_at"
+        const val K_LAST_REASON = "last_stop_reason"
     }
 }
 

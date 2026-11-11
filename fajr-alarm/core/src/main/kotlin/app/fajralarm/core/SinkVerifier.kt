@@ -30,6 +30,8 @@ data class FrameResult(
 )
 
 sealed interface SinkStatus {
+    /** The phone hasn't been picked up yet, so nothing the camera sees counts. */
+    data object Resting : SinkStatus
     data object Dark : SinkStatus
     data object Searching : SinkStatus
     /** The sink is inside a phone, TV or laptop screen, so it doesn't count. */
@@ -53,8 +55,11 @@ class SinkVerifier(
     private val holdMs: Long = 2_000,
     private val maxGapMs: Long = 800,
     private val minFrames: Int = 4,
-    /** Smallest movement of the sink box (in frame widths) that counts as a hand-held camera. */
-    private val minMovement: Float = 0.015f,
+    /**
+     * Smallest movement of the sink box (in frame widths) that counts as a hand-held camera.
+     * Well above the detector's own frame-to-frame jitter on a phone lying still.
+     */
+    private val minMovement: Float = 0.05f,
 ) {
     private data class Sighting(val timeMs: Long, val box: Box)
 

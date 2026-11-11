@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
@@ -14,6 +15,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -69,6 +71,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -91,6 +95,8 @@ import app.fajralarm.core.HighLatitudeRule
 import app.fajralarm.core.PrayerTimeCalculator
 import app.fajralarm.data.LocationHelper
 import app.fajralarm.data.SettingsStore
+import app.fajralarm.data.SinkProof
+import app.fajralarm.data.StopReason
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
@@ -190,6 +196,8 @@ private fun SettingsScreen() {
             }
             update(settings.copy(enabled = on))
         }
+
+        LastAlarmCard(context, resumeTick)
 
         Section("Alarm") {
             Text("Ring relative to", style = MaterialTheme.typography.labelLarge)
@@ -496,6 +504,47 @@ private fun SummaryCard(context: Context, settings: AlarmSettings, tick: Int, on
                     color = onHero,
                 )
             }
+        }
+    }
+}
+
+/** What happened the last time the alarm rang, so an alarm that stopped by itself can be explained. */
+@Composable
+private fun LastAlarmCard(context: Context, tick: Int) {
+    val last = remember(tick) { SettingsStore(context).lastAlarm() } ?: return
+    if (AlarmService.ringing.value) return
+    val proof = remember(tick) {
+        SinkProof.path(context)?.takeIf { last.reason == StopReason.SINK }
+            ?.let { runCatching { BitmapFactory.decodeFile(it.path)?.asImageBitmap() }.getOrNull() }
+    }
+    val timeFmt = remember { android.text.format.DateFormat.getTimeFormat(context) }
+    val dateFmt = remember { android.text.format.DateFormat.getMediumDateFormat(context) }
+    val rang = "Rang at ${timeFmt.format(Date(last.rangAt))} on ${dateFmt.format(Date(last.rangAt))}"
+    Section("Last alarm") {
+        Text(
+            when {
+                last.reason != null && last.stoppedAt > 0 ->
+                    "$rang and ${last.reason.description} at ${timeFmt.format(Date(last.stoppedAt))}."
+                // The app was closed while ringing without getting the chance to note why.
+                else -> "$rang. There's no record of how it stopped, so Android most likely closed the app while it rang."
+            },
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        proof?.let {
+            Text(
+                "What the camera took for a sink:",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Image(
+                it,
+                contentDescription = "Camera frame that turned the alarm off",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(3f / 4f)
+                    .clip(MaterialTheme.shapes.medium),
+            )
         }
     }
 }

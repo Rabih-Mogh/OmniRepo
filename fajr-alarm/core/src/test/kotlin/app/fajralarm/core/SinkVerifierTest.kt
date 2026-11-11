@@ -30,12 +30,12 @@ class SinkVerifierTest {
 
     @Test
     fun confirmsAfterHoldingASinkInAMovingHand() {
-        assertEquals(SinkStatus.Confirmed, feed(SinkVerifier(), 2_400, drift = 0.03f))
+        assertEquals(SinkStatus.Confirmed, feed(SinkVerifier(), 2_400, drift = 0.06f))
     }
 
     @Test
     fun notConfirmedBeforeTheHoldTime() {
-        val s = feed(SinkVerifier(), 1_500, drift = 0.03f)
+        val s = feed(SinkVerifier(), 1_500, drift = 0.06f)
         assertIs<SinkStatus.Holding>(s)
         assertTrue(s.progress in 0.5f..0.95f)
     }
@@ -46,29 +46,34 @@ class SinkVerifierTest {
     }
 
     @Test
+    fun detectorJitterOnAStillPhoneIsNotEnough() {
+        assertIs<SinkStatus.Holding>(feed(SinkVerifier(), 4_000, drift = 0.03f))
+    }
+
+    @Test
     fun aSinkInsideAPhoneScreenDoesNotCount() {
         val phone = Detection("cell phone", 0.6f, Box(0.2f, 0.3f, 0.85f, 0.9f))
-        assertEquals(SinkStatus.OnScreen, feed(SinkVerifier(), 3_000, drift = 0.03f, extra = listOf(phone)))
+        assertEquals(SinkStatus.OnScreen, feed(SinkVerifier(), 3_000, drift = 0.06f, extra = listOf(phone)))
     }
 
     @Test
     fun aScreenElsewhereInTheRoomIsFine() {
         val tv = Detection("tv", 0.8f, Box(0.0f, 0.0f, 0.2f, 0.2f))
-        assertEquals(SinkStatus.Confirmed, feed(SinkVerifier(), 2_400, drift = 0.03f, extra = listOf(tv)))
+        assertEquals(SinkStatus.Confirmed, feed(SinkVerifier(), 2_400, drift = 0.06f, extra = listOf(tv)))
     }
 
     @Test
     fun darknessResetsTheCheck() {
         val v = SinkVerifier()
-        feed(v, 1_500, drift = 0.03f)
+        feed(v, 1_500, drift = 0.06f)
         assertEquals(SinkStatus.Dark, v.offer(frame(1_900, sink(), brightness = 10f)))
-        assertIs<SinkStatus.Holding>(feed(v, 1_500, start = 2_000, drift = 0.03f))
+        assertIs<SinkStatus.Holding>(feed(v, 1_500, start = 2_000, drift = 0.06f))
     }
 
     @Test
     fun aShortMissIsForgivenButALongOneStartsOver() {
         val v = SinkVerifier()
-        feed(v, 1_000, drift = 0.03f)
+        feed(v, 1_000, drift = 0.06f)
         assertIs<SinkStatus.Holding>(v.offer(frame(1_300)))
         assertEquals(SinkStatus.Searching, v.offer(frame(2_500)))
     }
