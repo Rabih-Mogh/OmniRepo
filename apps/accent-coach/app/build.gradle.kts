@@ -58,7 +58,7 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.0")
 
     // Runs the phoneme recogniser (wav2vec2, ONNX) on the phone.
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.31.1")
 
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.compose.ui:ui")
