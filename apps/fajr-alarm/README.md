@@ -38,6 +38,7 @@ How it works and its limits:
 - **Cheating checks**: nothing counts until the phone has been picked up (tilted at least 25° from where it lay, measured with the accelerometer; the alarm's vibration doesn't count). A sink that sits inside a detected phone, TV or laptop screen doesn't count. The sink must stay in view for 2 seconds while the camera moves by at least 5% of the frame, as it does in a hand. Dark frames reset the check.
 - **Accuracy**: works best with the light on and most of the basin in view. A close-up of just the tap, or a very dark room, may not be recognised. The thresholds haven't been tuned on many real sinks yet.
 - **Fallback**: if the camera permission is off or the detector can't start, the alarm falls back to the sum, so you're never stuck with an alarm you can't stop.
+- **No way round it from bed**: with a mission set, neither the ringing notification nor the "Snoozed until" notification can turn the alarm off. A snoozed alarm always rings again, and only the mission stops it.
 - **Not tamper-proof**: a determined person can still snooze (set Snooze to Off), show the camera a printed photo of a sink, or force-stop the app from system settings.
 
 ## Project layout

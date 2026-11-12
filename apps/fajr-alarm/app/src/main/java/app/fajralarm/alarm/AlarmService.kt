@@ -53,7 +53,12 @@ class AlarmService : Service() {
         val reason = intent?.getStringExtra(EXTRA_REASON)?.let { n -> StopReason.values().firstOrNull { it.name == n } }
         when (intent?.action) {
             ACTION_SNOOZE -> snooze(reason ?: StopReason.SNOOZED)
-            ACTION_DISMISS -> dismiss(reason ?: StopReason.NOTIFICATION)
+            ACTION_DISMISS -> {
+                val r = reason ?: StopReason.NOTIFICATION
+                // With a mission, only doing it stops the alarm, ringing or snoozed. This also
+                // covers taps on notifications posted by older versions of the app.
+                if (missionRequired() && r !in MISSION_REASONS) ignoreCommand() else dismiss(r)
+            }
             else -> startRinging()
         }
         return START_NOT_STICKY
@@ -157,6 +162,11 @@ class AlarmService : Service() {
         val store = SettingsStore(this)
         val settings = store.load()
         if (!canSnooze(this)) {
+            // Out of snoozes: a snooze tap mustn't become a way round the mission.
+            if (reason == StopReason.SNOOZED && missionRequired()) {
+                ignoreCommand()
+                return
+            }
             dismiss(if (reason == StopReason.TIMED_OUT_SNOOZED) StopReason.TIMED_OUT else reason)
             return
         }
@@ -164,13 +174,19 @@ class AlarmService : Service() {
         AlarmScheduler.scheduleSnooze(this, settings.snoozeMinutes)
         stopRinging()
         val until = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(store.snoozeUntil))
-        val n = NotificationCompat.Builder(this, FajrAlarmApp.CHANNEL_INFO)
+        val b = NotificationCompat.Builder(this, FajrAlarmApp.CHANNEL_INFO)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Snoozed until $until")
-            .setContentText("Tap to dismiss the snoozed alarm")
-            .setContentIntent(servicePendingIntent(this, ACTION_DISMISS, 11))
             .setAutoCancel(true)
-            .build()
+        if (settings.dismissMission == DismissMission.NONE) {
+            b.setContentText("Tap to dismiss the snoozed alarm")
+                .setContentIntent(servicePendingIntent(this, ACTION_DISMISS, 11))
+        } else {
+            // The mission is what gets you out of bed, so a snoozed alarm can't be called off here.
+            b.setContentText("It rings again then, and only the mission turns it off")
+                .setContentIntent(openAppPendingIntent(this))
+        }
+        val n = b.build()
         getSystemService(NotificationManager::class.java).notify(SNOOZE_NOTIFICATION_ID, n)
     }
 
@@ -180,6 +196,14 @@ class AlarmService : Service() {
         AlarmScheduler.cancelSnooze(this)
         getSystemService(NotificationManager::class.java).cancel(SNOOZE_NOTIFICATION_ID)
         stopRinging()
+    }
+
+    private fun missionRequired(): Boolean =
+        SettingsStore(this).load().dismissMission != DismissMission.NONE
+
+    /** Drops a command that isn't allowed; the service only stays up while it rings. */
+    private fun ignoreCommand() {
+        if (!_ringing.value) stopSelf()
     }
 
     private fun timeout() {
@@ -276,11 +300,17 @@ class AlarmService : Service() {
             return s.snoozeMinutes > 0 && store.snoozeCount < s.maxSnoozes
         }
 
-        fun postFallbackNotification(context: Context) {
-            val open = PendingIntent.getActivity(
-                context, 14, Intent(context, app.fajralarm.ui.MainActivity::class.java),
+        /** The ways the alarm screen turns the alarm off once a mission is done. */
+        private val MISSION_REASONS = setOf(StopReason.SINK, StopReason.SUM)
+
+        private fun openAppPendingIntent(context: Context, requestCode: Int = 14): PendingIntent =
+            PendingIntent.getActivity(
+                context, requestCode, Intent(context, app.fajralarm.ui.MainActivity::class.java),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
+
+        fun postFallbackNotification(context: Context) {
+            val open = openAppPendingIntent(context)
             val n = NotificationCompat.Builder(context, FajrAlarmApp.CHANNEL_ALARM)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle("Time for Fajr")
