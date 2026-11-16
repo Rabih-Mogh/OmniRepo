@@ -89,11 +89,13 @@ class AlarmService : Service() {
         playSound(settings.soundUri, settings.gradualVolume)
         if (settings.vibrate) startVibration()
 
-        // Also launch the screen directly; on locked/idle devices the full-screen intent does this.
+        // Also launch the screen directly. The full-screen intent only opens it when the
+        // screen is off or locked (and some phones ignore it); Android blocks this start
+        // from the background unless "Display over other apps" is allowed.
         try {
             startActivity(AlarmActivity.intent(this))
         } catch (_: Exception) {
-            // Background activity starts may be blocked; the full-screen notification covers it.
+            // Blocked: the full-screen notification is all that's left.
         }
 
         handler.postDelayed({ timeout() }, ringLimit)

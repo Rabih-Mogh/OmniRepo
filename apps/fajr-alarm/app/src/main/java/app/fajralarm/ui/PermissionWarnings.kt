@@ -45,6 +45,7 @@ fun PermissionWarnings(
         !context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
     val fullScreenOff = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
         !context.getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
+    val overlayOff = !Settings.canDrawOverlays(context)
     val batteryOptimised = !context.getSystemService(PowerManager::class.java)
         .isIgnoringBatteryOptimizations(context.packageName)
 
@@ -63,6 +64,19 @@ fun PermissionWarnings(
             context.startActivity(
                 Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:${context.packageName}")),
             )
+        }
+    }
+    if (overlayOff) {
+        Warning("The alarm screen can't open by itself; you'd have to open the app. Allow display over other apps.", "Allow") {
+            try {
+                context.startActivity(
+                    Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")),
+                )
+            } catch (_: ActivityNotFoundException) {
+                context.startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")),
+                )
+            }
         }
     }
     if (batteryOptimised) {

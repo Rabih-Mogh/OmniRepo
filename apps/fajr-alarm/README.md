@@ -76,6 +76,7 @@ Or open `apps/fajr-alarm/` in Android Studio and press Run. Min Android version:
 | `USE_EXACT_ALARM` / `SCHEDULE_EXACT_ALARM` | Ring at the exact minute, even in Doze |
 | `POST_NOTIFICATIONS` | The ringing notification (Android 13+) |
 | `USE_FULL_SCREEN_INTENT` | Show the alarm over the lock screen |
+| `SYSTEM_ALERT_WINDOW` (Display over other apps) | Open the alarm screen by itself. Android only opens a full-screen alarm when the screen is off or locked, and some phones not even then; without this you'd get just a notification and have to open the app |
 | `FOREGROUND_SERVICE(_MEDIA_PLAYBACK)` | Keep playing the alarm sound |
 | `RECEIVE_BOOT_COMPLETED` | Re-queue the alarm after a restart |
 | `ACCESS_COARSE_LOCATION` | Optional; you can type coordinates instead |
@@ -84,7 +85,7 @@ Or open `apps/fajr-alarm/` in Android Studio and press Run. Min Android version:
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | One-tap fix when battery optimisation could put the alarm to sleep |
 
 The app shows a banner, on the main screen and on the sink test screen, if notifications, exact alarms
-or full-screen alarms are blocked or battery optimisation is on, with a button that opens the
+or full-screen alarms are blocked, display over other apps is off, or battery optimisation is on, with a button that opens the
 right settings page. On Samsung phones it also reminds you once to add the app to
 **Never sleeping apps**, since apps can't check that list. Other brands (Xiaomi, Huawei, Oppo)
 have similar autostart and background switches in the app's system settings.
