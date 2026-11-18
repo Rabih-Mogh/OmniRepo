@@ -40,7 +40,7 @@ cd apps/fajr-alarm && ./gradlew :app:assembleRelease
 
 ## Updates
 
-Fajr Alarm and Accent Coach update themselves from this repo. When one opens, it reads
+Every app updates itself from this repo. When one opens, it reads
 `apps/<app-name>/apk/version.json` on the `main` branch; if that names a higher version
 than the one installed, the app offers to download and install the new APK.
 
