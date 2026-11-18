@@ -42,7 +42,8 @@ cd apps/fajr-alarm && ./gradlew :app:assembleRelease
 
 Every app updates itself from this repo. When one opens, it reads
 `apps/<app-name>/apk/version.json` on the `main` branch; if that names a higher version
-than the one installed, the app offers to download and install the new APK.
+than the one installed, a pop-up offers to download and install the new APK. A download
+that is interrupted carries on where it stopped, and is deleted once it is installed.
 
 To publish a build, run this before committing, then commit the `apk/` folder (the APKs
 need `git add -f`):

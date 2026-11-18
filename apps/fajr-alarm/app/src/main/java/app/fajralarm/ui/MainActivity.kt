@@ -184,7 +184,7 @@ private fun SettingsScreen() {
             modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 4.dp),
         )
 
-        UpdateCard()
+        UpdateDialog()
 
         // resumeTick makes this re-read permission state whenever we return to the screen.
         PermissionWarnings(context, resumeTick, onRequestNotifications = {

@@ -208,6 +208,10 @@
     <string name="test_again">اختبر مجدداً</string>
 
     <!-- Updates -->
+    <string name="update_title">تحديث التطبيق</string>
+    <string name="update_later">لاحقاً</string>
+    <string name="update_hide">إخفاء</string>
+    <string name="update_interrupted">انقطع التنزيل. حاول مجدداً للمتابعة من حيث توقف.</string>
     <string name="update_available">الإصدار %1$s متاح (%2$d ميغابايت).</string>
     <string name="update">تحديث</string>
     <string name="update_downloading">جارٍ تنزيل التحديث… %1$d%%</string>

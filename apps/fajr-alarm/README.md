@@ -89,10 +89,15 @@ the app's own language under the phone's **Settings → Apps → Fajr Alarm → 
 ## Updates
 
 The app updates itself from this repo. Each time it opens it looks for a newer build, and
-shows **Version … is available** with an **Update** button when there is one. The version
-and a **Check for updates** button are at the bottom of the main screen.
+a pop-up offers it with an **Update** button when there is one. **Later** closes the pop-up
+for now. The version and a **Check for updates** button, which brings the pop-up back, are
+at the bottom of the main screen.
 
 - The download is checked against the published SHA-256 before Android installs it.
+- A download that stops halfway (no signal, the app closed) carries on from where it
+  stopped on the next try. A finished download isn't fetched again if the install is put off.
+- The download sits in the app's cache until it is installed and is deleted right after.
+  Anything older is deleted each time the app looks for an update.
 - The first update asks you to allow the app to install apps, and to confirm. On Android 12
   and later, updates after that install without asking again.
 - The app closes when the update is installed; open it again afterwards.

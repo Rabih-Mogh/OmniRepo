@@ -192,6 +192,10 @@
     <string name="test_again">Test again</string>
 
     <!-- Updates -->
+    <string name="update_title">App update</string>
+    <string name="update_later">Later</string>
+    <string name="update_hide">Hide</string>
+    <string name="update_interrupted">The download was interrupted. Try again to carry on from where it stopped.</string>
     <string name="update_available">Version %1$s is available (%2$d MB).</string>
     <string name="update">Update</string>
     <string name="update_downloading">Downloading the update… %1$d%%</string>

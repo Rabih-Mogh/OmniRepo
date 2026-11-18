@@ -91,6 +91,6 @@ fun SetupScreen(vm: PracticeViewModel) {
             ModelState.Ready -> Unit
         }
         // A fix for a model that won't start arrives as an update, so offer it here too.
-        UpdateCard()
+        UpdateDialog()
     }
 }

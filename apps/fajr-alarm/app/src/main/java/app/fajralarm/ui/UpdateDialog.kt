@@ -4,9 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,28 +24,53 @@ import app.fajralarm.R
 import app.fajralarm.update.AppUpdate
 import kotlinx.coroutines.launch
 
-/** Appears when the repo has a newer build; checks once each time the screen opens. */
+/**
+ * Pops up when the repo has a newer build, and stays up while it downloads and installs.
+ * Checks once each time the screen opens. Closing it doesn't stop a download.
+ */
 @Composable
-fun UpdateCard() {
+fun UpdateDialog() {
     val context = LocalContext.current
     val state by AppUpdate.state.collectAsStateWithLifecycle()
+    val open by AppUpdate.prompt.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { AppUpdate.check(context) }
 
-    when (val s = state) {
-        is AppUpdate.State.Available -> UpdateBanner(
-            stringResource(R.string.update_available, s.release.versionName, s.release.size / 1_000_000),
-            stringResource(R.string.update),
-        ) { AppUpdate.install(context, s.release) }
-        is AppUpdate.State.Downloading -> UpdateBanner(
-            stringResource(R.string.update_downloading, (s.progress * 100).toInt()),
-            progress = s.progress,
-        )
-        AppUpdate.State.Installing -> UpdateBanner(stringResource(R.string.update_installing))
-        is AppUpdate.State.Failed -> s.release?.let {
-            UpdateBanner(s.message, stringResource(R.string.try_again)) { AppUpdate.install(context, it) }
-        }
-        else -> Unit
-    }
+    val failed = state as? AppUpdate.State.Failed
+    val release = (state as? AppUpdate.State.Available)?.release ?: failed?.release
+    val downloading = state as? AppUpdate.State.Downloading
+    if (!open || (release == null && downloading == null && state != AppUpdate.State.Installing)) return
+
+    AlertDialog(
+        onDismissRequest = AppUpdate::dismiss,
+        title = { Text(stringResource(R.string.update_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(
+                    when {
+                        failed != null -> failed.message
+                        downloading != null -> stringResource(R.string.update_downloading, (downloading.progress * 100).toInt())
+                        release != null -> stringResource(R.string.update_available, release.versionName, release.size / 1_000_000)
+                        else -> stringResource(R.string.update_installing)
+                    },
+                )
+                downloading?.let { LinearProgressIndicator(progress = { it.progress }, modifier = Modifier.fillMaxWidth()) }
+            }
+        },
+        confirmButton = {
+            if (release != null) {
+                TextButton(onClick = { AppUpdate.install(context, release) }) {
+                    Text(stringResource(if (failed != null) R.string.try_again else R.string.update))
+                }
+            } else {
+                TextButton(onClick = AppUpdate::dismiss) { Text(stringResource(R.string.update_hide)) }
+            }
+        },
+        dismissButton = if (release == null) {
+            null
+        } else {
+            { TextButton(onClick = AppUpdate::dismiss) { Text(stringResource(if (failed != null) R.string.close else R.string.update_later)) } }
+        },
+    )
 }
 
 /** The installed version, with a button to look for a newer one. */
@@ -78,24 +101,5 @@ fun VersionFooter() {
             else -> null
         }
         note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-    }
-}
-
-@Composable
-private fun UpdateBanner(text: String, action: String? = null, progress: Float? = null, onClick: () -> Unit = {}) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text, Modifier.weight(1f).padding(vertical = 8.dp), color = MaterialTheme.colorScheme.onSecondaryContainer)
-                action?.let { TextButton(onClick = onClick) { Text(it) } }
-            }
-            progress?.let { LinearProgressIndicator(progress = { it }, modifier = Modifier.fillMaxWidth().padding(end = 8.dp)) }
-        }
     }
 }
