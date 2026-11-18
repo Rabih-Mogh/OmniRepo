@@ -8,6 +8,7 @@ alarm follows the prayer time as it moves through the year.
 
 - **Rings relative to Fajr or sunrise**: at the time, or anywhere from 2 h before to 1 h after (5-min steps).
 - **Recalculated daily**: after each alarm the next one is computed fresh, and again after a reboot, app update, clock change or timezone change.
+- **On by default**: a fresh install has the alarm switched on, so it rings from the first Fajr after you set your location.
 - **Pick which days it rings.**
 - **Location** from the device (coarse, no Google Play services needed) or typed in manually.
 - **Calculation methods**: MWL, ISNA, Egypt, Umm al-Qura, Karachi, Tehran, Dubai, Gulf, Kuwait, Qatar, Singapore, Diyanet, UOIF, or a custom angle. A ± minute Fajr adjustment lets you match your mosque's timetable.

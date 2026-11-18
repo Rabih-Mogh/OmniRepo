@@ -17,7 +17,8 @@ enum class AlarmAnchor(val displayName: String) {
 }
 
 data class AlarmSettings(
-    val enabled: Boolean = false,
+    /** On from the first launch; it starts ringing as soon as a location is set. */
+    val enabled: Boolean = true,
     val anchor: AlarmAnchor = AlarmAnchor.FAJR,
     /** Minutes relative to the anchor; negative = before, positive = after. */
     val offsetMinutes: Int = 0,
