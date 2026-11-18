@@ -37,3 +37,26 @@ Build an app from its own folder, for example:
 ```bash
 cd apps/fajr-alarm && ./gradlew :app:assembleRelease
 ```
+
+## Updates
+
+Fajr Alarm and Accent Coach update themselves from this repo. When one opens, it reads
+`apps/<app-name>/apk/version.json` on the `main` branch; if that names a higher version
+than the one installed, the app offers to download and install the new APK.
+
+To publish a build, run this before committing, then commit the `apk/` folder (the APKs
+need `git add -f`):
+
+```bash
+tools/publish-apk.sh fajr-alarm accent-coach
+```
+
+It runs the tests, builds the app, copies the APKs into `apk/` and writes `version.json`
+(version, file size and SHA-256).
+
+- **Versions:** the version number is the repo's commit count plus one, so each published
+  build is higher than the last without anyone editing a number.
+- **Signing key:** Android only installs an update signed with the same key as the
+  installed app. The APKs are signed with the debug key of the Mac they're built on
+  (`~/.android/debug.keystore`). A build from another machine, or after that file is
+  lost, won't install over an existing copy: the app has to be uninstalled first.

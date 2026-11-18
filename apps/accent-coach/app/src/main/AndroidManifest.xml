@@ -4,7 +4,7 @@
 
     <!-- Hearing you speak. Audio stays on the phone. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <!-- Only to download the speech model once. -->
+    <!-- Downloading the speech model once, and the app's own updates. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Download the model in the background, with its progress in a notification. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -17,6 +17,10 @@
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
     </queries>
+
+    <!-- Updating itself from the GitHub repo: fetch the new build and hand it to Android to install. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
 
     <application
         android:allowBackup="false"
@@ -42,5 +46,9 @@
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
+
+        <receiver
+            android:name=".update.UpdateReceiver"
+            android:exported="false" />
     </application>
 </manifest>

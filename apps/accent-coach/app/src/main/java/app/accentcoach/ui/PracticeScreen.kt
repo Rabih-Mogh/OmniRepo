@@ -86,6 +86,8 @@ fun PracticeScreen(vm: PracticeViewModel) {
             Text("General American", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
+        UpdateCard()
+
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(selected = vm.focus == null, onClick = { vm.chooseFocus(null) }, label = { Text("All") })
             vm.focuses.forEach { f ->
@@ -113,6 +115,8 @@ fun PracticeScreen(vm: PracticeViewModel) {
         }
 
         vm.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+
+        VersionFooter()
     }
 }
 

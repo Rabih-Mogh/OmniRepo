@@ -6,6 +6,16 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// Every published build needs a higher version than the last, or installed copies won't
+// see it as an update. The repo's commit count gives that for free, because a build is
+// always made just before its commit.
+val buildNumber: Int = try {
+    providers.exec { commandLine("git", "rev-list", "--count", "HEAD") }
+        .standardOutput.asText.get().trim().toInt() + 1
+} catch (_: Exception) {
+    1 // not a git checkout
+}
+
 android {
     namespace = "app.fajralarm"
     compileSdk = 35
@@ -14,8 +24,8 @@ android {
         applicationId = "app.fajralarm"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = buildNumber
+        versionName = "1.$buildNumber"
         // The detection runtime ships native code; only 64-bit ARM phones (the A05 included) are built for.
         ndk { abiFilters += "arm64-v8a" }
     }

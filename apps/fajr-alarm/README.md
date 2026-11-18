@@ -27,6 +27,7 @@ alarm follows the prayer time as it moves through the year.
 - **Auto-stop**: after 10 minutes normally, or 60 minutes with the sink mission, so a phone left at home doesn't ring all day. When it auto-stops it snoozes if snoozes are left, otherwise it stops.
 - **Last alarm**: the main screen shows when the alarm last rang and how it stopped (sink, sum, snooze, ringing out, or Android closing the app). On Android 11 and later it also says whether the app crashed, froze or was force-stopped.
 - **"Test the alarm now"** button.
+- **Updates itself** from this repo. See [Updates](#updates).
 
 ## Sink mission
 
@@ -70,6 +71,20 @@ to one copy. Remove the `abiFilters` line in `app/build.gradle.kts` to build for
 
 Or open `apps/fajr-alarm/` in Android Studio and press Run. Min Android version: 8.0 (API 26).
 
+## Updates
+
+The app updates itself from this repo. Each time it opens it looks for a newer build, and
+shows **Version … is available** with an **Update** button when there is one. The version
+and a **Check for updates** button are at the bottom of the main screen.
+
+- The download is checked against the published SHA-256 before Android installs it.
+- The first update asks you to allow the app to install apps, and to confirm. On Android 12
+  and later, updates after that install without asking again.
+- The app closes when the update is installed; open it again afterwards.
+- It won't update while the alarm is ringing, and the next alarm is queued again right
+  after an update.
+- Publishing a build: see [Updates](../../README.md#updates) in the repo's README.
+
 ## Permissions and why
 
 | Permission | Why |
@@ -83,6 +98,8 @@ Or open `apps/fajr-alarm/` in Android Studio and press Run. Min Android version:
 | `ACCESS_COARSE_LOCATION` | Optional; you can type coordinates instead |
 | `CAMERA` | Sink mission (optional) |
 | `WAKE_LOCK`, `VIBRATE` | Ringing |
+| `INTERNET` | Only to check for and download the app's own updates |
+| `REQUEST_INSTALL_PACKAGES`, `UPDATE_PACKAGES_WITHOUT_USER_ACTION` | Installing those updates |
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | One-tap fix when battery optimisation could put the alarm to sleep |
 
 The app shows a banner, on the main screen and on the sink test screen, if notifications, exact alarms

@@ -99,11 +99,24 @@ Builds are for 64-bit ARM phones only (`arm64-v8a`). Minimum Android version: 8.
 To change the sentences, edit `tools/sentences.txt`, then run
 `python3 tools/make_sentences.py`. This needs `espeak-ng` (`brew install espeak-ng`).
 
+## Updates
+
+The app updates itself from this repo. Each time it opens it looks for a newer build, and
+shows **Version … is available** with an **Update** button when there is one. The version
+and a **Check for updates** button are at the bottom of the main screen.
+
+- The download is checked against the published SHA-256 before Android installs it.
+- The first update asks you to allow the app to install apps, and to confirm. On Android 12
+  and later, updates after that install without asking again.
+- The app closes when the update is installed; open it again afterwards.
+- Publishing a build: see [Updates](../../README.md#updates) in the repo's README.
+
 ## Permissions
 
 | Permission | Why |
 |---|---|
 | `RECORD_AUDIO` | Hearing you read the sentence. Audio stays on the phone. |
-| `INTERNET` | Downloading the speech model once. |
+| `INTERNET` | Downloading the speech model once, and the app's own updates. |
+| `REQUEST_INSTALL_PACKAGES`, `UPDATE_PACKAGES_WITHOUT_USER_ACTION` | Installing those updates. |
 | `POST_NOTIFICATIONS` | Showing the download's progress. The download runs without it too. |
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC` | Keeping the download going in the background. |

@@ -179,6 +179,8 @@ private fun SettingsScreen() {
             modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 4.dp),
         )
 
+        UpdateCard()
+
         // resumeTick makes this re-read permission state whenever we return to the screen.
         PermissionWarnings(context, resumeTick, onRequestNotifications = {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -417,6 +419,7 @@ private fun SettingsScreen() {
             Text("Test the alarm now")
         }
 
+        VersionFooter()
         Spacer(Modifier.height(24.dp))
     }
 }
