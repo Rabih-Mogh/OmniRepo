@@ -40,13 +40,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.fajralarm.R
 import app.fajralarm.alarm.AlarmService
 import app.fajralarm.core.AlarmSettings
 import app.fajralarm.core.DismissMission
@@ -133,7 +137,7 @@ private fun effectiveMission(context: Context, s: AlarmSettings): Pair<DismissMi
     if (s.dismissMission != DismissMission.SINK_PHOTO) return s.dismissMission to null
     val camera = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
     return when {
-        !camera -> DismissMission.MATH to "Camera permission is off, so solve a sum instead."
+        !camera -> DismissMission.MATH to context.getString(R.string.camera_off_sum_instead)
         else -> DismissMission.SINK_PHOTO to null
     }
 }
@@ -175,16 +179,16 @@ private fun AlarmScreen(
                 fontSize = if (compact) 48.sp else 72.sp,
                 fontWeight = FontWeight.Light,
             )
-            Text("Time for Fajr", style = MaterialTheme.typography.headlineMedium)
+            Text(stringResource(R.string.alarm_title), style = MaterialTheme.typography.headlineMedium)
             // The camera needs the room, so the sink screen keeps only the clock and title.
             if (!compact) {
                 Text(
-                    settings.describeOffset(),
+                    settings.describeOffset(context),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    "Prayer is better than sleep",
+                    stringResource(R.string.prayer_better_than_sleep),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center,
@@ -199,7 +203,7 @@ private fun AlarmScreen(
             }
 
             when (mission) {
-                DismissMission.NONE -> DismissButton("I'm up, dismiss") { onDismiss(StopReason.BUTTON) }
+                DismissMission.NONE -> DismissButton(stringResource(R.string.dismiss_im_up)) { onDismiss(StopReason.BUTTON) }
                 DismissMission.MATH -> MathMission { onDismiss(StopReason.SUM) }
                 DismissMission.SINK_PHOTO -> SinkMission(onDismiss)
             }
@@ -209,7 +213,7 @@ private fun AlarmScreen(
                 OutlinedButton(
                     onClick = onSnooze,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
-                ) { Text("Snooze ${settings.snoozeMinutes} min") }
+                ) { Text(pluralStringResource(R.plurals.snooze_for, settings.snoozeMinutes, settings.snoozeMinutes)) }
             }
         }
     }
@@ -226,21 +230,25 @@ private fun MathMission(onDismiss: () -> Unit) {
     var answer by remember { mutableStateOf("") }
     var wrong by remember { mutableStateOf(false) }
 
-    Text("Solve to turn off the alarm", style = MaterialTheme.typography.bodyLarge)
+    Text(stringResource(R.string.sum_prompt), style = MaterialTheme.typography.bodyLarge)
     Spacer(Modifier.height(8.dp))
-    Text("${problem.question} = ?", style = MaterialTheme.typography.headlineLarge)
+    // A sum reads left to right in every language.
+    Text(
+        "${problem.question} = ?",
+        style = MaterialTheme.typography.headlineLarge.copy(textDirection = TextDirection.Ltr),
+    )
     Spacer(Modifier.height(8.dp))
     OutlinedTextField(
         value = answer,
         onValueChange = { v -> answer = v.filter { it.isDigit() }.take(4); wrong = false },
         singleLine = true,
         isError = wrong,
-        supportingText = { if (wrong) Text("Not quite, try this one") },
+        supportingText = { if (wrong) Text(stringResource(R.string.sum_wrong)) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = Modifier.fillMaxWidth(),
     )
     Spacer(Modifier.height(8.dp))
-    DismissButton("Turn off") {
+    DismissButton(stringResource(R.string.turn_off)) {
         if (answer.toIntOrNull() == problem.answer) {
             onDismiss()
         } else {
@@ -257,13 +265,17 @@ private fun SinkMission(onDismiss: (StopReason) -> Unit) {
     // If the detector can't run on this phone, a sum still stops the alarm.
     var unavailable by remember { mutableStateOf(false) }
     if (unavailable) {
-        Text("The sink detector couldn't start, so solve a sum instead.", color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+        Text(
+            stringResource(R.string.sink_detector_sum_instead),
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center,
+        )
         Spacer(Modifier.height(8.dp))
         MathMission { onDismiss(StopReason.SUM) }
         return
     }
     Text(
-        "Go to a sink and point the camera at it",
+        stringResource(R.string.sink_go),
         style = MaterialTheme.typography.titleMedium,
         textAlign = TextAlign.Center,
     )

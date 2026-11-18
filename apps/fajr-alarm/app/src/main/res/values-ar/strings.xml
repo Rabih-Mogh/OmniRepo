@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Arabic, shown when the phone's language is Arabic. Same names and order as values/strings.xml. -->
+<resources>
+    <string name="app_name">منبّه الفجر</string>
+
+    <!-- Notification channels, as listed in the phone's settings -->
+    <string name="channel_ringing_name">رنين المنبّه</string>
+    <string name="channel_ringing_description">يظهر أثناء رنين منبّه الفجر</string>
+    <string name="channel_status_name">حالة المنبّه</string>
+    <string name="channel_status_description">إشعارات الغفوة والمنبّهات الفائتة</string>
+
+    <!-- Notifications -->
+    <string name="alarm_title">حان وقت الفجر</string>
+    <string name="snoozed_until">غفوة حتى %1$s</string>
+    <string name="notification_snoozed_dismiss">اضغط لإيقاف المنبّه المؤجَّل</string>
+    <string name="notification_snoozed_mission">سيرنّ مجدداً حينها، ولا يوقفه إلا تنفيذ المهمة</string>
+    <string name="notification_allow_exact">اسمح بالمنبّهات الدقيقة من الإعدادات ليرنّ المنبّه كاملاً.</string>
+    <string name="snooze">غفوة</string>
+    <string name="dismiss">إيقاف</string>
+
+    <!-- When the alarm rings: %1$d minutes, %2$s is anchor_fajr or anchor_sunrise -->
+    <string name="anchor_fajr">الفجر</string>
+    <string name="anchor_sunrise">الشروق</string>
+    <string name="offset_at">عند %1$s</string>
+    <plurals name="offset_before">
+        <item quantity="zero">عند %2$s</item>
+        <item quantity="one">قبل %2$s بدقيقة واحدة</item>
+        <item quantity="two">قبل %2$s بدقيقتين</item>
+        <item quantity="few">قبل %2$s بـ %1$d دقائق</item>
+        <item quantity="many">قبل %2$s بـ %1$d دقيقة</item>
+        <item quantity="other">قبل %2$s بـ %1$d دقيقة</item>
+    </plurals>
+    <plurals name="offset_after">
+        <item quantity="zero">عند %2$s</item>
+        <item quantity="one">بعد %2$s بدقيقة واحدة</item>
+        <item quantity="two">بعد %2$s بدقيقتين</item>
+        <item quantity="few">بعد %2$s بـ %1$d دقائق</item>
+        <item quantity="many">بعد %2$s بـ %1$d دقيقة</item>
+        <item quantity="other">بعد %2$s بـ %1$d دقيقة</item>
+    </plurals>
+
+    <!-- Main screen: next alarm -->
+    <string name="next_alarm">المنبّه القادم</string>
+    <string name="alarm_off">المنبّه متوقف</string>
+    <string name="summary_set_location">حدّد موقعك لحساب وقت الفجر.</string>
+    <string name="summary_no_days">لم يتم اختيار أي يوم.</string>
+    <string name="summary_polar">لا يمكن تحديد وقت الفجر في هذا الموقع حالياً (نهار أو ليل قطبي).</string>
+    <string name="summary_turn_on">شغّله لتستيقظ لصلاة الفجر.</string>
+    <string name="today">اليوم</string>
+    <string name="tomorrow">غداً</string>
+    <string name="prayer_times_today">مواقيت اليوم</string>
+    <string name="prayer_times_tomorrow">مواقيت الغد</string>
+    <string name="prayer_times_date">مواقيت يوم %1$s</string>
+    <string name="toast_set_location_first">حدّد موقعك أولاً</string>
+
+    <!-- Main screen: last alarm. %1$s time it rang, %2$s date, %3$s time it stopped -->
+    <string name="section_last_alarm">آخر منبّه</string>
+    <string name="last_sink">رنّ الساعة %1$s بتاريخ %2$s وتوقّف عندما رأت الكاميرا مغسلة الساعة %3$s.</string>
+    <string name="last_sum">رنّ الساعة %1$s بتاريخ %2$s وأُوقف بحلّ المسألة الحسابية الساعة %3$s.</string>
+    <string name="last_button">رنّ الساعة %1$s بتاريخ %2$s وأُوقف بزر الإيقاف الساعة %3$s.</string>
+    <string name="last_notification">رنّ الساعة %1$s بتاريخ %2$s وأُوقف من الإشعار الساعة %3$s.</string>
+    <string name="last_snoozed">رنّ الساعة %1$s بتاريخ %2$s وأُجّل بغفوة الساعة %3$s.</string>
+    <string name="last_timed_out_snoozed">رنّ الساعة %1$s بتاريخ %2$s ولم يُجب عليه أحد، فأجّل نفسه بغفوة الساعة %3$s.</string>
+    <string name="last_timed_out">رنّ الساعة %1$s بتاريخ %2$s ولم يُجب عليه أحد، فتوقّف الساعة %3$s.</string>
+    <string name="last_stopped_by_android">رنّ الساعة %1$s بتاريخ %2$s وأوقفه نظام أندرويد، لا أنت، الساعة %3$s.</string>
+    <string name="last_exit_crash">رنّ الساعة %1$s بتاريخ %2$s وتوقّف لأن التطبيق تعطّل أثناء الرنين.</string>
+    <string name="last_exit_froze">رنّ الساعة %1$s بتاريخ %2$s وتوقّف لأن التطبيق توقّف عن الاستجابة فأغلقه أندرويد أثناء الرنين.</string>
+    <string name="last_exit_memory">رنّ الساعة %1$s بتاريخ %2$s وتوقّف لأن أندرويد أغلق التطبيق لتوفير الذاكرة أثناء الرنين.</string>
+    <string name="last_exit_force_stopped">رنّ الساعة %1$s بتاريخ %2$s وتوقّف لأن التطبيق أُوقف إجبارياً أثناء الرنين.</string>
+    <string name="last_unknown">رنّ الساعة %1$s بتاريخ %2$s. لا يوجد سجل لطريقة توقّفه، والأرجح أن أندرويد أغلق التطبيق أثناء الرنين.</string>
+    <string name="sink_proof_caption">ما اعتبرته الكاميرا مغسلة:</string>
+    <string name="sink_proof_description">صورة الكاميرا التي أوقفت المنبّه</string>
+
+    <!-- Main screen: Alarm -->
+    <string name="section_alarm">المنبّه</string>
+    <string name="ring_relative_to">يرنّ نسبةً إلى</string>
+    <string name="offset_earliest">قبله بساعتين</string>
+    <string name="offset_latest">بعده بساعة</string>
+    <string name="days">الأيام</string>
+
+    <!-- Main screen: Location -->
+    <string name="section_location">الموقع</string>
+    <string name="location_current">الموقع الحالي</string>
+    <string name="location_manual">إدخال يدوي</string>
+    <string name="location_saved">الموقع المحفوظ</string>
+    <!-- %1$s one of the three names above, %2$s the coordinates -->
+    <string name="location_value">%1$s: %2$s</string>
+    <string name="location_none">لم يُحدَّد موقع — وقت الفجر يعتمد على مكانك.</string>
+    <string name="locating">جارٍ تحديد الموقع…</string>
+    <string name="use_current_location">استخدم موقعي الحالي</string>
+    <string name="or_enter_coordinates">أو أدخل الإحداثيات</string>
+    <string name="latitude">خط العرض</string>
+    <string name="longitude">خط الطول</string>
+    <string name="save_coordinates">حفظ الإحداثيات</string>
+    <string name="toast_enter_coordinates">أدخل إحداثياتك يدوياً في الأسفل</string>
+    <string name="toast_location_failed">تعذّر تحديد الموقع. هل خدمة الموقع مفعّلة؟</string>
+
+    <!-- Main screen: Calculation -->
+    <string name="section_calculation">الحساب</string>
+    <string name="method">الطريقة</string>
+    <!-- %1$s a method name below, %2$.1f its Fajr angle -->
+    <string name="method_with_angle">%1$s (%2$.1f°)</string>
+    <string name="method_mwl">رابطة العالم الإسلامي</string>
+    <string name="method_isna">الجمعية الإسلامية لأمريكا الشمالية</string>
+    <string name="method_egyptian">الهيئة المصرية العامة للمساحة</string>
+    <string name="method_umm_al_qura">أم القرى، مكة المكرمة</string>
+    <string name="method_karachi">جامعة العلوم الإسلامية، كراتشي</string>
+    <string name="method_tehran">معهد الجيوفيزياء، طهران</string>
+    <string name="method_dubai">دبي</string>
+    <string name="method_gulf">منطقة الخليج</string>
+    <string name="method_kuwait">الكويت</string>
+    <string name="method_qatar">قطر</string>
+    <string name="method_singapore">سنغافورة (MUIS)</string>
+    <string name="method_turkey">رئاسة الشؤون الدينية، تركيا</string>
+    <string name="method_france">اتحاد المنظمات الإسلامية في فرنسا</string>
+    <string name="method_custom">زاوية مخصّصة</string>
+    <string name="fajr_angle">زاوية الفجر: %1$.1f°</string>
+    <string name="high_latitude_rule">قاعدة خطوط العرض العليا</string>
+    <string name="high_latitude_angle">حسب الزاوية (موصى بها)</string>
+    <string name="high_latitude_seventh">سُبع الليل</string>
+    <string name="high_latitude_middle">منتصف الليل</string>
+    <string name="high_latitude_none">بدون</string>
+    <string name="fajr_adjustment">تعديل وقت الفجر</string>
+    <string name="minutes_short">د</string>
+    <string name="fajr_adjustment_hint">استخدمه لمطابقة توقيت مسجدك المحلي.</string>
+
+    <!-- Main screen: Sound & wake-up -->
+    <string name="section_sound">الصوت والإيقاظ</string>
+    <string name="alarm_sound">صوت المنبّه</string>
+    <string name="sound_picker_title">صوت منبّه الفجر</string>
+    <string name="sound_default">المنبّه الافتراضي</string>
+    <string name="sound_custom">صوت مخصّص</string>
+    <string name="vibrate">الاهتزاز</string>
+    <string name="gentle_start">بداية هادئة (رفع الصوت تدريجياً)</string>
+    <string name="snooze_off">معطّلة</string>
+    <plurals name="minutes">
+        <item quantity="zero">%d دقيقة</item>
+        <item quantity="one">دقيقة واحدة</item>
+        <item quantity="two">دقيقتان</item>
+        <item quantity="few">%d دقائق</item>
+        <item quantity="many">%d دقيقة</item>
+        <item quantity="other">%d دقيقة</item>
+    </plurals>
+    <string name="max_snoozes">الحد الأقصى للغفوات</string>
+
+    <!-- Main screen: To turn the alarm off -->
+    <string name="section_turn_off">لإيقاف المنبّه</string>
+    <string name="mission">المهمة</string>
+    <string name="mission_none">بدون</string>
+    <string name="mission_none_summary">اضغط للإيقاف</string>
+    <string name="mission_sum">حلّ مسألة حسابية</string>
+    <string name="mission_sum_summary">حلّ مسألة حسابية سريعة لإيقافه</string>
+    <string name="mission_sink">ابحث عن مغسلة</string>
+    <string name="mission_sink_summary">انهض ووجّه الكاميرا نحو مغسلة لإيقافه</string>
+    <string name="sink_no_photos">أي مغسلة حقيقية تصلح، ولا حاجة لصور</string>
+    <string name="test_it">جرّبها</string>
+    <string name="camera_off_falls_back">إذن الكاميرا غير مفعّل. إلى أن يُفعَّل، سيطلب المنبّه حلّ مسألة حسابية بدلاً من المغسلة.</string>
+    <string name="snooze_off_tip">نصيحة: اضبط الغفوة على «معطّلة» ليكون العثور على مغسلة الطريقة الوحيدة لإيقاف المنبّه.</string>
+    <string name="test_alarm_now">جرّب المنبّه الآن</string>
+    <string name="close">إغلاق</string>
+
+    <!-- Warnings about phone settings that can stop the alarm -->
+    <string name="warning_notifications">الإشعارات متوقفة، لذا لا يمكن أن يظهر المنبّه.</string>
+    <string name="warning_exact_alarms">المنبّهات الدقيقة غير مسموح بها، وقد يرنّ المنبّه متأخراً.</string>
+    <string name="warning_full_screen">المنبّهات بملء الشاشة محظورة، وسيصلك إشعار فقط.</string>
+    <string name="warning_overlay">شاشة المنبّه لا تستطيع أن تفتح تلقائياً، وستضطر لفتح التطبيق بنفسك. اسمح بالظهور فوق التطبيقات الأخرى.</string>
+    <string name="warning_battery">تحسين البطارية مفعّل، وقد يوقف الهاتف المنبّه.</string>
+    <string name="samsung_tip">هواتف سامسونج قد توقف المنبّه في الخلفية. من الإعدادات ← البطارية والعناية بالجهاز ← البطارية ← حدود الاستخدام في الخلفية، أضف «منبّه الفجر» إلى التطبيقات التي لا تدخل في وضع السكون أبداً.</string>
+    <string name="allow">سماح</string>
+    <string name="fix">إصلاح</string>
+    <string name="app_settings">إعدادات التطبيق</string>
+    <string name="done">تم</string>
+
+    <!-- Alarm screen -->
+    <string name="prayer_better_than_sleep">الصلاة خير من النوم</string>
+    <string name="dismiss_im_up">استيقظت، أوقف المنبّه</string>
+    <plurals name="snooze_for">
+        <item quantity="zero">غفوة</item>
+        <item quantity="one">غفوة دقيقة واحدة</item>
+        <item quantity="two">غفوة دقيقتين</item>
+        <item quantity="few">غفوة %d دقائق</item>
+        <item quantity="many">غفوة %d دقيقة</item>
+        <item quantity="other">غفوة %d دقيقة</item>
+    </plurals>
+    <string name="camera_off_sum_instead">إذن الكاميرا غير مفعّل، لذا حلّ مسألة حسابية بدلاً من ذلك.</string>
+    <string name="sum_prompt">حلّ المسألة لإيقاف المنبّه</string>
+    <string name="sum_wrong">إجابة غير صحيحة، جرّب هذه</string>
+    <string name="turn_off">إيقاف</string>
+    <string name="sink_detector_sum_instead">تعذّر تشغيل كاشف المغسلة، لذا حلّ مسألة حسابية بدلاً من ذلك.</string>
+    <string name="sink_go">اذهب إلى مغسلة ووجّه الكاميرا نحوها</string>
+
+    <!-- Looking for a sink with the camera -->
+    <string name="sink_detector_failed">تعذّر تشغيل كاشف المغسلة على هذا الهاتف.</string>
+    <string name="sink_pick_up">احمل الهاتف وامشِ إلى مغسلة</string>
+    <string name="sink_looking">جارٍ البحث عن مغسلة…</string>
+    <string name="sink_too_dark">المكان مظلم جداً. أضئ النور.</string>
+    <string name="sink_on_screen">هذه المغسلة معروضة على شاشة. ابحث عن مغسلة حقيقية.</string>
+    <string name="sink_keep_in_view">تم العثور على مغسلة، أبقِها أمام الكاميرا…</string>
+    <string name="sink_found">تم العثور على مغسلة</string>
+    <string name="camera_unavailable">الكاميرا غير متاحة: %1$s</string>
+
+    <!-- Sink test screen -->
+    <string name="sink_test_title">اختبار كشف المغسلة</string>
+    <string name="sink_test_intro">عندما يرنّ المنبّه لن يتوقف إلا بعد أن ترى الكاميرا مغسلة حقيقية: أي مغسلة في الحمّام أو المطبخ تصلح، ولا حاجة لصور. جرّب ذلك هنا والنور مضاء، وقف حيث ترى الحوض والصنبور. لا يبدأ البحث إلا بعد حمل الهاتف، والمغسلة المعروضة على شاشة هاتف أو تلفاز لا تُحتسب.</string>
+    <string name="camera_needed">هذه المهمة تحتاج إلى إذن الكاميرا.</string>
+    <string name="allow_camera">السماح بالكاميرا</string>
+    <string name="sink_recognised">✓ تم التعرّف على المغسلة. كان المنبّه سيتوقف هنا.</string>
+    <string name="test_again">اختبر مجدداً</string>
+
+    <!-- Updates -->
+    <string name="update_available">الإصدار %1$s متاح (%2$d ميغابايت).</string>
+    <string name="update">تحديث</string>
+    <string name="update_downloading">جارٍ تنزيل التحديث… %1$d%%</string>
+    <string name="update_installing">جارٍ التثبيت… سيُغلق التطبيق عند الانتهاء. افتحه مجدداً بعد ذلك.</string>
+    <string name="try_again">حاول مجدداً</string>
+    <string name="version">الإصدار %1$s</string>
+    <string name="check_for_updates">البحث عن تحديثات</string>
+    <string name="update_checking">جارٍ البحث…</string>
+    <string name="update_latest">لديك أحدث إصدار.</string>
+    <string name="update_check_failed">تعذّر البحث عن تحديثات. هل الهاتف متصل بالإنترنت؟</string>
+    <string name="update_alarm_first">أوقف المنبّه أولاً، ثم حدّث.</string>
+    <string name="update_failed">فشل التحديث.</string>
+    <string name="update_download_failed">فشل التنزيل (HTTP %1$d).</string>
+    <string name="update_mismatch">الملف الذي تم تنزيله لا يطابق الإصدار المنشور. حاول مجدداً بعد بضع دقائق.</string>
+    <string name="update_prompt_failed">تعذّر على أندرويد عرض نافذة التثبيت. أبقِ التطبيق مفتوحاً وحاول مجدداً.</string>
+    <string name="update_cancelled">تم إلغاء التحديث.</string>
+    <string name="update_refused">رفض أندرويد التحديث: %1$s</string>
+    <string name="update_no_reason">لم يُذكر السبب</string>
+</resources>

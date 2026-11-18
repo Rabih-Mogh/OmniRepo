@@ -8,6 +8,7 @@ import android.content.pm.PackageInstaller
 import android.os.Build
 import androidx.core.content.IntentCompat
 import androidx.core.content.pm.PackageInfoCompat
+import app.fajralarm.R
 import app.fajralarm.alarm.AlarmService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -78,7 +79,7 @@ object AppUpdate {
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
-            if (quiet) State.Idle else State.Failed("Couldn't check for updates. Is the phone online?", null)
+            if (quiet) State.Idle else State.Failed(context.getString(R.string.update_check_failed), null)
         }
     }
 
@@ -86,7 +87,7 @@ object AppUpdate {
         if (_state.value is State.Downloading || _state.value == State.Installing) return
         // Android closes the app to replace it, which would silence a ringing alarm.
         if (AlarmService.ringing.value) {
-            _state.value = State.Failed("Turn the alarm off first, then update.", release)
+            _state.value = State.Failed(context.getString(R.string.update_alarm_first), release)
             return
         }
         val app = context.applicationContext
@@ -96,7 +97,7 @@ object AppUpdate {
             try {
                 withContext(Dispatchers.IO) { downloadAndCommit(app, release) }
             } catch (e: Exception) {
-                _state.value = State.Failed(e.message ?: "The update failed.", release)
+                _state.value = State.Failed(e.message ?: app.getString(R.string.update_failed), release)
             }
         }
     }
@@ -135,7 +136,7 @@ object AppUpdate {
             val digest = MessageDigest.getInstance("SHA-256")
             val conn = open(BASE + release.apk)
             try {
-                if (conn.responseCode != HttpURLConnection.HTTP_OK) error("Download failed (HTTP ${conn.responseCode}).")
+                if (conn.responseCode != HttpURLConnection.HTTP_OK) error(context.getString(R.string.update_download_failed, conn.responseCode))
                 conn.inputStream.use { input ->
                     session.openWrite("app.apk", 0, release.size).use { out ->
                         val buf = ByteArray(1 shl 16)
@@ -157,7 +158,7 @@ object AppUpdate {
             }
             if (digest.digest().joinToString("") { "%02x".format(it) } != release.sha256) {
                 // Usually a newer build was published between the check and the download.
-                error("The download didn't match the published version. Try again in a few minutes.")
+                error(context.getString(R.string.update_mismatch))
             }
             _state.value = State.Installing
             val flags = PendingIntent.FLAG_UPDATE_CURRENT or
@@ -193,14 +194,17 @@ class UpdateReceiver : BroadcastReceiver() {
                 val confirm = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_INTENT, Intent::class.java)
                 context.startActivity(confirm!!.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             } catch (_: Exception) {
-                AppUpdate.installFailed("Android couldn't show its install prompt. Keep the app open and try again.")
+                AppUpdate.installFailed(context.getString(R.string.update_prompt_failed))
             }
             // The app has been replaced and closed by now; there's nobody left to tell.
             PackageInstaller.STATUS_SUCCESS -> Unit
-            PackageInstaller.STATUS_FAILURE_ABORTED -> AppUpdate.installFailed("The update was cancelled.")
+            PackageInstaller.STATUS_FAILURE_ABORTED -> AppUpdate.installFailed(context.getString(R.string.update_cancelled))
             else -> AppUpdate.installFailed(
-                "Android refused the update: " +
-                    (intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "no reason given"),
+                context.getString(
+                    R.string.update_refused,
+                    intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
+                        ?: context.getString(R.string.update_no_reason),
+                ),
             )
         }
     }

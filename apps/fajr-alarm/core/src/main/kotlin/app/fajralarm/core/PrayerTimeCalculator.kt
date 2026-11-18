@@ -14,32 +14,32 @@ import kotlin.math.roundToLong
 import kotlin.math.sin
 
 /** Fajr twilight angles used by the common calculation authorities. */
-enum class CalculationMethod(val displayName: String, val fajrAngle: Double) {
-    MUSLIM_WORLD_LEAGUE("Muslim World League", 18.0),
-    ISNA("ISNA (North America)", 15.0),
-    EGYPTIAN("Egyptian General Authority", 19.5),
-    UMM_AL_QURA("Umm al-Qura, Makkah", 18.5),
-    KARACHI("Univ. of Islamic Sciences, Karachi", 18.0),
-    TEHRAN("Institute of Geophysics, Tehran", 17.7),
-    DUBAI("Dubai", 18.2),
-    GULF("Gulf Region", 19.5),
-    KUWAIT("Kuwait", 18.0),
-    QATAR("Qatar", 18.0),
-    SINGAPORE("Singapore (MUIS)", 20.0),
-    TURKEY("Diyanet, Turkey", 18.0),
-    FRANCE_UOIF("UOIF, France", 12.0),
-    CUSTOM("Custom angle", 18.0),
+enum class CalculationMethod(val fajrAngle: Double) {
+    MUSLIM_WORLD_LEAGUE(18.0),
+    ISNA(15.0),
+    EGYPTIAN(19.5),
+    UMM_AL_QURA(18.5),
+    KARACHI(18.0),
+    TEHRAN(17.7),
+    DUBAI(18.2),
+    GULF(19.5),
+    KUWAIT(18.0),
+    QATAR(18.0),
+    SINGAPORE(20.0),
+    TURKEY(18.0),
+    FRANCE_UOIF(12.0),
+    CUSTOM(18.0),
 }
 
 /**
  * How to place Fajr when the sun never gets deep enough below the horizon
  * (summer at high latitudes) or when the night is very short.
  */
-enum class HighLatitudeRule(val displayName: String) {
-    ANGLE_BASED("Angle-based (recommended)"),
-    ONE_SEVENTH("One-seventh of the night"),
-    MIDDLE_OF_NIGHT("Middle of the night"),
-    NONE("None"),
+enum class HighLatitudeRule {
+    ANGLE_BASED,
+    ONE_SEVENTH,
+    MIDDLE_OF_NIGHT,
+    NONE,
 }
 
 data class PrayerCalcParams(

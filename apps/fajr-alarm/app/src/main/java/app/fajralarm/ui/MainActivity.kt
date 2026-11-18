@@ -74,6 +74,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -84,6 +86,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import app.fajralarm.R
 import app.fajralarm.alarm.AlarmScheduler
 import app.fajralarm.alarm.AlarmService
 import app.fajralarm.core.AlarmAnchor
@@ -93,6 +96,7 @@ import app.fajralarm.core.CalculationMethod
 import app.fajralarm.core.DismissMission
 import app.fajralarm.core.HighLatitudeRule
 import app.fajralarm.core.PrayerTimeCalculator
+import app.fajralarm.core.parseCoordinate
 import app.fajralarm.data.LocationHelper
 import app.fajralarm.data.SettingsStore
 import app.fajralarm.data.SinkProof
@@ -103,6 +107,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.time.format.DecimalStyle
 import java.time.format.TextStyle
 import java.util.Date
 import java.util.Locale
@@ -152,11 +157,11 @@ private fun SettingsScreen() {
             fetchLocation(context) { lat, lng ->
                 locating = false
                 if (lat != null && lng != null) {
-                    update(settings.copy(latitude = lat, longitude = lng, locationLabel = "Current location"))
+                    update(settings.copy(latitude = lat, longitude = lng, locationLabel = LOCATION_CURRENT))
                 }
             }
         } else {
-            Toast.makeText(context, "Enter your coordinates manually below", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, R.string.toast_enter_coordinates, Toast.LENGTH_LONG).show()
         }
     }
     val soundPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -174,7 +179,7 @@ private fun SettingsScreen() {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            "Fajr Alarm",
+            stringResource(R.string.app_name),
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 4.dp),
         )
@@ -190,7 +195,7 @@ private fun SettingsScreen() {
 
         SummaryCard(context, settings, resumeTick) { on ->
             if (on && !settings.hasLocation) {
-                Toast.makeText(context, "Set your location first", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, R.string.toast_set_location_first, Toast.LENGTH_SHORT).show()
             }
             if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 !NotificationManagerCompat.from(context).areNotificationsEnabled()
@@ -202,8 +207,8 @@ private fun SettingsScreen() {
 
         LastAlarmCard(context, resumeTick)
 
-        Section("Alarm") {
-            Text("Ring relative to", style = MaterialTheme.typography.labelLarge)
+        Section(stringResource(R.string.section_alarm)) {
+            Text(stringResource(R.string.ring_relative_to), style = MaterialTheme.typography.labelLarge)
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 val anchors = AlarmAnchor.values()
                 anchors.forEachIndexed { i, a ->
@@ -211,12 +216,12 @@ private fun SettingsScreen() {
                         selected = settings.anchor == a,
                         onClick = { update(settings.copy(anchor = a)) },
                         shape = SegmentedButtonDefaults.itemShape(i, anchors.size),
-                    ) { Text(a.displayName) }
+                    ) { Text(stringResource(a.label)) }
                 }
             }
 
             Text(
-                settings.describeOffset(),
+                settings.describeOffset(context),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 8.dp),
@@ -231,21 +236,32 @@ private fun SettingsScreen() {
                 valueRange = -120f..60f,
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("2 h before", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("1 h after", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(R.string.offset_earliest),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    stringResource(R.string.offset_latest),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
-            Text("Days", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+            Text(stringResource(R.string.days), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
             DayPicker(settings.days) { update(settings.copy(days = it)) }
         }
 
-        Section("Location") {
+        Section(stringResource(R.string.section_location)) {
             Text(
                 if (settings.hasLocation) {
-                    "${settings.locationLabel.ifBlank { "Saved location" }}: " +
-                        "%.4f, %.4f".format(Locale.US, settings.latitude, settings.longitude)
+                    stringResource(
+                        R.string.location_value,
+                        settings.locationName(context),
+                        "%.4f, %.4f".format(Locale.US, settings.latitude, settings.longitude).leftToRight(),
+                    )
                 } else {
-                    "No location set — Fajr time depends on where you are."
+                    stringResource(R.string.location_none)
                 },
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -259,7 +275,7 @@ private fun SettingsScreen() {
                         fetchLocation(context) { lat, lng ->
                             locating = false
                             if (lat != null && lng != null) {
-                                update(settings.copy(latitude = lat, longitude = lng, locationLabel = "Current location"))
+                                update(settings.copy(latitude = lat, longitude = lng, locationLabel = LOCATION_CURRENT))
                             }
                         }
                     } else {
@@ -269,24 +285,30 @@ private fun SettingsScreen() {
             ) {
                 Icon(Icons.Rounded.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(if (locating) "Locating…" else "Use my current location")
+                Text(stringResource(if (locating) R.string.locating else R.string.use_current_location))
             }
 
             ManualLocation(settings) { lat, lng ->
-                update(settings.copy(latitude = lat, longitude = lng, locationLabel = "Manual"))
+                update(settings.copy(latitude = lat, longitude = lng, locationLabel = LOCATION_MANUAL))
             }
         }
 
-        Section("Calculation") {
+        Section(stringResource(R.string.section_calculation)) {
             ChoiceRow(
-                title = "Method",
+                title = stringResource(R.string.method),
                 current = settings.method,
                 options = CalculationMethod.values().toList(),
-                label = { m -> if (m == CalculationMethod.CUSTOM) m.displayName else "${m.displayName} (${m.fajrAngle}°)" },
+                label = { m ->
+                    if (m == CalculationMethod.CUSTOM) {
+                        stringResource(m.label)
+                    } else {
+                        stringResource(R.string.method_with_angle, stringResource(m.label), m.fajrAngle)
+                    }
+                },
             ) { update(settings.copy(method = it)) }
 
             if (settings.method == CalculationMethod.CUSTOM) {
-                Text("Fajr angle: %.1f°".format(settings.customFajrAngle), style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.fajr_angle, settings.customFajrAngle), style = MaterialTheme.typography.bodyMedium)
                 Slider(
                     value = settings.customFajrAngle.toFloat(),
                     onValueChange = { settings = settings.copy(customFajrAngle = (it * 2).roundToInt() / 2.0) },
@@ -296,26 +318,27 @@ private fun SettingsScreen() {
             }
 
             ChoiceRow(
-                title = "High-latitude rule",
+                title = stringResource(R.string.high_latitude_rule),
                 current = settings.highLatitudeRule,
                 options = HighLatitudeRule.values().toList(),
-                label = { it.displayName },
+                label = { stringResource(it.label) },
             ) { update(settings.copy(highLatitudeRule = it)) }
 
             Stepper(
-                title = "Fajr adjustment",
+                title = stringResource(R.string.fajr_adjustment),
                 value = settings.fajrAdjustMinutes,
-                suffix = "min",
+                suffix = stringResource(R.string.minutes_short),
                 range = -30..30,
             ) { update(settings.copy(fajrAdjustMinutes = it)) }
             Text(
-                "Use this to match your local mosque's timetable.",
+                stringResource(R.string.fajr_adjustment_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        Section("Sound & wake-up") {
+        Section(stringResource(R.string.section_sound)) {
+            val pickerTitle = stringResource(R.string.sound_picker_title)
             val soundName = remember(settings.soundUri) { soundTitle(context, settings.soundUri) }
             Row(
                 Modifier
@@ -325,7 +348,7 @@ private fun SettingsScreen() {
                             .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
                             .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
                             .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
-                            .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Fajr alarm sound")
+                            .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, pickerTitle)
                             .putExtra(
                                 RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
                                 settings.soundUri?.let(Uri::parse)
@@ -336,30 +359,30 @@ private fun SettingsScreen() {
                     .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text("Alarm sound", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.alarm_sound), style = MaterialTheme.typography.bodyLarge)
                 ValueWithChevron(soundName)
             }
-            SwitchRow("Vibrate", settings.vibrate) { update(settings.copy(vibrate = it)) }
-            SwitchRow("Gentle start (fade in volume)", settings.gradualVolume) { update(settings.copy(gradualVolume = it)) }
+            SwitchRow(stringResource(R.string.vibrate), settings.vibrate) { update(settings.copy(vibrate = it)) }
+            SwitchRow(stringResource(R.string.gentle_start), settings.gradualVolume) { update(settings.copy(gradualVolume = it)) }
 
             ChoiceRow(
-                title = "Snooze",
+                title = stringResource(R.string.snooze),
                 current = settings.snoozeMinutes,
                 options = listOf(0, 3, 5, 10, 15),
-                label = { if (it == 0) "Off" else "$it minutes" },
+                label = { if (it == 0) stringResource(R.string.snooze_off) else pluralStringResource(R.plurals.minutes, it, it) },
             ) { update(settings.copy(snoozeMinutes = it)) }
             if (settings.snoozeMinutes > 0) {
-                Stepper("Max snoozes", settings.maxSnoozes, "", 1..10) { update(settings.copy(maxSnoozes = it)) }
+                Stepper(stringResource(R.string.max_snoozes), settings.maxSnoozes, "", 1..10) { update(settings.copy(maxSnoozes = it)) }
             }
 
         }
 
-        Section("To turn the alarm off") {
+        Section(stringResource(R.string.section_turn_off)) {
             ChoiceRow(
-                title = "Mission",
+                title = stringResource(R.string.mission),
                 current = settings.dismissMission,
                 options = DismissMission.values().toList(),
-                label = { it.displayName },
+                label = { stringResource(it.label) },
             ) { mission ->
                 update(settings.copy(dismissMission = mission))
                 // The test screen asks for the camera, which the mission can't work without.
@@ -370,7 +393,7 @@ private fun SettingsScreen() {
                 }
             }
             Text(
-                settings.dismissMission.description,
+                stringResource(settings.dismissMission.summary),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -380,21 +403,21 @@ private fun SettingsScreen() {
                     ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
                 }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Any real sink works, no photos needed", Modifier.weight(1f))
+                    Text(stringResource(R.string.sink_no_photos), Modifier.weight(1f))
                     TextButton(onClick = { context.startActivity(Intent(context, SinkSetupActivity::class.java)) }) {
-                        Text("Test it")
+                        Text(stringResource(R.string.test_it))
                     }
                 }
                 if (!cameraOk) {
                     Text(
-                        "Camera permission is off. Until it's on, the alarm falls back to a sum.",
+                        stringResource(R.string.camera_off_falls_back),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
                 if (settings.snoozeMinutes > 0) {
                     Text(
-                        "Tip: set Snooze to Off so finding a sink is the only way to stop the alarm.",
+                        stringResource(R.string.snooze_off_tip),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -416,7 +439,7 @@ private fun SettingsScreen() {
         ) {
             Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Test the alarm now")
+            Text(stringResource(R.string.test_alarm_now))
         }
 
         VersionFooter()
@@ -427,7 +450,7 @@ private fun SettingsScreen() {
 private fun fetchLocation(context: Context, done: (Double?, Double?) -> Unit) {
     LocationHelper.requestOnce(context) { loc ->
         if (loc == null) {
-            Toast.makeText(context, "Couldn't get a location. Is location turned on?", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, R.string.toast_location_failed, Toast.LENGTH_LONG).show()
             done(null, null)
         } else {
             done(loc.latitude, loc.longitude)
@@ -447,7 +470,12 @@ private fun SummaryCard(context: Context, settings: AlarmSettings, tick: Int, on
     val snoozeUntil = remember(tick) { SettingsStore(context).snoozeUntil }
     val timeFmt = remember { android.text.format.DateFormat.getTimeFormat(context) }
     fun fmt(t: ZonedDateTime?) = t?.let { timeFmt.format(Date.from(it.toInstant())) } ?: "—"
-    val dayFmt = remember { DateTimeFormatter.ofPattern("EEEE d MMM", Locale.getDefault()) }
+    val dayFmt = remember {
+        // The phone's own digits, to match the times beside it.
+        val locale = Locale.getDefault()
+        DateTimeFormatter.ofPattern("EEEE d MMM", locale).withDecimalStyle(DecimalStyle.of(locale))
+    }
+    val today = now.toLocalDate()
     val onHero = Silhouette
 
     Box(
@@ -459,7 +487,7 @@ private fun SummaryCard(context: Context, settings: AlarmSettings, tick: Int, on
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    if (settings.enabled) "NEXT ALARM" else "ALARM OFF",
+                    stringResource(if (settings.enabled) R.string.next_alarm else R.string.alarm_off),
                     style = MaterialTheme.typography.labelMedium,
                     color = onHero.copy(alpha = 0.75f),
                     modifier = Modifier.weight(1f),
@@ -475,27 +503,47 @@ private fun SummaryCard(context: Context, settings: AlarmSettings, tick: Int, on
                 )
             }
             when {
-                !settings.hasLocation -> Text("Set your location to calculate Fajr.", style = MaterialTheme.typography.titleLarge, color = onHero)
+                !settings.hasLocation -> Text(
+                    stringResource(R.string.summary_set_location),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = onHero,
+                )
                 planned != null -> {
                     Text(fmt(planned.triggerAt), style = MaterialTheme.typography.displayLarge, color = onHero)
-                    Text(relativeDay(planned.triggerAt, now, dayFmt), style = MaterialTheme.typography.titleMedium, color = onHero.copy(alpha = 0.85f))
+                    Text(
+                        when (planned.triggerAt.toLocalDate()) {
+                            today -> stringResource(R.string.today)
+                            today.plusDays(1) -> stringResource(R.string.tomorrow)
+                            else -> planned.triggerAt.format(dayFmt)
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        color = onHero.copy(alpha = 0.85f),
+                    )
                 }
-                settings.enabled && settings.days.isEmpty() -> Text("No days selected.", style = MaterialTheme.typography.titleLarge, color = onHero)
+                settings.enabled && settings.days.isEmpty() -> Text(
+                    stringResource(R.string.summary_no_days),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = onHero,
+                )
                 settings.enabled -> Text(
-                    "Fajr can't be determined at this location right now (polar day/night).",
+                    stringResource(R.string.summary_polar),
                     style = MaterialTheme.typography.titleMedium,
                     color = onHero,
                 )
-                else -> Text("Turn it on to wake for Fajr.", style = MaterialTheme.typography.titleLarge, color = onHero)
+                else -> Text(stringResource(R.string.summary_turn_on), style = MaterialTheme.typography.titleLarge, color = onHero)
             }
             if (times != null) {
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TimePill("Fajr", fmt(times.fajr), Modifier.weight(1f))
-                    TimePill("Sunrise", fmt(times.sunrise), Modifier.weight(1f))
+                    TimePill(stringResource(R.string.anchor_fajr), fmt(times.fajr), Modifier.weight(1f))
+                    TimePill(stringResource(R.string.anchor_sunrise), fmt(times.sunrise), Modifier.weight(1f))
                 }
                 Text(
-                    "Prayer times for ${relativeDay(times.date.atStartOfDay(zone), now, dayFmt).lowercase(Locale.getDefault())}",
+                    when (times.date) {
+                        today -> stringResource(R.string.prayer_times_today)
+                        today.plusDays(1) -> stringResource(R.string.prayer_times_tomorrow)
+                        else -> stringResource(R.string.prayer_times_date, times.date.format(dayFmt))
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = onHero.copy(alpha = 0.7f),
                     modifier = Modifier.padding(top = 4.dp),
@@ -503,7 +551,7 @@ private fun SummaryCard(context: Context, settings: AlarmSettings, tick: Int, on
             }
             if (snoozeUntil > System.currentTimeMillis()) {
                 Text(
-                    "Snoozed until ${timeFmt.format(Date(snoozeUntil))}",
+                    stringResource(R.string.snoozed_until, timeFmt.format(Date(snoozeUntil))),
                     style = MaterialTheme.typography.bodyMedium,
                     color = onHero,
                 )
@@ -524,27 +572,28 @@ private fun LastAlarmCard(context: Context, tick: Int) {
     }
     val timeFmt = remember { android.text.format.DateFormat.getTimeFormat(context) }
     val dateFmt = remember { android.text.format.DateFormat.getMediumDateFormat(context) }
-    val rang = "Rang at ${timeFmt.format(Date(last.rangAt))} on ${dateFmt.format(Date(last.rangAt))}"
-    Section("Last alarm") {
+    val rangAt = timeFmt.format(Date(last.rangAt))
+    val rangOn = dateFmt.format(Date(last.rangAt))
+    Section(stringResource(R.string.section_last_alarm)) {
         Text(
             when {
                 last.reason != null && last.stoppedAt > 0 ->
-                    "$rang and ${last.reason.description} at ${timeFmt.format(Date(last.stoppedAt))}."
+                    stringResource(last.reason.sentence, rangAt, rangOn, timeFmt.format(Date(last.stoppedAt)))
                 // The app was closed while ringing without getting the chance to note why.
-                exit != null -> "$rang and stopped because $exit while it rang."
-                else -> "$rang. There's no record of how it stopped, so Android most likely closed the app while it rang."
+                exit != null -> stringResource(exit, rangAt, rangOn)
+                else -> stringResource(R.string.last_unknown, rangAt, rangOn)
             },
             style = MaterialTheme.typography.bodyMedium,
         )
         proof?.let {
             Text(
-                "What the camera took for a sink:",
+                stringResource(R.string.sink_proof_caption),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Image(
                 it,
-                contentDescription = "Camera frame that turned the alarm off",
+                contentDescription = stringResource(R.string.sink_proof_description),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -565,16 +614,6 @@ private fun TimePill(label: String, value: String, modifier: Modifier = Modifier
     ) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = Silhouette.copy(alpha = 0.75f))
         Text(value, style = MaterialTheme.typography.titleLarge, color = Silhouette)
-    }
-}
-
-private fun relativeDay(t: ZonedDateTime, now: ZonedDateTime, fmt: DateTimeFormatter): String {
-    val d = t.toLocalDate()
-    val today = now.toLocalDate()
-    return when (d) {
-        today -> "Today"
-        today.plusDays(1) -> "Tomorrow"
-        else -> t.format(fmt)
     }
 }
 
@@ -664,7 +703,7 @@ private fun <T> ChoiceRow(
     title: String,
     current: T,
     options: List<T>,
-    label: (T) -> String,
+    label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
@@ -702,7 +741,7 @@ private fun <T> ChoiceRow(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { open = false }) { Text("Close") } },
+            confirmButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.close)) } },
         )
     }
 }
@@ -712,8 +751,10 @@ private fun Stepper(title: String, value: Int, suffix: String, range: IntRange, 
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
         FilledTonalIconButton(onClick = { onChange((value - 1).coerceIn(range)) }, enabled = value > range.first) { Text("−") }
+        // The phone's own digits, with a "+" on values above zero when the range also goes below it.
+        val number = String.format(Locale.getDefault(), if (value > 0 && range.first < 0) "%+d" else "%d", value)
         Text(
-            (if (value > 0 && range.first < 0) "+$value" else "$value") + if (suffix.isNotEmpty()) " $suffix" else "",
+            number.leftToRight() + if (suffix.isNotEmpty()) " $suffix" else "",
             Modifier.width(72.dp),
             style = MaterialTheme.typography.titleMedium,
             textAlign = TextAlign.Center,
@@ -726,29 +767,30 @@ private fun Stepper(title: String, value: Int, suffix: String, range: IntRange, 
 private fun ManualLocation(settings: AlarmSettings, onSave: (Double, Double) -> Unit) {
     var lat by remember(settings.latitude) { mutableStateOf(settings.latitude?.toString() ?: "") }
     var lng by remember(settings.longitude) { mutableStateOf(settings.longitude?.toString() ?: "") }
-    val latVal = lat.trim().replace(',', '.').toDoubleOrNull()
-    val lngVal = lng.trim().replace(',', '.').toDoubleOrNull()
+    val latVal = parseCoordinate(lat)
+    val lngVal = parseCoordinate(lng)
     val valid = latVal != null && lngVal != null && latVal in -90.0..90.0 && lngVal in -180.0..180.0
 
-    Text("Or enter coordinates", style = MaterialTheme.typography.labelLarge)
+    Text(stringResource(R.string.or_enter_coordinates), style = MaterialTheme.typography.labelLarge)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(
-            value = lat, onValueChange = { lat = it }, label = { Text("Latitude") }, singleLine = true,
+            value = lat, onValueChange = { lat = it }, label = { Text(stringResource(R.string.latitude)) }, singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             modifier = Modifier.weight(1f),
         )
         OutlinedTextField(
-            value = lng, onValueChange = { lng = it }, label = { Text("Longitude") }, singleLine = true,
+            value = lng, onValueChange = { lng = it }, label = { Text(stringResource(R.string.longitude)) }, singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             modifier = Modifier.weight(1f),
         )
     }
-    TextButton(enabled = valid, onClick = { onSave(latVal!!, lngVal!!) }) { Text("Save coordinates") }
+    TextButton(enabled = valid, onClick = { onSave(latVal!!, lngVal!!) }) { Text(stringResource(R.string.save_coordinates)) }
 }
 
 private fun soundTitle(context: Context, uri: String?): String =
     if (uri == null) {
-        "Default alarm"
+        context.getString(R.string.sound_default)
     } else {
-        runCatching { RingtoneManager.getRingtone(context, Uri.parse(uri))?.getTitle(context) }.getOrNull() ?: "Custom sound"
+        runCatching { RingtoneManager.getRingtone(context, Uri.parse(uri))?.getTitle(context) }.getOrNull()
+            ?: context.getString(R.string.sound_custom)
     }

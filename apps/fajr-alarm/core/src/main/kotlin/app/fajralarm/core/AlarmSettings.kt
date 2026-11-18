@@ -2,18 +2,18 @@ package app.fajralarm.core
 
 import java.time.DayOfWeek
 
-/** What you have to do before the alarm will turn off. */
-enum class DismissMission(val displayName: String, val description: String) {
-    NONE("None", "Tap to dismiss"),
-    MATH("Solve a sum", "Solve a quick sum to turn it off"),
+/** What you have to do before the alarm will turn off. The app holds the names it shows. */
+enum class DismissMission {
+    NONE,
+    MATH,
     // Stored by name, so it keeps its old name even though no photo is taken any more.
-    SINK_PHOTO("Find a sink", "Get up and point the camera at a sink to turn it off"),
+    SINK_PHOTO,
 }
 
 /** What the alarm time is measured from. */
-enum class AlarmAnchor(val displayName: String) {
-    FAJR("Fajr"),
-    SUNRISE("Sunrise"),
+enum class AlarmAnchor {
+    FAJR,
+    SUNRISE,
 }
 
 data class AlarmSettings(
@@ -48,15 +48,5 @@ data class AlarmSettings(
         val lat = latitude ?: return null
         val lng = longitude ?: return null
         return PrayerCalcParams(lat, lng, fajrAngle, highLatitudeRule, fajrAdjustMinutes)
-    }
-
-    /** e.g. "15 min before Fajr", "At sunrise". */
-    fun describeOffset(): String {
-        val name = anchor.displayName
-        return when {
-            offsetMinutes == 0 -> "At $name"
-            offsetMinutes < 0 -> "${-offsetMinutes} min before $name"
-            else -> "$offsetMinutes min after $name"
-        }
     }
 }

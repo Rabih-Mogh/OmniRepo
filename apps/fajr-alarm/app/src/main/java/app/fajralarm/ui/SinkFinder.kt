@@ -22,9 +22,11 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import app.fajralarm.R
 import app.fajralarm.core.PickupDetector
 import app.fajralarm.core.SinkStatus
 import app.fajralarm.core.SinkVerifier
@@ -45,7 +47,11 @@ fun SinkFinder(onConfirmed: (Bitmap) -> Unit, onUnavailable: () -> Unit = {}) {
     DisposableEffect(detector) { onDispose { detector?.close() } }
     if (detector == null) {
         LaunchedEffect(Unit) { onUnavailable() }
-        Text("The sink detector couldn't start on this phone.", color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+        Text(
+            stringResource(R.string.sink_detector_failed),
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center,
+        )
         return
     }
 
@@ -83,14 +89,16 @@ fun SinkFinder(onConfirmed: (Bitmap) -> Unit, onUnavailable: () -> Unit = {}) {
     })
     Spacer(Modifier.height(8.dp))
     Text(
-        when (val s = status) {
-            SinkStatus.Resting -> "Pick up the phone and walk to a sink"
-            SinkStatus.Searching -> "Looking for a sink…"
-            SinkStatus.Dark -> "Too dark. Turn the light on."
-            SinkStatus.OnScreen -> "That sink is on a screen. Find a real one."
-            is SinkStatus.Holding -> if (s.progress > 0f) "Sink found, keep it in view…" else "Looking for a sink…"
-            SinkStatus.Confirmed -> "Sink found"
-        },
+        stringResource(
+            when (val s = status) {
+                SinkStatus.Resting -> R.string.sink_pick_up
+                SinkStatus.Searching -> R.string.sink_looking
+                SinkStatus.Dark -> R.string.sink_too_dark
+                SinkStatus.OnScreen -> R.string.sink_on_screen
+                is SinkStatus.Holding -> if (s.progress > 0f) R.string.sink_keep_in_view else R.string.sink_looking
+                SinkStatus.Confirmed -> R.string.sink_found
+            },
+        ),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center,
     )

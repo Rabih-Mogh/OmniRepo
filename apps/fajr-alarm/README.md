@@ -27,6 +27,7 @@ alarm follows the prayer time as it moves through the year.
 - **Auto-stop**: after 10 minutes normally, or 60 minutes with the sink mission, so a phone left at home doesn't ring all day. When it auto-stops it snoozes if snoozes are left, otherwise it stops.
 - **Last alarm**: the main screen shows when the alarm last rang and how it stopped (sink, sum, snooze, ringing out, or Android closing the app). On Android 11 and later it also says whether the app crashed, froze or was force-stopped.
 - **"Test the alarm now"** button.
+- **English and Arabic**: the app follows the phone's language. See [Languages](#languages).
 - **Updates itself** from this repo. See [Updates](#updates).
 
 ## Sink mission
@@ -62,6 +63,7 @@ Requirements: Android Studio (Ladybug or newer) or the Android SDK with platform
 ```bash
 cd apps/fajr-alarm
 ./gradlew :core:test          # prayer-time unit tests (no Android SDK needed)
+./gradlew :app:testDebugUnitTest  # opens the screens in Arabic and English, pictures in app/build/screens
 ./gradlew :app:assembleDebug  # → app/build/outputs/apk/debug/app-debug.apk
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
@@ -70,6 +72,19 @@ The APKs are built for 64-bit ARM phones only (`arm64-v8a`), which keeps the det
 to one copy. Remove the `abiFilters` line in `app/build.gradle.kts` to build for every phone.
 
 Or open `apps/fajr-alarm/` in Android Studio and press Run. Min Android version: 8.0 (API 26).
+
+## Languages
+
+The app shows Arabic when the phone's language is Arabic and English otherwise. There is no
+language setting in the app: change the phone's language, or on Android 13 and later set
+the app's own language under the phone's **Settings → Apps → Fajr Alarm → Language**.
+
+- In Arabic the screens run right to left, and times, dates and numbers use the digits
+  the phone uses for its region (٤:٣٣ in most Arab countries, 4:33 in others).
+  Coordinates and the sum stay in 0-9 digits, left to right.
+- All text is in `app/src/main/res/values/strings.xml` (English) and
+  `values-ar/strings.xml` (Arabic). To add a language, copy the English file into
+  `values-<language code>/` and translate it.
 
 ## Updates
 

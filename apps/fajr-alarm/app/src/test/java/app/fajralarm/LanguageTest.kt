@@ -1,0 +1,139 @@
+package app.fajralarm
+
+import android.app.Activity
+import android.content.Context
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.test.core.app.ActivityScenario
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import app.fajralarm.core.AlarmSettings
+import app.fajralarm.core.DismissMission
+import app.fajralarm.data.SettingsStore
+import app.fajralarm.data.StopReason
+import app.fajralarm.ui.AlarmActivity
+import app.fajralarm.ui.MainActivity
+import app.fajralarm.ui.SinkSetupActivity
+import com.github.takahirom.roborazzi.captureScreenRoboImage
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+
+/**
+ * Opens the real screens on the JVM with the phone's language set to Arabic and to
+ * English, checks each shows that language and lays out from the matching side, and
+ * saves a picture of each screen to app/build/screens.
+ */
+@RunWith(AndroidJUnit4::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+class LanguageTest {
+    @get:Rule
+    val compose = createEmptyComposeRule()
+
+    private val context: Context get() = ApplicationProvider.getApplicationContext()
+
+    /** A set-up alarm that has rung once, so every part of the main screen has something to show. */
+    @Before
+    fun setUp() {
+        val store = SettingsStore(context)
+        store.save(
+            AlarmSettings(
+                offsetMinutes = -15,
+                fajrAdjustMinutes = 2,
+                latitude = 33.8938,
+                longitude = 35.5018,
+                locationLabel = "Current location",
+                dismissMission = DismissMission.MATH,
+            ),
+        )
+        val rang = System.currentTimeMillis() - 3 * 60 * 60 * 1000
+        store.recordRinging(rang)
+        store.recordStop(StopReason.SUM, rang + 4 * 60 * 1000)
+    }
+
+    @Test
+    @Config(qualifiers = "ar-rLB-w411dp-h3200dp-420dpi")
+    fun mainScreenInArabic() {
+        open<MainActivity>("ar-main") {
+            compose.onNodeWithText("منبّه الفجر").assertIsDisplayed()
+            compose.onNodeWithText("المنبّه القادم").assertIsDisplayed()
+            compose.onNodeWithText("قبل الفجر بـ", substring = true).assertIsDisplayed()
+            compose.onNodeWithText("الموقع الحالي", substring = true).assertIsDisplayed()
+            compose.onNodeWithText("وأُوقف بحلّ المسألة الحسابية", substring = true).assertIsDisplayed()
+            compose.onNodeWithText("جرّب المنبّه الآن").assertIsDisplayed()
+            assertTrue("the title starts from the right", startsFromTheRight("منبّه الفجر"))
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h3200dp-420dpi")
+    fun mainScreenInEnglish() {
+        open<MainActivity>("en-main") {
+            compose.onNodeWithText("Fajr Alarm").assertIsDisplayed()
+            compose.onNodeWithText("NEXT ALARM").assertIsDisplayed()
+            compose.onNodeWithText("15 min before Fajr").assertIsDisplayed()
+            compose.onNodeWithText("Current location: 33.8938, 35.5018").assertIsDisplayed()
+            compose.onNodeWithText("and turned off by solving the sum at", substring = true).assertIsDisplayed()
+            compose.onNodeWithText("+2 min").assertIsDisplayed()
+            compose.onNodeWithText("Test the alarm now").assertIsDisplayed()
+            assertTrue("the title starts from the left", !startsFromTheRight("Fajr Alarm"))
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "ar-rLB-w411dp-h891dp-420dpi")
+    fun methodListInArabic() {
+        open<MainActivity>("ar-methods") {
+            compose.onNodeWithText("الطريقة").performScrollTo().performClick()
+            compose.onNodeWithText("أم القرى، مكة المكرمة", substring = true).assertIsDisplayed()
+            compose.onNodeWithText("إغلاق").assertIsDisplayed()
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "ar-rLB-w411dp-h891dp-420dpi")
+    fun alarmScreenInArabic() {
+        // Nothing is ringing here, and the alarm screen closes itself when it notices.
+        compose.mainClock.autoAdvance = false
+        open<AlarmActivity>("ar-alarm") {
+            compose.onNodeWithText("حان وقت الفجر").assertIsDisplayed()
+            compose.onNodeWithText("الصلاة خير من النوم").assertIsDisplayed()
+            compose.onNodeWithText("حلّ المسألة لإيقاف المنبّه").assertIsDisplayed()
+            // Five takes the plural used for three to ten; the digit is the phone's own.
+            compose.onNodeWithText("دقائق", substring = true).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "ar-rLB-w411dp-h891dp-420dpi")
+    fun sinkTestScreenInArabic() {
+        open<SinkSetupActivity>("ar-sink-test") {
+            compose.onNodeWithText("اختبار كشف المغسلة").assertIsDisplayed()
+            compose.onAllNodesWithText("تم").onFirst().assertIsDisplayed()
+        }
+    }
+
+    private inline fun <reified A : Activity> open(picture: String, check: () -> Unit) {
+        ActivityScenario.launch(A::class.java).use {
+            compose.waitForIdle()
+            check()
+            captureScreenRoboImage("build/screens/$picture.png")
+        }
+    }
+
+    private fun startsFromTheRight(text: String): Boolean {
+        val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        val node = compose.onNodeWithText(text).fetchSemanticsNode().boundsInRoot
+        return node.center.x > root.center.x
+    }
+}

@@ -1,3 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Every text the app shows. Each one has an Arabic counterpart in values-ar/strings.xml. -->
 <resources>
     <string name="app_name">Fajr Alarm</string>
+
+    <!-- Notification channels, as listed in the phone's settings -->
+    <string name="channel_ringing_name">Ringing alarm</string>
+    <string name="channel_ringing_description">Shown while the Fajr alarm is ringing</string>
+    <string name="channel_status_name">Alarm status</string>
+    <string name="channel_status_description">Snooze and missed-alarm notices</string>
+
+    <!-- Notifications -->
+    <string name="alarm_title">Time for Fajr</string>
+    <string name="snoozed_until">Snoozed until %1$s</string>
+    <string name="notification_snoozed_dismiss">Tap to dismiss the snoozed alarm</string>
+    <string name="notification_snoozed_mission">It rings again then, and only the mission turns it off</string>
+    <string name="notification_allow_exact">Allow exact alarms in settings so the full alarm can ring.</string>
+    <string name="snooze">Snooze</string>
+    <string name="dismiss">Dismiss</string>
+
+    <!-- When the alarm rings: %1$d minutes, %2$s is anchor_fajr or anchor_sunrise -->
+    <string name="anchor_fajr">Fajr</string>
+    <string name="anchor_sunrise">Sunrise</string>
+    <string name="offset_at">At %1$s</string>
+    <plurals name="offset_before">
+        <item quantity="one">%1$d min before %2$s</item>
+        <item quantity="other">%1$d min before %2$s</item>
+    </plurals>
+    <plurals name="offset_after">
+        <item quantity="one">%1$d min after %2$s</item>
+        <item quantity="other">%1$d min after %2$s</item>
+    </plurals>
+
+    <!-- Main screen: next alarm -->
+    <string name="next_alarm">NEXT ALARM</string>
+    <string name="alarm_off">ALARM OFF</string>
+    <string name="summary_set_location">Set your location to calculate Fajr.</string>
+    <string name="summary_no_days">No days selected.</string>
+    <string name="summary_polar">Fajr can\'t be determined at this location right now (polar day/night).</string>
+    <string name="summary_turn_on">Turn it on to wake for Fajr.</string>
+    <string name="today">Today</string>
+    <string name="tomorrow">Tomorrow</string>
+    <string name="prayer_times_today">Prayer times for today</string>
+    <string name="prayer_times_tomorrow">Prayer times for tomorrow</string>
+    <string name="prayer_times_date">Prayer times for %1$s</string>
+    <string name="toast_set_location_first">Set your location first</string>
+
+    <!-- Main screen: last alarm. %1$s time it rang, %2$s date, %3$s time it stopped -->
+    <string name="section_last_alarm">Last alarm</string>
+    <string name="last_sink">Rang at %1$s on %2$s and turned off when the camera saw a sink at %3$s.</string>
+    <string name="last_sum">Rang at %1$s on %2$s and turned off by solving the sum at %3$s.</string>
+    <string name="last_button">Rang at %1$s on %2$s and turned off with the dismiss button at %3$s.</string>
+    <string name="last_notification">Rang at %1$s on %2$s and turned off from the notification at %3$s.</string>
+    <string name="last_snoozed">Rang at %1$s on %2$s and snoozed at %3$s.</string>
+    <string name="last_timed_out_snoozed">Rang at %1$s on %2$s and rang out with no answer, so it snoozed itself at %3$s.</string>
+    <string name="last_timed_out">Rang at %1$s on %2$s and rang out with no answer and gave up at %3$s.</string>
+    <string name="last_stopped_by_android">Rang at %1$s on %2$s and was stopped by Android, not by you at %3$s.</string>
+    <string name="last_exit_crash">Rang at %1$s on %2$s and stopped because the app crashed while it rang.</string>
+    <string name="last_exit_froze">Rang at %1$s on %2$s and stopped because the app froze and Android closed it while it rang.</string>
+    <string name="last_exit_memory">Rang at %1$s on %2$s and stopped because Android closed the app to free memory while it rang.</string>
+    <string name="last_exit_force_stopped">Rang at %1$s on %2$s and stopped because the app was force-stopped while it rang.</string>
+    <string name="last_unknown">Rang at %1$s on %2$s. There\'s no record of how it stopped, so Android most likely closed the app while it rang.</string>
+    <string name="sink_proof_caption">What the camera took for a sink:</string>
+    <string name="sink_proof_description">Camera frame that turned the alarm off</string>
+
+    <!-- Main screen: Alarm -->
+    <string name="section_alarm">Alarm</string>
+    <string name="ring_relative_to">Ring relative to</string>
+    <string name="offset_earliest">2 h before</string>
+    <string name="offset_latest">1 h after</string>
+    <string name="days">Days</string>
+
+    <!-- Main screen: Location -->
+    <string name="section_location">Location</string>
+    <string name="location_current">Current location</string>
+    <string name="location_manual">Manual</string>
+    <string name="location_saved">Saved location</string>
+    <!-- %1$s one of the three names above, %2$s the coordinates -->
+    <string name="location_value">%1$s: %2$s</string>
+    <string name="location_none">No location set — Fajr time depends on where you are.</string>
+    <string name="locating">Locating…</string>
+    <string name="use_current_location">Use my current location</string>
+    <string name="or_enter_coordinates">Or enter coordinates</string>
+    <string name="latitude">Latitude</string>
+    <string name="longitude">Longitude</string>
+    <string name="save_coordinates">Save coordinates</string>
+    <string name="toast_enter_coordinates">Enter your coordinates manually below</string>
+    <string name="toast_location_failed">Couldn\'t get a location. Is location turned on?</string>
+
+    <!-- Main screen: Calculation -->
+    <string name="section_calculation">Calculation</string>
+    <string name="method">Method</string>
+    <!-- %1$s a method name below, %2$.1f its Fajr angle -->
+    <string name="method_with_angle">%1$s (%2$.1f°)</string>
+    <string name="method_mwl">Muslim World League</string>
+    <string name="method_isna">ISNA (North America)</string>
+    <string name="method_egyptian">Egyptian General Authority</string>
+    <string name="method_umm_al_qura">Umm al-Qura, Makkah</string>
+    <string name="method_karachi">Univ. of Islamic Sciences, Karachi</string>
+    <string name="method_tehran">Institute of Geophysics, Tehran</string>
+    <string name="method_dubai">Dubai</string>
+    <string name="method_gulf">Gulf Region</string>
+    <string name="method_kuwait">Kuwait</string>
+    <string name="method_qatar">Qatar</string>
+    <string name="method_singapore">Singapore (MUIS)</string>
+    <string name="method_turkey">Diyanet, Turkey</string>
+    <string name="method_france">UOIF, France</string>
+    <string name="method_custom">Custom angle</string>
+    <string name="fajr_angle">Fajr angle: %1$.1f°</string>
+    <string name="high_latitude_rule">High-latitude rule</string>
+    <string name="high_latitude_angle">Angle-based (recommended)</string>
+    <string name="high_latitude_seventh">One-seventh of the night</string>
+    <string name="high_latitude_middle">Middle of the night</string>
+    <string name="high_latitude_none">None</string>
+    <string name="fajr_adjustment">Fajr adjustment</string>
+    <string name="minutes_short">min</string>
+    <string name="fajr_adjustment_hint">Use this to match your local mosque\'s timetable.</string>
+
+    <!-- Main screen: Sound & wake-up -->
+    <string name="section_sound">Sound &amp; wake-up</string>
+    <string name="alarm_sound">Alarm sound</string>
+    <string name="sound_picker_title">Fajr alarm sound</string>
+    <string name="sound_default">Default alarm</string>
+    <string name="sound_custom">Custom sound</string>
+    <string name="vibrate">Vibrate</string>
+    <string name="gentle_start">Gentle start (fade in volume)</string>
+    <string name="snooze_off">Off</string>
+    <plurals name="minutes">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <string name="max_snoozes">Max snoozes</string>
+
+    <!-- Main screen: To turn the alarm off -->
+    <string name="section_turn_off">To turn the alarm off</string>
+    <string name="mission">Mission</string>
+    <string name="mission_none">None</string>
+    <string name="mission_none_summary">Tap to dismiss</string>
+    <string name="mission_sum">Solve a sum</string>
+    <string name="mission_sum_summary">Solve a quick sum to turn it off</string>
+    <string name="mission_sink">Find a sink</string>
+    <string name="mission_sink_summary">Get up and point the camera at a sink to turn it off</string>
+    <string name="sink_no_photos">Any real sink works, no photos needed</string>
+    <string name="test_it">Test it</string>
+    <string name="camera_off_falls_back">Camera permission is off. Until it\'s on, the alarm falls back to a sum.</string>
+    <string name="snooze_off_tip">Tip: set Snooze to Off so finding a sink is the only way to stop the alarm.</string>
+    <string name="test_alarm_now">Test the alarm now</string>
+    <string name="close">Close</string>
+
+    <!-- Warnings about phone settings that can stop the alarm -->
+    <string name="warning_notifications">Notifications are off, so the alarm can\'t show.</string>
+    <string name="warning_exact_alarms">Exact alarms are not allowed; the alarm may ring late.</string>
+    <string name="warning_full_screen">Full-screen alarms are blocked; you\'ll only get a notification.</string>
+    <string name="warning_overlay">The alarm screen can\'t open by itself; you\'d have to open the app. Allow display over other apps.</string>
+    <string name="warning_battery">Battery optimisation is on, so the phone may put the alarm to sleep.</string>
+    <string name="samsung_tip">Samsung phones can put the alarm to sleep. In Settings → Battery and device care → Battery → Background usage limits, add Fajr Alarm to Never sleeping apps.</string>
+    <string name="allow">Allow</string>
+    <string name="fix">Fix</string>
+    <string name="app_settings">App settings</string>
+    <string name="done">Done</string>
+
+    <!-- Alarm screen -->
+    <string name="prayer_better_than_sleep">Prayer is better than sleep</string>
+    <string name="dismiss_im_up">I\'m up, dismiss</string>
+    <plurals name="snooze_for">
+        <item quantity="one">Snooze %d min</item>
+        <item quantity="other">Snooze %d min</item>
+    </plurals>
+    <string name="camera_off_sum_instead">Camera permission is off, so solve a sum instead.</string>
+    <string name="sum_prompt">Solve to turn off the alarm</string>
+    <string name="sum_wrong">Not quite, try this one</string>
+    <string name="turn_off">Turn off</string>
+    <string name="sink_detector_sum_instead">The sink detector couldn\'t start, so solve a sum instead.</string>
+    <string name="sink_go">Go to a sink and point the camera at it</string>
+
+    <!-- Looking for a sink with the camera -->
+    <string name="sink_detector_failed">The sink detector couldn\'t start on this phone.</string>
+    <string name="sink_pick_up">Pick up the phone and walk to a sink</string>
+    <string name="sink_looking">Looking for a sink…</string>
+    <string name="sink_too_dark">Too dark. Turn the light on.</string>
+    <string name="sink_on_screen">That sink is on a screen. Find a real one.</string>
+    <string name="sink_keep_in_view">Sink found, keep it in view…</string>
+    <string name="sink_found">Sink found</string>
+    <string name="camera_unavailable">Camera unavailable: %1$s</string>
+
+    <!-- Sink test screen -->
+    <string name="sink_test_title">Test sink detection</string>
+    <string name="sink_test_intro">When the alarm rings it only turns off once the camera sees a real sink: any bathroom or kitchen sink works, no photos needed. Try it here with the light on, standing where you can see the basin and tap. It only starts looking once the phone has been picked up, and a sink shown on a phone or TV screen doesn\'t count.</string>
+    <string name="camera_needed">Camera permission is needed for this mission.</string>
+    <string name="allow_camera">Allow camera</string>
+    <string name="sink_recognised">✓ Sink recognised. The alarm would turn off here.</string>
+    <string name="test_again">Test again</string>
+
+    <!-- Updates -->
+    <string name="update_available">Version %1$s is available (%2$d MB).</string>
+    <string name="update">Update</string>
+    <string name="update_downloading">Downloading the update… %1$d%%</string>
+    <string name="update_installing">Installing… The app closes when it\'s done. Open it again afterwards.</string>
+    <string name="try_again">Try again</string>
+    <string name="version">Version %1$s</string>
+    <string name="check_for_updates">Check for updates</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_latest">You have the latest version.</string>
+    <string name="update_check_failed">Couldn\'t check for updates. Is the phone online?</string>
+    <string name="update_alarm_first">Turn the alarm off first, then update.</string>
+    <string name="update_failed">The update failed.</string>
+    <string name="update_download_failed">Download failed (HTTP %1$d).</string>
+    <string name="update_mismatch">The download didn\'t match the published version. Try again in a few minutes.</string>
+    <string name="update_prompt_failed">Android couldn\'t show its install prompt. Keep the app open and try again.</string>
+    <string name="update_cancelled">The update was cancelled.</string>
+    <string name="update_refused">Android refused the update: %1$s</string>
+    <string name="update_no_reason">no reason given</string>
 </resources>

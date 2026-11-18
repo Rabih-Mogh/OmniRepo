@@ -28,6 +28,7 @@ import app.fajralarm.data.SettingsStore
 import app.fajralarm.data.SinkProof
 import app.fajralarm.data.StopReason
 import app.fajralarm.ui.AlarmActivity
+import app.fajralarm.ui.describeOffset
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -178,14 +179,14 @@ class AlarmService : Service() {
         val until = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(store.snoozeUntil))
         val b = NotificationCompat.Builder(this, FajrAlarmApp.CHANNEL_INFO)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Snoozed until $until")
+            .setContentTitle(getString(R.string.snoozed_until, until))
             .setAutoCancel(true)
         if (settings.dismissMission == DismissMission.NONE) {
-            b.setContentText("Tap to dismiss the snoozed alarm")
+            b.setContentText(getString(R.string.notification_snoozed_dismiss))
                 .setContentIntent(servicePendingIntent(this, ACTION_DISMISS, 11))
         } else {
             // The mission is what gets you out of bed, so a snoozed alarm can't be called off here.
-            b.setContentText("It rings again then, and only the mission turns it off")
+            b.setContentText(getString(R.string.notification_snoozed_mission))
                 .setContentIntent(openAppPendingIntent(this))
         }
         val n = b.build()
@@ -253,8 +254,8 @@ class AlarmService : Service() {
         val settings = SettingsStore(this).load()
         val b = NotificationCompat.Builder(this, FajrAlarmApp.CHANNEL_ALARM)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Time for Fajr")
-            .setContentText(settings.describeOffset())
+            .setContentTitle(getString(R.string.alarm_title))
+            .setContentText(settings.describeOffset(this))
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -262,12 +263,12 @@ class AlarmService : Service() {
             .setContentIntent(fullScreen)
             .setFullScreenIntent(fullScreen, true)
         if (canSnooze(this)) {
-            b.addAction(0, "Snooze", servicePendingIntent(this, ACTION_SNOOZE, 12))
+            b.addAction(0, getString(R.string.snooze), servicePendingIntent(this, ACTION_SNOOZE, 12))
         }
         // With a mission (sum or sink photo) the alarm can only be turned off from the
         // alarm screen, so there's no notification shortcut to dismiss it.
         if (settings.dismissMission == DismissMission.NONE) {
-            b.addAction(0, "Dismiss", servicePendingIntent(this, ACTION_DISMISS, 13))
+            b.addAction(0, getString(R.string.dismiss), servicePendingIntent(this, ACTION_DISMISS, 13))
         }
         return b.build()
     }
@@ -315,8 +316,8 @@ class AlarmService : Service() {
             val open = openAppPendingIntent(context)
             val n = NotificationCompat.Builder(context, FajrAlarmApp.CHANNEL_ALARM)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("Time for Fajr")
-                .setContentText("Allow exact alarms in settings so the full alarm can ring.")
+                .setContentTitle(context.getString(R.string.alarm_title))
+                .setContentText(context.getString(R.string.notification_allow_exact))
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setDefaults(NotificationCompat.DEFAULT_ALL)

@@ -5,28 +5,35 @@ import android.app.ApplicationExitInfo
 import android.content.Context
 import android.graphics.Bitmap
 import android.os.Build
+import androidx.annotation.StringRes
+import app.fajralarm.R
 import java.io.File
 
 /** How a ringing alarm stopped, kept so the main screen can say what happened. */
-enum class StopReason(val description: String) {
-    SINK("turned off when the camera saw a sink"),
-    SUM("turned off by solving the sum"),
-    BUTTON("turned off with the dismiss button"),
-    NOTIFICATION("turned off from the notification"),
-    SNOOZED("snoozed"),
-    TIMED_OUT_SNOOZED("rang out with no answer, so it snoozed itself"),
-    TIMED_OUT("rang out with no answer and gave up"),
-    STOPPED_BY_ANDROID("was stopped by Android, not by you"),
+enum class StopReason {
+    /** The camera saw a sink. */
+    SINK,
+    SUM,
+    BUTTON,
+    NOTIFICATION,
+    SNOOZED,
+    /** Rang out with no answer, so it snoozed itself. */
+    TIMED_OUT_SNOOZED,
+    /** Rang out with no answer and gave up. */
+    TIMED_OUT,
+    STOPPED_BY_ANDROID,
 }
 
 /** The latest ringing: when it started, and how and when it stopped. */
 data class LastAlarm(val rangAt: Long, val stoppedAt: Long, val reason: StopReason?)
 
 /**
- * How the app's process ended after [since], from Android's own record (Android 11+),
- * or null if Android doesn't say. Used when an alarm left no record of how it stopped.
+ * The "Last alarm" sentence for how the app's process ended after [since], from Android's
+ * own record (Android 11+), or null if Android doesn't say. Used when an alarm left no
+ * record of how it stopped.
  */
-fun appExitSince(context: Context, since: Long): String? {
+@StringRes
+fun appExitSince(context: Context, since: Long): Int? {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
     val exit = runCatching {
         context.getSystemService(ActivityManager::class.java)
@@ -35,10 +42,10 @@ fun appExitSince(context: Context, since: Long): String? {
             .minByOrNull { it.timestamp }
     }.getOrNull() ?: return null
     return when (exit.reason) {
-        ApplicationExitInfo.REASON_CRASH, ApplicationExitInfo.REASON_CRASH_NATIVE -> "the app crashed"
-        ApplicationExitInfo.REASON_ANR -> "the app froze and Android closed it"
-        ApplicationExitInfo.REASON_LOW_MEMORY -> "Android closed the app to free memory"
-        ApplicationExitInfo.REASON_USER_REQUESTED, ApplicationExitInfo.REASON_USER_STOPPED -> "the app was force-stopped"
+        ApplicationExitInfo.REASON_CRASH, ApplicationExitInfo.REASON_CRASH_NATIVE -> R.string.last_exit_crash
+        ApplicationExitInfo.REASON_ANR -> R.string.last_exit_froze
+        ApplicationExitInfo.REASON_LOW_MEMORY -> R.string.last_exit_memory
+        ApplicationExitInfo.REASON_USER_REQUESTED, ApplicationExitInfo.REASON_USER_STOPPED -> R.string.last_exit_force_stopped
         else -> null
     }
 }

@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import app.fajralarm.R
 import java.util.concurrent.Executors
 
 /**
@@ -95,7 +96,7 @@ fun CameraCapture(
                 p.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
                 error = null
             } catch (e: Exception) {
-                error = "Camera unavailable: ${e.message ?: e.javaClass.simpleName}"
+                error = context.getString(R.string.camera_unavailable, e.message ?: e.javaClass.simpleName)
             }
         }, ContextCompat.getMainExecutor(context))
         onDispose {

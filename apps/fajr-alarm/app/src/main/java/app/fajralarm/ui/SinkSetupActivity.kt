@@ -34,9 +34,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import app.fajralarm.R
 
 /** A dry run of the sink mission: point the camera at a sink and see it recognised. Nothing is saved. */
 class SinkSetupActivity : ComponentActivity() {
@@ -81,12 +83,9 @@ private fun SinkTestScreen(onDone: () -> Unit) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Test sink detection", style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.sink_test_title), style = MaterialTheme.typography.headlineMedium)
         Text(
-            "When the alarm rings it only turns off once the camera sees a real sink: any bathroom " +
-                "or kitchen sink works, no photos needed. Try it here with the light on, standing " +
-                "where you can see the basin and tap. It only starts looking once the phone has been " +
-                "picked up, and a sink shown on a phone or TV screen doesn't count.",
+            stringResource(R.string.sink_test_intro),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -99,19 +98,21 @@ private fun SinkTestScreen(onDone: () -> Unit) {
         })
 
         if (!hasCamera) {
-            Text("Camera permission is needed for this mission.", color = MaterialTheme.colorScheme.error)
-            Button(onClick = { askCamera.launch(Manifest.permission.CAMERA) }) { Text("Allow camera") }
+            Text(stringResource(R.string.camera_needed), color = MaterialTheme.colorScheme.error)
+            Button(onClick = { askCamera.launch(Manifest.permission.CAMERA) }) { Text(stringResource(R.string.allow_camera)) }
         } else if (found) {
             Text(
-                "✓ Sink recognised. The alarm would turn off here.",
+                stringResource(R.string.sink_recognised),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
-            FilledTonalButton(onClick = { found = false; attempt++ }, modifier = Modifier.fillMaxWidth()) { Text("Test again") }
+            FilledTonalButton(onClick = { found = false; attempt++ }, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.test_again))
+            }
         } else {
             key(attempt) { SinkFinder(onConfirmed = { found = true }) }
         }
 
-        TextButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text("Done") }
+        TextButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.done)) }
     }
 }

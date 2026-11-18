@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,8 +27,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
+import app.fajralarm.R
 
 /**
  * Cards for every setting that can stop the alarm screen from appearing on its own.
@@ -50,24 +53,24 @@ fun PermissionWarnings(
         .isIgnoringBatteryOptimizations(context.packageName)
 
     if (notificationsOff) {
-        Warning("Notifications are off, so the alarm can't show.", "Allow", onRequestNotifications)
+        Warning(R.string.warning_notifications, R.string.allow, onRequestNotifications)
     }
     if (exactOff && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        Warning("Exact alarms are not allowed; the alarm may ring late.", "Fix") {
+        Warning(R.string.warning_exact_alarms, R.string.fix) {
             context.startActivity(
                 Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")),
             )
         }
     }
     if (fullScreenOff && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        Warning("Full-screen alarms are blocked; you'll only get a notification.", "Fix") {
+        Warning(R.string.warning_full_screen, R.string.fix) {
             context.startActivity(
                 Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:${context.packageName}")),
             )
         }
     }
     if (overlayOff) {
-        Warning("The alarm screen can't open by itself; you'd have to open the app. Allow display over other apps.", "Allow") {
+        Warning(R.string.warning_overlay, R.string.allow) {
             try {
                 context.startActivity(
                     Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")),
@@ -80,7 +83,7 @@ fun PermissionWarnings(
         }
     }
     if (batteryOptimised) {
-        Warning("Battery optimisation is on, so the phone may put the alarm to sleep.", "Fix") {
+        Warning(R.string.warning_battery, R.string.fix) {
             try {
                 context.startActivity(
                     Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}")),
@@ -110,8 +113,7 @@ private fun SamsungTip(context: Context) {
     ) {
         Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
             Text(
-                "Samsung phones can put the alarm to sleep. In Settings → Battery and device care → " +
-                    "Battery → Background usage limits, add Fajr Alarm to Never sleeping apps.",
+                stringResource(R.string.samsung_tip),
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.padding(end = 8.dp),
             )
@@ -124,25 +126,25 @@ private fun SamsungTip(context: Context) {
                     context.startActivity(
                         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")),
                     )
-                }) { Text("App settings") }
+                }) { Text(stringResource(R.string.app_settings)) }
                 TextButton(onClick = {
                     prefs.edit().putBoolean(SAMSUNG_TIP, true).apply()
                     hidden = true
-                }) { Text("Done") }
+                }) { Text(stringResource(R.string.done)) }
             }
         }
     }
 }
 
 @Composable
-private fun Warning(text: String, action: String, onClick: () -> Unit) {
+private fun Warning(@StringRes text: Int, @StringRes action: Int, onClick: () -> Unit) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(text, Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
-            TextButton(onClick = onClick) { Text(action) }
+            Text(stringResource(text), Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
+            TextButton(onClick = onClick) { Text(stringResource(action)) }
         }
     }
 }
