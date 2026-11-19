@@ -42,6 +42,7 @@ fun App(model: AppModel) {
     val context = LocalContext.current
     val playlists by model.library.playlists.collectAsStateWithLifecycle()
     val progress by PrepareWorker.progress.collectAsStateWithLifecycle()
+    val modelProblem by PrepareWorker.modelProblem.collectAsStateWithLifecycle()
 
     BackHandler(enabled = model.screen != Screen.Playlists) { model.back() }
     UpdateDialog()
@@ -68,6 +69,8 @@ fun App(model: AppModel) {
             playlists = playlists,
             progress = progress,
             progressTitle = progress?.trackId?.let { model.library.track(it)?.title },
+            modelProblem = modelProblem,
+            onRetryModel = model::retryModel,
             onOpen = model::open,
             onAdd = { model.link = "" },
             onCancel = model::cancel,
@@ -80,6 +83,8 @@ fun App(model: AppModel) {
                 RecordingsContent(
                     playlist = playlist,
                     progress = progress,
+                    modelProblem = modelProblem,
+                    onRetryModel = model::retryModel,
                     onBack = { model.back() },
                     onOpen = { model.open(playlist, it) },
                     onGet = get,

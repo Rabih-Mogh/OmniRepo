@@ -22,6 +22,11 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
 
+    <!-- Held only by apps signed with the same key as this one: lets them copy the speech model. -->
+    <permission
+        android:name="app.accentcoach.permission.READ_MODEL"
+        android:protectionLevel="signature" />
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -48,7 +53,9 @@
             tools:node="merge" />
 
         <!-- Lends the downloaded speech model to Recitation. Open to other apps, but it only
-             serves ones signed with the same key as this app (checked in ModelProvider). -->
+             serves ones signed with the same key as this app (checked in ModelProvider). The
+             permission isn't put on the provider itself: an app installed before this one
+             may not have been given it yet, and ModelProvider has a second way to tell. -->
         <provider
             android:name=".speech.ModelProvider"
             android:authorities="app.accentcoach.model"

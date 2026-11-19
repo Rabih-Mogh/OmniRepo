@@ -15,6 +15,7 @@ import app.recitation.data.QuranStore
 import app.recitation.data.Track
 import app.recitation.data.Verse
 import app.recitation.prepare.PrepareWorker
+import app.recitation.prepare.Settings
 import app.recitation.yt.YouTube
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -116,6 +117,17 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         for (track in tracks) {
             if (!track.ready && track.surah in 1..SURAHS.size) library.update(track.id) { it.copy(wanted = true, error = null) }
         }
+        PrepareWorker.start(getApplication())
+    }
+
+    init {
+        // Recordings still waiting from last time (the app was closed, or the model couldn't be had): carry on.
+        if (library.playlists.value.any { p -> p.tracks.any { it.wanted && !it.ready } }) PrepareWorker.start(app)
+    }
+
+    /** Tries again to get the speech model, after the user has put Accent Coach right or chosen to download it. */
+    fun retryModel(download: Boolean) {
+        if (download) Settings.setDownloadModel(getApplication(), true)
         PrepareWorker.start(getApplication())
     }
 

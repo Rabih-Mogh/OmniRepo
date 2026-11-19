@@ -41,7 +41,7 @@ away a non-native accent, with a tip for each.
   leaves the device.
 - **Shared:** [Recitation](../recitation/) uses the same model. If Accent Coach has it,
   Recitation copies it from here instead of downloading it again. Only apps signed with the
-  same key as Accent Coach can read it.
+  same key as Accent Coach can read it. This needs Accent Coach 1.29 or later.
 
 ### Native reference
 

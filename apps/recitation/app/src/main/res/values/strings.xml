@@ -47,6 +47,13 @@
     <string name="error_unknown">Something went wrong. Try again.</string>
     <string name="error_too_short">The recording is too short for this surah. Check the surah.</string>
 
+    <!-- The speech model, when Accent Coach is installed but can't lend it -->
+    <string name="model_problem_title">Couldn\'t copy the speech model from Accent Coach</string>
+    <string name="model_too_old">The Accent Coach on this phone is from before it could share its speech model. Open Accent Coach, accept its update, then try again.</string>
+    <string name="model_no_model">Accent Coach hasn\'t finished downloading the speech model itself. Open Accent Coach and let it finish, then try again.</string>
+    <string name="model_refused">Accent Coach didn\'t hand it over. Android said: %1$s</string>
+    <string name="model_download_instead">Download it instead (318 MB)</string>
+
     <!-- Reading along -->
     <string name="verse">Verse %1$d</string>
     <string name="surah_number_and_verses">Surah %1$d · %2$d verses</string>

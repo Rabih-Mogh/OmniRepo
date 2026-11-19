@@ -17,7 +17,9 @@
     <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
 
     <!-- Accent Coach, if installed, lends the speech model it has already downloaded. -->
+    <uses-permission android:name="app.accentcoach.permission.READ_MODEL" />
     <queries>
+        <package android:name="app.accentcoach" />
         <provider android:authorities="app.accentcoach.model" />
     </queries>
 

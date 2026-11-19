@@ -53,10 +53,17 @@ gold in dark mode.
 
 ### The speech model
 
-The model is 318 MB, too big to ship in the APK. If [Accent Coach](../accent-coach/) is
-installed and has it, Recitation copies it from there; otherwise it downloads it once,
-pinned to one revision. Either way the file is checked against its SHA-256. Everything
-after that runs on the phone with ONNX Runtime.
+The model is 318 MB, too big to ship in the APK.
+
+- **Accent Coach installed:** Recitation copies the model from
+  [Accent Coach](../accent-coach/) instead of downloading it. If Accent Coach can't hand
+  it over (it is a version from before it shared the model, or it hasn't finished
+  downloading the model itself), Recitation stops and says which, with **Try again** and
+  **Download it instead**. It never downloads 318 MB on its own while Accent Coach is there.
+- **Accent Coach not installed:** the model is downloaded once, pinned to one revision.
+
+Either way the file is checked against its SHA-256. Everything after that runs on the
+phone with ONNX Runtime.
 
 ## How accurate it is
 

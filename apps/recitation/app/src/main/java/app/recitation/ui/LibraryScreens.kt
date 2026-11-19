@@ -61,8 +61,10 @@ import app.recitation.core.SURAHS
 import app.recitation.core.Surah
 import app.recitation.data.Playlist
 import app.recitation.data.Track
+import app.recitation.prepare.ModelProblem
 import app.recitation.prepare.PrepareWorker
 import app.recitation.prepare.Progress
+import app.recitation.speech.ModelStore
 
 /** A surah's name in the phone's language: Arabic script, or Latin letters. */
 @Composable
@@ -75,6 +77,8 @@ fun PlaylistsContent(
     playlists: List<Playlist>,
     progress: Progress?,
     progressTitle: String?,
+    modelProblem: ModelProblem?,
+    onRetryModel: (download: Boolean) -> Unit,
     onOpen: (Playlist) -> Unit,
     onAdd: () -> Unit,
     onCancel: () -> Unit,
@@ -89,6 +93,7 @@ fun PlaylistsContent(
             Text(stringResource(R.string.tagline), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (progress != null) item { ProgressCard(progress, progressTitle, onCancel) }
+        if (modelProblem != null && progress == null) item { ModelProblemCard(modelProblem, onRetryModel) }
         if (playlists.isEmpty()) {
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
@@ -171,11 +176,38 @@ fun ProgressCard(progress: Progress, title: String?, onCancel: () -> Unit) {
     }
 }
 
+/**
+ * Shown when Accent Coach is on the phone but couldn't lend its speech model: says why,
+ * and offers to try again once that's put right, or to download the model after all.
+ */
+@Composable
+fun ModelProblemCard(problem: ModelProblem, onRetry: (download: Boolean) -> Unit) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)) {
+        Column(Modifier.padding(start = 16.dp, top = 12.dp, end = 8.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(stringResource(R.string.model_problem_title), style = MaterialTheme.typography.titleSmall)
+            Text(
+                when (problem.reason) {
+                    ModelStore.Lender.TOO_OLD -> stringResource(R.string.model_too_old)
+                    ModelStore.Lender.NO_MODEL -> stringResource(R.string.model_no_model)
+                    else -> stringResource(R.string.model_refused, problem.detail.orEmpty())
+                },
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Row(Modifier.align(Alignment.End)) {
+                TextButton(onClick = { onRetry(true) }) { Text(stringResource(R.string.model_download_instead)) }
+                TextButton(onClick = { onRetry(false) }) { Text(stringResource(R.string.try_again)) }
+            }
+        }
+    }
+}
+
 /** One playlist: its recordings, which surah each is, and getting them ready to read along with. */
 @Composable
 fun RecordingsContent(
     playlist: Playlist,
     progress: Progress?,
+    modelProblem: ModelProblem?,
+    onRetryModel: (download: Boolean) -> Unit,
     onBack: () -> Unit,
     onOpen: (Track) -> Unit,
     onGet: (List<Track>) -> Unit,
@@ -213,6 +245,9 @@ fun RecordingsContent(
                         ProgressCard(progress, playlist.tracks.firstOrNull { it.id == progress.trackId }?.title, onCancel)
                     }
                 }
+            }
+            if (modelProblem != null && progress == null) {
+                item { Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { ModelProblemCard(modelProblem, onRetryModel) } }
             }
             if (waiting.isNotEmpty()) {
                 item {

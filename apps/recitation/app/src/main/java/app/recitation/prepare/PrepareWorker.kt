@@ -41,6 +41,19 @@ import java.io.IOException
 /** What is being done to a recording right now. */
 enum class Step { MODEL_COPY, MODEL_DOWNLOAD, DOWNLOAD, VERSES, LISTEN, ALIGN }
 
+/** Why the speech model couldn't be copied from Accent Coach. */
+data class ModelProblem(val reason: ModelStore.Lender, val detail: String?)
+
+/** The user's choices that outlast the app being closed. */
+object Settings {
+    private fun store(context: Context) = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+
+    /** Whether the model may be downloaded even though Accent Coach is installed and could, once put right, lend it. */
+    fun downloadModel(context: Context): Boolean = store(context).getBoolean("download_model", false)
+
+    fun setDownloadModel(context: Context, allowed: Boolean) = store(context).edit().putBoolean("download_model", allowed).apply()
+}
+
 /** [trackId] is null while the speech model, which every recording needs, is being fetched. */
 data class Progress(val trackId: String?, val step: Step, val fraction: Float)
 
@@ -69,6 +82,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "recitation:prepare")
         awake.acquire(6 * 60 * 60 * 1000L)
         try {
+            _modelProblem.value = null
             while (true) {
                 val track = next() ?: break
                 try {
@@ -79,6 +93,11 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                     // No connection, or YouTube hiccuped: WorkManager tries again once there's a network.
                     if (runAttemptCount < MAX_ATTEMPTS) return Result.retry()
                     fail(track, applicationContext.getString(R.string.error_network))
+                } catch (e: ModelStore.Unavailable) {
+                    // Every recording needs the model, so there's nothing to go on with. The
+                    // recordings stay in the queue and the screen says what to do about it.
+                    _modelProblem.value = ModelProblem(e.reason, e.detail)
+                    return Result.success()
                 } catch (e: Stopped) {
                     // The user cancelled it, or Android is stopping the work.
                     if (isStopped) return Result.retry()
@@ -110,7 +129,9 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         }
 
         if (!model.isReady) {
-            model.obtain { copied, p -> report(if (copied) Step.MODEL_COPY else Step.MODEL_DOWNLOAD, p, forModel = true) }
+            model.obtain(download = Settings.downloadModel(applicationContext)) { copied, p ->
+                report(if (copied) Step.MODEL_COPY else Step.MODEL_DOWNLOAD, p, forModel = true)
+            }
         }
 
         val audio = library.audio(id) ?: run {
@@ -197,6 +218,11 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
 
         /** What the worker is doing, for the screens; null when it isn't running. */
         val progress: StateFlow<Progress?> = _progress.asStateFlow()
+
+        private val _modelProblem = MutableStateFlow<ModelProblem?>(null)
+
+        /** Set when the work stopped because Accent Coach is installed but couldn't lend its speech model. */
+        val modelProblem: StateFlow<ModelProblem?> = _modelProblem.asStateFlow()
 
         fun stepLabel(step: Step): Int = when (step) {
             Step.MODEL_COPY -> R.string.step_model_copy

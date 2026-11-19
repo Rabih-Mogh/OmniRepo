@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.recitation.core.Timings
 import app.recitation.core.WordTiming
@@ -19,8 +20,10 @@ import app.recitation.data.Playlist
 import app.recitation.data.Track
 import app.recitation.data.Verse
 import app.recitation.data.Word
+import app.recitation.prepare.ModelProblem
 import app.recitation.prepare.Progress
 import app.recitation.prepare.Step
+import app.recitation.speech.ModelStore
 import app.recitation.ui.PlaylistsContent
 import app.recitation.ui.ReaderContent
 import app.recitation.ui.RecitationTheme
@@ -167,7 +170,7 @@ class ScreensTest {
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun recordingsInEnglishByDay() {
         show("en-day-recordings") {
-            RecordingsContent(playlist, Progress("b", Step.LISTEN, 0.43f), {}, {}, {}, {}, { _, _ -> }, {}, {})
+            RecordingsContent(playlist, Progress("b", Step.LISTEN, 0.43f), null, {}, {}, {}, {}, {}, { _, _ -> }, {}, {})
         }
         compose.onNodeWithText("2 of 7 ready").assertIsDisplayed()
         compose.onAllNodesWithText("Listening to the recitation… 43%").onFirst().assertIsDisplayed()
@@ -180,7 +183,7 @@ class ScreensTest {
     @Config(qualifiers = "ar-rLB-w411dp-h891dp-night-420dpi")
     fun recordingsInArabicByNight() {
         show("ar-night-recordings") {
-            RecordingsContent(playlist, null, {}, {}, {}, {}, { _, _ -> }, {}, {})
+            RecordingsContent(playlist, null, null, {}, {}, {}, {}, {}, { _, _ -> }, {}, {})
         }
         compose.onNodeWithText("٢ من ٧ جاهزة").assertIsDisplayed()
         compose.onNodeWithText("٢ · البقرة").assertIsDisplayed()
@@ -190,7 +193,7 @@ class ScreensTest {
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun firstOpenInEnglishByDay() {
-        show("en-day-empty") { PlaylistsContent(emptyList(), null, null, {}, {}, {}) }
+        show("en-day-empty") { PlaylistsContent(emptyList(), null, null, null, {}, {}, {}, {}) }
         compose.onNodeWithText("Add a playlist to begin").assertIsDisplayed()
         compose.onNodeWithText("Add playlist").assertIsDisplayed()
         compose.onNodeWithText("Check for updates").assertIsDisplayed()
@@ -200,10 +203,26 @@ class ScreensTest {
     @Config(qualifiers = "ar-rLB-w411dp-h891dp-night-420dpi")
     fun playlistsInArabicByNight() {
         show("ar-night-playlists") {
-            PlaylistsContent(listOf(playlist), Progress(null, Step.MODEL_COPY, 0.6f), null, {}, {}, {})
+            PlaylistsContent(listOf(playlist), Progress(null, Step.MODEL_COPY, 0.6f), null, null, {}, {}, {}, {})
         }
         compose.onNodeWithText("التلاوة").assertIsDisplayed()
         compose.onNodeWithText("جارٍ نسخ نموذج الصوت", substring = true).assertIsDisplayed()
         compose.onNodeWithText("البحث عن تحديثات").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun accentCoachIsTooOldToLendItsModel() {
+        var download: Boolean? = null
+        show("en-day-model-problem") {
+            RecordingsContent(playlist, null, ModelProblem(ModelStore.Lender.TOO_OLD, null), { download = it }, {}, {}, {}, {}, { _, _ -> }, {}, {})
+        }
+        compose.onNodeWithText("Couldn't copy the speech model from Accent Coach").assertIsDisplayed()
+        compose.onNodeWithText("accept its update", substring = true).assertIsDisplayed()
+        // Nothing is downloaded unless asked for.
+        compose.onNodeWithText("Download it instead (318 MB)").performClick()
+        assertTrue(download == true)
+        compose.onNodeWithText("Try again").performClick()
+        assertTrue(download == false)
     }
 }
