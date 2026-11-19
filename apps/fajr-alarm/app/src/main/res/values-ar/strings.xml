@@ -230,4 +230,9 @@
     <string name="update_cancelled">تم إلغاء التحديث.</string>
     <string name="update_refused">رفض أندرويد التحديث: %1$s</string>
     <string name="update_no_reason">لم يُذكر السبب</string>
+    <string name="update_ready">تم تنزيل الإصدار %1$s وهو جاهز للتثبيت.</string>
+    <string name="update_install">تثبيت</string>
+    <string name="update_channel">تحديثات التطبيق</string>
+    <string name="update_notice_installing">جارٍ تثبيت التحديث…</string>
+    <string name="update_notice_ready">تم تنزيل التحديث. افتح التطبيق لتثبيته.</string>
 </resources>

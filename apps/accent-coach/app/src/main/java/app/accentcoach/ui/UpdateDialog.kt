@@ -1,5 +1,10 @@
 package app.accentcoach.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,12 +17,15 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.accentcoach.update.AppUpdate
 import kotlinx.coroutines.launch
@@ -32,9 +40,11 @@ fun UpdateDialog() {
     val state by AppUpdate.state.collectAsStateWithLifecycle()
     val open by AppUpdate.prompt.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { AppUpdate.check(context) }
+    val install = rememberInstall()
 
     val failed = state as? AppUpdate.State.Failed
-    val release = (state as? AppUpdate.State.Available)?.release ?: failed?.release
+    val ready = state as? AppUpdate.State.Ready
+    val release = (state as? AppUpdate.State.Available)?.release ?: ready?.release ?: failed?.release
     val downloading = state as? AppUpdate.State.Downloading
     if (!open || (release == null && downloading == null && state != AppUpdate.State.Installing)) return
 
@@ -47,6 +57,7 @@ fun UpdateDialog() {
                     when {
                         failed != null -> failed.message
                         downloading != null -> "Downloading the update… ${(downloading.progress * 100).toInt()}%"
+                        ready != null -> "Version ${ready.release.versionName} is downloaded and ready to install."
                         release != null -> "Version ${release.versionName} is available (${release.size / 1_000_000} MB)."
                         else -> "Installing… The app closes when it's done. Open it again afterwards."
                     },
@@ -56,7 +67,15 @@ fun UpdateDialog() {
         },
         confirmButton = {
             if (release != null) {
-                TextButton(onClick = { AppUpdate.install(context, release) }) { Text(if (failed != null) "Try again" else "Update") }
+                TextButton(onClick = { install(release) }) {
+                    Text(
+                        when {
+                            failed != null -> "Try again"
+                            ready != null -> "Install"
+                            else -> "Update"
+                        },
+                    )
+                }
             } else {
                 TextButton(onClick = AppUpdate::dismiss) { Text("Hide") }
             }
@@ -93,5 +112,29 @@ fun VersionFooter() {
             else -> null
         }
         note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+}
+
+/**
+ * Starts an update. On Android 13 and later it first asks to show notifications, so the
+ * download's progress can be followed outside the app; it downloads either way.
+ */
+@Composable
+private fun rememberInstall(): (AppUpdate.Release) -> Unit {
+    val context = LocalContext.current
+    var waiting by remember { mutableStateOf<AppUpdate.Release?>(null) }
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        waiting?.let { AppUpdate.install(context, it) }
+        waiting = null
+    }
+    return { release ->
+        val allowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        if (allowed) {
+            AppUpdate.install(context, release)
+        } else {
+            waiting = release
+            ask.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 }

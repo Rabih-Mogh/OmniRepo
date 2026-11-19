@@ -214,4 +214,9 @@
     <string name="update_cancelled">The update was cancelled.</string>
     <string name="update_refused">Android refused the update: %1$s</string>
     <string name="update_no_reason">no reason given</string>
+    <string name="update_ready">Version %1$s is downloaded and ready to install.</string>
+    <string name="update_install">Install</string>
+    <string name="update_channel">App updates</string>
+    <string name="update_notice_installing">Installing the update…</string>
+    <string name="update_notice_ready">The update is downloaded. Open the app to install it.</string>
 </resources>

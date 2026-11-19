@@ -63,7 +63,7 @@ Requirements: Android Studio (Ladybug or newer) or the Android SDK with platform
 ```bash
 cd apps/fajr-alarm
 ./gradlew :core:test          # prayer-time unit tests (no Android SDK needed)
-./gradlew :app:testDebugUnitTest  # opens the screens in Arabic and English, pictures in app/build/screens
+./gradlew :app:testDebugUnitTest  # opens the screens in Arabic and English, pictures in app/build/screens; also the update's background service
 ./gradlew :app:assembleDebug  # → app/build/outputs/apk/debug/app-debug.apk
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
@@ -94,6 +94,11 @@ for now. The version and a **Check for updates** button, which brings the pop-up
 at the bottom of the main screen.
 
 - The download is checked against the published SHA-256 before Android installs it.
+- The download carries on when the screen turns off or you leave the app, and shows its
+  progress in a notification. Android 13 and later ask once to allow that notification;
+  the update downloads either way.
+- If Android needs your yes to install and the app isn't on screen by then, a notification
+  says the update is downloaded. Open the app and tap **Install**; nothing is fetched again.
 - A download that stops halfway (no signal, the app closed) carries on from where it
   stopped on the next try. A finished download isn't fetched again if the install is put off.
 - The download sits in the app's cache until it is installed and is deleted right after.
@@ -110,14 +115,15 @@ at the bottom of the main screen.
 | Permission | Why |
 |---|---|
 | `USE_EXACT_ALARM` / `SCHEDULE_EXACT_ALARM` | Ring at the exact minute, even in Doze |
-| `POST_NOTIFICATIONS` | The ringing notification (Android 13+) |
+| `POST_NOTIFICATIONS` | The ringing notification, and an update's download progress (Android 13+) |
 | `USE_FULL_SCREEN_INTENT` | Show the alarm over the lock screen |
 | `SYSTEM_ALERT_WINDOW` (Display over other apps) | Open the alarm screen by itself. Android only opens a full-screen alarm when the screen is off or locked, and some phones not even then; without this you'd get just a notification and have to open the app |
 | `FOREGROUND_SERVICE(_MEDIA_PLAYBACK)` | Keep playing the alarm sound |
+| `FOREGROUND_SERVICE_DATA_SYNC` | Keep an update downloading when the screen turns off |
 | `RECEIVE_BOOT_COMPLETED` | Re-queue the alarm after a restart |
 | `ACCESS_COARSE_LOCATION` | Optional; you can type coordinates instead |
 | `CAMERA` | Sink mission (optional) |
-| `WAKE_LOCK`, `VIBRATE` | Ringing |
+| `WAKE_LOCK`, `VIBRATE` | Ringing. `WAKE_LOCK` also keeps the phone awake while an update downloads |
 | `INTERNET` | Only to check for and download the app's own updates |
 | `REQUEST_INSTALL_PACKAGES`, `UPDATE_PACKAGES_WITHOUT_USER_ACTION` | Installing those updates |
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | One-tap fix when battery optimisation could put the alarm to sleep |

@@ -21,6 +21,8 @@
     <!-- Updating itself from the GitHub repo: fetch the new build and hand it to Android to install. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
+    <!-- Keep the update downloading, with its progress in a notification, when the screen turns off. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <!-- Held only by apps signed with the same key as this one: lets them copy the speech model. -->
     <permission
@@ -60,6 +62,12 @@
             android:name=".speech.ModelProvider"
             android:authorities="app.accentcoach.model"
             android:exported="true" />
+
+        <!-- Keeps an update downloading, with its progress in a notification, while the app isn't on screen. -->
+        <service
+            android:name=".update.UpdateService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <receiver
             android:name=".update.UpdateReceiver"

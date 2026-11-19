@@ -28,6 +28,7 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.coroutineContext
 
 /**
@@ -36,6 +37,9 @@ import kotlin.coroutines.coroutineContext
  * version than the one installed, the APK is downloaded, checked against its SHA-256
  * and handed to Android to install. Android only accepts it if it is signed with the
  * same key as the installed app.
+ *
+ * The download runs under [UpdateService], so it carries on with the screen off or the
+ * app left, and shows its progress in a notification.
  *
  * The download stays in the cache folder until it is installed. An attempt that stops
  * halfway (no signal, the app closed, the install prompt dismissed) carries on from the
@@ -56,6 +60,9 @@ object AppUpdate {
         data class Downloading(val progress: Float) : State
         data object Installing : State
 
+        /** Downloaded while the app was out of sight. Installing waits for the user to come back and say so. */
+        data class Ready(val release: Release) : State
+
         /** [release] is set when the update itself failed and can be retried. */
         data class Failed(val message: String, val release: Release?) : State
     }
@@ -72,6 +79,14 @@ object AppUpdate {
     // False once the user closes the pop-up. Asking for a check, an update or a retry opens it again.
     private val _prompt = MutableStateFlow(true)
     val prompt: StateFlow<Boolean> = _prompt.asStateFlow()
+
+    // True from the tap on Update until Android has the file or the attempt has failed.
+    // UpdateService keeps the app alive for that long.
+    private val _working = MutableStateFlow(false)
+    internal val working: StateFlow<Boolean> = _working.asStateFlow()
+
+    // Install sessions the app gave up itself. Android reports each as a cancelled update, which is no news.
+    private val abandoned = ConcurrentHashMap.newKeySet<Int>()
 
     // Outlives the screen, so leaving the app doesn't cancel a download.
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -96,6 +111,7 @@ object AppUpdate {
     /** Looks for a newer build. A [quiet] check says nothing unless it finds one. */
     suspend fun check(context: Context, quiet: Boolean = true) {
         if (busy()) return
+        val ready = _state.value as? State.Ready
         if (!quiet) {
             _prompt.value = true
             _state.value = State.Checking
@@ -117,7 +133,8 @@ object AppUpdate {
         }
         // An update may have started while this was asking.
         if (busy()) return
-        _state.value = found
+        // A download that is waiting to be installed stays on offer, unless a newer build has replaced it.
+        _state.value = if (ready != null && (latest == null || latest == ready.release)) ready else found
         val keep = latest
         withContext(Dispatchers.IO) { cleanUp(app, keep) }
     }
@@ -128,6 +145,10 @@ object AppUpdate {
         installing = release
         _prompt.value = true
         _state.value = State.Downloading(0f)
+        _working.value = true
+        UpdateNotice.clear(app)
+        // Carries the download through the screen turning off or the app being left.
+        UpdateService.start(app)
         scope.launch {
             try {
                 withContext(Dispatchers.IO) {
@@ -140,17 +161,19 @@ object AppUpdate {
                     }
                 }
             } catch (e: Exception) {
+                val message = when (e) {
+                    is HttpError -> app.getString(R.string.update_download_failed, e.code)
+                    // Usually a newer build was published between the check and the download.
+                    is Mismatch -> app.getString(R.string.update_mismatch)
+                    is IOException -> app.getString(R.string.update_interrupted)
+                    else -> e.message ?: app.getString(R.string.update_failed)
+                }
                 _prompt.value = true
-                _state.value = State.Failed(
-                    when (e) {
-                        is HttpError -> app.getString(R.string.update_download_failed, e.code)
-                        // Usually a newer build was published between the check and the download.
-                        is Mismatch -> app.getString(R.string.update_mismatch)
-                        is IOException -> app.getString(R.string.update_interrupted)
-                        else -> e.message ?: app.getString(R.string.update_failed)
-                    },
-                    release,
-                )
+                _state.value = State.Failed(message, release)
+                // Nobody is looking at the pop-up, so say it where it will be seen.
+                if (!UpdateNotice.appOnScreen()) UpdateNotice.result(app, message)
+            } finally {
+                _working.value = false
             }
         }
     }
@@ -250,13 +273,7 @@ object AppUpdate {
         try {
             tidy(folder(context), installedVersionCode(context), keep)
             val installer = context.packageManager.packageInstaller
-            for (session in installer.mySessions) {
-                try {
-                    installer.abandonSession(session.sessionId)
-                } catch (_: Exception) {
-                    // Already gone.
-                }
-            }
+            for (session in installer.mySessions) abandon(installer, session.sessionId)
         } catch (_: Exception) {
             // Nothing depends on it; the next check tries again.
         } finally {
@@ -318,6 +335,29 @@ object AppUpdate {
         _prompt.value = true
         _state.value = State.Failed(message, installing)
     }
+
+    /**
+     * Android wants the user's yes, but the app isn't on screen to ask for it. The download
+     * is kept, a notification says it is ready, and the pop-up offers it when the app is opened.
+     */
+    internal fun waitForUser(context: Context, sessionId: Int) {
+        abandon(context.packageManager.packageInstaller, sessionId)
+        _prompt.value = true
+        _state.value = installing?.let { State.Ready(it) } ?: State.Idle
+        UpdateNotice.result(context, context.getString(R.string.update_notice_ready))
+    }
+
+    private fun abandon(installer: PackageInstaller, sessionId: Int) {
+        abandoned += sessionId
+        try {
+            installer.abandonSession(sessionId)
+        } catch (_: Exception) {
+            // Already gone.
+        }
+    }
+
+    /** True, once, for an install session the app ended itself. */
+    internal fun abandonedHere(sessionId: Int): Boolean = abandoned.remove(sessionId)
 }
 
 /** Hears back from Android about an update handed to it by [AppUpdate]. */
@@ -326,19 +366,30 @@ class UpdateReceiver : BroadcastReceiver() {
         // The new version has just replaced the old one, so its download has done its job.
         if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
             AppUpdate.cleanUp(context)
+            UpdateNotice.clear(context)
             return
         }
+        val sessionId = intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1)
         when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             // Android wants a yes from the user: always for the first update, and every time before Android 12.
-            PackageInstaller.STATUS_PENDING_USER_ACTION -> try {
+            PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 val confirm = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_INTENT, Intent::class.java)
-                context.startActivity(confirm!!.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            } catch (_: Exception) {
-                AppUpdate.installFailed(context.getString(R.string.update_prompt_failed))
+                when {
+                    confirm == null -> AppUpdate.installFailed(context.getString(R.string.update_prompt_failed))
+                    // Android doesn't let an app open a screen while it is out of sight, so the question waits.
+                    !UpdateNotice.appOnScreen() -> AppUpdate.waitForUser(context, sessionId)
+                    else -> try {
+                        context.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    } catch (_: Exception) {
+                        AppUpdate.installFailed(context.getString(R.string.update_prompt_failed))
+                    }
+                }
             }
             // The app has been replaced and closed by now; there's nobody left to tell.
             PackageInstaller.STATUS_SUCCESS -> Unit
-            PackageInstaller.STATUS_FAILURE_ABORTED -> AppUpdate.installFailed(context.getString(R.string.update_cancelled))
+            // Not news when the app ended the install itself, to tidy up or to wait for the user.
+            PackageInstaller.STATUS_FAILURE_ABORTED ->
+                if (!AppUpdate.abandonedHere(sessionId)) AppUpdate.installFailed(context.getString(R.string.update_cancelled))
             else -> AppUpdate.installFailed(
                 context.getString(
                     R.string.update_refused,

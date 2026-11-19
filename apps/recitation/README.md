@@ -139,7 +139,7 @@ Needs JDK 17 and the Android SDK (platform 35).
 ```bash
 cd apps/recitation
 ./gradlew :core:test              # unit tests for the logic
-./gradlew :app:testDebugUnitTest  # draws each screen, in both languages and themes, to app/build/screens
+./gradlew :app:testDebugUnitTest  # draws each screen, in both languages and themes, to app/build/screens; also the update's background service
 ./gradlew :app:assembleRelease    # → app/build/outputs/apk/release/app-release.apk
 ```
 
@@ -160,6 +160,11 @@ for now. The version and a **Check for updates** button, which brings the pop-up
 at the bottom of the first screen.
 
 - The download is checked against the published SHA-256 before Android installs it.
+- The download carries on when the screen turns off or you leave the app, and shows its
+  progress in a notification. Android 13 and later ask once to allow that notification;
+  the update downloads either way.
+- If Android needs your yes to install and the app isn't on screen by then, a notification
+  says the update is downloaded. Open the app and tap **Install**; nothing is fetched again.
 - A download that stops halfway (no signal, the app closed) carries on from where it
   stopped on the next try. A finished download isn't fetched again if the install is put off.
 - The download sits in the app's cache until it is installed and is deleted right after.
@@ -175,6 +180,6 @@ at the bottom of the first screen.
 |---|---|
 | `INTERNET` | Reading playlists, downloading sound, the verses, the speech model, and the app's own updates. |
 | `REQUEST_INSTALL_PACKAGES`, `UPDATE_PACKAGES_WITHOUT_USER_ACTION` | Installing those updates. |
-| `POST_NOTIFICATIONS` | Showing progress while recordings are prepared. The work runs without it too. |
+| `POST_NOTIFICATIONS` | Showing progress while recordings are prepared and while an update downloads. The work runs without it too. |
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC`, `WAKE_LOCK` | Keeping that work going in the background. |
 | `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | Reciting with the screen off. |
