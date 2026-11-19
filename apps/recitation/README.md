@@ -3,7 +3,8 @@
 An Android app for reading the Quran word by word and following a recitation of it.
 Every surah can be opened and read, each word with its meaning underneath. Give the app a
 YouTube playlist of a recitation and it downloads the sound only, works out when each word
-is recited, and plays along: the word being recited is lit and fills in letter by letter,
+is recited, and plays along: the word being recited is framed, a soft light glides under
+its letters as each is uttered,
 and the page scrolls with it.
 
 The app is in English and Arabic, following the phone's language. By day it is green on

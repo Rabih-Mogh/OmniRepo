@@ -39,11 +39,21 @@ class RecitalTest {
     }
 
     @Test
-    fun `a word fills in letter by letter`() {
+    fun `the place in a word glides from letter to letter`() {
+        // Letters 0-2 from 1000 ms, 2-4 from 1200 ms, 4-9 from 1500 ms; the next word starts at 2000 ms.
         val word = WordTiming(1000, intArrayOf(2, 1000, 4, 1200, 9, 1500))
-        assertEquals(0, word.reachedAt(900))
-        assertEquals(2, word.reachedAt(1000))
-        assertEquals(4, word.reachedAt(1499))
-        assertEquals(9, word.reachedAt(5000))
+        assertEquals(Uttered(0, 2, 0f), word.utteredAt(900, 2000))
+        assertEquals(Uttered(0, 2, 0.5f), word.utteredAt(1100, 2000))
+        assertEquals(Uttered(2, 4, 0f), word.utteredAt(1200, 2000))
+        assertEquals(Uttered(4, 9, 0.5f), word.utteredAt(1750, 2000))
+        assertEquals(Uttered(4, 9, 1f), word.utteredAt(5000, 2000))
+    }
+
+    @Test
+    fun `a long breath after a word doesn't slow its last letter to a crawl`() {
+        val word = WordTiming(1000, intArrayOf(3, 1000))
+        // The next word starts ten seconds later; the letter is crossed in 1.2 s all the same.
+        assertEquals(Uttered(0, 3, 0.5f), word.utteredAt(1600, 11_000))
+        assertEquals(null, WordTiming(1000, intArrayOf()).utteredAt(1000, 2000))
     }
 }

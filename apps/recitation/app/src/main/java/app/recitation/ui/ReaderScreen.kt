@@ -65,17 +65,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -122,7 +123,7 @@ private class WordIndex(timings: Timings) {
 
 /**
  * The reading screen: every verse as a row of word tiles, each with its meaning underneath.
- * The word being recited is lit and fills in letter by letter, and the page scrolls to keep
+ * The word being recited is framed, a light glides under its letters, and the page scrolls to keep
  * its verse in view. [position] is where the recording is, in ms; it is read as often as
  * the screen redraws, so it is a function rather than a value.
  */
@@ -308,6 +309,8 @@ private fun VerseBlock(
                             else -> WordState.RESTING
                         },
                         position = position,
+                        // The word's last sound runs until the next word begins.
+                        endMs = timings.getOrNull(w + 1)?.startMs ?: Int.MAX_VALUE,
                         showMeaning = showMeanings,
                         wordInView = wordInView,
                         onClick = { onWord(w) },
@@ -341,6 +344,13 @@ private fun VerseBlock(
 
 private enum class WordState { RESTING, RECITED, CURRENT }
 
+/** A soft round light that fades to nothing at its edge, squashed to [flatten] of its height. */
+private fun DrawScope.spot(color: Color, center: Offset, radius: Float, flatten: Float) {
+    scale(scaleX = 1f, scaleY = flatten, pivot = center) {
+        drawCircle(Brush.radialGradient(listOf(color, Color.Transparent), center = center, radius = radius), radius = radius, center = center)
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun WordTile(
@@ -348,6 +358,7 @@ private fun WordTile(
     timing: WordTiming?,
     state: WordState,
     position: () -> Int,
+    endMs: Int,
     showMeaning: Boolean,
     wordInView: BringIntoViewRequester,
     onClick: () -> Unit,
@@ -355,9 +366,8 @@ private fun WordTile(
     val colors = MaterialTheme.colorScheme
     val isCurrent = state == WordState.CURRENT
     val ink = when (state) {
-        WordState.RESTING -> colors.onSurface
+        WordState.RESTING, WordState.CURRENT -> colors.onSurface
         WordState.RECITED -> colors.onSurface.copy(alpha = 0.45f)
-        WordState.CURRENT -> colors.onSurface.copy(alpha = 0.7f)
     }
     val shape = RoundedCornerShape(10.dp)
     Column(
@@ -367,22 +377,31 @@ private fun WordTile(
             .clip(shape).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        val text = if (isCurrent && timing != null) {
-            // The letters recited so far take the theme's colour. Colour alone doesn't break the joined-up script.
-            val reached by remember(timing) { derivedStateOf { timing.reachedAt(position()).coerceIn(0, word.arabic.length) } }
-            buildAnnotatedString {
-                withStyle(SpanStyle(color = colors.primary)) { append(word.arabic.substring(0, reached)) }
-                append(word.arabic.substring(reached))
-            }
-        } else {
-            AnnotatedString(word.arabic)
-        }
-        Text(text, fontFamily = QuranFont, fontSize = 26.sp, lineHeight = 46.sp, color = ink)
+        // The letters themselves never change: recolouring part of a joined-up word makes
+        // Android shape it again, and the letters visibly shift. A pool of light glides
+        // under them instead, drawn afresh every frame without laying anything out again.
+        var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+        val glow = colors.primary
+        Text(
+            word.arabic, fontFamily = QuranFont, fontSize = 26.sp, lineHeight = 46.sp, color = ink,
+            onTextLayout = { layout = it },
+            modifier = if (!isCurrent || timing == null) Modifier else Modifier.drawBehind {
+                val placed = layout ?: return@drawBehind
+                val uttered = timing.utteredAt(position(), endMs) ?: return@drawBehind
+                val length = placed.layoutInput.text.length
+                val from = placed.getHorizontalPosition(uttered.from.coerceIn(0, length), usePrimaryDirection = true)
+                val to = placed.getHorizontalPosition(uttered.to.coerceIn(0, length), usePrimaryDirection = true)
+                val x = from + (to - from) * uttered.fraction
+                val baseline = placed.firstBaseline
+                // A wide, flat pool just under the letter, and a fainter glow behind the letter itself.
+                spot(glow.copy(alpha = 0.55f), Offset(x, baseline + 7.dp.toPx()), radius = 20.dp.toPx(), flatten = 0.42f)
+                spot(glow.copy(alpha = 0.22f), Offset(x, baseline - 9.dp.toPx()), radius = 22.dp.toPx(), flatten = 0.9f)
+            },
+        )
         if (showMeaning) {
             Text(
                 word.meaning, Modifier.widthIn(max = 132.dp).padding(bottom = 4.dp), textAlign = TextAlign.Center,
                 style = TextStyle(fontSize = 12.sp, lineHeight = 15.sp, textDirection = TextDirection.Ltr),
-                fontWeight = if (isCurrent) FontWeight.Medium else FontWeight.Normal,
                 color = when (state) {
                     WordState.RESTING -> colors.onSurfaceVariant
                     WordState.RECITED -> colors.onSurfaceVariant.copy(alpha = 0.6f)

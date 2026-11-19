@@ -131,16 +131,40 @@ class Recital(surah: Int, verses: List<List<String>>) {
     }
 }
 
-/** When a word starts in the recording, and when each of its letters is reached: pairs of (letters so far, ms). */
+/**
+ * When a word starts in the recording, and when each of its letters is reached: pairs of
+ * (letters so far, ms). The sound that starts at a pair's time is written by the letters
+ * between the pair before and this one.
+ */
 class WordTiming(val startMs: Int, val letters: IntArray) {
 
-    /** How many of the word's characters have been recited by [ms]. */
-    fun reachedAt(ms: Int): Int {
-        var reached = 0
-        for (k in letters.indices step 2) if (letters[k + 1] <= ms) reached = letters[k]
-        return reached
+    /**
+     * Where in the word the reciter is at [ms]: between the characters [from] and [to],
+     * [fraction] of the way across, so a marker can glide over the letters instead of
+     * jumping from one to the next. [endMs] is when the next word starts. Null if the word
+     * has no letter timings.
+     */
+    fun utteredAt(ms: Int, endMs: Int): Uttered? {
+        if (letters.isEmpty()) return null
+        val count = letters.size / 2
+        var k = 0
+        while (k + 1 < count && letters[2 * k + 3] <= ms) k++
+        val from = if (k == 0) 0 else letters[2 * k - 2]
+        val to = letters[2 * k]
+        val start = letters[2 * k + 1]
+        // The last sound lasts until the next word, but a breath after it isn't part of it.
+        val end = if (k + 1 < count) letters[2 * k + 3] else minOf(maxOf(endMs, start + 1), start + LONGEST_LAST_SOUND_MS)
+        val fraction = if (end <= start) 1f else ((ms - start).toFloat() / (end - start)).coerceIn(0f, 1f)
+        return Uttered(from, to, fraction)
+    }
+
+    private companion object {
+        const val LONGEST_LAST_SOUND_MS = 1200
     }
 }
+
+/** See [WordTiming.utteredAt]. */
+data class Uttered(val from: Int, val to: Int, val fraction: Float)
 
 /**
  * The timing of every word of a surah in one recording.
