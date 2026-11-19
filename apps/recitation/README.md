@@ -6,8 +6,10 @@ YouTube playlist of a recitation and it downloads the sound only, works out when
 is recited, and plays along: the word being recited is lit and fills in letter by letter,
 and the page scrolls with it.
 
-The app is in English and Arabic, following the phone's language, and is green by day and
-gold in dark mode.
+The app is in English and Arabic, following the phone's language. By day it is green on
+white; in dark mode, gold on green-black. Every screen has a coloured band at the top with
+a gold rule, the word being recited sits in a tinted frame with its meaning, and each
+verse ends with its number.
 
 ## How it works
 
@@ -50,8 +52,12 @@ the whole Quran ends up readable without a connection.
    - Tap a word to jump to it. **Previous verse** and **Next verse** are either side of
      the play button.
    - The button at the top right shows or hides the meanings.
-   - When a recording ends, the playlist's next prepared one follows. Sound carries on
-     with the screen off, with controls in the notification.
+   - When a recording ends, the playlist's next prepared one follows.
+   - The recitation carries on when the surah, or the app, is left: with the screen off,
+     in another app, or after the app is swiped away. Play and pause are in the
+     notification and on the lock screen. Inside the app, a bar at the bottom of the
+     lists shows what is reciting, with play or pause, a cross to stop it, and a tap to
+     go back to its surah.
 
 ### Lining words up with the sound
 

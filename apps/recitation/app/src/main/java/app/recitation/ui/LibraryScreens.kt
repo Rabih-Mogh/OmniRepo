@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -40,8 +41,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -113,18 +116,21 @@ fun HomeContent(
     onSurah: (Int) -> Unit,
     onOpen: (Playlist) -> Unit,
     onAdd: () -> Unit,
+    nowPlaying: @Composable () -> Unit = {},
 ) {
-    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
-        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)) {
-            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
-            Text(stringResource(R.string.tagline), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.navigationBars)) {
+        Banner {
+            Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)) {
+                Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.tagline), style = MaterialTheme.typography.bodyMedium, color = LocalContentColor.current.copy(alpha = 0.8f))
+            }
         }
         TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.background) {
             Tab(selected = tab == 0, onClick = { onTab(0) }, text = { Text(stringResource(R.string.tab_quran)) })
             Tab(selected = tab == 1, onClick = { onTab(1) }, text = { Text(stringResource(R.string.tab_playlists)) })
         }
         if (tab == 0) {
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+            LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(bottom = 24.dp)) {
                 if (status != null) item { Box(Modifier.padding(16.dp)) { StatusCard(status, actions) } }
                 items(SURAHS, key = { it.number }) { surah ->
                     SurahRow(surah, recited = surah.number in recited, onClick = { onSurah(surah.number) })
@@ -132,7 +138,7 @@ fun HomeContent(
                 }
             }
         } else {
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (status != null) item { StatusCard(status, actions) }
                 if (playlists.isEmpty()) {
                     item {
@@ -170,6 +176,31 @@ fun HomeContent(
                 }
                 item { VersionFooter() }
             }
+        }
+        nowPlaying()
+    }
+}
+
+/**
+ * Sits at the bottom of the lists while a recitation is loaded in the player: what it is,
+ * play or pause, and a cross to stop it. Tapping it goes back to the surah.
+ */
+@Composable
+fun NowPlayingBar(title: String, playing: Boolean, onPlayPause: () -> Unit, onOpen: () -> Unit, onStop: () -> Unit) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen)) {
+        Row(Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onPlayPause) {
+                if (playing) Icon(AppIcons.Pause, stringResource(R.string.pause), tint = MaterialTheme.colorScheme.primary)
+                else Icon(Icons.Filled.PlayArrow, stringResource(R.string.play), tint = MaterialTheme.colorScheme.primary)
+            }
+            Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    stringResource(if (playing) R.string.now_reciting else R.string.recitation_paused),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            IconButton(onClick = onStop) { Icon(Icons.Filled.Close, stringResource(R.string.stop_reciting)) }
         }
     }
 }
@@ -293,26 +324,29 @@ fun RecordingsContent(
     onSurah: (Track, Int) -> Unit,
     onForget: (Track) -> Unit,
     onRemove: () -> Unit,
+    nowPlaying: @Composable () -> Unit = {},
 ) {
     var picking by remember { mutableStateOf<Track?>(null) }
     var menu by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf(false) }
     val waiting = playlist.tracks.filter { !it.ready && !it.wanted && it.surah > 0 }
 
-    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
-        Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
-            Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
-                Text(playlist.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    stringResource(R.string.ready_of, playlist.tracks.count { it.ready }, playlist.tracks.size),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Box {
-                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.more)) }
-                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    DropdownMenuItem(text = { Text(stringResource(R.string.remove_playlist)) }, onClick = { menu = false; removing = true })
+    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.navigationBars)) {
+        Banner {
+            Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
+                Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
+                    Text(playlist.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        stringResource(R.string.ready_of, playlist.tracks.count { it.ready }, playlist.tracks.size),
+                        style = MaterialTheme.typography.bodySmall, color = LocalContentColor.current.copy(alpha = 0.8f),
+                    )
+                }
+                Box {
+                    IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.more)) }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(text = { Text(stringResource(R.string.remove_playlist)) }, onClick = { menu = false; removing = true })
+                    }
                 }
             }
         }
@@ -344,6 +378,7 @@ fun RecordingsContent(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
+        nowPlaying()
     }
 
     picking?.let { track ->

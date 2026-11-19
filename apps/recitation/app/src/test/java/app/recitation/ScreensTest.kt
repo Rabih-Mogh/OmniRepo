@@ -12,6 +12,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -28,6 +29,7 @@ import app.recitation.prepare.Step
 import app.recitation.speech.ModelStore
 import app.recitation.ui.HomeContent
 import app.recitation.ui.NoRecitationBar
+import app.recitation.ui.NowPlayingBar
 import app.recitation.ui.ReaderContent
 import app.recitation.ui.RecitationTheme
 import app.recitation.ui.RecordingsContent
@@ -133,8 +135,9 @@ class ScreensTest {
     fun readingInEnglishByDay() {
         // 7.5 s in: half way through the last word of the second verse.
         show("en-day-reader") { Reader(7_500) }
-        compose.onNodeWithText("Al-Fatihah").assertIsDisplayed()
-        compose.onNodeWithText("Verse 2").assertIsDisplayed()
+        compose.onNodeWithText("سورة الفاتحة").assertIsDisplayed()
+        compose.onNodeWithText("Al-Fatihah · 7 verses").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Verse 2").assertIsDisplayed()
         compose.onNodeWithText("of the universe").assertIsDisplayed()
         compose.onNodeWithText("[All] praise is [due] to Allah, Lord of the worlds -").assertIsDisplayed()
         assertTrue("a verse's first word sits on the right", startsFromTheRight("ٱلْحَمْدُ"))
@@ -167,9 +170,10 @@ class ScreensTest {
     fun readingInArabicByNight() {
         // Meanings are English, so they're off when the phone is in Arabic.
         show("ar-night-reader") { Reader(12_400, meanings = false) }
-        compose.onNodeWithText("الفاتحة").assertIsDisplayed()
+        compose.onNodeWithText("سورة الفاتحة").assertIsDisplayed()
         // Numbers follow the phone's language too.
-        compose.onNodeWithText("الآية ٤").assertIsDisplayed()
+        compose.onNodeWithText("٧ آيات").assertIsDisplayed()
+        compose.onNodeWithContentDescription("الآية ٤").assertIsDisplayed()
     }
 
     @Test
@@ -191,7 +195,7 @@ class ScreensTest {
             )
         }
         // The words and meanings are all there to read; there is just no player.
-        compose.onNodeWithText("Verse 1").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Verse 1").assertIsDisplayed()
         compose.onNodeWithText("In (the) name").assertIsDisplayed()
         compose.onNodeWithText("Next verse").assertDoesNotExist()
         compose.onNodeWithText("Get ready").performClick()
@@ -208,6 +212,25 @@ class ScreensTest {
         compose.onNodeWithText("Al-Baqarah").assertIsDisplayed()
         // The surahs can be read while a download is under way.
         compose.onNodeWithText("Downloading the sound… 20%").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aRecitationCarriesOnWhileOtherScreensAreOpen() {
+        var opened = false
+        var toggled = false
+        show("en-day-now-reciting") {
+            HomeContent(
+                0, {}, listOf(playlist), null, StatusActions(), recited = setOf(1), onSurah = {}, onOpen = {}, onAdd = {},
+                nowPlaying = { NowPlayingBar("Al-Fatihah", playing = true, onPlayPause = { toggled = true }, onOpen = { opened = true }, onStop = {}) },
+            )
+        }
+        compose.onNodeWithText("Reciting now").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Pause").performClick()
+        assertTrue(toggled)
+        // Tapping the bar goes back to the surah being recited.
+        compose.onNodeWithText("Reciting now").performClick()
+        assertTrue(opened)
     }
 
     @Test

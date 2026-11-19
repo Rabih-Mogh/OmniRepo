@@ -128,7 +128,8 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     fun playing(trackId: String) {
         val track = library.track(trackId) ?: return
         val shown = screen as? Screen.Surah ?: return
-        if (shown.trackId == trackId) return
+        // A surah open just to read stays put, whatever is playing in the background.
+        if (shown.trackId == null || shown.trackId == trackId) return
         screen = shown.copy(number = track.surah, trackId = trackId)
         load(track.surah, track)
     }

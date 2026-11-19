@@ -50,6 +50,9 @@ fun App(model: AppModel) {
     BackHandler(enabled = model.screen != Screen.Home) { model.back() }
     UpdateDialog()
 
+    // One line to the player for the whole app, so leaving a surah, or the app, doesn't stop the recitation.
+    val playback = rememberPlayback(onMovedOn = model::playing)
+
     // Preparing shows its progress in a notification; Android 13+ wants a yes for that. It runs either way.
     var asked by remember { mutableStateOf<List<Track>?>(null) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -81,6 +84,21 @@ fun App(model: AppModel) {
     }
     val actions = remember(model) { StatusActions(model::pause, model::resume, model::cancel, model::retryModel) }
 
+    // What is reciting in the background, on the screens that aren't its surah.
+    val nowPlaying: @Composable () -> Unit = {
+        val reciting = playback.trackId?.let { id -> tracks.firstOrNull { it.id == id } }
+        val player = playback.controller
+        if (reciting != null && player != null) {
+            NowPlayingBar(
+                title = surahName(SURAHS[reciting.surah - 1]),
+                playing = playback.playing,
+                onPlayPause = { if (player.isPlaying) player.pause() else player.play() },
+                onOpen = { model.openSurah(reciting.surah, prefer = reciting) },
+                onStop = { player.stop(); player.clearMediaItems() },
+            )
+        }
+    }
+
     when (val screen = model.screen) {
         Screen.Home -> HomeContent(
             tab = model.tab,
@@ -92,6 +110,7 @@ fun App(model: AppModel) {
             onSurah = { model.openSurah(it) },
             onOpen = model::open,
             onAdd = { model.link = "" },
+            nowPlaying = nowPlaying,
         )
         is Screen.Recordings -> {
             val playlist = playlists.firstOrNull { it.url == screen.url }
@@ -109,10 +128,11 @@ fun App(model: AppModel) {
                     onSurah = model::setSurah,
                     onForget = model::forget,
                     onRemove = { model.remove(playlist) },
+                    nowPlaying = nowPlaying,
                 )
             }
         }
-        is Screen.Surah -> SurahScreen(model, screen, playlists, status, get)
+        is Screen.Surah -> SurahScreen(model, screen, playlists, status, playback, get)
     }
 
     model.link?.let { link ->
@@ -127,7 +147,7 @@ fun App(model: AppModel) {
 
 /** A surah open to read: with its recitation playing along when one is ready, and on its own when not. */
 @Composable
-private fun SurahScreen(model: AppModel, screen: Screen.Surah, playlists: List<Playlist>, status: Status?, get: (List<Track>) -> Unit) {
+private fun SurahScreen(model: AppModel, screen: Screen.Surah, playlists: List<Playlist>, status: Status?, playback: Playback, get: (List<Track>) -> Unit) {
     val arabic = LocalConfiguration.current.locales[0].language == "ar"
     // Word meanings are in English, so they start hidden when the phone is in Arabic.
     var meanings by rememberSaveable { mutableStateOf(!arabic) }
@@ -137,7 +157,7 @@ private fun SurahScreen(model: AppModel, screen: Screen.Surah, playlists: List<P
         reading == null || reading.surah != screen.number ->
             ReaderLoading(failed = model.readingFailed, onRetry = model::reload, onBack = { model.back() })
         track != null && reading.timings != null ->
-            PlayingReader(model, reading, track, playlists, meanings, onMeanings = { meanings = it })
+            PlayingReader(model, reading, track, playlists, playback, meanings, onMeanings = { meanings = it })
         else -> ReaderContent(
             reading = reading, showMeanings = meanings, playing = false, position = { 0 }, duration = 0,
             onBack = { model.back() }, onMeanings = { meanings = it }, onPlayPause = {}, onSeek = {},
@@ -158,26 +178,90 @@ private fun SurahScreen(model: AppModel, screen: Screen.Surah, playlists: List<P
     }
 }
 
-/** A line to the playback service, for as long as the screen that asks for it is showing. */
-@Composable
-private fun rememberController(): MediaController? {
-    val context = LocalContext.current.applicationContext
-    var controller by remember { mutableStateOf<MediaController?>(null) }
-    DisposableEffect(Unit) {
-        val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java))).buildAsync()
-        future.addListener({ controller = runCatching { future.get() }.getOrNull() }, ContextCompat.getMainExecutor(context))
-        onDispose { MediaController.releaseFuture(future) }
+/** The line to the playback service, and what it is playing. */
+class Playback {
+    var controller by mutableStateOf<MediaController?>(null)
+    var playing by mutableStateOf(false)
+    var duration by mutableIntStateOf(0)
+
+    /** The recording loaded in the player, playing or paused; null when there is none. */
+    var trackId by mutableStateOf<String?>(null)
+
+    fun read(player: Player) {
+        playing = player.isPlaying
+        duration = player.duration.coerceAtLeast(0).toInt()
+        trackId = player.currentMediaItem?.mediaId
     }
-    return controller
+}
+
+/**
+ * Connects to the playback service for as long as the app's screen exists. The service
+ * itself outlives the screen while it is reciting. [onMovedOn] is told when the player
+ * goes on to the next recording.
+ */
+@Composable
+private fun rememberPlayback(onMovedOn: (String) -> Unit): Playback {
+    val context = LocalContext.current.applicationContext
+    val playback = remember { Playback() }
+    // Counts up when the service goes away (Android stopped it while nothing was playing), to connect afresh.
+    var connection by remember { mutableIntStateOf(0) }
+    DisposableEffect(connection) {
+        var open = true
+        val listener = object : Player.Listener {
+            override fun onEvents(player: Player, events: Player.Events) = playback.read(player)
+
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                mediaItem?.mediaId?.let(onMovedOn)
+            }
+        }
+        val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java)))
+            .setListener(object : MediaController.Listener {
+                override fun onDisconnected(controller: MediaController) {
+                    if (!open) return // this screen let go of it itself
+                    playback.controller = null
+                    playback.playing = false
+                    playback.trackId = null
+                    connection++
+                }
+            })
+            .buildAsync()
+        future.addListener(
+            {
+                val controller = runCatching { future.get() }.getOrNull()
+                if (open && controller != null) {
+                    controller.addListener(listener)
+                    playback.controller = controller
+                    playback.read(controller)
+                }
+            },
+            ContextCompat.getMainExecutor(context),
+        )
+        onDispose {
+            open = false
+            playback.controller?.removeListener(listener)
+            playback.controller = null
+            MediaController.releaseFuture(future)
+        }
+    }
+    return playback
 }
 
 /** Plays a recording and shows its words. When it ends, the playlist's next prepared recording follows. */
 @Composable
-private fun PlayingReader(model: AppModel, reading: Reading, track: Track, playlists: List<Playlist>, meanings: Boolean, onMeanings: (Boolean) -> Unit) {
-    val controller = rememberController()
+private fun PlayingReader(
+    model: AppModel,
+    reading: Reading,
+    track: Track,
+    playlists: List<Playlist>,
+    playback: Playback,
+    meanings: Boolean,
+    onMeanings: (Boolean) -> Unit,
+) {
+    val controller = playback.controller
     val arabic = LocalConfiguration.current.locales[0].language == "ar"
-    var playing by remember { mutableStateOf(false) }
-    var duration by remember { mutableIntStateOf(0) }
+    // Until the player has switched to this recording, what it reports belongs to the one before.
+    val mine = playback.trackId == track.id
+    val playing = mine && playback.playing
     val position = remember { mutableIntStateOf(0) }
 
     LaunchedEffect(controller, track.id) {
@@ -199,33 +283,11 @@ private fun PlayingReader(model: AppModel, reading: Reading, track: Track, playl
         player.play()
     }
 
-    DisposableEffect(controller) {
-        val player = controller
-        val listener = object : Player.Listener {
-            override fun onEvents(player: Player, events: Player.Events) {
-                playing = player.isPlaying
-                duration = player.duration.coerceAtLeast(0).toInt()
-            }
-
-            // The player has moved on to the next recording: show its surah.
-            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                mediaItem?.mediaId?.let(model::playing)
-            }
-        }
-        player?.addListener(listener)
-        if (player != null) {
-            playing = player.isPlaying
-            duration = player.duration.coerceAtLeast(0).toInt()
-        }
-        onDispose { player?.removeListener(listener) }
-    }
-
     // Follow the player closely while it plays, so words light up on time; loosely when it's paused.
-    LaunchedEffect(controller, playing, track.id) {
+    LaunchedEffect(controller, playing, mine) {
         val player = controller ?: return@LaunchedEffect
         while (true) {
-            // Until the player has switched to this recording, its position belongs to the one before.
-            position.intValue = if (player.currentMediaItem?.mediaId == track.id) player.currentPosition.toInt() else 0
+            position.intValue = if (mine) player.currentPosition.toInt() else 0
             if (playing) withFrameMillis { } else delay(200)
         }
     }
@@ -238,7 +300,7 @@ private fun PlayingReader(model: AppModel, reading: Reading, track: Track, playl
             showMeanings = meanings,
             playing = playing,
             position = { position.intValue },
-            duration = duration,
+            duration = if (mine) playback.duration else 0,
             onBack = { model.back() },
             onMeanings = onMeanings,
             onPlayPause = { if (controller.isPlaying) controller.pause() else controller.play() },

@@ -80,12 +80,16 @@
 
     <!-- Reading along -->
     <string name="verse">Verse %1$d</string>
-    <string name="surah_number_and_verses">Surah %1$d · %2$d verses</string>
+    <string name="surah_title">سورة %1$s</string>
+    <string name="name_and_verses">%1$s · %2$s</string>
     <string name="meanings">Meanings</string>
     <string name="follow">Follow the recitation</string>
     <string name="mismatch">This recording doesn\'t sound like Surah %1$s, so the words may light up at the wrong time. Go back and choose the right surah for it.</string>
     <string name="play">Play</string>
     <string name="pause">Pause</string>
+    <string name="now_reciting">Reciting now</string>
+    <string name="recitation_paused">Recitation paused</string>
+    <string name="stop_reciting">Stop the recitation</string>
     <string name="previous_verse">Previous verse</string>
     <string name="next_verse">Next verse</string>
 

@@ -8,6 +8,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Arrangement
@@ -134,6 +141,8 @@ fun ReaderContent(
     withoutRecitation: @Composable () -> Unit = {},
 ) {
     val surah = SURAHS[reading.surah - 1]
+    val arabic = LocalConfiguration.current.locales[0].language == "ar"
+    val verses = pluralStringResource(R.plurals.verses, surah.verses, surah.verses)
     // With no recording there are no timings: the words are simply shown, and nothing is lit.
     val index = remember(reading) { reading.timings?.let(::WordIndex) }
     val current by remember(index) { derivedStateOf { index?.at(position()) ?: -1 } }
@@ -172,23 +181,21 @@ fun ReaderContent(
 
     Scaffold(
         topBar = {
-            Row(
-                Modifier.windowInsetsPadding(WindowInsets.statusBars).fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
-                Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
-                    Text(surahName(surah), style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        stringResource(R.string.surah_number_and_verses, surah.number, surah.verses),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                IconToggleButton(checked = showMeanings, onCheckedChange = onMeanings) {
-                    Icon(
-                        AppIcons.Translate, stringResource(R.string.meanings),
-                        tint = if (showMeanings) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+            Banner {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(stringResource(R.string.surah_title, surah.arabic), fontFamily = QuranFont, fontSize = 20.sp, lineHeight = 34.sp)
+                        Text(
+                            if (arabic) verses else stringResource(R.string.name_and_verses, surah.latin, verses),
+                            style = MaterialTheme.typography.bodySmall, color = LocalContentColor.current.copy(alpha = 0.8f),
+                        )
+                    }
+                    // The button would otherwise colour itself green, on the green banner.
+                    val onBanner = LocalBanner.current.content
+                    IconToggleButton(checked = showMeanings, onCheckedChange = onMeanings) {
+                        Icon(AppIcons.Translate, stringResource(R.string.meanings), tint = onBanner.copy(alpha = if (showMeanings) 1f else 0.45f))
+                    }
                 }
             }
         },
@@ -286,11 +293,7 @@ private fun VerseBlock(
     wordInView: BringIntoViewRequester,
     onWord: (Int) -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-        Text(
-            stringResource(R.string.verse, number), Modifier.padding(start = 4.dp, top = 12.dp, bottom = 2.dp),
-            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 6.dp)) {
         // Arabic runs from the right, whatever the phone's language.
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -319,7 +322,20 @@ private fun VerseBlock(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        HorizontalDivider(Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+        // The verse's number closes it, as the mark at the end of a verse does in a mushaf.
+        val label = stringResource(R.string.verse, number)
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
+            Box(
+                Modifier.padding(horizontal = 8.dp).defaultMinSize(minWidth = 24.dp, minHeight = 24.dp)
+                    .clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primary)
+                    .padding(horizontal = 6.dp).semantics { contentDescription = label },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(stringResource(R.string.number, number), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary)
+            }
+            HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
+        }
     }
 }
 
@@ -341,13 +357,14 @@ private fun WordTile(
     val ink = when (state) {
         WordState.RESTING -> colors.onSurface
         WordState.RECITED -> colors.onSurface.copy(alpha = 0.45f)
-        WordState.CURRENT -> colors.onPrimaryContainer.copy(alpha = 0.6f)
+        WordState.CURRENT -> colors.onSurface.copy(alpha = 0.7f)
     }
+    val shape = RoundedCornerShape(10.dp)
     Column(
         // The page scrolls to whichever tile holds this: the word being recited.
-        (if (isCurrent) Modifier.bringIntoViewRequester(wordInView) else Modifier)
-            .clip(RoundedCornerShape(10.dp)).background(if (isCurrent) colors.primaryContainer else Color.Transparent)
-            .clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 2.dp),
+        // The word being recited sits in a lightly tinted frame that takes in its meaning too.
+        (if (isCurrent) Modifier.bringIntoViewRequester(wordInView).border(1.5.dp, colors.primary, shape).background(colors.primary.copy(alpha = 0.12f), shape) else Modifier)
+            .clip(shape).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         val text = if (isCurrent && timing != null) {
@@ -369,7 +386,7 @@ private fun WordTile(
                 color = when (state) {
                     WordState.RESTING -> colors.onSurfaceVariant
                     WordState.RECITED -> colors.onSurfaceVariant.copy(alpha = 0.6f)
-                    WordState.CURRENT -> colors.onPrimaryContainer
+                    WordState.CURRENT -> colors.primary
                 },
             )
         }
@@ -453,8 +470,10 @@ fun NoRecitationBar(text: String, action: String? = null, onAction: () -> Unit =
 @Composable
 fun ReaderLoading(failed: Boolean, onRetry: () -> Unit, onBack: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
-        IconButton(onClick = onBack, modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars).padding(4.dp)) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
+        Banner {
+            IconButton(onClick = onBack, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
+            }
         }
         if (failed) {
             Column(Modifier.align(Alignment.Center).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
