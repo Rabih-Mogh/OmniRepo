@@ -66,7 +66,7 @@ private val Green = lightColorScheme(
     surfaceContainerHighest = Color(0xFFE0EAE4),
 )
 
-/** Night: gold on green-black. */
+/** Night: gold on a very dark navy. */
 private val Gold = darkColorScheme(
     primary = Color(0xFFF2C14E),
     onPrimary = Color(0xFF3A2A00),
@@ -75,35 +75,35 @@ private val Gold = darkColorScheme(
     inversePrimary = Color(0xFF7A5A12),
     secondary = Color(0xFFD8C7A0),
     onSecondary = Color(0xFF3A2F12),
-    secondaryContainer = Color(0xFF263528),
+    secondaryContainer = Color(0xFF1C2742),
     onSecondaryContainer = Color(0xFFEDE6D3),
     tertiary = Color(0xFFE6C27A),
     onTertiary = Color(0xFF3A2A00),
     tertiaryContainer = Color(0xFF52401A),
     onTertiaryContainer = Color(0xFFFFE2A8),
-    background = Color(0xFF0C1410),
+    background = Color(0xFF070B16),
     onBackground = Color(0xFFEDE6D3),
-    surface = Color(0xFF0C1410),
+    surface = Color(0xFF070B16),
     onSurface = Color(0xFFEDE6D3),
-    surfaceVariant = Color(0xFF1E2B24),
-    onSurfaceVariant = Color(0xFFA9B3AC),
+    surfaceVariant = Color(0xFF1A2238),
+    onSurfaceVariant = Color(0xFFA9B1C6),
     surfaceTint = Color(0xFFF2C14E),
     inverseSurface = Color(0xFFEDE6D3),
-    inverseOnSurface = Color(0xFF14201A),
+    inverseOnSurface = Color(0xFF111A2E),
     error = Color(0xFFFFB4AB),
     onError = Color(0xFF690005),
     errorContainer = Color(0xFF5C1A17),
     onErrorContainer = Color(0xFFFFDAD6),
-    outline = Color(0xFF5C6B62),
-    outlineVariant = Color(0xFF2A3A31),
+    outline = Color(0xFF566080),
+    outlineVariant = Color(0xFF222C45),
     scrim = Color(0xFF000000),
-    surfaceBright = Color(0xFF2A3A31),
-    surfaceDim = Color(0xFF0C1410),
-    surfaceContainerLowest = Color(0xFF080E0B),
-    surfaceContainerLow = Color(0xFF111A15),
-    surfaceContainer = Color(0xFF14201A),
-    surfaceContainerHigh = Color(0xFF1A2820),
-    surfaceContainerHighest = Color(0xFF21322A),
+    surfaceBright = Color(0xFF222C45),
+    surfaceDim = Color(0xFF070B16),
+    surfaceContainerLowest = Color(0xFF04070F),
+    surfaceContainerLow = Color(0xFF0C1220),
+    surfaceContainer = Color(0xFF101728),
+    surfaceContainerHigh = Color(0xFF151E33),
+    surfaceContainerHighest = Color(0xFF1B2640),
 )
 
 /** Amiri Quran (SIL Open Font License): drawn for the Uthmani script and all its small signs. */
@@ -126,7 +126,7 @@ class BannerColors(val background: Color, val content: Color, val rule: Color) {
 }
 
 private val DayBanner = BannerColors(background = Color(0xFF1B6B4A), content = Color(0xFFFFF7E0), rule = Color(0xFFF2C14E))
-private val NightBanner = BannerColors(background = Color(0xFF14241C), content = Color(0xFFF2C14E), rule = Color(0xFFF2C14E))
+private val NightBanner = BannerColors(background = Color(0xFF0F172B), content = Color(0xFFF2C14E), rule = Color(0xFFF2C14E))
 
 val LocalBanner = staticCompositionLocalOf { DayBanner }
 

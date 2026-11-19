@@ -7,7 +7,7 @@ is recited, and plays along: the word being recited is framed and kept at the mi
 the page, and a soft light glides under its letters as each is uttered.
 
 The app is in English and Arabic, following the phone's language. By day it is green on
-white; in dark mode, gold on green-black. Every screen has a coloured band at the top with
+white; in dark mode, gold on a very dark navy. Every screen has a coloured band at the top with
 a gold rule, the word being recited sits in a tinted frame with its meaning, and each
 verse has its number on the rule above it. In the list of surahs each name is written in
 calligraphy beside its number in an eight-point star, and a surah opens with the basmala
