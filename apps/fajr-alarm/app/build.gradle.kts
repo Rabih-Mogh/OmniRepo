@@ -11,7 +11,7 @@ plugins {
 // always made just before its commit.
 val buildNumber: Int = try {
     providers.exec { commandLine("git", "rev-list", "--count", "HEAD") }
-        .standardOutput.asText.get().trim().toInt() + 1
+        .standardOutput.asText.get().trim().toInt() + 1 + 4 // four commits were taken out of the history on 2026-11-19; the 4 keeps versions climbing
 } catch (_: Exception) {
     1 // not a git checkout
 }

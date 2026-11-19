@@ -55,7 +55,7 @@ tools/publish-apk.sh fajr-alarm accent-coach
 It runs the tests, builds the app, copies the APKs into `apk/` and writes `version.json`
 (version, file size and SHA-256).
 
-- **Versions:** the version number is the repo's commit count plus one, so each published
+- **Versions:** the version number is the repo's commit count plus a fixed number, so each published
   build is higher than the last without anyone editing a number.
 - **Signing key:** Android only installs an update signed with the same key as the
   installed app. The APKs are signed with the debug key of the Mac they're built on
