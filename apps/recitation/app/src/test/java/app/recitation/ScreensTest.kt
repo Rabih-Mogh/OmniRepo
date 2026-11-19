@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -36,6 +37,7 @@ import app.recitation.ui.RecordingsContent
 import app.recitation.ui.Status
 import app.recitation.ui.StatusActions
 import com.github.takahirom.roborazzi.captureRoboImage
+import kotlin.math.abs
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -155,7 +157,29 @@ class ScreensTest {
         show("en-day-reader-long-verse") { Reader(90_500, verses = listOf(long, fatihah[2])) }
         compose.onNodeWithText("word 91").assertIsDisplayed()
         compose.onNodeWithText("word 1").assertIsNotDisplayed()
-        compose.onNodeWithText("word 120").assertIsNotDisplayed()
+        assertTrue("the word being recited is at the middle of the page, off by ${offCentre("word 91")} px", abs(offCentre("word 91")) < 60f)
+    }
+
+    /** How far the middle of the tile showing [meaning] is below the middle of the page of verses, in px. */
+    private fun offCentre(meaning: String): Float {
+        val page = compose.onNodeWithTag("verses").fetchSemanticsNode().boundsInRoot
+        val word = compose.onNodeWithText(meaning).fetchSemanticsNode().boundsInRoot
+        return word.center.y - page.center.y
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theFirstAndLastWordsAreCentredToo() {
+        // There is nothing above the first word or below the last, yet both sit in the middle.
+        show("en-day-reader-first-word") { Reader(200) }
+        assertTrue("first word off by ${offCentre("In (the) name")} px", abs(offCentre("In (the) name")) < 60f)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theLastWordIsCentred() {
+        show("en-day-reader-last-word") { Reader(17_500) }
+        assertTrue("last word off by ${offCentre("we ask for help")} px", abs(offCentre("we ask for help")) < 60f)
     }
 
     @Test

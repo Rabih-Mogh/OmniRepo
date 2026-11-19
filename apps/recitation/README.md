@@ -3,9 +3,8 @@
 An Android app for reading the Quran word by word and following a recitation of it.
 Every surah can be opened and read, each word with its meaning underneath. Give the app a
 YouTube playlist of a recitation and it downloads the sound only, works out when each word
-is recited, and plays along: the word being recited is framed, a soft light glides under
-its letters as each is uttered,
-and the page scrolls with it.
+is recited, and plays along: the word being recited is framed and kept at the middle of
+the page, and a soft light glides under its letters as each is uttered.
 
 The app is in English and Arabic, following the phone's language. By day it is green on
 white; in dark mode, gold on green-black. Every screen has a coloured band at the top with
@@ -46,10 +45,11 @@ the whole Quran ends up readable without a connection.
      app tries again a few times, then shows the error, in the system's own words, on the
      recording.
 3. **Read along.** Open a recording that is ready, or its surah from the Quran tab.
-   - The page follows the recitation. Each new verse moves to the top; inside a verse
-     taller than the screen, the page scrolls with the word being recited, so its tile is
-     always in view at the bottom. Scrolling by hand stops this until **Follow the
-     recitation** is tapped.
+   - The page follows the recitation and keeps the word being recited at the middle of
+     the page, so it is always in the same place for a glance. The page glides after
+     the word rather than jumping, the frame and light fade from one word to the next, and
+     a jump to a far part of the surah is covered by a short dissolve. Scrolling by hand
+     stops the following until **Follow the recitation** is tapped.
    - Tap a word to jump to it. **Previous verse** and **Next verse** are either side of
      the play button.
    - The button at the top right shows or hides the meanings.

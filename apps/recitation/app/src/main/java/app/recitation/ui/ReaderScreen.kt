@@ -1,13 +1,24 @@
 package app.recitation.ui
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.draw.scale
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.testTag
+import kotlin.math.abs
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.material3.LocalContentColor
@@ -127,7 +138,6 @@ private class WordIndex(timings: Timings) {
  * its verse in view. [position] is where the recording is, in ms; it is read as often as
  * the screen redraws, so it is a function rather than a value.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ReaderContent(
     reading: Reading,
@@ -157,20 +167,57 @@ fun ReaderContent(
     LaunchedEffect(list) {
         list.interactionSource.interactions.collect { if (it is DragInteraction.Start) follow = false }
     }
-    val wordInView = remember { BringIntoViewRequester() }
-    val atTop = remember { intArrayOf(-1) } // the verse last brought to the top of the page
-    LaunchedEffect(current, follow) {
-        if (!follow || current < 0) return@LaunchedEffect
-        val item = currentVerse + above
-        // A new verse starts at the top of the page, so what comes next can be read ahead.
-        if (currentVerse != atTop[0] || list.layoutInfo.visibleItemsInfo.none { it.index == item }) {
-            list.animateScrollToItem(item, scrollOffset = -24)
-            atTop[0] = currentVerse
+    // The word being recited is kept at the middle of the page, always in the same place
+    // for a quick glance. The page glides after it like a camera: it speeds up and slows
+    // down gently and never restarts when the next word comes. A jump too far to glide
+    // (a seek to another part of the surah) is covered by a short dissolve instead.
+    val place = remember { WordPlace() }
+    val fade = remember { Animatable(1f) }
+    LaunchedEffect(follow, index) {
+        if (!follow || index == null) {
+            fade.snapTo(1f)
+            return@LaunchedEffect
         }
-        // A verse can be taller than the screen. Keep the word being recited in view: when
-        // it runs off the bottom, scroll just far enough to show its tile there.
-        withFrameNanos { }
-        runCatching { wordInView.bringIntoView() }
+        var speed = 0f // px per second, kept from one word to the next
+        snapshotFlow { current }.collectLatest { word ->
+            if (word < 0) return@collectLatest
+            var last = 0L
+            var waited = 0
+            while (true) {
+                val now = withFrameNanos { it }
+                val dt = if (last == 0L) 0.016f else ((now - last) / 1e9f).coerceIn(0.001f, 0.05f)
+                last = now
+                val off = place.offCentre(word)
+                if (off == null) {
+                    // Its verse isn't on the page yet (it is far away): go there out of sight.
+                    if (++waited < 3) continue
+                    fade.animateTo(0f, tween(140))
+                    list.scrollToItem(index.verse(word) + above)
+                    repeat(4) { if (place.offCentre(word) == null) withFrameNanos { } }
+                    place.offCentre(word)?.let { list.scrollBy(it) }
+                    fade.animateTo(1f, tween(260))
+                    speed = 0f
+                    break
+                }
+                waited = 0
+                if (abs(off) > place.pageHeight() * 1.5f) {
+                    fade.animateTo(0f, tween(140))
+                    list.scrollBy(off)
+                    fade.animateTo(1f, tween(260))
+                    speed = 0f
+                    break
+                }
+                if (fade.value < 1f) fade.snapTo(1f)
+                if (abs(off) < 1f && abs(speed) < 8f) break // there
+                // A critically damped spring: pulled toward the word, never overshooting.
+                speed += (STIFFNESS * STIFFNESS * off - 2 * STIFFNESS * speed) * dt
+                val step = speed * dt
+                if (abs(list.dispatchRawDelta(step)) < abs(step) * 0.5f) {
+                    speed = 0f // the page can't scroll any further that way
+                    break
+                }
+            }
+        }
     }
 
     fun seekToVerse(verse: Int) {
@@ -231,7 +278,7 @@ fun ReaderContent(
                     color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            Verses(reading, index, list, basmala, current, currentVerse, position, showMeanings, wordInView) { ms ->
+            Verses(reading, index, list, basmala, current, currentVerse, position, showMeanings, place, { fade.value }) { ms ->
                 onSeek(ms)
                 follow = true
             }
@@ -239,7 +286,27 @@ fun ReaderContent(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+/** Where the word being recited sits on the page, so the page can be moved to centre it. */
+private class WordPlace {
+    var list: LayoutCoordinates? = null
+    private var word = -1
+    private var tile: LayoutCoordinates? = null
+
+    fun placed(word: Int, tile: LayoutCoordinates) {
+        this.word = word
+        this.tile = tile
+    }
+
+    fun pageHeight(): Float = list?.size?.height?.toFloat() ?: 0f
+
+    /** How far below the middle of the page [word]'s tile is, in px; null if it isn't laid out. */
+    fun offCentre(word: Int): Float? {
+        val page = list?.takeIf { it.isAttached } ?: return null
+        val tile = tile?.takeIf { this.word == word && it.isAttached } ?: return null
+        return page.localBoundingBoxOf(tile, clipBounds = false).center.y - page.size.height / 2f
+    }
+}
+
 @Composable
 private fun Verses(
     reading: Reading,
@@ -250,11 +317,19 @@ private fun Verses(
     currentVerse: Int,
     position: () -> Int,
     showMeanings: Boolean,
-    wordInView: BringIntoViewRequester,
+    place: WordPlace,
+    fade: () -> Float,
     onSeek: (Int) -> Unit,
 ) {
-    run {
-        LazyColumn(Modifier.fillMaxSize(), state = list) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        // With a recitation, half a page of room above the first verse and below the last
+        // lets even their words reach the middle.
+        val room = if (index != null) (maxHeight / 2 - 40.dp).coerceAtLeast(0.dp) else 0.dp
+        LazyColumn(
+            Modifier.fillMaxSize().testTag("verses").onGloballyPositioned { place.list = it }.graphicsLayer { alpha = fade() },
+            state = list,
+            contentPadding = PaddingValues(top = room, bottom = room + 24.dp),
+        ) {
             if (basmala) {
                 item {
                     Text(
@@ -273,16 +348,15 @@ private fun Verses(
                     current = if (currentVerse == v) current - first else -1,
                     position = position,
                     showMeanings = showMeanings,
-                    wordInView = wordInView,
+                    onPlaced = { w, tile -> place.placed(first + w, tile) },
                     onWord = { w -> index?.starts?.getOrNull(first + w)?.let(onSeek) },
                 )
             }
-            item { Spacer(Modifier.height(72.dp)) }
         }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun VerseBlock(
     number: Int,
@@ -291,7 +365,7 @@ private fun VerseBlock(
     current: Int,
     position: () -> Int,
     showMeanings: Boolean,
-    wordInView: BringIntoViewRequester,
+    onPlaced: (Int, LayoutCoordinates) -> Unit,
     onWord: (Int) -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 6.dp)) {
@@ -312,7 +386,7 @@ private fun VerseBlock(
                         // The word's last sound runs until the next word begins.
                         endMs = timings.getOrNull(w + 1)?.startMs ?: Int.MAX_VALUE,
                         showMeaning = showMeanings,
-                        wordInView = wordInView,
+                        onPlaced = { onPlaced(w, it) },
                         onClick = { onWord(w) },
                     )
                 }
@@ -344,6 +418,9 @@ private fun VerseBlock(
 
 private enum class WordState { RESTING, RECITED, CURRENT }
 
+/** How eagerly the page follows the word: higher is quicker. At 8 it settles in about two thirds of a second. */
+private const val STIFFNESS = 8f
+
 /** A soft round light that fades to nothing at its edge, squashed to [flatten] of its height. */
 private fun DrawScope.spot(color: Color, center: Offset, radius: Float, flatten: Float) {
     scale(scaleX = 1f, scaleY = flatten, pivot = center) {
@@ -351,7 +428,6 @@ private fun DrawScope.spot(color: Color, center: Offset, radius: Float, flatten:
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun WordTile(
     word: Word,
@@ -360,20 +436,23 @@ private fun WordTile(
     position: () -> Int,
     endMs: Int,
     showMeaning: Boolean,
-    wordInView: BringIntoViewRequester,
+    onPlaced: (LayoutCoordinates) -> Unit,
     onClick: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     val isCurrent = state == WordState.CURRENT
-    val ink = when (state) {
-        WordState.RESTING, WordState.CURRENT -> colors.onSurface
-        WordState.RECITED -> colors.onSurface.copy(alpha = 0.45f)
-    }
+    // Nothing switches on or off: the frame and the light fade from one word to the next,
+    // and a word dims gently once it has been recited.
+    val lit by animateFloatAsState(if (isCurrent) 1f else 0f, tween(if (isCurrent) 220 else 420), label = "lit")
+    val ink by animateColorAsState(
+        if (state == WordState.RECITED) colors.onSurface.copy(alpha = 0.45f) else colors.onSurface, tween(420), label = "ink",
+    )
     val shape = RoundedCornerShape(10.dp)
     Column(
-        // The page scrolls to whichever tile holds this: the word being recited.
-        // The word being recited sits in a lightly tinted frame that takes in its meaning too.
-        (if (isCurrent) Modifier.bringIntoViewRequester(wordInView).border(1.5.dp, colors.primary, shape).background(colors.primary.copy(alpha = 0.12f), shape) else Modifier)
+        // The word being recited sits in a lightly tinted frame that takes in its meaning too,
+        // and tells the page where it is so the page can keep it in the middle.
+        (if (isCurrent) Modifier.onGloballyPositioned(onPlaced) else Modifier)
+            .then(if (lit > 0f) Modifier.border(1.5.dp, colors.primary.copy(alpha = lit), shape).background(colors.primary.copy(alpha = 0.12f * lit), shape) else Modifier)
             .clip(shape).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -385,7 +464,7 @@ private fun WordTile(
         Text(
             word.arabic, fontFamily = QuranFont, fontSize = 26.sp, lineHeight = 46.sp, color = ink,
             onTextLayout = { layout = it },
-            modifier = if (!isCurrent || timing == null) Modifier else Modifier.drawBehind {
+            modifier = if (lit == 0f || timing == null) Modifier else Modifier.drawBehind {
                 val placed = layout ?: return@drawBehind
                 val uttered = timing.utteredAt(position(), endMs) ?: return@drawBehind
                 val length = placed.layoutInput.text.length
@@ -394,19 +473,23 @@ private fun WordTile(
                 val x = from + (to - from) * uttered.fraction
                 val baseline = placed.firstBaseline
                 // A wide, flat pool just under the letter, and a fainter glow behind the letter itself.
-                spot(glow.copy(alpha = 0.55f), Offset(x, baseline + 7.dp.toPx()), radius = 20.dp.toPx(), flatten = 0.42f)
-                spot(glow.copy(alpha = 0.22f), Offset(x, baseline - 9.dp.toPx()), radius = 22.dp.toPx(), flatten = 0.9f)
+                spot(glow.copy(alpha = 0.55f * lit), Offset(x, baseline + 7.dp.toPx()), radius = 20.dp.toPx(), flatten = 0.42f)
+                spot(glow.copy(alpha = 0.22f * lit), Offset(x, baseline - 9.dp.toPx()), radius = 22.dp.toPx(), flatten = 0.9f)
             },
         )
         if (showMeaning) {
-            Text(
-                word.meaning, Modifier.widthIn(max = 132.dp).padding(bottom = 4.dp), textAlign = TextAlign.Center,
-                style = TextStyle(fontSize = 12.sp, lineHeight = 15.sp, textDirection = TextDirection.Ltr),
-                color = when (state) {
+            val meaningInk by animateColorAsState(
+                when (state) {
                     WordState.RESTING -> colors.onSurfaceVariant
                     WordState.RECITED -> colors.onSurfaceVariant.copy(alpha = 0.6f)
                     WordState.CURRENT -> colors.primary
                 },
+                tween(320), label = "meaning",
+            )
+            Text(
+                word.meaning, Modifier.widthIn(max = 132.dp).padding(bottom = 4.dp), textAlign = TextAlign.Center,
+                style = TextStyle(fontSize = 12.sp, lineHeight = 15.sp, textDirection = TextDirection.Ltr),
+                color = meaningInk,
             )
         }
     }
