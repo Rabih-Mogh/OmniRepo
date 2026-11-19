@@ -82,7 +82,7 @@
     <string name="verse">Verse %1$d</string>
     <string name="surah_title">سورة %1$s</string>
     <string name="name_and_verses">%1$s · %2$s</string>
-    <string name="meanings">Meanings</string>
+    <string name="meanings">Word meanings</string>
     <string name="follow">Follow the recitation</string>
     <string name="mismatch">This recording doesn\'t sound like Surah %1$s, so the words may light up at the wrong time. Go back and choose the right surah for it.</string>
     <string name="play">Play</string>

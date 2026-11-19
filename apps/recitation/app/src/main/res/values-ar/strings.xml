@@ -90,7 +90,7 @@
     <string name="verse">الآية %1$d</string>
     <string name="surah_title">سورة %1$s</string>
     <string name="name_and_verses">%1$s · %2$s</string>
-    <string name="meanings">المعاني</string>
+    <string name="meanings">معاني الكلمات</string>
     <string name="follow">متابعة التلاوة</string>
     <string name="mismatch">لا يبدو هذا التسجيل سورة %1$s، وقد تُضاء الكلمات في غير وقتها. ارجع واختر السورة الصحيحة له.</string>
     <string name="play">تشغيل</string>

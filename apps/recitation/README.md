@@ -54,7 +54,10 @@ the whole Quran ends up readable without a connection.
      stops the following until **Follow the recitation** is tapped.
    - Tap a word to jump to it. **Previous verse** and **Next verse** are either side of
      the play button.
-   - The button at the top right shows or hides the meanings.
+   - The button at the top right shows or hides the meaning under each word; the choice
+     is remembered.
+   - Tap a verse to see its translation. It closes by itself after long enough to read
+     it (6 to 25 seconds, by its length).
    - When a recording ends, the playlist's next prepared one follows.
    - The recitation carries on when the surah, or the app, is left: with the screen off,
      in another app, or after the app is swiped away. Play and pause are in the

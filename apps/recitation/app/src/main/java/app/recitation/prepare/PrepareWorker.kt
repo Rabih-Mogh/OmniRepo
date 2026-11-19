@@ -56,6 +56,11 @@ object Settings {
 
     fun setDownloadModel(context: Context, allowed: Boolean) = store(context).edit().putBoolean("download_model", allowed).apply()
 
+    /** Whether each word's meaning shows under it; [byDefault] until the user has chosen. */
+    fun wordMeanings(context: Context, byDefault: Boolean): Boolean = store(context).getBoolean("word_meanings", byDefault)
+
+    fun setWordMeanings(context: Context, shown: Boolean) = store(context).edit().putBoolean("word_meanings", shown).apply()
+
     /** Whether the user paused the downloads. Paused work isn't picked up again until they say so. */
     fun paused(context: Context): Boolean = store(context).getBoolean("paused", false)
 

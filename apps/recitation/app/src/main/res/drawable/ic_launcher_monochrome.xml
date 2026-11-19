@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The same arch and book in one colour, for Android's themed icons. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.6"
+        android:strokeLineJoin="round" android:strokeLineCap="round"
+        android:pathData="M35.5,78.6 V50.5 Q35.5,32.9 54,25 Q72.5,32.9 72.5,50.5 V78.6" />
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M53.3,55.3 Q48.72,51.89 41.86,53.47 L41.86,64.56 Q48.72,62.98 53.3,65.9 Z M54.7,55.3 Q59.28,51.89 66.14,53.47 L66.14,64.56 Q59.28,62.98 54.7,65.9 Z" />
+</vector>

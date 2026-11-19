@@ -1,6 +1,19 @@
 package app.recitation
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -132,6 +145,23 @@ class ScreensTest {
         return node.center.x > root.center.x
     }
 
+    /** The launcher icon as phones show it: cut to a rounded square, and to a circle. */
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theAppIcon() {
+        show("icon") {
+            Row(Modifier.padding(24.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                for (shape in listOf(RoundedCornerShape(22.dp), CircleShape)) {
+                    // Launchers show the middle 72 of the icon's 108 units.
+                    Box(Modifier.size(144.dp).clip(shape), contentAlignment = Alignment.Center) {
+                        Image(painterResource(R.drawable.ic_launcher_background), null, Modifier.requiredSize(216.dp))
+                        Image(painterResource(R.drawable.ic_launcher_foreground), null, Modifier.requiredSize(216.dp))
+                    }
+                }
+            }
+        }
+    }
+
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun readingInEnglishByDay() {
@@ -141,10 +171,40 @@ class ScreensTest {
         compose.onNodeWithText("Al-Fatihah · 7 verses").assertIsDisplayed()
         compose.onNodeWithContentDescription("Verse 2").assertIsDisplayed()
         compose.onNodeWithText("of the universe").assertIsDisplayed()
-        compose.onNodeWithText("[All] praise is [due] to Allah, Lord of the worlds -").assertIsDisplayed()
+        // A verse's translation stays out of the way until the verse is tapped.
+        compose.onNodeWithText("[All] praise is [due] to Allah, Lord of the worlds -").assertDoesNotExist()
         assertTrue("a verse's first word sits on the right", startsFromTheRight("ٱلْحَمْدُ"))
         compose.onNodeWithText("Previous verse").assertIsDisplayed()
         compose.onNodeWithText("Next verse").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun tappingAVerseShowsItsTranslationForAWhile() {
+        val translation = "[All] praise is [due] to Allah, Lord of the worlds -"
+        compose.setContent {
+            RecitationTheme { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { Reader(7_500) } }
+        }
+        compose.onNodeWithContentDescription("Verse 2").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(translation).assertIsDisplayed()
+        compose.onRoot().captureRoboImage("build/screens/en-day-reader-translation.png")
+        // Left alone, it goes away by itself.
+        compose.mainClock.advanceTimeBy(30_000)
+        compose.waitForIdle()
+        compose.onNodeWithText(translation).assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun wordMeaningsCanBeHidden() {
+        show("en-day-reader-no-meanings") { Reader(7_500, meanings = false) }
+        compose.onNodeWithText("of the universe").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Word meanings").assertIsDisplayed()
+        // The verse's translation is still a tap away.
+        compose.onNodeWithContentDescription("Verse 2").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("[All] praise is [due] to Allah, Lord of the worlds -").assertIsDisplayed()
     }
 
     @Test
@@ -200,23 +260,33 @@ class ScreensTest {
         compose.onNodeWithContentDescription("الآية ٤").assertIsDisplayed()
     }
 
+    private val ikhlas = listOf(
+        verse("Say, \"He is Allah, [who is] One,", "قُلْ" to "Say", "هُوَ" to "He", "ٱللَّهُ" to "(is) Allah", "أَحَدٌ" to "the One"),
+        verse("Allah, the Eternal Refuge.", "ٱللَّهُ" to "Allah", "ٱلصَّمَدُ" to "the Eternal, the Absolute"),
+        verse("He neither begets nor is born,", "لَمْ" to "Not", "يَلِدْ" to "He begets", "وَلَمْ" to "and not", "يُولَدْ" to "He is begotten"),
+        verse(
+            "Nor is there to Him any equivalent.\"",
+            "وَلَمْ" to "And not", "يَكُن" to "is", "لَّهُۥ" to "for Him", "كُفُوًا" to "equivalent", "أَحَدٌۢ" to "any [one]",
+        ),
+    )
+
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
     fun theBasmalaIsOneCalligraphicPiece() {
-        // Any surah but Al-Fatihah and At-Tawbah opens with it.
+        // Any surah but Al-Fatihah (whose first verse it is) and At-Tawbah opens with it.
         show("en-night-reader-basmala") {
             ReaderContent(
-                reading = Reading(112, fatihah, track.copy(surah = 112), timings(fatihah)), showMeanings = true, playing = true,
-                position = { 200 }, duration = 74_000, onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
+                reading = Reading(112, ikhlas, track.copy(surah = 112), timings(ikhlas)), showMeanings = true, playing = true,
+                position = { 200 }, duration = 33_000, onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
             )
         }
         compose.onNodeWithContentDescription("بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ").assertIsDisplayed()
         // The verse's number is above the verse, at the left.
         val page = compose.onNodeWithTag("verses").fetchSemanticsNode().boundsInRoot
-        val number = compose.onNodeWithContentDescription("Verse 1").fetchSemanticsNode().boundsInRoot
-        val firstWord = compose.onNodeWithText("In (the) name").fetchSemanticsNode().boundsInRoot
-        assertTrue(number.center.x < page.left + page.width / 6)
-        assertTrue(number.bottom <= firstWord.top)
+        val number = compose.onNodeWithContentDescription("Verse 1", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val firstWord = compose.onNodeWithText("Say").fetchSemanticsNode().boundsInRoot
+        assertTrue("the number is at the left", number.center.x < page.left + page.width / 6)
+        assertTrue("the number is above the verse", number.bottom <= firstWord.top)
     }
 
     @Test

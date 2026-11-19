@@ -2,12 +2,12 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <!-- An open book -->
-    <path android:fillColor="#FFFFF7E0"
-        android:pathData="M54,42 Q43,35 30,38 L30,70 Q43,67 54,74 Z M54,42 Q65,35 78,38 L78,70 Q65,67 54,74 Z" />
-    <path android:fillColor="#FF1B6B4A" android:pathData="M53.4,42 h1.2 v32 h-1.2 z" />
-    <!-- Lines of words; the one being recited is gold -->
-    <path android:fillColor="#FF9DB8A8"
-        android:pathData="M35,46 h14 v2.4 h-14 z M35,52.5 h14 v2.4 h-14 z M35,59 h10 v2.4 h-10 z M59,46 h14 v2.4 h-14 z M59,59 h14 v2.4 h-14 z M68,52.5 h5 v2.4 h-5 z" />
-    <path android:fillColor="#FFF2C14E" android:pathData="M59,51.6 h7 a1.2,1.2 0 0 1 1.2,1.2 v1.8 a1.2,1.2 0 0 1 -1.2,1.2 h-7 a1.2,1.2 0 0 1 -1.2,-1.2 v-1.8 a1.2,1.2 0 0 1 1.2,-1.2 z" />
+    <!-- A mosque's pointed arch -->
+    <path android:strokeColor="#FFFFF7E0" android:strokeWidth="2.6"
+        android:strokeLineJoin="round" android:strokeLineCap="round"
+        android:pathData="M35.5,78.6 V50.5 Q35.5,32.9 54,25 Q72.5,32.9 72.5,50.5 V78.6" />
+    <!-- The open book inside it -->
+    <path android:fillColor="#FFF2C14E"
+        android:pathData="M54,55.06 Q48.72,51.89 41.86,53.47 L41.86,64.56 Q48.72,62.98 54,66.14 Z M54,55.06 Q59.28,51.89 66.14,53.47 L66.14,64.56 Q59.28,62.98 54,66.14 Z" />
+    <path android:fillColor="#FF1B6B4A" android:pathData="M53.55,55.3 h0.9 v10.6 h-0.9 z" />
 </vector>

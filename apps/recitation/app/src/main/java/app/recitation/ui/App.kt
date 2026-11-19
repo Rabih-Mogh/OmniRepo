@@ -37,6 +37,7 @@ import app.recitation.data.Playlist
 import app.recitation.data.Track
 import app.recitation.player.PlaybackService
 import app.recitation.prepare.PrepareWorker
+import app.recitation.prepare.Settings
 import kotlinx.coroutines.delay
 
 /** The whole app: which screen shows, and the pop-ups over it. */
@@ -149,18 +150,23 @@ fun App(model: AppModel) {
 @Composable
 private fun SurahScreen(model: AppModel, screen: Screen.Surah, playlists: List<Playlist>, status: Status?, playback: Playback, get: (List<Track>) -> Unit) {
     val arabic = LocalConfiguration.current.locales[0].language == "ar"
-    // Word meanings are in English, so they start hidden when the phone is in Arabic.
-    var meanings by rememberSaveable { mutableStateOf(!arabic) }
+    // Word meanings are in English, so they start hidden when the phone is in Arabic. The choice is kept.
+    val context = LocalContext.current
+    var meanings by rememberSaveable { mutableStateOf(Settings.wordMeanings(context, byDefault = !arabic)) }
+    val setMeanings: (Boolean) -> Unit = {
+        meanings = it
+        Settings.setWordMeanings(context, it)
+    }
     val reading = model.reading
     val track = reading?.track
     when {
         reading == null || reading.surah != screen.number ->
             ReaderLoading(failed = model.readingFailed, onRetry = model::reload, onBack = { model.back() })
         track != null && reading.timings != null ->
-            PlayingReader(model, reading, track, playlists, playback, meanings, onMeanings = { meanings = it })
+            PlayingReader(model, reading, track, playlists, playback, meanings, onMeanings = setMeanings)
         else -> ReaderContent(
             reading = reading, showMeanings = meanings, playing = false, position = { 0 }, duration = 0,
-            onBack = { model.back() }, onMeanings = { meanings = it }, onPlayPause = {}, onSeek = {},
+            onBack = { model.back() }, onMeanings = setMeanings, onPlayPause = {}, onSeek = {},
             withoutRecitation = {
                 // Looked up afresh each time the playlists change, so the bar keeps up with the download.
                 val recording = remember(playlists, screen.number) { model.anyRecordingOf(screen.number) }

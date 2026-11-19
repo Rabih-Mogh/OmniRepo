@@ -4,7 +4,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.draw.scale
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -18,6 +23,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
 import kotlin.math.abs
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.defaultMinSize
@@ -29,6 +35,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.DragInteraction
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -71,6 +78,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -221,6 +229,16 @@ fun ReaderContent(
         }
     }
 
+    // A verse's translation shows when the verse is tapped, and goes away by itself after
+    // long enough to read it. Tapping again while it shows starts the wait afresh.
+    var translated by remember(reading) { mutableStateOf<Int?>(null) }
+    var taps by remember { mutableIntStateOf(0) }
+    LaunchedEffect(translated, taps) {
+        val verse = translated ?: return@LaunchedEffect
+        delay(readingTime(reading.verses.getOrNull(verse)?.translation.orEmpty()))
+        translated = null
+    }
+
     fun seekToVerse(verse: Int) {
         val words = index ?: return
         val v = verse.coerceIn(0, words.firstOfVerse.size - 1)
@@ -279,7 +297,7 @@ fun ReaderContent(
                     color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            Verses(reading, index, list, basmala, current, currentVerse, position, showMeanings, place, { fade.value }) { ms ->
+            Verses(reading, index, list, basmala, current, currentVerse, position, showMeanings, place, { fade.value }, translated, { translated = it; taps++ }) { ms ->
                 onSeek(ms)
                 follow = true
             }
@@ -320,6 +338,8 @@ private fun Verses(
     showMeanings: Boolean,
     place: WordPlace,
     fade: () -> Float,
+    translated: Int?,
+    onTranslate: (Int) -> Unit,
     onSeek: (Int) -> Unit,
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -353,8 +373,14 @@ private fun Verses(
                     current = if (currentVerse == v) current - first else -1,
                     position = position,
                     showMeanings = showMeanings,
+                    showTranslation = translated == v,
                     onPlaced = { w, tile -> place.placed(first + w, tile) },
-                    onWord = { w -> index?.starts?.getOrNull(first + w)?.let(onSeek) },
+                    onTap = { onTranslate(v) },
+                    // Tapping a word also jumps the recitation to it.
+                    onWord = { w ->
+                        onTranslate(v)
+                        index?.starts?.getOrNull(first + w)?.let(onSeek)
+                    },
                 )
             }
         }
@@ -370,10 +396,17 @@ private fun VerseBlock(
     current: Int,
     position: () -> Int,
     showMeanings: Boolean,
+    showTranslation: Boolean,
     onPlaced: (Int, LayoutCoordinates) -> Unit,
+    onTap: () -> Unit,
     onWord: (Int) -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+    // The whole verse answers a tap, quietly: no ripple across a block of scripture.
+    Column(
+        Modifier.fillMaxWidth()
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onTap)
+            .padding(horizontal = 12.dp),
+    ) {
         // The verse's number sits on the rule above it, at the left in every language.
         val label = stringResource(R.string.verse, number)
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
@@ -413,7 +446,12 @@ private fun VerseBlock(
                 }
             }
         }
-        if (showMeanings && verse.translation.isNotEmpty()) {
+        // The verse's translation opens and closes softly rather than popping in.
+        AnimatedVisibility(
+            visible = showTranslation && verse.translation.isNotEmpty(),
+            enter = fadeIn(tween(260)) + expandVertically(tween(260)),
+            exit = fadeOut(tween(420)) + shrinkVertically(tween(420)),
+        ) {
             Text(
                 verse.translation, Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(textDirection = TextDirection.Ltr),
@@ -427,6 +465,9 @@ private enum class WordState { RESTING, RECITED, CURRENT }
 
 /** How eagerly the page follows the word: higher is quicker. At 8 it settles in about two thirds of a second. */
 private const val STIFFNESS = 8f
+
+/** How long a translation stays up, in ms: time to read it, between 6 and 25 seconds. */
+internal fun readingTime(translation: String): Long = (3_000L + 70L * translation.length).coerceIn(6_000L, 25_000L)
 
 /** A soft round light that fades to nothing at its edge, squashed to [flatten] of its height. */
 private fun DrawScope.spot(color: Color, center: Offset, radius: Float, flatten: Float) {
