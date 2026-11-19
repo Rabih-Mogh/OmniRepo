@@ -10,6 +10,7 @@ affect each other and can use different languages or toolchains.
 |---|---|---|
 | [Fajr Alarm](apps/fajr-alarm/) | An alarm that rings relative to Fajr or sunrise, with missions (a sum, or finding a real sink) to turn it off | Android |
 | [Accent Coach](apps/accent-coach/) | Read a sentence aloud and see the sounds you made next to a native American speaker's, with non-native sounds highlighted | Android |
+| [Recitation](apps/recitation/) | Listen to a recitation of the Quran from a YouTube playlist and follow it word by word, with each word's meaning and the word being recited lit up | Android |
 
 ## Layout
 
@@ -19,7 +20,9 @@ OmniRepo/
 └── apps/
     ├── fajr-alarm/    Android (Kotlin, Gradle); see its README
     │   └── apk/       Ready-to-install builds
-    └── accent-coach/  Android (Kotlin, Gradle); see its README
+    ├── accent-coach/  Android (Kotlin, Gradle); see its README
+    │   └── apk/       Ready-to-install builds
+    └── recitation/    Android (Kotlin, Gradle); see its README
         └── apk/       Ready-to-install builds
 ```
 
@@ -49,7 +52,7 @@ To publish a build, run this before committing, then commit the `apk/` folder (t
 need `git add -f`):
 
 ```bash
-tools/publish-apk.sh fajr-alarm accent-coach
+tools/publish-apk.sh fajr-alarm accent-coach recitation
 ```
 
 It runs the tests, builds the app, copies the APKs into `apk/` and writes `version.json`

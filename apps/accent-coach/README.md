@@ -39,6 +39,9 @@ away a non-native accent, with a tip for each.
   stopped. It is pinned to one revision and checked against its SHA-256.
 - **Offline:** after that everything runs on the phone with ONNX Runtime. Audio never
   leaves the device.
+- **Shared:** [Recitation](../recitation/) uses the same model. If Accent Coach has it,
+  Recitation copies it from here instead of downloading it again. Only apps signed with the
+  same key as Accent Coach can read it.
 
 ### Native reference
 
@@ -75,7 +78,7 @@ Comparison happens in `core/`:
 accent-coach/
 ├── core/    Pure Kotlin/JVM: IPA tokens, CTC decoding, alignment, grading, tips (unit-tested)
 ├── app/     Android app (Jetpack Compose)
-│   ├── speech/  Recording, playback, model download, ONNX recogniser
+│   ├── speech/  Recording, playback, model download and sharing, ONNX recogniser
 │   ├── data/    Sentence and symbol loading from assets/
 │   └── ui/      Setup and practice screens
 ├── tools/

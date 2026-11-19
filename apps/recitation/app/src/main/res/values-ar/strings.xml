@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">التلاوة</string>
+    <string name="tagline">استمع إلى التلاوة وتابعها كلمةً كلمة.</string>
+
+    <!-- Playlists -->
+    <string name="empty_title">أضف قائمة تشغيل للبدء</string>
+    <string name="empty_body">الصق رابط قائمة تشغيل على يوتيوب لتلاوة القرآن، سورة في كل مقطع. ينزّل التطبيق الصوت فقط، ثم يحدّد وقت تلاوة كل كلمة لتتابع القراءة معها.</string>
+    <string name="add_playlist">إضافة قائمة تشغيل</string>
+    <string name="add_hint">الصق رابط قائمة تشغيل من يوتيوب، أو استخدم «مشاركة» في يوتيوب واختر التلاوة.</string>
+    <string name="add_link">رابط القائمة</string>
+    <string name="add">إضافة</string>
+    <string name="add_looking">جارٍ البحث…</string>
+    <string name="add_not_a_link">هذا ليس رابط قائمة تشغيل أو مقطع على يوتيوب.</string>
+    <string name="add_failed">تعذّرت قراءة القائمة. تحقّق من الرابط ومن اتصال الهاتف بالإنترنت.</string>
+    <string name="cancel">إلغاء</string>
+    <string name="ready_of">%1$d من %2$d جاهزة</string>
+
+    <!-- Recordings of a playlist -->
+    <string name="back">رجوع</string>
+    <string name="more">المزيد</string>
+    <plurals name="get_all">
+        <item quantity="zero">تجهيز التلاوات</item>
+        <item quantity="one">تجهيز تلاوة واحدة</item>
+        <item quantity="two">تجهيز تلاوتين</item>
+        <item quantity="few">تجهيز %1$d تلاوات</item>
+        <item quantity="many">تجهيز %1$d تلاوة</item>
+        <item quantity="other">تجهيز %1$d تلاوة</item>
+    </plurals>
+    <string name="get_all_note">الاستماع إلى التلاوة يستغرق نحو مدّتها، مرة واحدة فقط، ويجري في الخلفية.</string>
+    <string name="get">تجهيز</string>
+    <string name="queued">في الانتظار</string>
+    <string name="surah_chip">%1$d · %2$s</string>
+    <string name="choose_surah">اختر السورة</string>
+    <string name="forget">حذف التنزيل</string>
+    <string name="remove_playlist">حذف القائمة</string>
+    <string name="remove_playlist_body">ستُحذف القائمة وكل ما نُزّل لها من هذا الهاتف.</string>
+    <string name="remove">حذف</string>
+    <string name="stop">إيقاف</string>
+    <string name="mismatch_short">لا تبدو هذه السورة. تحقّق من السورة.</string>
+
+    <!-- Getting a recording ready -->
+    <string name="preparing">تجهيز التلاوات</string>
+    <string name="step_model_copy">جارٍ نسخ نموذج الصوت من Accent Coach… %1$d%%</string>
+    <string name="step_model_download">جارٍ تنزيل نموذج الصوت (318 ميغابايت)… %1$d%%</string>
+    <string name="step_download">جارٍ تنزيل الصوت… %1$d%%</string>
+    <string name="step_verses">جارٍ جلب الآيات…</string>
+    <string name="step_listen">جارٍ الاستماع إلى التلاوة… %1$d%%</string>
+    <string name="step_align">جارٍ مطابقة الكلمات مع التلاوة…</string>
+    <string name="error_network">تعذّر التنزيل. تحقّق من الاتصال وحاول مجدداً.</string>
+    <string name="error_unknown">حدث خطأ. حاول مجدداً.</string>
+    <string name="error_too_short">التسجيل أقصر من هذه السورة. تحقّق من السورة.</string>
+
+    <!-- Reading along -->
+    <string name="verse">الآية %1$d</string>
+    <string name="surah_number_and_verses">السورة %1$d · %2$d آية</string>
+    <string name="meanings">المعاني</string>
+    <string name="follow">متابعة التلاوة</string>
+    <string name="mismatch">لا يبدو هذا التسجيل سورة %1$s، وقد تُضاء الكلمات في غير وقتها. ارجع واختر السورة الصحيحة له.</string>
+    <string name="play">تشغيل</string>
+    <string name="pause">إيقاف مؤقت</string>
+    <string name="previous_verse">الآية السابقة</string>
+    <string name="next_verse">الآية التالية</string>
+
+    <!-- App updates -->
+    <string name="close">إغلاق</string>
+    <string name="update_title">تحديث التطبيق</string>
+    <string name="update_later">لاحقاً</string>
+    <string name="update_hide">إخفاء</string>
+    <string name="update_interrupted">انقطع التنزيل. حاول مجدداً للمتابعة من حيث توقف.</string>
+    <string name="update_available">الإصدار %1$s متاح (%2$d ميغابايت).</string>
+    <string name="update">تحديث</string>
+    <string name="update_downloading">جارٍ تنزيل التحديث… %1$d%%</string>
+    <string name="update_installing">جارٍ التثبيت… سيُغلق التطبيق عند الانتهاء. افتحه مجدداً بعد ذلك.</string>
+    <string name="try_again">حاول مجدداً</string>
+    <string name="version">الإصدار %1$s</string>
+    <string name="check_for_updates">البحث عن تحديثات</string>
+    <string name="update_checking">جارٍ البحث…</string>
+    <string name="update_latest">لديك أحدث إصدار.</string>
+    <string name="update_check_failed">تعذّر البحث عن تحديثات. هل الهاتف متصل بالإنترنت؟</string>
+    <string name="update_failed">فشل التحديث.</string>
+    <string name="update_download_failed">فشل التنزيل (HTTP %1$d).</string>
+    <string name="update_mismatch">الملف الذي تم تنزيله لا يطابق الإصدار المنشور. حاول مجدداً بعد بضع دقائق.</string>
+    <string name="update_prompt_failed">تعذّر على أندرويد عرض نافذة التثبيت. أبقِ التطبيق مفتوحاً وحاول مجدداً.</string>
+    <string name="update_cancelled">تم إلغاء التحديث.</string>
+    <string name="update_refused">رفض أندرويد التحديث: %1$s</string>
+    <string name="update_no_reason">لم يُذكر السبب</string>
+</resources>

@@ -47,6 +47,13 @@
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
 
+        <!-- Lends the downloaded speech model to Recitation. Open to other apps, but it only
+             serves ones signed with the same key as this app (checked in ModelProvider). -->
+        <provider
+            android:name=".speech.ModelProvider"
+            android:authorities="app.accentcoach.model"
+            android:exported="true" />
+
         <receiver
             android:name=".update.UpdateReceiver"
             android:exported="false">
