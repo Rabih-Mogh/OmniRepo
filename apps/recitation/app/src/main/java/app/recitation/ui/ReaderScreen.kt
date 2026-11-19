@@ -23,6 +23,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.foundation.border
@@ -47,6 +48,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -56,14 +58,18 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -71,7 +77,6 @@ import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -85,7 +90,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -104,6 +118,7 @@ import app.recitation.R
 import app.recitation.Reading
 import app.recitation.core.Recital
 import app.recitation.core.SURAHS
+import app.recitation.core.Surah
 import app.recitation.core.Timings
 import app.recitation.core.WordTiming
 import app.recitation.data.Verse
@@ -159,6 +174,11 @@ fun ReaderContent(
     onPlayPause: () -> Unit,
     onSeek: (Int) -> Unit,
     withoutRecitation: @Composable () -> Unit = {},
+    suggestion: @Composable () -> Unit = {},
+    textScale: Float = 1f,
+    onTextScale: (Float) -> Unit = {},
+    range: IntRange? = null,
+    onRange: (IntRange) -> Unit = {},
 ) {
     val surah = SURAHS[reading.surah - 1]
     val arabic = LocalConfiguration.current.locales[0].language == "ar"
@@ -168,8 +188,7 @@ fun ReaderContent(
     val current by remember(index) { derivedStateOf { index?.at(position()) ?: -1 } }
     val currentVerse = index?.verse(current) ?: -1
     val list = rememberLazyListState()
-    val basmala = surah.number != 1 && surah.number != 9
-    val above = if (basmala) 1 else 0 // items in the list before the first verse
+    val above = 1 // the surah's title page comes before the first verse in the list
 
     // The page follows the recitation until the reader scrolls it themselves.
     var follow by remember { mutableStateOf(true) }
@@ -251,26 +270,29 @@ fun ReaderContent(
             Banner {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
+                    val onBanner = LocalBanner.current.content
                     Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(stringResource(R.string.surah_title, surah.arabic), fontFamily = QuranFont, fontSize = 20.sp, lineHeight = 34.sp)
+                        SurahTitle(surah, 24.sp, onBanner, Modifier.testTag("surah-title"), withWord = true)
                         Text(
                             if (arabic) verses else stringResource(R.string.name_and_verses, surah.latin, verses),
                             style = MaterialTheme.typography.bodySmall, color = LocalBanner.current.quiet,
                         )
                     }
+                    TextSizeButton(textScale, onTextScale, onBanner)
                     // The button would otherwise colour itself green, on the green banner.
-                    val onBanner = LocalBanner.current.content
                     IconToggleButton(checked = showMeanings, onCheckedChange = onMeanings) {
-                        Icon(AppIcons.Translate, stringResource(R.string.meanings), tint = onBanner.copy(alpha = if (showMeanings) 1f else 0.45f))
+                        Icon(AppIcons.Meanings, stringResource(R.string.meanings), tint = onBanner.copy(alpha = if (showMeanings) 1f else 0.45f))
                     }
                 }
             }
         },
         bottomBar = {
-            if (index == null) {
-                withoutRecitation()
-            } else {
-                PlayerBar(
+            Column {
+                suggestion()
+                if (index == null) {
+                    withoutRecitation()
+                } else PlayerBar(
+                    range = range, verses = reading.verses.size, onRange = onRange,
                     playing = playing, position = position, duration = duration, onPlayPause = onPlayPause,
                     onSeek = { onSeek(it); follow = true },
                     onPrevious = {
@@ -284,7 +306,7 @@ fun ReaderContent(
         },
         floatingActionButton = {
             if (!follow && index != null) {
-                ExtendedFloatingActionButton(onClick = { follow = true }) { Text(stringResource(R.string.follow)) }
+                ThemeButton(stringResource(R.string.follow), onClick = { follow = true }, icon = AppIcons.Follow, filled = true)
             }
         },
     ) { padding ->
@@ -297,7 +319,7 @@ fun ReaderContent(
                     color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            Verses(reading, index, list, basmala, current, currentVerse, position, showMeanings, place, { fade.value }, translated, { translated = it; taps++ }) { ms ->
+            Verses(reading, index, list, current, currentVerse, position, showMeanings, textScale, place, { fade.value }, translated, { translated = it; taps++ }) { ms ->
                 onSeek(ms)
                 follow = true
             }
@@ -331,11 +353,11 @@ private fun Verses(
     reading: Reading,
     index: WordIndex?,
     list: androidx.compose.foundation.lazy.LazyListState,
-    basmala: Boolean,
     current: Int,
     currentVerse: Int,
     position: () -> Int,
     showMeanings: Boolean,
+    textScale: Float,
     place: WordPlace,
     fade: () -> Float,
     translated: Int?,
@@ -343,26 +365,18 @@ private fun Verses(
     onSeek: (Int) -> Unit,
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        // With a recitation, half a page of room above the first verse and below the last
-        // lets even their words reach the middle.
+        // With a recitation, the title page fills the top half, so the first verse starts at
+        // the middle of the page, where the word being recited is kept; and half a page of
+        // room below the last verse lets its words reach the middle too.
         val room = if (index != null) (maxHeight / 2 - 40.dp).coerceAtLeast(0.dp) else 0.dp
-        // The piece is one very wide glyph, 11.5 times as wide as its font size: sized to span the page.
+        // The basmala is one very wide glyph, 11.5 times as wide as its font size: sized to span the page.
         val basmalaSize = with(LocalDensity.current) { ((maxWidth - 32.dp) / 11.5f).toSp() }
         LazyColumn(
             Modifier.fillMaxSize().testTag("verses").onGloballyPositioned { place.list = it }.graphicsLayer { alpha = fade() },
             state = list,
-            contentPadding = PaddingValues(top = room, bottom = room + 24.dp),
+            contentPadding = PaddingValues(bottom = room + 24.dp),
         ) {
-            if (basmala) {
-                item {
-                    // The whole basmala as one calligraphic piece (the font draws it for the single character ﷽).
-                    Text(
-                        "\uFDFD", Modifier.fillMaxWidth().padding(top = 4.dp).semantics { contentDescription = Recital.BASMALA },
-                        textAlign = TextAlign.Center, fontFamily = QuranFont, fontSize = basmalaSize, lineHeight = basmalaSize * 2,
-                        maxLines = 1, softWrap = false, color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
+            item { TitlePage(SURAHS[reading.surah - 1], minHeight = room, basmalaSize = basmalaSize) }
             itemsIndexed(reading.verses) { v, verse ->
                 val first = index?.firstOfVerse?.getOrElse(v) { 0 } ?: 0
                 VerseBlock(
@@ -373,6 +387,7 @@ private fun Verses(
                     current = if (currentVerse == v) current - first else -1,
                     position = position,
                     showMeanings = showMeanings,
+                    textScale = textScale,
                     showTranslation = translated == v,
                     onPlaced = { w, tile -> place.placed(first + w, tile) },
                     onTap = { onTranslate(v) },
@@ -396,6 +411,7 @@ private fun VerseBlock(
     current: Int,
     position: () -> Int,
     showMeanings: Boolean,
+    textScale: Float,
     showTranslation: Boolean,
     onPlaced: (Int, LayoutCoordinates) -> Unit,
     onTap: () -> Unit,
@@ -410,16 +426,9 @@ private fun VerseBlock(
         // The verse's number sits on the rule above it, at the left in every language.
         val label = stringResource(R.string.verse, number)
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-            Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                HorizontalDivider(Modifier.width(12.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                Box(
-                    Modifier.padding(horizontal = 8.dp).defaultMinSize(minWidth = 24.dp, minHeight = 24.dp)
-                        .clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primary)
-                        .padding(horizontal = 6.dp).semantics { contentDescription = label },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(stringResource(R.string.number, number), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary)
-                }
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                HorizontalDivider(Modifier.width(8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                StarNumber(number, Modifier.padding(horizontal = 4.dp).semantics { contentDescription = label })
                 HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
@@ -440,6 +449,7 @@ private fun VerseBlock(
                         // The word's last sound runs until the next word begins.
                         endMs = timings.getOrNull(w + 1)?.startMs ?: Int.MAX_VALUE,
                         showMeaning = showMeanings,
+                        textScale = textScale,
                         onPlaced = { onPlaced(w, it) },
                         onClick = { onWord(w) },
                     )
@@ -455,6 +465,7 @@ private fun VerseBlock(
             Text(
                 verse.translation, Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(textDirection = TextDirection.Ltr),
+                fontSize = 14.sp * textScale, lineHeight = 20.sp * textScale,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -484,6 +495,7 @@ private fun WordTile(
     position: () -> Int,
     endMs: Int,
     showMeaning: Boolean,
+    textScale: Float,
     onPlaced: (LayoutCoordinates) -> Unit,
     onClick: () -> Unit,
 ) {
@@ -511,19 +523,40 @@ private fun WordTile(
         var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
         val glow = colors.primary
         Text(
-            word.arabic, fontFamily = QuranFont, fontSize = 26.sp, lineHeight = 46.sp, color = ink,
+            word.arabic, fontFamily = QuranFont, fontSize = 26.sp * textScale, lineHeight = 46.sp * textScale, color = ink,
             onTextLayout = { layout = it },
-            modifier = if (lit == 0f || timing == null) Modifier else Modifier.drawBehind {
-                val placed = layout ?: return@drawBehind
-                val uttered = timing.utteredAt(position(), endMs) ?: return@drawBehind
+            modifier = if (lit == 0f || timing == null) Modifier else Modifier.drawWithContent {
+                val placed = layout
+                val uttered = timing.utteredAt(position(), endMs)
+                if (placed == null || uttered == null) {
+                    drawContent()
+                    return@drawWithContent
+                }
                 val length = placed.layoutInput.text.length
                 val from = placed.getHorizontalPosition(uttered.from.coerceIn(0, length), usePrimaryDirection = true)
                 val to = placed.getHorizontalPosition(uttered.to.coerceIn(0, length), usePrimaryDirection = true)
                 val x = from + (to - from) * uttered.fraction
-                val baseline = placed.firstBaseline
-                // A wide, flat pool just under the letter, and a fainter glow behind the letter itself.
-                spot(glow.copy(alpha = 0.55f * lit), Offset(x, baseline + 7.dp.toPx()), radius = 20.dp.toPx(), flatten = 0.42f)
-                spot(glow.copy(alpha = 0.22f * lit), Offset(x, baseline - 9.dp.toPx()), radius = 22.dp.toPx(), flatten = 0.9f)
+                val reach = maxOf(abs(to - from) * 0.75f, 12.dp.toPx())
+                // A halo behind the letter being uttered, then the word, then the letter itself lit up.
+                spot(glow.copy(alpha = 0.38f * lit), Offset(x, placed.firstBaseline - 8.dp.toPx()), radius = 26.dp.toPx(), flatten = 0.95f)
+                drawContent()
+                // The word is drawn once more in the glowing colour, exactly over itself, and all of
+                // it but the stretch around the letter is wiped away. The letter changes colour and
+                // nothing else: it isn't laid out again and gets no bloom, so it neither moves nor
+                // looks any bigger.
+                drawIntoCanvas { canvas ->
+                    canvas.saveLayer(Rect(-reach, -reach, size.width + reach, size.height + reach), Paint())
+                    drawText(placed, color = glow)
+                    drawRect(
+                        Brush.horizontalGradient(
+                            0f to Color.Transparent, 0.5f to Color.Black.copy(alpha = lit), 1f to Color.Transparent,
+                            startX = x - reach, endX = x + reach,
+                        ),
+                        topLeft = Offset(-reach, -reach), size = Size(size.width + 2 * reach, size.height + 2 * reach),
+                        blendMode = BlendMode.DstIn,
+                    )
+                    canvas.restore()
+                }
             },
         )
         if (showMeaning) {
@@ -536,8 +569,8 @@ private fun WordTile(
                 tween(320), label = "meaning",
             )
             Text(
-                word.meaning, Modifier.widthIn(max = 132.dp).padding(bottom = 4.dp), textAlign = TextAlign.Center,
-                style = TextStyle(fontSize = 12.sp, lineHeight = 15.sp, textDirection = TextDirection.Ltr),
+                word.meaning, Modifier.widthIn(max = 132.dp * textScale).padding(bottom = 4.dp), textAlign = TextAlign.Center,
+                style = TextStyle(fontSize = 12.sp * textScale, lineHeight = 15.sp * textScale, textDirection = TextDirection.Ltr),
                 color = meaningInk,
             )
         }
@@ -546,6 +579,9 @@ private fun WordTile(
 
 @Composable
 private fun PlayerBar(
+    range: IntRange?,
+    verses: Int,
+    onRange: (IntRange) -> Unit,
     playing: Boolean,
     position: () -> Int,
     duration: Int,
@@ -558,13 +594,28 @@ private fun PlayerBar(
     val shown by remember { derivedStateOf { position() / 250 * 250 } }
     var dragged by remember { mutableStateOf<Float?>(null) }
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-    val muted = MaterialTheme.colorScheme.onSurfaceVariant
-    Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
-        Column(Modifier.windowInsetsPadding(WindowInsets.navigationBars).padding(horizontal = 12.dp).padding(top = 2.dp, bottom = 6.dp)) {
+    val band = LocalBanner.current
+    var choosing by remember { mutableStateOf(false) }
+    if (choosing && range != null) {
+        RangeDialog(verses, range, onDone = { choosing = false; onRange(it) }, onDismiss = { choosing = false })
+    }
+    BottomBand {
+        Column(Modifier.padding(horizontal = 12.dp).padding(top = 2.dp, bottom = 6.dp)) {
+            // Which verses will be recited; tap to choose where to start and where to stop.
+            if (range != null) {
+                TextButton(
+                    onClick = { choosing = true }, modifier = Modifier.align(Alignment.CenterHorizontally),
+                    colors = ButtonDefaults.textButtonColors(contentColor = band.rule), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                ) {
+                    Icon(AppIcons.Range, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.range_label, range.first + 1, range.last + 1))
+                }
+            }
             // The time line runs left to right in every language, as on other players.
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(clock(dragged?.let { (it * duration).toInt() } ?: shown), style = MaterialTheme.typography.labelMedium, color = muted)
+                    Text(clock(dragged?.let { (it * duration).toInt() } ?: shown), style = MaterialTheme.typography.labelMedium, color = band.quiet)
                     Slider(
                         value = dragged ?: if (duration > 0) (shown.toFloat() / duration).coerceIn(0f, 1f) else 0f,
                         onValueChange = { dragged = it },
@@ -573,21 +624,31 @@ private fun PlayerBar(
                             dragged = null
                         },
                         modifier = Modifier.weight(1f).height(36.dp),
+                        colors = SliderDefaults.colors(
+                            thumbColor = band.rule, activeTrackColor = band.rule,
+                            inactiveTrackColor = band.content.faded(0.25f, band.background),
+                        ),
                     )
-                    Text(clock(duration), style = MaterialTheme.typography.labelMedium, color = muted)
+                    Text(clock(duration), style = MaterialTheme.typography.labelMedium, color = band.quiet)
                 }
             }
             // Previous verse on the side reading starts from, next verse on the other; the arrows turn round with them.
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = onPrevious, modifier = Modifier.weight(1f)) {
+                TextButton(onClick = onPrevious, modifier = Modifier.weight(1f), colors = ButtonDefaults.textButtonColors(contentColor = band.content)) {
                     Icon(AppIcons.SkipPrevious, null, Modifier.size(20.dp).scale(scaleX = if (rtl) -1f else 1f, scaleY = 1f))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.previous_verse), maxLines = 1)
                 }
-                FilledIconButton(onClick = onPlayPause, modifier = Modifier.padding(horizontal = 8.dp).size(52.dp)) {
-                    if (playing) Icon(AppIcons.Pause, stringResource(R.string.pause)) else Icon(Icons.Filled.PlayArrow, stringResource(R.string.play))
+                // The play button wears the band's gold, ringed like a seal.
+                Box(Modifier.padding(horizontal = 8.dp).size(58.dp).border(1.5.dp, band.rule, CircleShape), contentAlignment = Alignment.Center) {
+                    FilledIconButton(
+                        onClick = onPlayPause, modifier = Modifier.size(48.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = band.rule, contentColor = band.background),
+                    ) {
+                        if (playing) Icon(AppIcons.Pause, stringResource(R.string.pause)) else Icon(AppIcons.Play, stringResource(R.string.play))
+                    }
                 }
-                TextButton(onClick = onNext, modifier = Modifier.weight(1f)) {
+                TextButton(onClick = onNext, modifier = Modifier.weight(1f), colors = ButtonDefaults.textButtonColors(contentColor = band.content)) {
                     Text(stringResource(R.string.next_verse), maxLines = 1)
                     Spacer(Modifier.width(6.dp))
                     Icon(AppIcons.SkipNext, null, Modifier.size(20.dp).scale(scaleX = if (rtl) -1f else 1f, scaleY = 1f))
@@ -598,20 +659,158 @@ private fun PlayerBar(
 }
 
 /**
+ * The surah's title page, above its first verse: its number, its name in calligraphy,
+ * what the name means, how long it is and where it was revealed, inside a ruled frame,
+ * and then the basmala drawn as one piece. It is at least [minHeight] tall.
+ */
+@Composable
+private fun TitlePage(surah: Surah, minHeight: Dp, basmalaSize: TextUnit) {
+    val colors = MaterialTheme.colorScheme
+    val arabic = LocalConfiguration.current.locales[0].language == "ar"
+    Column(
+        Modifier.fillMaxWidth().heightIn(min = minHeight).padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+    ) {
+        // Two rules, one inside the other, as round the heading of a surah in a mushaf.
+        Column(
+            Modifier.fillMaxWidth().border(1.5.dp, colors.primary, RoundedCornerShape(18.dp)).padding(5.dp)
+                .border(0.8.dp, colors.primary.faded(0.55f, colors.background), RoundedCornerShape(14.dp)).padding(horizontal = 12.dp, vertical = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            ArchNumber(surah.number)
+            SurahTitle(surah, 46.sp, colors.primary, withWord = true)
+            if (!arabic) {
+                Text(stringResource(R.string.name_and_meaning, surah.latin, surah.meaning), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+            }
+            Text(
+                stringResource(
+                    R.string.surah_details,
+                    pluralStringResource(R.plurals.verses, surah.verses, surah.verses),
+                    stringResource(if (surah.madinan) R.string.revealed_madinah else R.string.revealed_makkah),
+                    surah.revealed,
+                ),
+                style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
+            )
+        }
+        // Every surah but At-Tawbah opens with the basmala. In Al-Fatihah it is also the first verse.
+        if (surah.number != 9) {
+            Text(
+                "\uFDFD", Modifier.fillMaxWidth().padding(top = 10.dp).semantics { contentDescription = Recital.BASMALA },
+                textAlign = TextAlign.Center, fontFamily = QuranFont, fontSize = basmalaSize, lineHeight = basmalaSize * 2,
+                maxLines = 1, softWrap = false, color = colors.primary,
+            )
+        }
+    }
+}
+
+/** The sizes the verses can be drawn at, as multiples of the usual size. */
+val TEXT_SCALES = 0.7f..2.0f
+
+/** On the band: opens a small menu to make the verses smaller or larger. */
+@Composable
+private fun TextSizeButton(scale: Float, onScale: (Float) -> Unit, tint: Color) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }) { Icon(AppIcons.TextSize, stringResource(R.string.text_size), tint = tint) }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) { TextSizeControls(scale, onScale) }
+    }
+}
+
+/** Smaller, the size as a percentage, larger. */
+@Composable
+fun TextSizeControls(scale: Float, onScale: (Float) -> Unit) {
+    // Left to right in every language: smaller on the left, larger on the right.
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { onScale(step(scale, -1)) }, enabled = scale > TEXT_SCALES.start + 0.01f) {
+                Icon(AppIcons.Remove, stringResource(R.string.smaller))
+            }
+            Text(
+                stringResource(R.string.percent, (scale * 100).roundToInt()), Modifier.width(64.dp),
+                textAlign = TextAlign.Center, style = MaterialTheme.typography.titleMedium,
+            )
+            IconButton(onClick = { onScale(step(scale, +1)) }, enabled = scale < TEXT_SCALES.endInclusive - 0.01f) {
+                Icon(AppIcons.Add, stringResource(R.string.larger))
+            }
+        }
+    }
+}
+
+/** One step smaller or larger: a tenth of the usual size, kept within [TEXT_SCALES]. */
+private fun step(scale: Float, direction: Int): Float =
+    (((scale * 10).roundToInt() + direction) / 10f).coerceIn(TEXT_SCALES.start, TEXT_SCALES.endInclusive)
+
+/** Chooses the first and last verse to recite. Verses are counted from 0 in [range], shown from 1. */
+@Composable
+private fun RangeDialog(verses: Int, range: IntRange, onDone: (IntRange) -> Unit, onDismiss: () -> Unit) {
+    var chosen by remember { mutableStateOf(range) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.range_title)) },
+        text = { RangeChooser(verses, chosen) { chosen = it } },
+        confirmButton = { TextButton(onClick = { onDone(chosen) }) { Text(stringResource(R.string.done)) } },
+        dismissButton = { TextButton(onClick = { onDone(0..verses - 1) }) { Text(stringResource(R.string.range_whole)) } },
+    )
+}
+
+/** The inside of [RangeDialog]: a stepper for each end, and for long surahs a bar to drag either end along. */
+@Composable
+fun RangeChooser(verses: Int, range: IntRange, onChange: (IntRange) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        VerseStepper(stringResource(R.string.range_from), range.first, 0..range.last) { onChange(it..range.last) }
+        VerseStepper(stringResource(R.string.range_to), range.last, range.first..verses - 1) { onChange(range.first..it) }
+        if (verses > 2) {
+            // Drag either end, then fine-tune with the buttons above.
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                RangeSlider(
+                    value = range.first.toFloat()..range.last.toFloat(),
+                    onValueChange = {
+                        val first = it.start.roundToInt().coerceIn(0, verses - 1)
+                        val moved = first..it.endInclusive.roundToInt().coerceIn(first, verses - 1)
+                        if (moved != range) onChange(moved)
+                    },
+                    valueRange = 0f..(verses - 1).toFloat(),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun VerseStepper(label: String, verse: Int, allowed: IntRange, onChange: (Int) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        IconButton(onClick = { onChange(verse - 1) }, enabled = verse > allowed.first) { Icon(AppIcons.Remove, stringResource(R.string.smaller)) }
+        Text(stringResource(R.string.number, verse + 1), Modifier.width(44.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.titleMedium)
+        IconButton(onClick = { onChange(verse + 1) }, enabled = verse < allowed.last) { Icon(AppIcons.Add, stringResource(R.string.larger)) }
+    }
+}
+
+/** Offers to go back to where the recitation was left. [verse] is the verse it had reached. */
+@Composable
+fun LastReadBar(verse: Int, onGo: () -> Unit, onDismiss: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(stringResource(R.string.last_read_at, verse), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+        ThemeButton(stringResource(R.string.move_to_last_read), onGo, icon = AppIcons.Bookmark, filled = true)
+        IconButton(onClick = onDismiss) { Icon(AppIcons.Close, stringResource(R.string.close)) }
+    }
+}
+
+/**
  * What sits where the player would be when a surah is open without a recording: a line
  * saying how its recitation stands, and a button when there is something to do about it.
  */
 @Composable
-fun NoRecitationBar(text: String, action: String? = null, onAction: () -> Unit = {}) {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
-        Row(
-            Modifier.windowInsetsPadding(WindowInsets.navigationBars).fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+fun NoRecitationBar(text: String, action: String? = null, icon: ImageVector? = null, onAction: () -> Unit = {}) {
+    BottomBand {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
             if (action != null) {
                 Spacer(Modifier.width(12.dp))
-                FilledTonalButton(onClick = onAction) { Text(action, maxLines = 1) }
+                ThemeButton(action, onAction, icon = icon, filled = true, onBand = true)
             }
         }
     }
@@ -629,7 +828,7 @@ fun ReaderLoading(failed: Boolean, onRetry: () -> Unit, onBack: () -> Unit) {
         if (failed) {
             Column(Modifier.align(Alignment.Center).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(R.string.surah_failed), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)
-                FilledTonalButton(onClick = onRetry) { Text(stringResource(R.string.try_again)) }
+                ThemeButton(stringResource(R.string.try_again), onRetry, icon = AppIcons.Retry)
             }
         } else {
             CircularProgressIndicator(Modifier.align(Alignment.Center))

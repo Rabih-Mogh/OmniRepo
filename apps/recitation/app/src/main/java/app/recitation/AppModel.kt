@@ -13,12 +13,14 @@ import app.recitation.core.SURAHS
 import app.recitation.core.SurahMatcher
 import app.recitation.core.Timings
 import app.recitation.data.Library
+import app.recitation.data.Place
 import app.recitation.data.Playlist
 import app.recitation.data.QuranStore
+import app.recitation.data.Settings
+import app.recitation.data.SurahNames
 import app.recitation.data.Track
 import app.recitation.data.Verse
 import app.recitation.prepare.PrepareWorker
-import app.recitation.prepare.Settings
 import app.recitation.yt.YouTube
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -63,6 +65,13 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     var readingFailed by mutableStateOf(false)
         private set
 
+    /** Where the recitation listened to last was left, for the offer to go back to it. */
+    var lastRead by mutableStateOf(Settings.lastRead(app))
+        private set
+
+    /** How far into its recording the surah about to open should start, when carrying on from [lastRead]. */
+    private var startAt: Int? = null
+
     /** Downloads were paused by the user and stay so until resumed. */
     var paused by mutableStateOf(Settings.paused(app))
         private set
@@ -75,6 +84,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         // Recordings still waiting from last time (the app was closed, or the model couldn't be had): carry on.
         if (!paused && library.playlists.value.any { p -> p.tracks.any { it.wanted && !it.ready } }) PrepareWorker.start(app)
         fetchTheRest()
+        viewModelScope.launch { SurahNames.load(app) }
         viewModelScope.launch {
             WorkManager.getInstance(app).getWorkInfosForUniqueWorkFlow(PrepareWorker.WORK_NAME).collect { infos ->
                 waitingForNetwork = infos.any { it.state == WorkInfo.State.ENQUEUED }
@@ -111,6 +121,19 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         screen = Screen.Surah(number, track?.id, from)
         load(number, track)
     }
+
+    /** Opens the surah that was being recited last, at the place it was left. */
+    fun continueFrom(place: Place) {
+        val track = library.track(place.trackId)?.takeIf(::playable) ?: return
+        startAt = place.ms
+        openSurah(place.surah, track)
+    }
+
+    /** The place to start the recording now opening at, asked for once by the player. */
+    fun takeStartAt(): Int = (startAt ?: 0).also { startAt = null }
+
+    /** The last place that can still be gone back to: its recording is still on the phone. */
+    fun lastReadable(): Place? = lastRead?.takeIf { place -> library.track(place.trackId)?.let(::playable) == true }
 
     /** A recording of [surah] that is ready to play, if there is one. */
     fun recordingOf(surah: Int): Track? =
@@ -162,6 +185,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 
     /** One screen back. False when there's nowhere to go back to. */
     fun back(): Boolean {
+        lastRead = Settings.lastRead(getApplication())
         screen = when (val s = screen) {
             Screen.Home -> return false
             is Screen.Recordings -> Screen.Home

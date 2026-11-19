@@ -1,7 +1,8 @@
 package app.recitation.ui
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,21 +24,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,9 +40,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -57,10 +49,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -123,21 +114,33 @@ fun HomeContent(
     onOpen: (Playlist) -> Unit,
     onAdd: () -> Unit,
     nowPlaying: @Composable () -> Unit = {},
+    lastRead: LastRead? = null,
+    onLastRead: () -> Unit = {},
 ) {
-    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.navigationBars)) {
+    val band = LocalBanner.current
+    val arabic = LocalConfiguration.current.locales[0].language == "ar"
+    Column(Modifier.fillMaxSize()) {
+        // The app's name in the theme's own terms: the arches of its icon, gold, and calligraphy.
         Banner {
-            Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)) {
-                Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall)
-                Text(stringResource(R.string.tagline), style = MaterialTheme.typography.bodyMedium, color = LocalBanner.current.quiet)
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                ArchEmblem(Modifier.size(44.dp), arch = band.content, accent = band.rule)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    if (arabic) {
+                        Text(stringResource(R.string.app_name), fontFamily = CalligraphyFont, fontSize = 30.sp, lineHeight = 40.sp, color = band.rule)
+                    } else {
+                        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall, color = band.rule)
+                    }
+                    Text(stringResource(R.string.tagline), style = MaterialTheme.typography.bodySmall, color = band.quiet)
+                }
+                // In other languages the name is also written in Arabic calligraphy, as an ornament.
+                if (!arabic) Text("التلاوة", fontFamily = CalligraphyFont, fontSize = 30.sp, lineHeight = 40.sp, color = band.content)
             }
-        }
-        TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.background) {
-            Tab(selected = tab == 0, onClick = { onTab(0) }, text = { Text(stringResource(R.string.tab_quran)) })
-            Tab(selected = tab == 1, onClick = { onTab(1) }, text = { Text(stringResource(R.string.tab_playlists)) })
         }
         if (tab == 0) {
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(bottom = 24.dp)) {
                 if (status != null) item { Box(Modifier.padding(16.dp)) { StatusCard(status, actions) } }
+                if (lastRead != null) item { Box(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) { LastReadCard(lastRead, onLastRead) } }
                 items(SURAHS, key = { it.number }) { surah ->
                     SurahRow(surah, recited = surah.number in recited, onClick = { onSurah(surah.number) })
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -173,17 +176,33 @@ fun HomeContent(
                         }
                     }
                 }
-                item {
-                    Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Filled.Add, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.add_playlist))
-                    }
-                }
+                item { ThemeButton(stringResource(R.string.add_playlist), onAdd, Modifier.fillMaxWidth(), icon = AppIcons.Add, filled = true) }
                 item { VersionFooter() }
             }
         }
         nowPlaying()
+        BottomBand {
+            Row(Modifier.fillMaxWidth()) {
+                BottomTab(stringResource(R.string.tab_quran), AppIcons.Book, selected = tab == 0, onClick = { onTab(0) }, modifier = Modifier.weight(1f))
+                BottomTab(stringResource(R.string.tab_playlists), AppIcons.Playlists, selected = tab == 1, onClick = { onTab(1) }, modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+/** One of the two tabs at the bottom of the first screen: gold, with a short gold bar over it, when it is the one showing. */
+@Composable
+private fun BottomTab(label: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val band = LocalBanner.current
+    val ink = if (selected) band.rule else band.quiet
+    Column(
+        modifier.selectable(selected = selected, onClick = onClick, role = Role.Tab).padding(bottom = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(Modifier.width(48.dp).height(3.dp).background(if (selected) band.rule else Color.Transparent))
+        Spacer(Modifier.height(6.dp))
+        Icon(icon, null, Modifier.size(24.dp), tint = ink)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = ink)
     }
 }
 
@@ -193,67 +212,73 @@ fun HomeContent(
  */
 @Composable
 fun NowPlayingBar(title: String, playing: Boolean, onPlayPause: () -> Unit, onOpen: () -> Unit, onStop: () -> Unit) {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen)) {
-        Row(Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onPlayPause) {
-                if (playing) Icon(AppIcons.Pause, stringResource(R.string.pause), tint = MaterialTheme.colorScheme.primary)
-                else Icon(Icons.Filled.PlayArrow, stringResource(R.string.play), tint = MaterialTheme.colorScheme.primary)
+    val band = LocalBanner.current
+    Box(Modifier.clickable(onClick = onOpen)) {
+        BottomBand(clearOfSystemBar = false) {
+            Row(Modifier.padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onPlayPause) {
+                    if (playing) Icon(AppIcons.Pause, stringResource(R.string.pause), tint = band.rule)
+                    else Icon(AppIcons.Play, stringResource(R.string.play), tint = band.rule)
+                }
+                Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
+                    Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        stringResource(if (playing) R.string.now_reciting else R.string.recitation_paused),
+                        style = MaterialTheme.typography.bodySmall, color = band.quiet,
+                    )
+                }
+                IconButton(onClick = onStop) { Icon(AppIcons.Close, stringResource(R.string.stop_reciting)) }
             }
-            Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
-                Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    stringResource(if (playing) R.string.now_reciting else R.string.recitation_paused),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            IconButton(onClick = onStop) { Icon(Icons.Filled.Close, stringResource(R.string.stop_reciting)) }
+        }
+    }
+}
+
+/** The place the recitation was left, for the card that offers to go back to it. */
+class LastRead(val surah: Surah, val verse: Int)
+
+/** Offers to carry on from where the recitation was left. */
+@Composable
+fun LastReadCard(place: LastRead, onGo: () -> Unit) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.last_read_card, surahName(place.surah), place.verse), Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(Modifier.width(12.dp))
+            ThemeButton(stringResource(R.string.move_to_last_read), onGo, icon = AppIcons.Bookmark, filled = true)
         }
     }
 }
 
 /**
- * One surah in the Quran tab: its number in an eight-point star, as in a mushaf's index,
- * and its name in calligraphy. The play mark says a recitation of it is ready.
+ * One surah in the Quran tab: its number under a pointed arch and its name in calligraphy.
+ * The play mark says a recitation of it is ready.
  */
 @Composable
 private fun SurahRow(surah: Surah, recited: Boolean, onClick: () -> Unit) {
     val arabic = LocalConfiguration.current.locales[0].language == "ar"
     val verses = pluralStringResource(R.plurals.verses, surah.verses, surah.verses)
+    val colors = MaterialTheme.colorScheme
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        StarNumber(surah.number)
+        ArchNumber(surah.number)
         Spacer(Modifier.width(12.dp))
         if (arabic) {
             // In Arabic the calligraphy is the name; the Latin spelling steps back to the far side.
             Column(Modifier.weight(1f)) {
-                Text(surah.arabic, fontFamily = CalligraphyFont, fontSize = 26.sp, lineHeight = 38.sp, color = MaterialTheme.colorScheme.primary)
-                Text(verses, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SurahTitle(surah, 30.sp, colors.primary)
+                Text(verses, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
-            if (recited) Icon(Icons.Filled.PlayArrow, stringResource(R.string.recitation_ready), Modifier.padding(horizontal = 8.dp).size(20.dp), tint = MaterialTheme.colorScheme.primary)
-            Text(surah.latin, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (recited) Icon(AppIcons.Play, stringResource(R.string.recitation_ready), Modifier.padding(horizontal = 8.dp).size(20.dp), tint = colors.primary)
+            Text(surah.latin, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
         } else {
             Column(Modifier.weight(1f)) {
                 Text(surah.latin, style = MaterialTheme.typography.titleMedium)
-                Text("${surah.meaning} · $verses", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${surah.meaning} · $verses", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
-            if (recited) Icon(Icons.Filled.PlayArrow, stringResource(R.string.recitation_ready), Modifier.padding(horizontal = 8.dp).size(20.dp), tint = MaterialTheme.colorScheme.primary)
-            Text(surah.arabic, fontFamily = CalligraphyFont, fontSize = 26.sp, lineHeight = 38.sp, color = MaterialTheme.colorScheme.primary)
+            if (recited) Icon(AppIcons.Play, stringResource(R.string.recitation_ready), Modifier.padding(horizontal = 8.dp).size(20.dp), tint = colors.primary)
+            SurahTitle(surah, 30.sp, colors.primary)
         }
-    }
-}
-
-/** A number inside the eight-point star made of two crossed squares. */
-@Composable
-private fun StarNumber(number: Int) {
-    val line = MaterialTheme.colorScheme.primary
-    Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.size(44.dp)) {
-            val side = size.minDimension * 0.62f
-            val corner = Offset((size.width - side) / 2, (size.height - side) / 2)
-            val stroke = Stroke(1.4.dp.toPx())
-            drawRect(line, corner, Size(side, side), style = stroke)
-            rotate(45f) { drawRect(line, corner, Size(side, side), style = stroke) }
-        }
-        Text(stringResource(R.string.number, number), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
@@ -307,11 +332,11 @@ fun StatusCard(status: Status, actions: StatusActions) {
                 Status.WaitingForNetwork -> Text(stringResource(R.string.status_waiting), style = MaterialTheme.typography.bodyMedium)
                 else -> Text(stringResource(R.string.status_starting), style = MaterialTheme.typography.bodyMedium)
             }
-            Row(Modifier.align(Alignment.End)) {
-                TextButton(onClick = actions.cancel) { Text(stringResource(R.string.cancel)) }
+            Row(Modifier.align(Alignment.End).padding(top = 8.dp, end = 8.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ThemeButton(stringResource(R.string.cancel), actions.cancel, icon = AppIcons.Close)
                 when (status) {
-                    Status.Paused -> TextButton(onClick = actions.resume) { Text(stringResource(R.string.resume)) }
-                    else -> TextButton(onClick = actions.pause) { Text(stringResource(R.string.pause_work)) }
+                    Status.Paused -> ThemeButton(stringResource(R.string.resume), actions.resume, icon = AppIcons.Play, filled = true)
+                    else -> ThemeButton(stringResource(R.string.pause_work), actions.pause, icon = AppIcons.Pause)
                 }
             }
         }
@@ -335,9 +360,9 @@ fun ModelProblemCard(problem: ModelProblem, onRetry: (download: Boolean) -> Unit
                 },
                 style = MaterialTheme.typography.bodyMedium,
             )
-            Row(Modifier.align(Alignment.End)) {
-                TextButton(onClick = { onRetry(true) }) { Text(stringResource(R.string.model_download_instead)) }
-                TextButton(onClick = { onRetry(false) }) { Text(stringResource(R.string.try_again)) }
+            Row(Modifier.align(Alignment.End).padding(top = 8.dp, end = 8.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ThemeButton(stringResource(R.string.model_download_instead), { onRetry(true) }, icon = AppIcons.Download)
+                ThemeButton(stringResource(R.string.try_again), { onRetry(false) }, icon = AppIcons.Retry, filled = true)
             }
         }
     }
@@ -387,9 +412,7 @@ fun RecordingsContent(
             if (waiting.isNotEmpty()) {
                 item {
                     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        FilledTonalButton(onClick = { onGet(waiting) }, modifier = Modifier.fillMaxWidth()) {
-                            Text(pluralStringResource(R.plurals.get_all, waiting.size, waiting.size))
-                        }
+                        ThemeButton(pluralStringResource(R.plurals.get_all, waiting.size, waiting.size), { onGet(waiting) }, Modifier.fillMaxWidth(), icon = AppIcons.Download)
                         Text(
                             stringResource(R.string.get_all_note), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
@@ -479,10 +502,12 @@ private fun RecordingRow(
             }
         }
         when {
-            progress != null || track.wanted -> IconButton(onClick = onCancel) { Icon(Icons.Filled.Close, stringResource(R.string.cancel)) }
-            track.ready -> IconButton(onClick = onOpen) { Icon(Icons.Filled.PlayArrow, stringResource(R.string.play), tint = MaterialTheme.colorScheme.primary) }
-            track.error != null -> IconButton(onClick = onGet, enabled = surah != null) { Icon(Icons.Filled.Refresh, stringResource(R.string.try_again)) }
-            else -> IconButton(onClick = onGet, enabled = surah != null) { Icon(AppIcons.Download, stringResource(R.string.get)) }
+            progress != null || track.wanted -> IconButton(onClick = onCancel) { Icon(AppIcons.Close, stringResource(R.string.cancel)) }
+            track.ready -> IconButton(onClick = onOpen) { Icon(AppIcons.Play, stringResource(R.string.play), tint = MaterialTheme.colorScheme.primary) }
+            track.error != null -> IconButton(onClick = onGet, enabled = surah != null) { Icon(AppIcons.Retry, stringResource(R.string.try_again), tint = MaterialTheme.colorScheme.primary) }
+            else -> IconButton(onClick = onGet, enabled = surah != null) {
+                Icon(AppIcons.Download, stringResource(R.string.get), tint = if (surah != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
+            }
         }
         Box {
             IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.more)) }

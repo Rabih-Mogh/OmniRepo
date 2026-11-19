@@ -4,20 +4,20 @@ An Android app for reading the Quran word by word and following a recitation of 
 Every surah can be opened and read, each word with its meaning underneath. Give the app a
 YouTube playlist of a recitation and it downloads the sound only, works out when each word
 is recited, and plays along: the word being recited is framed and kept at the middle of
-the page, and a soft light glides under its letters as each is uttered.
+the page, and the letter being uttered glows, the glow gliding from letter to letter.
 
 The app is in English and Arabic, following the phone's language. By day it is green on
-white; in dark mode, gold on a very dark navy. Every screen has a coloured band at the top with
-a gold rule, the word being recited sits in a tinted frame with its meaning, and each
-verse has its number on the rule above it. In the list of surahs each name is written in
-calligraphy beside its number in an eight-point star, and a surah opens with the basmala
-drawn as one calligraphic piece.
+white; in dark mode, gold on near-black. Every screen has a coloured band at the top with a
+gold rule, and the player sits on the same band at the bottom. Surah names are written in
+calligraphy, surah numbers sit under a pointed arch and verse numbers in an eight-point
+star, and the word being recited sits in a tinted frame with its meaning.
 
 ## How it works
 
-The first screen has two tabs.
+The first screen has two tabs, at the bottom.
 
-**Quran** lists the 114 surahs. Tap one to read it, whether or not a recitation of it has
+**Quran** lists the 114 surahs, under a card that offers to **move to last read**: the
+surah and verse where the last recitation was left. Tap one to read it, whether or not a recitation of it has
 been downloaded; a play mark shows the ones that have. The bar at the bottom of a surah
 says how its recitation stands (none in the playlists, not downloaded, downloading,
 ready) and has the button for the next step. The words are fetched from Quran.com the
@@ -47,13 +47,26 @@ the whole Quran ends up readable without a connection.
      app tries again a few times, then shows the error, in the system's own words, on the
      recording.
 3. **Read along.** Open a recording that is ready, or its surah from the Quran tab.
+   - A surah opens on its title page: its number, its name in calligraphy, what the name
+     means, how many verses it has, where it was revealed and its place in the order of
+     revelation, and then the basmala drawn as one calligraphic piece. (Al-Fatihah has
+     the piece too, though the basmala is also its first verse; At-Tawbah has none.) The
+     title page fills the top half, so the first verse starts at the middle of the page.
+   - The app remembers how far each recitation was listened to. Opened again from the
+     start, a bar offers **Move to last read** with the verse it had reached.
    - The page follows the recitation and keeps the word being recited at the middle of
      the page, so it is always in the same place for a glance. The page glides after
      the word rather than jumping, the frame and light fade from one word to the next, and
      a jump to a far part of the surah is covered by a short dissolve. Scrolling by hand
      stops the following until **Follow the recitation** is tapped.
+   - The recitation doesn't start by itself: it is loaded and waits for **play**.
+   - **Verses 1 – 7** above the time line chooses which verses to recite: a first and a
+     last verse. Play starts at the first and stops after the last. Left at the whole
+     surah, the playlist's next recording follows as before.
    - Tap a word to jump to it. **Previous verse** and **Next verse** are either side of
      the play button.
+   - The **text size** button on the band makes the verses, meanings and translation
+     smaller or larger, from 70% to 200%; the size is remembered.
    - The button at the top right shows or hides the meaning under each word; the choice
      is remembered.
    - Tap a verse to see its translation. It closes by itself after long enough to read
@@ -61,7 +74,9 @@ the whole Quran ends up readable without a connection.
    - When a recording ends, the playlist's next prepared one follows.
    - The recitation carries on when the surah, or the app, is left: with the screen off,
      in another app, or after the app is swiped away. Play and pause are in the
-     notification and on the lock screen. Inside the app, a bar at the bottom of the
+     notification and on the lock screen. Android colours that player from the picture
+     it is given, so each surah comes with one in the theme's colours: its name under the
+     arch, gold on near-black in dark mode and cream on green by day. Inside the app, a bar at the bottom of the
      lists shows what is reciting, with play or pause, a cross to stop it, and a tap to
      go back to its surah.
 
@@ -140,7 +155,8 @@ it against its published timings.
 | Speech model | [wav2vec2-lv-60-espeak-cv-ft](https://huggingface.co/facebook/wav2vec2-lv-60-espeak-cv-ft), ONNX export by onnx-community | Apache-2.0 |
 | Reading YouTube | [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor) | GPL-3.0 |
 | Font for the verses and the basmala | [Amiri Quran](https://github.com/aliftype/amiri) | SIL Open Font License ([text](licenses/AmiriQuran-OFL.txt)) |
-| Font for the surahs' names | [Aref Ruqaa](https://github.com/alif-type/aref-ruqaa) | SIL Open Font License ([text](licenses/ArefRuqaa-OFL.txt)) |
+| Calligraphy of the surahs' names | Quran.com's surah-name font, fetched by the app on first run and kept on the phone; not stored in this repo. It is used only if it is byte for byte the file the app was written against | None stated: their own terms |
+| Font for the surahs' names until that is fetched | [Aref Ruqaa](https://github.com/alif-type/aref-ruqaa) | SIL Open Font License ([text](licenses/ArefRuqaa-OFL.txt)) |
 
 Because it includes NewPipe Extractor, this app's own code is under the
 [GPL-3.0](LICENSE).

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes core/.../Surahs.kt: the 114 surahs' names and verse counts, from Quran.com."""
+"""Writes core/.../Surahs.kt: the 114 surahs' names, verse counts and where each was revealed, from Quran.com."""
 import json, os, urllib.request
 
 here = os.path.dirname(os.path.abspath(__file__))
@@ -11,8 +11,20 @@ assert len(chapters) == 114
 lines = [
     "package app.recitation.core",
     "",
-    "/** A surah: its number, its name in Arabic and in Latin letters, what the name means, and how many verses it has. */",
-    "data class Surah(val number: Int, val arabic: String, val latin: String, val meaning: String, val verses: Int)",
+    "/**",
+    " * A surah: its number, its name in Arabic and in Latin letters, what the name means, how many",
+    " * verses it has, whether it was revealed in Madinah (otherwise Makkah), and its place in the",
+    " * order of revelation.",
+    " */",
+    "data class Surah(",
+    "    val number: Int,",
+    "    val arabic: String,",
+    "    val latin: String,",
+    "    val meaning: String,",
+    "    val verses: Int,",
+    "    val madinan: Boolean,",
+    "    val revealed: Int,",
+    ")",
     "",
     "/** All 114, in order. Written by tools/make_surahs.py from Quran.com; don't edit by hand. */",
     "val SURAHS: List<Surah> = listOf(",
@@ -21,8 +33,9 @@ def quoted(text):
     return '"' + text.replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$") + '"'
 
 for c in chapters:
-    lines.append("    Surah(%d, %s, %s, %s, %d)," % (
-        c["id"], quoted(c["name_arabic"]), quoted(c["name_simple"]), quoted(c["translated_name"]["name"]), c["verses_count"]))
+    lines.append("    Surah(%d, %s, %s, %s, %d, %s, %d)," % (
+        c["id"], quoted(c["name_arabic"]), quoted(c["name_simple"]), quoted(c["translated_name"]["name"]), c["verses_count"],
+        "true" if c["revelation_place"] == "madinah" else "false", c["revelation_order"]))
 lines.append(")")
 open(out, "w", encoding="utf-8").write("\n".join(lines) + "\n")
 print("wrote", os.path.normpath(out))

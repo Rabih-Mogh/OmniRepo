@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.LocalContentColor
@@ -66,7 +67,7 @@ private val Green = lightColorScheme(
     surfaceContainerHighest = Color(0xFFE0EAE4),
 )
 
-/** Night: gold on a very dark navy. */
+/** Night: gold on black with a breath of navy in it. */
 private val Gold = darkColorScheme(
     primary = Color(0xFFF2C14E),
     onPrimary = Color(0xFF3A2A00),
@@ -75,35 +76,35 @@ private val Gold = darkColorScheme(
     inversePrimary = Color(0xFF7A5A12),
     secondary = Color(0xFFD8C7A0),
     onSecondary = Color(0xFF3A2F12),
-    secondaryContainer = Color(0xFF1C2742),
+    secondaryContainer = Color(0xFF131A2B),
     onSecondaryContainer = Color(0xFFEDE6D3),
     tertiary = Color(0xFFE6C27A),
     onTertiary = Color(0xFF3A2A00),
     tertiaryContainer = Color(0xFF52401A),
     onTertiaryContainer = Color(0xFFFFE2A8),
-    background = Color(0xFF070B16),
+    background = Color(0xFF02040A),
     onBackground = Color(0xFFEDE6D3),
-    surface = Color(0xFF070B16),
+    surface = Color(0xFF02040A),
     onSurface = Color(0xFFEDE6D3),
-    surfaceVariant = Color(0xFF1A2238),
+    surfaceVariant = Color(0xFF151B2B),
     onSurfaceVariant = Color(0xFFA9B1C6),
     surfaceTint = Color(0xFFF2C14E),
     inverseSurface = Color(0xFFEDE6D3),
-    inverseOnSurface = Color(0xFF111A2E),
+    inverseOnSurface = Color(0xFF0D1220),
     error = Color(0xFFFFB4AB),
     onError = Color(0xFF690005),
     errorContainer = Color(0xFF5C1A17),
     onErrorContainer = Color(0xFFFFDAD6),
-    outline = Color(0xFF566080),
-    outlineVariant = Color(0xFF222C45),
+    outline = Color(0xFF4E5672),
+    outlineVariant = Color(0xFF1B2336),
     scrim = Color(0xFF000000),
-    surfaceBright = Color(0xFF222C45),
-    surfaceDim = Color(0xFF070B16),
-    surfaceContainerLowest = Color(0xFF04070F),
-    surfaceContainerLow = Color(0xFF0C1220),
-    surfaceContainer = Color(0xFF101728),
-    surfaceContainerHigh = Color(0xFF151E33),
-    surfaceContainerHighest = Color(0xFF1B2640),
+    surfaceBright = Color(0xFF1B2336),
+    surfaceDim = Color(0xFF02040A),
+    surfaceContainerLowest = Color(0xFF000000),
+    surfaceContainerLow = Color(0xFF070A12),
+    surfaceContainer = Color(0xFF0A0E18),
+    surfaceContainerHigh = Color(0xFF0F1422),
+    surfaceContainerHighest = Color(0xFF151B2B),
 )
 
 /** Amiri Quran (SIL Open Font License): drawn for the Uthmani script and all its small signs. */
@@ -126,7 +127,7 @@ class BannerColors(val background: Color, val content: Color, val rule: Color) {
 }
 
 private val DayBanner = BannerColors(background = Color(0xFF1B6B4A), content = Color(0xFFFFF7E0), rule = Color(0xFFF2C14E))
-private val NightBanner = BannerColors(background = Color(0xFF0F172B), content = Color(0xFFF2C14E), rule = Color(0xFFF2C14E))
+private val NightBanner = BannerColors(background = Color(0xFF0A0E18), content = Color(0xFFF2C14E), rule = Color(0xFFF2C14E))
 
 val LocalBanner = staticCompositionLocalOf { DayBanner }
 
@@ -150,5 +151,21 @@ fun Banner(content: @Composable () -> Unit) {
             CompositionLocalProvider(LocalContentColor provides banner.content, content = content)
         }
         Box(Modifier.fillMaxWidth().height(2.dp).background(banner.rule))
+    }
+}
+
+/**
+ * The same band at the bottom of a screen, rule on top: where the player and other bars sit,
+ * so they wear the theme's colours. [clearOfSystemBar] keeps it above the phone's own
+ * navigation bar when nothing else already does.
+ */
+@Composable
+fun BottomBand(clearOfSystemBar: Boolean = true, content: @Composable () -> Unit) {
+    val banner = LocalBanner.current
+    Column(Modifier.fillMaxWidth().background(banner.background)) {
+        Box(Modifier.fillMaxWidth().height(2.dp).background(banner.rule))
+        Box((if (clearOfSystemBar) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier).fillMaxWidth()) {
+            CompositionLocalProvider(LocalContentColor provides banner.content, content = content)
+        }
     }
 }

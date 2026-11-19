@@ -176,6 +176,16 @@ class Timings(val verses: List<List<WordTiming>>, val clarity: Float) {
 
     val matches: Boolean get() = clarity >= GOOD_ENOUGH
 
+    /** The verse (counting from 0) being recited at [ms]: the last one whose first word has started. */
+    fun verseAt(ms: Int): Int {
+        var verse = 0
+        for ((v, words) in verses.withIndex()) {
+            val start = words.firstOrNull()?.startMs ?: continue
+            if (start <= ms) verse = v else break
+        }
+        return verse
+    }
+
     /** One line for the clarity, then one per verse: words apart by spaces, numbers by commas. */
     fun encode(): String = buildString {
         append(clarity).append('\n')

@@ -39,6 +39,18 @@ class RecitalTest {
     }
 
     @Test
+    fun `knows which verse is being recited at a moment`() {
+        val timings = Timings(
+            listOf(listOf(WordTiming(500, intArrayOf())), listOf(WordTiming(4000, intArrayOf()), WordTiming(5000, intArrayOf())), listOf(WordTiming(9000, intArrayOf()))),
+            0.9f,
+        )
+        assertEquals(0, timings.verseAt(0))
+        assertEquals(0, timings.verseAt(3999))
+        assertEquals(1, timings.verseAt(5500))
+        assertEquals(2, timings.verseAt(60_000))
+    }
+
+    @Test
     fun `the place in a word glides from letter to letter`() {
         // Letters 0-2 from 1000 ms, 2-4 from 1200 ms, 4-9 from 1500 ms; the next word starts at 2000 ms.
         val word = WordTiming(1000, intArrayOf(2, 1000, 4, 1200, 9, 1500))

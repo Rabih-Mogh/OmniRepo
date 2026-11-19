@@ -17,7 +17,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import java.io.File
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
@@ -30,6 +40,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.recitation.core.Timings
 import app.recitation.core.WordTiming
@@ -37,18 +48,24 @@ import app.recitation.data.Playlist
 import app.recitation.data.Track
 import app.recitation.data.Verse
 import app.recitation.data.Word
+import app.recitation.player.Artwork
 import app.recitation.prepare.ModelProblem
 import app.recitation.prepare.Progress
 import app.recitation.prepare.Step
 import app.recitation.speech.ModelStore
 import app.recitation.ui.HomeContent
+import app.recitation.ui.LastRead
+import app.recitation.ui.LastReadBar
+import app.recitation.ui.LocalSurahNames
 import app.recitation.ui.NoRecitationBar
 import app.recitation.ui.NowPlayingBar
+import app.recitation.ui.RangeChooser
 import app.recitation.ui.ReaderContent
 import app.recitation.ui.RecitationTheme
 import app.recitation.ui.RecordingsContent
 import app.recitation.ui.Status
 import app.recitation.ui.StatusActions
+import app.recitation.ui.TextSizeControls
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlin.math.abs
 import org.junit.Assert.assertTrue
@@ -103,9 +120,18 @@ class ScreensTest {
         ),
     )
 
+    /**
+     * The surah-name calligraphy the app fetches from Quran.com isn't in the repo. Point
+     * SURA_NAMES_FONT at a copy to see it in the pictures; without it the names are drawn in
+     * the bundled hand, as on a phone that hasn't fetched it yet.
+     */
+    private val surahNames = System.getenv("SURA_NAMES_FONT")?.let(::File)?.takeIf { it.exists() }?.let { FontFamily(Font(it)) }
+
     private fun show(picture: String, content: @Composable () -> Unit) {
         compose.setContent {
-            RecitationTheme { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { content() } }
+            CompositionLocalProvider(LocalSurahNames provides surahNames) {
+                RecitationTheme { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { content() } }
+            }
         }
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("build/screens/$picture.png")
@@ -145,6 +171,26 @@ class ScreensTest {
         return node.center.x > root.center.x
     }
 
+    /** The picture Android's own media player shows, and takes its colours from. */
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
+    fun thePictureForAndroidsMediaPlayerByNight() {
+        val font = System.getenv("SURA_NAMES_FONT")?.let(::File)?.takeIf { it.exists() }
+        val png = Artwork.of(ApplicationProvider.getApplicationContext(), app.recitation.core.SURAHS[17], font)
+        File("build/screens").mkdirs()
+        File("build/screens/artwork-night.png").writeBytes(png)
+        assertTrue(png.size > 2_000)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun thePictureForAndroidsMediaPlayerByDay() {
+        val font = System.getenv("SURA_NAMES_FONT")?.let(::File)?.takeIf { it.exists() }
+        val png = Artwork.of(ApplicationProvider.getApplicationContext(), app.recitation.core.SURAHS[17], font)
+        File("build/screens/artwork-day.png").writeBytes(png)
+        assertTrue(png.size > 2_000)
+    }
+
     /** The launcher icon as phones show it: cut to a rounded square, and to a circle. */
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
@@ -167,7 +213,7 @@ class ScreensTest {
     fun readingInEnglishByDay() {
         // 7.5 s in: half way through the last word of the second verse.
         show("en-day-reader") { Reader(7_500) }
-        compose.onNodeWithText("سورة الفاتحة").assertIsDisplayed()
+        compose.onNodeWithTag("surah-title").assertIsDisplayed().assertContentDescriptionEquals("سورة الفاتحة")
         compose.onNodeWithText("Al-Fatihah · 7 verses").assertIsDisplayed()
         compose.onNodeWithContentDescription("Verse 2").assertIsDisplayed()
         compose.onNodeWithText("of the universe").assertIsDisplayed()
@@ -232,6 +278,10 @@ class ScreensTest {
     fun theFirstAndLastWordsAreCentredToo() {
         // There is nothing above the first word or below the last, yet both sit in the middle.
         show("en-day-reader-first-word") { Reader(200) }
+        // The title page fills the room above it: the surah's details, and the basmala even for Al-Fatihah.
+        compose.onNodeWithText("Al-Fatihah · The Opener").assertIsDisplayed()
+        compose.onNodeWithText("7 verses · Meccan · No. 5 in order of revelation").assertIsDisplayed()
+        compose.onNodeWithContentDescription("بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ").assertIsDisplayed()
         assertTrue("first word off by ${offCentre("In (the) name")} px", abs(offCentre("In (the) name")) < 60f)
     }
 
@@ -254,7 +304,7 @@ class ScreensTest {
     fun readingInArabicByNight() {
         // Meanings are English, so they're off when the phone is in Arabic.
         show("ar-night-reader") { Reader(12_400, meanings = false) }
-        compose.onNodeWithText("سورة الفاتحة").assertIsDisplayed()
+        compose.onNodeWithTag("surah-title").assertIsDisplayed().assertContentDescriptionEquals("سورة الفاتحة")
         // Numbers follow the phone's language too.
         compose.onNodeWithText("٧ آيات").assertIsDisplayed()
         compose.onNodeWithContentDescription("الآية ٤").assertIsDisplayed()
@@ -347,6 +397,108 @@ class ScreensTest {
     }
 
     @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
+    fun offersToMoveToTheLastPlaceRead() {
+        var moved = false
+        show("en-night-last-read") {
+            HomeContent(
+                0, {}, listOf(playlist), null, StatusActions(), recited = setOf(1, 2), onSurah = {}, onOpen = {}, onAdd = {},
+                lastRead = LastRead(app.recitation.core.SURAHS[1], 45), onLastRead = { moved = true },
+            )
+        }
+        compose.onNodeWithText("Last read: Al-Baqarah, verse 45").assertIsDisplayed()
+        compose.onNodeWithText("Move to last read").performClick()
+        assertTrue(moved)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun offersTheLastPlaceInsideASurahToo() {
+        var moved = false
+        show("en-day-reader-last-read") {
+            ReaderContent(
+                reading = Reading(1, fatihah, track, timings(fatihah)), showMeanings = true, playing = true,
+                position = { 200 }, duration = 74_000, onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
+                suggestion = { LastReadBar(verse = 5, onGo = { moved = true }, onDismiss = {}) },
+            )
+        }
+        compose.onNodeWithText("You stopped at verse 5.").assertIsDisplayed()
+        compose.onNodeWithText("Move to last read").performClick()
+        assertTrue(moved)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theRecitationWaitsAndSaysWhichVersesItWillRecite() {
+        show("en-day-reader-range") {
+            ReaderContent(
+                reading = Reading(1, fatihah, track, timings(fatihah)), showMeanings = true, playing = false,
+                position = { 0 }, duration = 74_000, onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
+                range = 1..3,
+            )
+        }
+        // Not playing: the recitation waits for the reader. The bar says which verses it will recite.
+        compose.onNodeWithContentDescription("Play").assertIsDisplayed()
+        compose.onNodeWithText("Verses 2 – 4").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun choosingTheFirstAndLastVerse() {
+        var range = 1..3
+        compose.setContent {
+            var shown by remember { mutableStateOf(range) }
+            RecitationTheme { Surface(color = MaterialTheme.colorScheme.background) { RangeChooser(7, shown) { shown = it; range = it } } }
+        }
+        compose.onNodeWithText("Start at verse").assertIsDisplayed()
+        compose.onNodeWithText("End after verse").assertIsDisplayed()
+        // One verse earlier at the start, one later at the end.
+        compose.onAllNodesWithContentDescription("Smaller").onFirst().performClick()
+        compose.onAllNodesWithContentDescription("Larger")[1].performClick()
+        compose.waitForIdle()
+        assertTrue("got $range", range == 0..4)
+        compose.onRoot().captureRoboImage("build/screens/en-day-range-chooser.png")
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theTextCanBeMadeLarger() {
+        fun wordHeight() = compose.onNodeWithText("ٱلْعَـٰلَمِينَ", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.height
+        var scale by mutableFloatStateOf(1f)
+        compose.setContent {
+            RecitationTheme {
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    ReaderContent(
+                        reading = Reading(1, fatihah, track, timings(fatihah)), showMeanings = true, playing = true,
+                        position = { 7_500 }, duration = 74_000, onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
+                        textScale = scale,
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("Text size").assertIsDisplayed()
+        val before = wordHeight()
+        scale = 1.5f
+        compose.waitForIdle()
+        assertTrue("the words are drawn larger", wordHeight() > before * 1.3f)
+        compose.onRoot().captureRoboImage("build/screens/en-day-reader-large-text.png")
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theTextSizeControlsStepByTenths() {
+        var scale by mutableFloatStateOf(1f)
+        compose.setContent { RecitationTheme { Surface(color = MaterialTheme.colorScheme.background) { TextSizeControls(scale) { scale = it } } } }
+        compose.onNodeWithText("100%").assertIsDisplayed()
+        repeat(5) { compose.onNodeWithContentDescription("Larger").performClick() }
+        compose.onNodeWithText("150%").assertIsDisplayed()
+        repeat(20) { compose.onNodeWithContentDescription("Smaller").performClick() }
+        // It stops at the smallest size rather than shrinking to nothing.
+        compose.onNodeWithText("70%").assertIsDisplayed()
+    }
+
+    @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun recordingsInEnglishByDay() {
         var cancelled: Track? = null
@@ -413,7 +565,7 @@ class ScreensTest {
     fun theQuranTabInArabicByNight() {
         show("ar-night-quran") { Home(tab = 0) }
         compose.onNodeWithText("القرآن").assertIsDisplayed()
-        compose.onNodeWithText("البقرة").assertIsDisplayed()
+        compose.onNodeWithContentDescription("البقرة").assertIsDisplayed()
         compose.onNodeWithText("٢٨٦ آية").assertIsDisplayed()
     }
 

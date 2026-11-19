@@ -24,6 +24,7 @@ import app.recitation.core.Hearing
 import app.recitation.core.Recital
 import app.recitation.data.Library
 import app.recitation.data.QuranStore
+import app.recitation.data.Settings
 import app.recitation.data.Track
 import app.recitation.speech.Listener
 import app.recitation.speech.ModelStore
@@ -46,26 +47,6 @@ enum class Step { MODEL_COPY, MODEL_DOWNLOAD, DOWNLOAD, VERSES, LISTEN, ALIGN, R
 
 /** Why the speech model couldn't be copied from Accent Coach. */
 data class ModelProblem(val reason: ModelStore.Lender, val detail: String?)
-
-/** The user's choices that outlast the app being closed. */
-object Settings {
-    private fun store(context: Context) = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-
-    /** Whether the model may be downloaded even though Accent Coach is installed and could, once put right, lend it. */
-    fun downloadModel(context: Context): Boolean = store(context).getBoolean("download_model", false)
-
-    fun setDownloadModel(context: Context, allowed: Boolean) = store(context).edit().putBoolean("download_model", allowed).apply()
-
-    /** Whether each word's meaning shows under it; [byDefault] until the user has chosen. */
-    fun wordMeanings(context: Context, byDefault: Boolean): Boolean = store(context).getBoolean("word_meanings", byDefault)
-
-    fun setWordMeanings(context: Context, shown: Boolean) = store(context).edit().putBoolean("word_meanings", shown).apply()
-
-    /** Whether the user paused the downloads. Paused work isn't picked up again until they say so. */
-    fun paused(context: Context): Boolean = store(context).getBoolean("paused", false)
-
-    fun setPaused(context: Context, paused: Boolean) = store(context).edit().putBoolean("paused", paused).apply()
-}
 
 /** [trackId] is null while the speech model, which every recording needs, is being fetched. */
 data class Progress(val trackId: String?, val step: Step, val fraction: Float)

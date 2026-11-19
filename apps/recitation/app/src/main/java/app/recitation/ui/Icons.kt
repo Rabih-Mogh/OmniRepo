@@ -17,5 +17,39 @@ object AppIcons {
     val SkipNext = icon("SkipNext", "M6,18l8.5,-6L6,6v12zM16,6v12h2V6h-2z")
     val SkipPrevious = icon("SkipPrevious", "M6,6h2v12H6zM9.5,12l8.5,6V6z")
     val Download = icon("Download", "M5,20h14v-2H5v2zM19,9h-4V3H9v6H5l7,7 7,-7z")
-    val Translate = icon("Translate", "M4,5h16v2H4zM4,11h10v2H4zM4,17h13v2H4z")
+    val Add = icon("Add", "M19,13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z")
+    val Remove = icon("Remove", "M19,13H5v-2h14v2z")
+
+    /** Text size: a large letter beside a small one. */
+    val TextSize = icon("TextSize", "M9,4v3h5v12h3V7h5V4H9zM3,12h3v7h3v-7h3V9H3v3z")
+
+    /** From one verse to another: two posts with a line between. */
+    val Range = icon("Range", "M4,6h2v12H4zM18,6h2v12h-2zM8,11h8v2H8z")
+    val Close = icon("Close", "M19,6.41L17.59,5 12,10.59 6.41,5 5,6.41 10.59,12 5,17.59 6.41,19 12,13.41 17.59,19 19,17.59 13.41,12z")
+    val Retry = icon("Retry", "M17.65,6.35C16.2,4.9 14.21,4 12,4c-4.42,0 -7.99,3.58 -7.99,8s3.57,8 7.99,8c3.73,0 6.84,-2.55 7.73,-6h-2.08c-0.82,2.33 -3.04,4 -5.65,4 -3.31,0 -6,-2.69 -6,-6s2.69,-6 6,-6c1.66,0 3.14,0.69 4.22,1.78L13,11h7V4l-2.35,2.35z")
+    val Play = icon("Play", "M8,5v14l11,-7z")
+
+    /** Word meanings: the "translate" sign, a letter beside a character of another script. */
+    val Meanings = icon(
+        "Meanings",
+        "M12.87,15.07l-2.54,-2.51 0.03,-0.03c1.74,-1.94 2.98,-4.17 3.71,-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5,7.92 10.44,9.75 9,11.35 " +
+            "8.07,10.32 7.3,9.19 6.69,8h-2c0.73,1.63 1.73,3.17 2.98,4.56l-5.09,5.02L4,19l5,-5 3.11,3.11 0.76,-2.04zM18.5,10h-2L12,22h2l1.12,-3h4.75L21,22h2l-4.5,-12z" +
+            "M15.88,17l1.62,-4.33L19.12,17h-3.24z",
+    )
+
+    /** Follow the recitation: a sight centred on the place being recited. */
+    val Follow = icon(
+        "Follow",
+        "M12,8c-2.21,0 -4,1.79 -4,4s1.79,4 4,4 4,-1.79 4,-4 -1.79,-4 -4,-4zM20.94,11c-0.46,-4.17 -3.77,-7.48 -7.94,-7.94V1h-2v2.06C6.83,3.52 3.52,6.83 3.06,11H1v2h2.06" +
+            "c0.46,4.17 3.77,7.48 7.94,7.94V23h2v-2.06c4.17,-0.46 7.48,-3.77 7.94,-7.94H23v-2h-2.06zM12,19c-3.87,0 -7,-3.13 -7,-7s3.13,-7 7,-7 7,3.13 7,7 -3.13,7 -7,7z",
+    )
+
+    /** The Quran tab: an open book. */
+    val Book = icon("Book", "M12,6.5Q9,4.4 3.5,5.2V18.2Q9,17.4 12,19.5Q15,17.4 20.5,18.2V5.2Q15,4.4 12,6.5ZM11.3,7.8V17.6Q9,16.3 5,16.6V6.7Q9,6.4 11.3,7.8ZM12.7,7.8Q15,6.4 19,6.7V16.6Q15,16.3 12.7,17.6Z")
+
+    /** The Playlists tab: a list with a play mark. */
+    val Playlists = icon("Playlists", "M3,10h11v2H3zM3,6h11v2H3zM3,14h7v2H3zM16,13v8l6,-4z")
+
+    /** The place reached: a bookmark. */
+    val Bookmark = icon("Bookmark", "M17,3H7c-1.1,0 -1.99,0.9 -1.99,2L5,21l7,-3 7,3V5c0,-1.1 -0.9,-2 -2,-2z")
 }

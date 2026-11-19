@@ -86,6 +86,27 @@
     <string name="recitation_ready">التلاوة جاهزة.</string>
     <string name="surah_failed">تعذّر جلب هذه السورة. تحتاج إلى اتصال بالإنترنت عند فتحها أول مرة.</string>
 
+    <!-- A surah's title page, and the place reached -->
+    <string name="name_and_meaning">%1$s · %2$s</string>
+    <string name="surah_details">%1$s · %2$s · ترتيب النزول %3$d</string>
+    <string name="revealed_makkah">مكية</string>
+    <string name="revealed_madinah">مدنية</string>
+    <string name="last_read_at">توقفت عند الآية %1$d.</string>
+    <string name="last_read_card">آخر ما قرأت: %1$s، الآية %2$d</string>
+    <string name="move_to_last_read">الانتقال إلى آخر ما قرأت</string>
+
+    <!-- Text size, and which verses to recite -->
+    <string name="text_size">حجم الخط</string>
+    <string name="smaller">أصغر</string>
+    <string name="larger">أكبر</string>
+    <string name="percent">%1$d%%</string>
+    <string name="range_label">الآيات %1$d – %2$d</string>
+    <string name="range_title">الآيات المراد تلاوتها</string>
+    <string name="range_from">البدء من الآية</string>
+    <string name="range_to">الانتهاء بعد الآية</string>
+    <string name="range_whole">السورة كاملة</string>
+    <string name="done">تم</string>
+
     <!-- Reading along -->
     <string name="verse">الآية %1$d</string>
     <string name="surah_title">سورة %1$s</string>
