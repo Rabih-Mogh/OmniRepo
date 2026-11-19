@@ -1,5 +1,6 @@
 package app.recitation.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,12 +57,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.recitation.R
 import app.recitation.core.SURAHS
 import app.recitation.core.Surah
@@ -122,7 +128,7 @@ fun HomeContent(
         Banner {
             Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)) {
                 Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall)
-                Text(stringResource(R.string.tagline), style = MaterialTheme.typography.bodyMedium, color = LocalContentColor.current.copy(alpha = 0.8f))
+                Text(stringResource(R.string.tagline), style = MaterialTheme.typography.bodyMedium, color = LocalBanner.current.quiet)
             }
         }
         TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.background) {
@@ -205,23 +211,49 @@ fun NowPlayingBar(title: String, playing: Boolean, onPlayPause: () -> Unit, onOp
     }
 }
 
-/** One surah in the Quran tab. The play mark says a recitation of it is ready. */
+/**
+ * One surah in the Quran tab: its number in an eight-point star, as in a mushaf's index,
+ * and its name in calligraphy. The play mark says a recitation of it is ready.
+ */
 @Composable
 private fun SurahRow(surah: Surah, recited: Boolean, onClick: () -> Unit) {
     val arabic = LocalConfiguration.current.locales[0].language == "ar"
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(stringResource(R.string.number, surah.number), Modifier.width(44.dp), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Column(Modifier.weight(1f)) {
-            Text(surahName(surah), style = MaterialTheme.typography.titleMedium)
-            val verses = pluralStringResource(R.plurals.verses, surah.verses, surah.verses)
-            Text(
-                if (arabic) verses else "${surah.meaning} · $verses",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+    val verses = pluralStringResource(R.plurals.verses, surah.verses, surah.verses)
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        StarNumber(surah.number)
+        Spacer(Modifier.width(12.dp))
+        if (arabic) {
+            // In Arabic the calligraphy is the name; the Latin spelling steps back to the far side.
+            Column(Modifier.weight(1f)) {
+                Text(surah.arabic, fontFamily = CalligraphyFont, fontSize = 26.sp, lineHeight = 38.sp, color = MaterialTheme.colorScheme.primary)
+                Text(verses, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (recited) Icon(Icons.Filled.PlayArrow, stringResource(R.string.recitation_ready), Modifier.padding(horizontal = 8.dp).size(20.dp), tint = MaterialTheme.colorScheme.primary)
+            Text(surah.latin, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            Column(Modifier.weight(1f)) {
+                Text(surah.latin, style = MaterialTheme.typography.titleMedium)
+                Text("${surah.meaning} · $verses", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (recited) Icon(Icons.Filled.PlayArrow, stringResource(R.string.recitation_ready), Modifier.padding(horizontal = 8.dp).size(20.dp), tint = MaterialTheme.colorScheme.primary)
+            Text(surah.arabic, fontFamily = CalligraphyFont, fontSize = 26.sp, lineHeight = 38.sp, color = MaterialTheme.colorScheme.primary)
         }
-        if (recited) Icon(Icons.Filled.PlayArrow, stringResource(R.string.recitation_ready), Modifier.padding(horizontal = 8.dp).size(20.dp), tint = MaterialTheme.colorScheme.primary)
-        // The name in the other script, for whoever knows the surahs by it.
-        Text(if (arabic) surah.latin else surah.arabic, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** A number inside the eight-point star made of two crossed squares. */
+@Composable
+private fun StarNumber(number: Int) {
+    val line = MaterialTheme.colorScheme.primary
+    Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.size(44.dp)) {
+            val side = size.minDimension * 0.62f
+            val corner = Offset((size.width - side) / 2, (size.height - side) / 2)
+            val stroke = Stroke(1.4.dp.toPx())
+            drawRect(line, corner, Size(side, side), style = stroke)
+            rotate(45f) { drawRect(line, corner, Size(side, side), style = stroke) }
+        }
+        Text(stringResource(R.string.number, number), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
@@ -339,7 +371,7 @@ fun RecordingsContent(
                     Text(playlist.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
                         stringResource(R.string.ready_of, playlist.tracks.count { it.ready }, playlist.tracks.size),
-                        style = MaterialTheme.typography.bodySmall, color = LocalContentColor.current.copy(alpha = 0.8f),
+                        style = MaterialTheme.typography.bodySmall, color = LocalBanner.current.quiet,
                     )
                 }
                 Box {

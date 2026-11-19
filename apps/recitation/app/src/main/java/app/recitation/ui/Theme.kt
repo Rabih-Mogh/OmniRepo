@@ -18,6 +18,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -108,8 +109,21 @@ private val Gold = darkColorScheme(
 /** Amiri Quran (SIL Open Font License): drawn for the Uthmani script and all its small signs. */
 val QuranFont = FontFamily(Font(R.font.amiri_quran))
 
+/** Aref Ruqaa (SIL Open Font License): a flowing calligraphic hand, for the surahs' names. */
+val CalligraphyFont = FontFamily(Font(R.font.aref_ruqaa_bold))
+
+/**
+ * This colour at [strength] over [background], as one solid colour. Arabic letters overlap
+ * where they join, so see-through text shows darker patches at every join; text that
+ * should look fainter is given a solid, paler colour instead.
+ */
+fun Color.faded(strength: Float, background: Color): Color = copy(alpha = strength).compositeOver(background)
+
 /** The band across the top of every screen, with a gold rule under it. */
-class BannerColors(val background: Color, val content: Color, val rule: Color)
+class BannerColors(val background: Color, val content: Color, val rule: Color) {
+    /** For the second line on the banner: fainter than [content], and solid. */
+    val quiet: Color get() = content.faded(0.8f, background)
+}
 
 private val DayBanner = BannerColors(background = Color(0xFF1B6B4A), content = Color(0xFFFFF7E0), rule = Color(0xFFF2C14E))
 private val NightBanner = BannerColors(background = Color(0xFF14241C), content = Color(0xFFF2C14E), rule = Color(0xFFF2C14E))

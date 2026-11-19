@@ -9,7 +9,9 @@ the page, and a soft light glides under its letters as each is uttered.
 The app is in English and Arabic, following the phone's language. By day it is green on
 white; in dark mode, gold on green-black. Every screen has a coloured band at the top with
 a gold rule, the word being recited sits in a tinted frame with its meaning, and each
-verse ends with its number.
+verse has its number on the rule above it. In the list of surahs each name is written in
+calligraphy beside its number in an eight-point star, and a surah opens with the basmala
+drawn as one calligraphic piece.
 
 ## How it works
 
@@ -134,7 +136,8 @@ it against its published timings.
 | Quran text (Uthmani script), word meanings, verse translation (Saheeh International) | [Quran.com](https://quran.com) API, fetched by the app and kept on the phone; not stored in this repo | Their own terms |
 | Speech model | [wav2vec2-lv-60-espeak-cv-ft](https://huggingface.co/facebook/wav2vec2-lv-60-espeak-cv-ft), ONNX export by onnx-community | Apache-2.0 |
 | Reading YouTube | [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor) | GPL-3.0 |
-| Arabic font | [Amiri Quran](https://github.com/aliftype/amiri) | SIL Open Font License ([text](licenses/AmiriQuran-OFL.txt)) |
+| Font for the verses and the basmala | [Amiri Quran](https://github.com/aliftype/amiri) | SIL Open Font License ([text](licenses/AmiriQuran-OFL.txt)) |
+| Font for the surahs' names | [Aref Ruqaa](https://github.com/alif-type/aref-ruqaa) | SIL Open Font License ([text](licenses/ArefRuqaa-OFL.txt)) |
 
 Because it includes NewPipe Extractor, this app's own code is under the
 [GPL-3.0](LICENSE).

@@ -23,6 +23,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -236,7 +237,7 @@ fun ReaderContent(
                         Text(stringResource(R.string.surah_title, surah.arabic), fontFamily = QuranFont, fontSize = 20.sp, lineHeight = 34.sp)
                         Text(
                             if (arabic) verses else stringResource(R.string.name_and_verses, surah.latin, verses),
-                            style = MaterialTheme.typography.bodySmall, color = LocalContentColor.current.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.bodySmall, color = LocalBanner.current.quiet,
                         )
                     }
                     // The button would otherwise colour itself green, on the green banner.
@@ -325,6 +326,8 @@ private fun Verses(
         // With a recitation, half a page of room above the first verse and below the last
         // lets even their words reach the middle.
         val room = if (index != null) (maxHeight / 2 - 40.dp).coerceAtLeast(0.dp) else 0.dp
+        // The piece is one very wide glyph, 11.5 times as wide as its font size: sized to span the page.
+        val basmalaSize = with(LocalDensity.current) { ((maxWidth - 32.dp) / 11.5f).toSp() }
         LazyColumn(
             Modifier.fillMaxSize().testTag("verses").onGloballyPositioned { place.list = it }.graphicsLayer { alpha = fade() },
             state = list,
@@ -332,9 +335,11 @@ private fun Verses(
         ) {
             if (basmala) {
                 item {
+                    // The whole basmala as one calligraphic piece (the font draws it for the single character ﷽).
                     Text(
-                        Recital.BASMALA, Modifier.fillMaxWidth().padding(top = 8.dp), textAlign = TextAlign.Center,
-                        fontFamily = QuranFont, fontSize = 22.sp, lineHeight = 44.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        "\uFDFD", Modifier.fillMaxWidth().padding(top = 4.dp).semantics { contentDescription = Recital.BASMALA },
+                        textAlign = TextAlign.Center, fontFamily = QuranFont, fontSize = basmalaSize, lineHeight = basmalaSize * 2,
+                        maxLines = 1, softWrap = false, color = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
@@ -368,7 +373,23 @@ private fun VerseBlock(
     onPlaced: (Int, LayoutCoordinates) -> Unit,
     onWord: (Int) -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 6.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+        // The verse's number sits on the rule above it, at the left in every language.
+        val label = stringResource(R.string.verse, number)
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                HorizontalDivider(Modifier.width(12.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                Box(
+                    Modifier.padding(horizontal = 8.dp).defaultMinSize(minWidth = 24.dp, minHeight = 24.dp)
+                        .clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primary)
+                        .padding(horizontal = 6.dp).semantics { contentDescription = label },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(stringResource(R.string.number, number), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary)
+                }
+                HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
+            }
+        }
         // Arabic runs from the right, whatever the phone's language.
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -398,20 +419,6 @@ private fun VerseBlock(
                 style = MaterialTheme.typography.bodyMedium.copy(textDirection = TextDirection.Ltr),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-        // The verse's number closes it, as the mark at the end of a verse does in a mushaf.
-        val label = stringResource(R.string.verse, number)
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-            HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
-            Box(
-                Modifier.padding(horizontal = 8.dp).defaultMinSize(minWidth = 24.dp, minHeight = 24.dp)
-                    .clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primary)
-                    .padding(horizontal = 6.dp).semantics { contentDescription = label },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(stringResource(R.string.number, number), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary)
-            }
-            HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
         }
     }
 }
@@ -445,7 +452,8 @@ private fun WordTile(
     // and a word dims gently once it has been recited.
     val lit by animateFloatAsState(if (isCurrent) 1f else 0f, tween(if (isCurrent) 220 else 420), label = "lit")
     val ink by animateColorAsState(
-        if (state == WordState.RECITED) colors.onSurface.copy(alpha = 0.45f) else colors.onSurface, tween(420), label = "ink",
+        // Solid, not see-through: see-through ink shows dark patches where the letters join.
+        if (state == WordState.RECITED) colors.onSurface.faded(0.45f, colors.background) else colors.onSurface, tween(420), label = "ink",
     )
     val shape = RoundedCornerShape(10.dp)
     Column(
@@ -481,7 +489,7 @@ private fun WordTile(
             val meaningInk by animateColorAsState(
                 when (state) {
                     WordState.RESTING -> colors.onSurfaceVariant
-                    WordState.RECITED -> colors.onSurfaceVariant.copy(alpha = 0.6f)
+                    WordState.RECITED -> colors.onSurfaceVariant.faded(0.6f, colors.background)
                     WordState.CURRENT -> colors.primary
                 },
                 tween(320), label = "meaning",

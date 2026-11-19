@@ -201,6 +201,25 @@ class ScreensTest {
     }
 
     @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
+    fun theBasmalaIsOneCalligraphicPiece() {
+        // Any surah but Al-Fatihah and At-Tawbah opens with it.
+        show("en-night-reader-basmala") {
+            ReaderContent(
+                reading = Reading(112, fatihah, track.copy(surah = 112), timings(fatihah)), showMeanings = true, playing = true,
+                position = { 200 }, duration = 74_000, onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
+            )
+        }
+        compose.onNodeWithContentDescription("بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ").assertIsDisplayed()
+        // The verse's number is above the verse, at the left.
+        val page = compose.onNodeWithTag("verses").fetchSemanticsNode().boundsInRoot
+        val number = compose.onNodeWithContentDescription("Verse 1").fetchSemanticsNode().boundsInRoot
+        val firstWord = compose.onNodeWithText("In (the) name").fetchSemanticsNode().boundsInRoot
+        assertTrue(number.center.x < page.left + page.width / 6)
+        assertTrue(number.bottom <= firstWord.top)
+    }
+
+    @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun readingARecordingOfAnotherSurah() {
         show("en-day-reader-mismatch") { Reader(0, clarity = 0.4f) }
