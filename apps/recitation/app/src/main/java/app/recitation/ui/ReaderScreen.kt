@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -130,11 +131,13 @@ fun ReaderContent(
     onMeanings: (Boolean) -> Unit,
     onPlayPause: () -> Unit,
     onSeek: (Int) -> Unit,
+    withoutRecitation: @Composable () -> Unit = {},
 ) {
-    val surah = SURAHS[reading.track.surah - 1]
-    val index = remember(reading) { WordIndex(reading.timings) }
-    val current by remember(index) { derivedStateOf { index.at(position()) } }
-    val currentVerse = index.verse(current)
+    val surah = SURAHS[reading.surah - 1]
+    // With no recording there are no timings: the words are simply shown, and nothing is lit.
+    val index = remember(reading) { reading.timings?.let(::WordIndex) }
+    val current by remember(index) { derivedStateOf { index?.at(position()) ?: -1 } }
+    val currentVerse = index?.verse(current) ?: -1
     val list = rememberLazyListState()
     val basmala = surah.number != 1 && surah.number != 9
     val above = if (basmala) 1 else 0 // items in the list before the first verse
@@ -161,8 +164,9 @@ fun ReaderContent(
     }
 
     fun seekToVerse(verse: Int) {
-        val v = verse.coerceIn(0, index.firstOfVerse.size - 1)
-        onSeek(index.starts[index.firstOfVerse[v]])
+        val words = index ?: return
+        val v = verse.coerceIn(0, words.firstOfVerse.size - 1)
+        onSeek(words.starts[words.firstOfVerse[v]])
         follow = true
     }
 
@@ -189,25 +193,29 @@ fun ReaderContent(
             }
         },
         bottomBar = {
-            PlayerBar(
-                playing = playing, position = position, duration = duration, onPlayPause = onPlayPause,
-                onSeek = { onSeek(it); follow = true },
-                onPrevious = {
-                    // Back to the start of this verse, or to the one before if it has only just begun.
-                    val start = if (currentVerse >= 0) index.starts[index.firstOfVerse[currentVerse]] else 0
-                    seekToVerse(if (position() - start > 2_000) currentVerse else currentVerse - 1)
-                },
-                onNext = { seekToVerse(currentVerse + 1) },
-            )
+            if (index == null) {
+                withoutRecitation()
+            } else {
+                PlayerBar(
+                    playing = playing, position = position, duration = duration, onPlayPause = onPlayPause,
+                    onSeek = { onSeek(it); follow = true },
+                    onPrevious = {
+                        // Back to the start of this verse, or to the one before if it has only just begun.
+                        val start = if (currentVerse >= 0) index.starts[index.firstOfVerse[currentVerse]] else 0
+                        seekToVerse(if (position() - start > 2_000) currentVerse else currentVerse - 1)
+                    },
+                    onNext = { seekToVerse(currentVerse + 1) },
+                )
+            }
         },
         floatingActionButton = {
-            if (!follow) {
+            if (!follow && index != null) {
                 ExtendedFloatingActionButton(onClick = { follow = true }) { Text(stringResource(R.string.follow)) }
             }
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            if (!reading.timings.matches) {
+            if (reading.timings?.matches == false) {
                 Text(
                     stringResource(R.string.mismatch, surahName(surah)),
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp))
@@ -227,7 +235,7 @@ fun ReaderContent(
 @Composable
 private fun Verses(
     reading: Reading,
-    index: WordIndex,
+    index: WordIndex?,
     list: androidx.compose.foundation.lazy.LazyListState,
     basmala: Boolean,
     current: Int,
@@ -248,17 +256,17 @@ private fun Verses(
                 }
             }
             itemsIndexed(reading.verses) { v, verse ->
-                val first = index.firstOfVerse.getOrElse(v) { 0 }
+                val first = index?.firstOfVerse?.getOrElse(v) { 0 } ?: 0
                 VerseBlock(
                     number = v + 1,
                     verse = verse,
-                    timings = reading.timings.verses.getOrElse(v) { emptyList() },
+                    timings = reading.timings?.verses?.getOrElse(v) { emptyList() }.orEmpty(),
                     // The word of this verse being recited; -1 when the recitation is elsewhere.
                     current = if (currentVerse == v) current - first else -1,
                     position = position,
                     showMeanings = showMeanings,
                     wordInView = wordInView,
-                    onWord = { w -> index.starts.getOrNull(first + w)?.let(onSeek) },
+                    onWord = { w -> index?.starts?.getOrNull(first + w)?.let(onSeek) },
                 )
             }
             item { Spacer(Modifier.height(72.dp)) }
@@ -421,14 +429,41 @@ private fun PlayerBar(
     }
 }
 
-/** While a recording's words and timings load. */
+/**
+ * What sits where the player would be when a surah is open without a recording: a line
+ * saying how its recitation stands, and a button when there is something to do about it.
+ */
 @Composable
-fun ReaderLoading(onBack: () -> Unit) {
+fun NoRecitationBar(text: String, action: String? = null, onAction: () -> Unit = {}) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+        Row(
+            Modifier.windowInsetsPadding(WindowInsets.navigationBars).fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (action != null) {
+                Spacer(Modifier.width(12.dp))
+                FilledTonalButton(onClick = onAction) { Text(action, maxLines = 1) }
+            }
+        }
+    }
+}
+
+/** While a surah's words load, or when they couldn't be fetched ([failed]). */
+@Composable
+fun ReaderLoading(failed: Boolean, onRetry: () -> Unit, onBack: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         IconButton(onClick = onBack, modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars).padding(4.dp)) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
         }
-        CircularProgressIndicator(Modifier.align(Alignment.Center))
+        if (failed) {
+            Column(Modifier.align(Alignment.Center).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(R.string.surah_failed), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)
+                FilledTonalButton(onClick = onRetry) { Text(stringResource(R.string.try_again)) }
+            }
+        } else {
+            CircularProgressIndicator(Modifier.align(Alignment.Center))
+        }
     }
 }
 

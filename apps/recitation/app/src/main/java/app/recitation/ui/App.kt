@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
@@ -28,6 +29,8 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import app.recitation.AppModel
+import app.recitation.R
+import app.recitation.Reading
 import app.recitation.Screen
 import app.recitation.core.SURAHS
 import app.recitation.data.Playlist
@@ -44,7 +47,7 @@ fun App(model: AppModel) {
     val progress by PrepareWorker.progress.collectAsStateWithLifecycle()
     val modelProblem by PrepareWorker.modelProblem.collectAsStateWithLifecycle()
 
-    BackHandler(enabled = model.screen != Screen.Playlists) { model.back() }
+    BackHandler(enabled = model.screen != Screen.Home) { model.back() }
     UpdateDialog()
 
     // Preparing shows its progress in a notification; Android 13+ wants a yes for that. It runs either way.
@@ -64,16 +67,31 @@ fun App(model: AppModel) {
         }
     }
 
+    // One line of truth about the background work, so nothing ever just sits there unexplained.
+    val tracks = playlists.flatMap { it.tracks }
+    val working = progress
+    val problem = modelProblem
+    val status: Status? = when {
+        working != null -> Status.Working(working, working.trackId?.let { id -> tracks.firstOrNull { it.id == id }?.title })
+        tracks.none { it.wanted && !it.ready } -> null
+        model.paused -> Status.Paused
+        problem != null -> Status.ModelBlocked(problem)
+        model.waitingForNetwork -> Status.WaitingForNetwork
+        else -> Status.Starting
+    }
+    val actions = remember(model) { StatusActions(model::pause, model::resume, model::cancel, model::retryModel) }
+
     when (val screen = model.screen) {
-        Screen.Playlists -> PlaylistsContent(
+        Screen.Home -> HomeContent(
+            tab = model.tab,
+            onTab = { model.tab = it },
             playlists = playlists,
-            progress = progress,
-            progressTitle = progress?.trackId?.let { model.library.track(it)?.title },
-            modelProblem = modelProblem,
-            onRetryModel = model::retryModel,
+            status = status,
+            actions = actions,
+            recited = tracks.filter { it.ready }.map { it.surah }.toSet(),
+            onSurah = { model.openSurah(it) },
             onOpen = model::open,
             onAdd = { model.link = "" },
-            onCancel = model::cancel,
         )
         is Screen.Recordings -> {
             val playlist = playlists.firstOrNull { it.url == screen.url }
@@ -82,11 +100,10 @@ fun App(model: AppModel) {
             } else {
                 RecordingsContent(
                     playlist = playlist,
-                    progress = progress,
-                    modelProblem = modelProblem,
-                    onRetryModel = model::retryModel,
+                    status = status,
+                    actions = actions,
                     onBack = { model.back() },
-                    onOpen = { model.open(playlist, it) },
+                    onOpen = { model.openSurah(it.surah, prefer = it) },
                     onGet = get,
                     onCancel = model::cancel,
                     onSurah = model::setSurah,
@@ -95,10 +112,7 @@ fun App(model: AppModel) {
                 )
             }
         }
-        is Screen.Reader -> {
-            val playlist = playlists.firstOrNull { it.url == screen.url }
-            if (playlist == null) LaunchedEffect(Unit) { model.back() } else ReaderScreen(model, playlist, screen.trackId)
-        }
+        is Screen.Surah -> SurahScreen(model, screen, playlists, status, get)
     }
 
     model.link?.let { link ->
@@ -107,6 +121,39 @@ fun App(model: AppModel) {
             onChange = { model.link = it },
             onConfirm = { model.add(link) },
             onDismiss = { if (!model.adding) model.link = null },
+        )
+    }
+}
+
+/** A surah open to read: with its recitation playing along when one is ready, and on its own when not. */
+@Composable
+private fun SurahScreen(model: AppModel, screen: Screen.Surah, playlists: List<Playlist>, status: Status?, get: (List<Track>) -> Unit) {
+    val arabic = LocalConfiguration.current.locales[0].language == "ar"
+    // Word meanings are in English, so they start hidden when the phone is in Arabic.
+    var meanings by rememberSaveable { mutableStateOf(!arabic) }
+    val reading = model.reading
+    val track = reading?.track
+    when {
+        reading == null || reading.surah != screen.number ->
+            ReaderLoading(failed = model.readingFailed, onRetry = model::reload, onBack = { model.back() })
+        track != null && reading.timings != null ->
+            PlayingReader(model, reading, track, playlists, meanings, onMeanings = { meanings = it })
+        else -> ReaderContent(
+            reading = reading, showMeanings = meanings, playing = false, position = { 0 }, duration = 0,
+            onBack = { model.back() }, onMeanings = { meanings = it }, onPlayPause = {}, onSeek = {},
+            withoutRecitation = {
+                // Looked up afresh each time the playlists change, so the bar keeps up with the download.
+                val recording = remember(playlists, screen.number) { model.anyRecordingOf(screen.number) }
+                val working = (status as? Status.Working)?.progress?.takeIf { recording != null && it.trackId == recording.id }
+                when {
+                    recording == null -> NoRecitationBar(stringResource(R.string.no_recitation))
+                    recording.ready -> NoRecitationBar(stringResource(R.string.recitation_ready), stringResource(R.string.play)) { model.openSurah(screen.number, recording) }
+                    working != null -> NoRecitationBar(stringResource(PrepareWorker.stepLabel(working.step), (working.fraction * 100).toInt()))
+                    recording.wanted -> NoRecitationBar(stringResource(if (status == Status.Paused) R.string.paused else R.string.queued))
+                    recording.error != null -> NoRecitationBar(recording.error, stringResource(R.string.try_again)) { get(listOf(recording)) }
+                    else -> NoRecitationBar(stringResource(R.string.recitation_not_ready), stringResource(R.string.get)) { get(listOf(recording)) }
+                }
+            },
         )
     }
 }
@@ -126,26 +173,26 @@ private fun rememberController(): MediaController? {
 
 /** Plays a recording and shows its words. When it ends, the playlist's next prepared recording follows. */
 @Composable
-private fun ReaderScreen(model: AppModel, playlist: Playlist, trackId: String) {
+private fun PlayingReader(model: AppModel, reading: Reading, track: Track, playlists: List<Playlist>, meanings: Boolean, onMeanings: (Boolean) -> Unit) {
     val controller = rememberController()
     val arabic = LocalConfiguration.current.locales[0].language == "ar"
     var playing by remember { mutableStateOf(false) }
     var duration by remember { mutableIntStateOf(0) }
     val position = remember { mutableIntStateOf(0) }
-    // Word meanings are in English, so they start hidden when the phone is in Arabic.
-    var meanings by rememberSaveable { mutableStateOf(!arabic) }
 
-    LaunchedEffect(controller, trackId) {
+    LaunchedEffect(controller, track.id) {
         val player = controller ?: return@LaunchedEffect
-        if (player.currentMediaItem?.mediaId == trackId) return@LaunchedEffect
-        val items = playlist.tracks.filter { it.ready }.mapNotNull { track ->
-            val file = model.library.audio(track.id) ?: return@mapNotNull null
-            val surah = SURAHS[track.surah - 1]
-            MediaItem.Builder().setMediaId(track.id).setUri(Uri.fromFile(file))
+        if (player.currentMediaItem?.mediaId == track.id) return@LaunchedEffect
+        // Queue the rest of the playlist the recording is from, so listening carries on after it.
+        val playlist = playlists.firstOrNull { p -> p.tracks.any { it.id == track.id } } ?: return@LaunchedEffect
+        val items = playlist.tracks.filter { it.ready }.mapNotNull { queued ->
+            val file = model.library.audio(queued.id) ?: return@mapNotNull null
+            val surah = SURAHS[queued.surah - 1]
+            MediaItem.Builder().setMediaId(queued.id).setUri(Uri.fromFile(file))
                 .setMediaMetadata(MediaMetadata.Builder().setTitle(if (arabic) surah.arabic else surah.latin).setArtist(playlist.channel).build())
                 .build()
         }
-        val start = items.indexOfFirst { it.mediaId == trackId }
+        val start = items.indexOfFirst { it.mediaId == track.id }
         if (start < 0) return@LaunchedEffect
         player.setMediaItems(items, start, 0L)
         player.prepare()
@@ -158,8 +205,11 @@ private fun ReaderScreen(model: AppModel, playlist: Playlist, trackId: String) {
             override fun onEvents(player: Player, events: Player.Events) {
                 playing = player.isPlaying
                 duration = player.duration.coerceAtLeast(0).toInt()
-                // The player has moved on to the next recording: show its words.
-                player.currentMediaItem?.mediaId?.let(model::load)
+            }
+
+            // The player has moved on to the next recording: show its surah.
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                mediaItem?.mediaId?.let(model::playing)
             }
         }
         player?.addListener(listener)
@@ -171,17 +221,17 @@ private fun ReaderScreen(model: AppModel, playlist: Playlist, trackId: String) {
     }
 
     // Follow the player closely while it plays, so words light up on time; loosely when it's paused.
-    LaunchedEffect(controller, playing) {
+    LaunchedEffect(controller, playing, track.id) {
         val player = controller ?: return@LaunchedEffect
         while (true) {
-            position.intValue = player.currentPosition.toInt()
+            // Until the player has switched to this recording, its position belongs to the one before.
+            position.intValue = if (player.currentMediaItem?.mediaId == track.id) player.currentPosition.toInt() else 0
             if (playing) withFrameMillis { } else delay(200)
         }
     }
 
-    val reading = model.reading
-    if (reading == null || controller == null) {
-        ReaderLoading(onBack = { model.back() })
+    if (controller == null) {
+        ReaderLoading(failed = false, onRetry = {}, onBack = { model.back() })
     } else {
         ReaderContent(
             reading = reading,
@@ -190,7 +240,7 @@ private fun ReaderScreen(model: AppModel, playlist: Playlist, trackId: String) {
             position = { position.intValue },
             duration = duration,
             onBack = { model.back() },
-            onMeanings = { meanings = it },
+            onMeanings = onMeanings,
             onPlayPause = { if (controller.isPlaying) controller.pause() else controller.play() },
             onSeek = { ms -> controller.seekTo(ms.toLong()); position.intValue = ms },
         )

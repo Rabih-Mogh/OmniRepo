@@ -2,10 +2,13 @@ package app.recitation
 
 import android.app.Application
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import app.recitation.core.SURAHS
 import app.recitation.core.SurahMatcher
 import app.recitation.core.Timings
@@ -18,26 +21,34 @@ import app.recitation.prepare.PrepareWorker
 import app.recitation.prepare.Settings
 import app.recitation.yt.YouTube
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** Which screen is showing. */
 sealed interface Screen {
-    data object Playlists : Screen
+    /** The surahs and the playlists, on two tabs. */
+    data object Home : Screen
+
     data class Recordings(val url: String) : Screen
-    data class Reader(val url: String, val trackId: String) : Screen
+
+    /** A surah's words. [trackId] is the recording to play with it, or null to just read. [from] is where Back goes. */
+    data class Surah(val number: Int, val trackId: String?, val from: Screen) : Screen
 }
 
-/** Everything the reading screen needs for one recording. */
-class Reading(val track: Track, val verses: List<Verse>, val timings: Timings)
+/** Everything the reading screen needs for one surah. [track] and [timings] are there when a recording goes with it. */
+class Reading(val surah: Int, val verses: List<Verse>, val track: Track? = null, val timings: Timings? = null)
 
 class AppModel(app: Application) : AndroidViewModel(app) {
 
     val library = Library.get(app)
     private val quran = QuranStore(app)
 
-    var screen by mutableStateOf<Screen>(Screen.Playlists)
+    var screen by mutableStateOf<Screen>(Screen.Home)
         private set
+
+    /** The tab of the first screen: 0 the Quran, 1 the playlists. */
+    var tab by mutableIntStateOf(0)
 
     /** A link waiting in the "add playlist" box: shared from YouTube, or being typed. Null when the box is closed. */
     var link by mutableStateOf<String?>(null)
@@ -46,37 +57,114 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     var addError by mutableStateOf<String?>(null)
         private set
 
-    /** The open recording's words and timings; null while they load. */
+    /** The open surah's words and timings; null while they load, or when they couldn't be fetched. */
     var reading by mutableStateOf<Reading?>(null)
         private set
+    var readingFailed by mutableStateOf(false)
+        private set
+
+    /** Downloads were paused by the user and stay so until resumed. */
+    var paused by mutableStateOf(Settings.paused(app))
+        private set
+
+    /** The background work is queued but not running: it is waiting for a connection. */
+    var waitingForNetwork by mutableStateOf(false)
+        private set
+
+    init {
+        // Recordings still waiting from last time (the app was closed, or the model couldn't be had): carry on.
+        if (!paused && library.playlists.value.any { p -> p.tracks.any { it.wanted && !it.ready } }) PrepareWorker.start(app)
+        fetchTheRest()
+        viewModelScope.launch {
+            WorkManager.getInstance(app).getWorkInfosForUniqueWorkFlow(PrepareWorker.WORK_NAME).collect { infos ->
+                waitingForNetwork = infos.any { it.state == WorkInfo.State.ENQUEUED }
+            }
+        }
+    }
+
+    /**
+     * Fetches the surahs that aren't on the phone yet, one after another with a short gap,
+     * so the whole Quran can be read without a connection. It stops at the first failure
+     * (most likely no connection) and picks up the next time the app is opened.
+     */
+    private fun fetchTheRest() {
+        viewModelScope.launch(Dispatchers.IO) {
+            for (surah in SURAHS) {
+                if (quran.has(surah.number)) continue
+                if (runCatching { quran.surah(surah.number) }.isFailure) break
+                delay(300)
+            }
+        }
+    }
 
     fun open(playlist: Playlist) {
         screen = Screen.Recordings(playlist.url)
     }
 
-    fun open(playlist: Playlist, track: Track) {
-        screen = Screen.Reader(playlist.url, track.id)
-        load(track.id)
+    /**
+     * Opens a surah to read. If [prefer] or any other recording of it is ready, that
+     * recording plays along; otherwise the words are shown on their own.
+     */
+    fun openSurah(number: Int, prefer: Track? = null) {
+        val track = prefer?.takeIf(::playable) ?: recordingOf(number)
+        val from = (screen as? Screen.Surah)?.from ?: screen
+        screen = Screen.Surah(number, track?.id, from)
+        load(number, track)
     }
 
-    /** Loads the words and timings of a recording, when it's opened or the player moves on to it. */
-    fun load(trackId: String) {
-        if (reading?.track?.id == trackId) return
-        reading = null
+    /** A recording of [surah] that is ready to play, if there is one. */
+    fun recordingOf(surah: Int): Track? =
+        library.playlists.value.asSequence().flatMap { it.tracks }.firstOrNull { it.surah == surah && playable(it) }
+
+    /** Any recording of [surah] in the playlists, ready or not: the one being prepared first. */
+    fun anyRecordingOf(surah: Int): Track? {
+        val all = library.playlists.value.flatMap { it.tracks }.filter { it.surah == surah }
+        return all.firstOrNull(::playable) ?: all.firstOrNull { it.wanted } ?: all.firstOrNull()
+    }
+
+    private fun playable(track: Track) = track.ready && library.audio(track.id) != null
+
+    /** The player has moved on to another recording: show its surah. */
+    fun playing(trackId: String) {
         val track = library.track(trackId) ?: return
+        val shown = screen as? Screen.Surah ?: return
+        if (shown.trackId == trackId) return
+        screen = shown.copy(number = track.surah, trackId = trackId)
+        load(track.surah, track)
+    }
+
+    /** Fetches the open surah again, after it couldn't be. */
+    fun reload() {
+        val shown = screen as? Screen.Surah ?: return
+        load(shown.number, shown.trackId?.let(library::track))
+    }
+
+    private fun load(surah: Int, track: Track?) {
+        val current = reading
+        if (current != null && current.surah == surah && current.track?.id == track?.id) return
+        reading = null
+        readingFailed = false
         viewModelScope.launch {
-            reading = withContext(Dispatchers.IO) {
-                runCatching { Reading(track, quran.surah(track.surah), Timings.decode(library.timings(track.id, track.surah).readText())) }.getOrNull()
+            val loaded = withContext(Dispatchers.IO) {
+                runCatching {
+                    val verses = quran.surah(surah)
+                    val timings = track?.let { runCatching { Timings.decode(library.timings(it.id, surah).readText()) }.getOrNull() }
+                    Reading(surah, verses, track.takeIf { timings != null }, timings)
+                }.getOrNull()
             }
+            // The reader may have moved to another surah while this one was being fetched.
+            if ((screen as? Screen.Surah)?.number != surah) return@launch
+            reading = loaded
+            readingFailed = loaded == null
         }
     }
 
     /** One screen back. False when there's nowhere to go back to. */
     fun back(): Boolean {
         screen = when (val s = screen) {
-            Screen.Playlists -> return false
-            is Screen.Recordings -> Screen.Playlists
-            is Screen.Reader -> Screen.Recordings(s.url)
+            Screen.Home -> return false
+            is Screen.Recordings -> Screen.Home
+            is Screen.Surah -> s.from
         }
         return true
     }
@@ -85,7 +173,8 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     fun offer(shared: String) {
         link = Regex("https?://\\S+").find(shared)?.value ?: shared.trim()
         addError = null
-        screen = Screen.Playlists
+        tab = 1
+        screen = Screen.Home
     }
 
     fun add(url: String) {
@@ -101,11 +190,15 @@ class AppModel(app: Application) : AndroidViewModel(app) {
                 )
                 library.add(playlist)
                 link = null
+                tab = 1
                 screen = Screen.Recordings(playlist.url)
             } catch (e: Exception) {
-                addError = getApplication<Application>().getString(
-                    if (e is IllegalArgumentException) R.string.add_not_a_link else R.string.add_failed,
-                )
+                val app = getApplication<Application>()
+                addError = if (e is IllegalArgumentException) {
+                    app.getString(R.string.add_not_a_link)
+                } else {
+                    app.getString(R.string.add_failed, e.message?.let { "${e.javaClass.simpleName}: $it" } ?: e.javaClass.simpleName)
+                }
             } finally {
                 adding = false
             }
@@ -117,25 +210,42 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         for (track in tracks) {
             if (!track.ready && track.surah in 1..SURAHS.size) library.update(track.id) { it.copy(wanted = true, error = null) }
         }
+        resume()
+    }
+
+    /** Stops the work where it is. What has been downloaded and heard so far is kept, and nothing leaves the queue. */
+    fun pause() {
+        paused = true
+        Settings.setPaused(getApplication(), true)
+        PrepareWorker.stop(getApplication())
+    }
+
+    fun resume() {
+        paused = false
+        Settings.setPaused(getApplication(), false)
         PrepareWorker.start(getApplication())
     }
 
-    init {
-        // Recordings still waiting from last time (the app was closed, or the model couldn't be had): carry on.
-        if (library.playlists.value.any { p -> p.tracks.any { it.wanted && !it.ready } }) PrepareWorker.start(app)
+    /** Takes everything out of the queue. Half-downloaded sound is deleted; finished downloads stay. */
+    fun cancel() {
+        for (track in library.playlists.value.flatMap { it.tracks }) {
+            if (track.wanted) cancel(track)
+        }
+        paused = false
+        Settings.setPaused(getApplication(), false)
+        PrepareWorker.stop(getApplication())
+    }
+
+    /** Takes one recording out of the queue; the rest carry on. */
+    fun cancel(track: Track) {
+        library.update(track.id) { it.copy(wanted = false) }
+        library.dropPartial(track.id)
     }
 
     /** Tries again to get the speech model, after the user has put Accent Coach right or chosen to download it. */
     fun retryModel(download: Boolean) {
         if (download) Settings.setDownloadModel(getApplication(), true)
-        PrepareWorker.start(getApplication())
-    }
-
-    fun cancel() {
-        for (track in library.playlists.value.flatMap { it.tracks }) {
-            if (track.wanted) library.update(track.id) { it.copy(wanted = false) }
-        }
-        PrepareWorker.stop(getApplication())
+        resume()
     }
 
     /** Corrects which surah a recording is. If it was already downloaded it is lined up again with the new words. */
@@ -143,13 +253,13 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         if (surah == track.surah) return
         val downloaded = library.audio(track.id) != null
         library.update(track.id) { it.copy(surah = surah, ready = false, clarity = 0f, error = null, wanted = downloaded) }
-        if (downloaded) PrepareWorker.start(getApplication())
+        if (downloaded) resume()
     }
 
     fun forget(track: Track) = library.forget(track.id)
 
     fun remove(playlist: Playlist) {
         library.remove(playlist.url)
-        screen = Screen.Playlists
+        screen = Screen.Home
     }
 }

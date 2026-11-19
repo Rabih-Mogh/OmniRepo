@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -41,6 +42,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -71,64 +74,123 @@ import app.recitation.speech.ModelStore
 fun surahName(surah: Surah): String =
     if (LocalConfiguration.current.locales[0].language == "ar") surah.arabic else surah.latin
 
-/** The first screen: the playlists that have been added, and a way to add one. */
+/** What the background work is up to, for the card at the top of the lists. */
+sealed interface Status {
+    /** [title] is the recording being worked on; null while the speech model is fetched. */
+    data class Working(val progress: Progress, val title: String?) : Status
+
+    /** Accent Coach is installed but couldn't lend its speech model. */
+    data class ModelBlocked(val problem: ModelProblem) : Status
+
+    data object Paused : Status
+
+    data object WaitingForNetwork : Status
+
+    data object Starting : Status
+}
+
+/** What the buttons on the status card do. */
+class StatusActions(
+    val pause: () -> Unit = {},
+    val resume: () -> Unit = {},
+    val cancel: () -> Unit = {},
+    val retryModel: (download: Boolean) -> Unit = {},
+)
+
+/**
+ * The first screen, on two tabs: the Quran, every surah open to read whether or not a
+ * recitation of it has been downloaded, and the playlists recitations come from.
+ * [recited] holds the surahs that have a recording ready to play.
+ */
 @Composable
-fun PlaylistsContent(
+fun HomeContent(
+    tab: Int,
+    onTab: (Int) -> Unit,
     playlists: List<Playlist>,
-    progress: Progress?,
-    progressTitle: String?,
-    modelProblem: ModelProblem?,
-    onRetryModel: (download: Boolean) -> Unit,
+    status: Status?,
+    actions: StatusActions,
+    recited: Set<Int>,
+    onSurah: (Int) -> Unit,
     onOpen: (Playlist) -> Unit,
     onAdd: () -> Unit,
-    onCancel: () -> Unit,
 ) {
-    LazyColumn(
-        Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item {
+    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
+        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)) {
             Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
             Text(stringResource(R.string.tagline), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (progress != null) item { ProgressCard(progress, progressTitle, onCancel) }
-        if (modelProblem != null && progress == null) item { ModelProblemCard(modelProblem, onRetryModel) }
-        if (playlists.isEmpty()) {
-            item {
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(stringResource(R.string.empty_title), style = MaterialTheme.typography.titleMedium)
-                        Text(stringResource(R.string.empty_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+        TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.background) {
+            Tab(selected = tab == 0, onClick = { onTab(0) }, text = { Text(stringResource(R.string.tab_quran)) })
+            Tab(selected = tab == 1, onClick = { onTab(1) }, text = { Text(stringResource(R.string.tab_playlists)) })
+        }
+        if (tab == 0) {
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+                if (status != null) item { Box(Modifier.padding(16.dp)) { StatusCard(status, actions) } }
+                items(SURAHS, key = { it.number }) { surah ->
+                    SurahRow(surah, recited = surah.number in recited, onClick = { onSurah(surah.number) })
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
             }
-        }
-        items(playlists, key = { it.url }) { playlist ->
-            Card(
-                Modifier.fillMaxWidth().clickable { onOpen(playlist) },
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            ) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(playlist.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    if (playlist.channel.isNotEmpty()) {
-                        Text(playlist.channel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (status != null) item { StatusCard(status, actions) }
+                if (playlists.isEmpty()) {
+                    item {
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(stringResource(R.string.empty_title), style = MaterialTheme.typography.titleMedium)
+                                Text(stringResource(R.string.empty_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
                     }
-                    Text(
-                        stringResource(R.string.ready_of, playlist.tracks.count { it.ready }, playlist.tracks.size),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
-                    )
                 }
+                items(playlists, key = { it.url }) { playlist ->
+                    Card(
+                        Modifier.fillMaxWidth().clickable { onOpen(playlist) },
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    ) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(playlist.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            if (playlist.channel.isNotEmpty()) {
+                                Text(playlist.channel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text(
+                                stringResource(R.string.ready_of, playlist.tracks.count { it.ready }, playlist.tracks.size),
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                }
+                item {
+                    Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Filled.Add, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.add_playlist))
+                    }
+                }
+                item { VersionFooter() }
             }
         }
-        item {
-            Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Filled.Add, null, Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.add_playlist))
-            }
+    }
+}
+
+/** One surah in the Quran tab. The play mark says a recitation of it is ready. */
+@Composable
+private fun SurahRow(surah: Surah, recited: Boolean, onClick: () -> Unit) {
+    val arabic = LocalConfiguration.current.locales[0].language == "ar"
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.number, surah.number), Modifier.width(44.dp), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.weight(1f)) {
+            Text(surahName(surah), style = MaterialTheme.typography.titleMedium)
+            val verses = pluralStringResource(R.plurals.verses, surah.verses, surah.verses)
+            Text(
+                if (arabic) verses else "${surah.meaning} · $verses",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
-        item { VersionFooter() }
+        if (recited) Icon(Icons.Filled.PlayArrow, stringResource(R.string.recitation_ready), Modifier.padding(horizontal = 8.dp).size(20.dp), tint = MaterialTheme.colorScheme.primary)
+        // The name in the other script, for whoever knows the surahs by it.
+        Text(if (arabic) surah.latin else surah.arabic, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -160,18 +222,35 @@ fun AddPlaylistDialog(link: String, busy: Boolean, error: String?, onChange: (St
     )
 }
 
-/** What's being downloaded or prepared right now, with a way to stop it. */
+/** What the background work is doing right now, with the buttons that go with it. */
 @Composable
-fun ProgressCard(progress: Progress, title: String?, onCancel: () -> Unit) {
+fun StatusCard(status: Status, actions: StatusActions) {
+    if (status is Status.ModelBlocked) {
+        ModelProblemCard(status.problem, actions.retryModel)
+        return
+    }
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
         Column(Modifier.padding(start = 16.dp, top = 12.dp, end = 8.dp, bottom = 4.dp)) {
-            if (title != null) Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(
-                stringResource(PrepareWorker.stepLabel(progress.step), (progress.fraction * 100).toInt()),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            LinearProgressIndicator(progress = { progress.fraction }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 8.dp))
-            TextButton(onClick = onCancel, modifier = Modifier.align(Alignment.End)) { Text(stringResource(R.string.stop)) }
+            when (status) {
+                is Status.Working -> {
+                    if (status.title != null) Text(status.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        stringResource(PrepareWorker.stepLabel(status.progress.step), (status.progress.fraction * 100).toInt()),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    LinearProgressIndicator(progress = { status.progress.fraction }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 8.dp))
+                }
+                Status.Paused -> Text(stringResource(R.string.status_paused), style = MaterialTheme.typography.bodyMedium)
+                Status.WaitingForNetwork -> Text(stringResource(R.string.status_waiting), style = MaterialTheme.typography.bodyMedium)
+                else -> Text(stringResource(R.string.status_starting), style = MaterialTheme.typography.bodyMedium)
+            }
+            Row(Modifier.align(Alignment.End)) {
+                TextButton(onClick = actions.cancel) { Text(stringResource(R.string.cancel)) }
+                when (status) {
+                    Status.Paused -> TextButton(onClick = actions.resume) { Text(stringResource(R.string.resume)) }
+                    else -> TextButton(onClick = actions.pause) { Text(stringResource(R.string.pause_work)) }
+                }
+            }
         }
     }
 }
@@ -205,13 +284,12 @@ fun ModelProblemCard(problem: ModelProblem, onRetry: (download: Boolean) -> Unit
 @Composable
 fun RecordingsContent(
     playlist: Playlist,
-    progress: Progress?,
-    modelProblem: ModelProblem?,
-    onRetryModel: (download: Boolean) -> Unit,
+    status: Status?,
+    actions: StatusActions,
     onBack: () -> Unit,
     onOpen: (Track) -> Unit,
     onGet: (List<Track>) -> Unit,
-    onCancel: () -> Unit,
+    onCancel: (Track) -> Unit,
     onSurah: (Track, Int) -> Unit,
     onForget: (Track) -> Unit,
     onRemove: () -> Unit,
@@ -239,16 +317,7 @@ fun RecordingsContent(
             }
         }
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 24.dp)) {
-            if (progress != null) {
-                item {
-                    Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                        ProgressCard(progress, playlist.tracks.firstOrNull { it.id == progress.trackId }?.title, onCancel)
-                    }
-                }
-            }
-            if (modelProblem != null && progress == null) {
-                item { Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { ModelProblemCard(modelProblem, onRetryModel) } }
-            }
+            if (status != null) item { Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { StatusCard(status, actions) } }
             if (waiting.isNotEmpty()) {
                 item {
                     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -265,9 +334,10 @@ fun RecordingsContent(
             items(playlist.tracks, key = { it.id }) { track ->
                 RecordingRow(
                     track = track,
-                    progress = progress?.takeIf { it.trackId == track.id },
+                    status = status,
                     onOpen = { onOpen(track) },
                     onGet = { onGet(listOf(track)) },
+                    onCancel = { onCancel(track) },
                     onPickSurah = { picking = track },
                     onForget = { onForget(track) },
                 )
@@ -291,11 +361,22 @@ fun RecordingsContent(
 }
 
 @Composable
-private fun RecordingRow(track: Track, progress: Progress?, onOpen: () -> Unit, onGet: () -> Unit, onPickSurah: () -> Unit, onForget: () -> Unit) {
+private fun RecordingRow(
+    track: Track,
+    status: Status?,
+    onOpen: () -> Unit,
+    onGet: () -> Unit,
+    onCancel: () -> Unit,
+    onPickSurah: () -> Unit,
+    onForget: () -> Unit,
+) {
     var menu by remember { mutableStateOf(false) }
     val surah = SURAHS.getOrNull(track.surah - 1)
+    val working = (status as? Status.Working)?.progress
+    val progress = working?.takeIf { it.trackId == track.id }
+    // Tapping a recording opens its surah: to play along if it is ready, otherwise just to read.
     Row(
-        Modifier.fillMaxWidth().clickable(enabled = track.ready, onClick = onOpen).padding(start = 16.dp, top = 10.dp, bottom = 10.dp, end = 4.dp),
+        Modifier.fillMaxWidth().clickable(enabled = surah != null, onClick = onOpen).padding(start = 16.dp, top = 10.dp, bottom = 10.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -308,23 +389,30 @@ private fun RecordingRow(track: Track, progress: Progress?, onOpen: () -> Unit, 
                 )
                 Text(clock((track.seconds * 1000).toInt()), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            val mismatch = track.ready && track.clarity < app.recitation.core.Timings.GOOD_ENOUGH
             val note = when {
                 track.error != null -> track.error
                 progress != null -> stringResource(PrepareWorker.stepLabel(progress.step), (progress.fraction * 100).toInt())
-                track.wanted -> stringResource(R.string.queued)
-                track.ready && track.clarity < app.recitation.core.Timings.GOOD_ENOUGH -> stringResource(R.string.mismatch_short)
+                // Say what the queue is really waiting for, so it never looks stuck.
+                track.wanted -> when {
+                    status == Status.Paused -> stringResource(R.string.paused)
+                    status == Status.WaitingForNetwork -> stringResource(R.string.status_waiting)
+                    status is Status.ModelBlocked -> stringResource(R.string.queued_for_model)
+                    working != null && working.trackId == null -> stringResource(PrepareWorker.stepLabel(working.step), (working.fraction * 100).toInt())
+                    else -> stringResource(R.string.queued)
+                }
+                mismatch -> stringResource(R.string.mismatch_short)
                 else -> null
             }
             if (note != null) {
                 Text(
                     note, style = MaterialTheme.typography.bodySmall,
-                    color = if (track.error != null || (track.ready && progress == null && !track.wanted)) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    color = if (track.error != null || (mismatch && !track.wanted && progress == null)) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                 )
             }
         }
         when {
-            progress != null -> CircularProgressIndicator(progress = { progress.fraction }, modifier = Modifier.padding(12.dp).size(24.dp), strokeWidth = 3.dp)
-            track.wanted -> CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 3.dp)
+            progress != null || track.wanted -> IconButton(onClick = onCancel) { Icon(Icons.Filled.Close, stringResource(R.string.cancel)) }
             track.ready -> IconButton(onClick = onOpen) { Icon(Icons.Filled.PlayArrow, stringResource(R.string.play), tint = MaterialTheme.colorScheme.primary) }
             track.error != null -> IconButton(onClick = onGet, enabled = surah != null) { Icon(Icons.Filled.Refresh, stringResource(R.string.try_again)) }
             else -> IconButton(onClick = onGet, enabled = surah != null) { Icon(AppIcons.Download, stringResource(R.string.get)) }

@@ -30,16 +30,19 @@ import app.recitation.speech.ModelStore
 import app.recitation.yt.YouTube
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
 
 /** What is being done to a recording right now. */
-enum class Step { MODEL_COPY, MODEL_DOWNLOAD, DOWNLOAD, VERSES, LISTEN, ALIGN }
+enum class Step { MODEL_COPY, MODEL_DOWNLOAD, DOWNLOAD, VERSES, LISTEN, ALIGN, RETRY }
 
 /** Why the speech model couldn't be copied from Accent Coach. */
 data class ModelProblem(val reason: ModelStore.Lender, val detail: String?)
@@ -52,6 +55,11 @@ object Settings {
     fun downloadModel(context: Context): Boolean = store(context).getBoolean("download_model", false)
 
     fun setDownloadModel(context: Context, allowed: Boolean) = store(context).edit().putBoolean("download_model", allowed).apply()
+
+    /** Whether the user paused the downloads. Paused work isn't picked up again until they say so. */
+    fun paused(context: Context): Boolean = store(context).getBoolean("paused", false)
+
+    fun setPaused(context: Context, paused: Boolean) = store(context).edit().putBoolean("paused", paused).apply()
 }
 
 /** [trackId] is null while the speech model, which every recording needs, is being fetched. */
@@ -62,7 +70,7 @@ data class Progress(val trackId: String?, val step: Step, val fraction: Float)
  * fetches the surah's words, has the speech model listen to it, and lines the words up
  * with what was heard. It runs as a foreground task with its progress in a notification,
  * so it carries on when the app is closed or the screen is off, and each step picks up
- * where it stopped if the phone restarts or the connection drops.
+ * where it stopped if it is paused, the phone restarts or the connection drops.
  */
 class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
@@ -73,7 +81,11 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
     private var listener: Listener? = null
     private var shown = ""
 
-    override suspend fun doWork(): Result {
+    // A paused or cancelled run can still be finishing a step; the next run waits for it
+    // rather than writing to the same files.
+    override suspend fun doWork(): Result = oneAtATime.withLock { work() }
+
+    private suspend fun work(): Result {
         createChannel(applicationContext)
         // Android can refuse this when the work restarts while the app is closed; the work still runs.
         runCatching { setForeground(foregroundInfo(applicationContext.getString(R.string.preparing))) }
@@ -85,24 +97,40 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             _modelProblem.value = null
             while (true) {
                 val track = next() ?: break
-                try {
-                    withContext(Dispatchers.IO) { prepare(track) }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: IOException) {
-                    // No connection, or YouTube hiccuped: WorkManager tries again once there's a network.
-                    if (runAttemptCount < MAX_ATTEMPTS) return Result.retry()
-                    fail(track, applicationContext.getString(R.string.error_network))
-                } catch (e: ModelStore.Unavailable) {
-                    // Every recording needs the model, so there's nothing to go on with. The
-                    // recordings stay in the queue and the screen says what to do about it.
-                    _modelProblem.value = ModelProblem(e.reason, e.detail)
-                    return Result.success()
-                } catch (e: Stopped) {
-                    // The user cancelled it, or Android is stopping the work.
-                    if (isStopped) return Result.retry()
-                } catch (e: Exception) {
-                    fail(track, e.message ?: applicationContext.getString(R.string.error_unknown))
+                var attempt = 0
+                while (true) {
+                    try {
+                        withContext(Dispatchers.IO) { prepare(track) }
+                        break
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: IOException) {
+                        // The connection dropped, or a server hiccuped. Try again shortly, in
+                        // plain sight; after a few goes, say what went wrong and move on.
+                        if (isStopped) return Result.retry()
+                        if (++attempt >= ATTEMPTS) {
+                            fail(track, applicationContext.getString(R.string.error_network, detail(e)))
+                            break
+                        }
+                        _progress.value = Progress(track.id, Step.RETRY, 0f)
+                        show(track, Step.RETRY, 0f)
+                        delay(attempt * 5_000L)
+                    } catch (e: ModelStore.Unavailable) {
+                        // Every recording needs the model, so there's nothing to go on with. The
+                        // recordings stay in the queue and the screen says what to do about it.
+                        _modelProblem.value = ModelProblem(e.reason, e.detail)
+                        return Result.success()
+                    } catch (e: Stopped) {
+                        // Paused or cancelled by the user, or Android is stopping the work.
+                        if (isStopped) return Result.retry()
+                        break
+                    } catch (e: TooShort) {
+                        fail(track, applicationContext.getString(R.string.error_too_short))
+                        break
+                    } catch (e: Exception) {
+                        fail(track, applicationContext.getString(R.string.error_other, detail(e)))
+                        break
+                    }
                 }
             }
             return Result.success()
@@ -113,12 +141,17 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         }
     }
 
+    /** The system's own words for what went wrong: the only clue there is from a phone. */
+    private fun detail(e: Exception): String = e.message?.takeIf { it.isNotBlank() }?.let { "${e.javaClass.simpleName}: $it" } ?: e.javaClass.simpleName
+
     private fun next(): Track? =
         library.playlists.value.asSequence().flatMap { it.tracks }.firstOrNull { it.wanted && !it.ready && it.error == null && it.surah > 0 }
 
     private fun fail(track: Track, message: String) = library.update(track.id) { it.copy(wanted = false, error = message) }
 
     private class Stopped : Exception()
+
+    private class TooShort : Exception()
 
     private suspend fun prepare(track: Track) {
         val id = track.id
@@ -163,7 +196,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         report(Step.ALIGN, 0f)
         val recital = Recital(track.surah, verses.map { verse -> verse.words.map { it.arabic } })
         val aligner = Aligner(heard.rows, recital.phones)
-        val starts = aligner.align() ?: throw IllegalStateException(applicationContext.getString(R.string.error_too_short))
+        val starts = aligner.align() ?: throw TooShort()
         val timings = recital.timings(starts, heard.frames, aligner)
         library.timings(id, track.surah).writeText(timings.encode())
         if (timings.matches) {
@@ -209,10 +242,12 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             .build()
 
     companion object {
-        private const val WORK_NAME = "prepare"
+        const val WORK_NAME = "prepare"
         private const val CHANNEL = "prepare"
         private const val NOTIFICATION_ID = 1
-        private const val MAX_ATTEMPTS = 6
+        private const val ATTEMPTS = 3
+
+        private val oneAtATime = Mutex()
 
         private val _progress = MutableStateFlow<Progress?>(null)
 
@@ -231,6 +266,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             Step.VERSES -> R.string.step_verses
             Step.LISTEN -> R.string.step_listen
             Step.ALIGN -> R.string.step_align
+            Step.RETRY -> R.string.step_retry
         }
 
         /** Starts preparing what's wanted, or leaves a run that's already under way to pick the new work up. */

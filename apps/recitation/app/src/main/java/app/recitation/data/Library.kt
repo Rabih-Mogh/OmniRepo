@@ -79,6 +79,11 @@ class Library private constructor(context: Context) {
         update(id) { it.copy(wanted = false, ready = false, error = null, clarity = 0f) }
     }
 
+    /** Deletes a recording's half-finished download. */
+    fun dropPartial(id: String) {
+        audioDir.listFiles { f -> f.name.startsWith("$id.") && f.name.endsWith(".part") }?.forEach { it.delete() }
+    }
+
     private fun deleteFiles(id: String) {
         audioDir.listFiles { f -> f.name.startsWith("$id.") }?.forEach { it.delete() }
         timingsDir.listFiles { f -> f.name.startsWith("$id-") }?.forEach { it.delete() }

@@ -1,14 +1,26 @@
 # Recitation
 
-An Android app for listening to a recitation of the Quran and following it word by word.
-Give it a YouTube playlist of a recitation: it downloads the sound only, works out when
-each word is recited, and shows every verse as a row of words with their meanings. The
-word being recited is lit and fills in letter by letter, and the page scrolls along.
+An Android app for reading the Quran word by word and following a recitation of it.
+Every surah can be opened and read, each word with its meaning underneath. Give the app a
+YouTube playlist of a recitation and it downloads the sound only, works out when each word
+is recited, and plays along: the word being recited is lit and fills in letter by letter,
+and the page scrolls with it.
 
 The app is in English and Arabic, following the phone's language, and is green by day and
 gold in dark mode.
 
 ## How it works
+
+The first screen has two tabs.
+
+**Quran** lists the 114 surahs. Tap one to read it, whether or not a recitation of it has
+been downloaded; a play mark shows the ones that have. The bar at the bottom of a surah
+says how its recitation stands (none in the playlists, not downloaded, downloading,
+ready) and has the button for the next step. The words are fetched from Quran.com the
+first time a surah is opened, and the app fetches the rest quietly while it is open, so
+the whole Quran ends up readable without a connection.
+
+**Playlists** is where recitations come from:
 
 1. **Add a playlist.** Paste a YouTube or YouTube Music playlist link, or use **Share** in
    YouTube and pick Recitation. One surah per video is expected. The app reads which surah
@@ -20,10 +32,17 @@ gold in dark mode.
    - has a speech model listen to the whole recording on the phone;
    - lines the surah's words up with what the model heard.
 
-   This runs in the background with its progress in a notification. Listening is the slow
-   step: expect it to take roughly as long as the recording, once. If it is interrupted
-   (no signal, the phone restarts), it carries on from where it stopped.
-3. **Read along.** Open a recording that is ready.
+   This runs in the background with its progress in a notification, and the rest of the
+   app stays usable meanwhile. Listening is the slow step: expect it to take roughly as
+   long as the recording, once.
+   - **Pause** stops the work where it is and keeps what was fetched; **Resume** carries
+     on from there, also after the app was closed.
+   - **Cancel** empties the queue. The cross on a recording takes just that one out.
+   - A card at the top always says what is happening: the step and how far it is,
+     paused, waiting for a connection, or what went wrong. After a connection problem the
+     app tries again a few times, then shows the error, in the system's own words, on the
+     recording.
+3. **Read along.** Open a recording that is ready, or its surah from the Quran tab.
    - The page follows the recitation. Each new verse moves to the top; inside a verse
      taller than the screen, the page scrolls with the word being recited, so its tile is
      always in view at the bottom. Scrolling by hand stops this until **Follow the
@@ -105,7 +124,7 @@ it against its published timings.
 
 | What | From | Licence |
 |---|---|---|
-| Quran text (Uthmani script), word meanings, verse translation (Saheeh International) | [Quran.com](https://quran.com) API, fetched by the app per surah and kept on the phone; not stored in this repo | Their own terms |
+| Quran text (Uthmani script), word meanings, verse translation (Saheeh International) | [Quran.com](https://quran.com) API, fetched by the app and kept on the phone; not stored in this repo | Their own terms |
 | Speech model | [wav2vec2-lv-60-espeak-cv-ft](https://huggingface.co/facebook/wav2vec2-lv-60-espeak-cv-ft), ONNX export by onnx-community | Apache-2.0 |
 | Reading YouTube | [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor) | GPL-3.0 |
 | Arabic font | [Amiri Quran](https://github.com/aliftype/amiri) | SIL Open Font License ([text](licenses/AmiriQuran-OFL.txt)) |
@@ -125,7 +144,7 @@ recitation/
 │   ├── speech/   Model copy or download, sound decoding, ONNX model
 │   ├── prepare/  The background work that gets a recording ready
 │   ├── player/   Playback service
-│   └── ui/       Playlists, recordings and reading screens
+│   └── ui/       The surah list, playlists, recordings and reading screens
 ├── tools/
 │   ├── make_surahs.py            Writes core's list of surah names from Quran.com
 │   └── make_test_recitation.py   Writes the real recitation core's tests align
@@ -157,7 +176,7 @@ Builds are for 64-bit ARM phones only (`arm64-v8a`). Minimum Android version: 8.
 The app updates itself from this repo. Each time it opens it looks for a newer build, and
 a pop-up offers it with an **Update** button when there is one. **Later** closes the pop-up
 for now. The version and a **Check for updates** button, which brings the pop-up back, are
-at the bottom of the first screen.
+at the bottom of the **Playlists** tab.
 
 - The download is checked against the published SHA-256 before Android installs it.
 - The download carries on when the screen turns off or you leave the app, and shows its

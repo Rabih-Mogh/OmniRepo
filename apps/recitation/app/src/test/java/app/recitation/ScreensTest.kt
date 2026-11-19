@@ -5,9 +5,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
@@ -24,10 +26,13 @@ import app.recitation.prepare.ModelProblem
 import app.recitation.prepare.Progress
 import app.recitation.prepare.Step
 import app.recitation.speech.ModelStore
-import app.recitation.ui.PlaylistsContent
+import app.recitation.ui.HomeContent
+import app.recitation.ui.NoRecitationBar
 import app.recitation.ui.ReaderContent
 import app.recitation.ui.RecitationTheme
 import app.recitation.ui.RecordingsContent
+import app.recitation.ui.Status
+import app.recitation.ui.StatusActions
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -105,9 +110,17 @@ class ScreensTest {
 
     @Composable
     private fun Reader(positionMs: Int, meanings: Boolean = true, clarity: Float = 0.9f, verses: List<Verse> = fatihah) = ReaderContent(
-        reading = Reading(track, verses, timings(verses, clarity)), showMeanings = meanings, playing = true,
+        reading = Reading(1, verses, track, timings(verses, clarity)), showMeanings = meanings, playing = true,
         position = { positionMs }, duration = 74_000, onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
     )
+
+    @Composable
+    private fun Recordings(status: Status?, actions: StatusActions = StatusActions(), onCancel: (Track) -> Unit = {}) =
+        RecordingsContent(playlist, status, actions, {}, {}, {}, onCancel, { _, _ -> }, {}, {})
+
+    @Composable
+    private fun Home(tab: Int, playlists: List<Playlist> = emptyList(), status: Status? = null) =
+        HomeContent(tab, {}, playlists, status, StatusActions(), recited = setOf(1), onSurah = {}, onOpen = {}, onAdd = {})
 
     private fun startsFromTheRight(text: String): Boolean {
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
@@ -168,23 +181,74 @@ class ScreensTest {
 
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
-    fun recordingsInEnglishByDay() {
-        show("en-day-recordings") {
-            RecordingsContent(playlist, Progress("b", Step.LISTEN, 0.43f), null, {}, {}, {}, {}, {}, { _, _ -> }, {}, {})
+    fun readingASurahWithNoRecitation() {
+        var asked = false
+        show("en-day-reader-no-recitation") {
+            ReaderContent(
+                reading = Reading(1, fatihah), showMeanings = true, playing = false, position = { 0 }, duration = 0,
+                onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
+                withoutRecitation = { NoRecitationBar("A recitation of this surah isn't downloaded yet.", "Get ready") { asked = true } },
+            )
         }
+        // The words and meanings are all there to read; there is just no player.
+        compose.onNodeWithText("Verse 1").assertIsDisplayed()
+        compose.onNodeWithText("In (the) name").assertIsDisplayed()
+        compose.onNodeWithText("Next verse").assertDoesNotExist()
+        compose.onNodeWithText("Get ready").performClick()
+        assertTrue(asked)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theQuranTabListsEverySurah() {
+        show("en-day-quran") { Home(tab = 0, playlists = listOf(playlist), status = Status.Working(Progress("b", Step.DOWNLOAD, 0.2f), "Surah Al-Baqarah")) }
+        compose.onNodeWithText("Quran").assertIsDisplayed()
+        compose.onNodeWithText("Al-Fatihah").assertIsDisplayed()
+        compose.onNodeWithText("The Opener · 7 verses").assertIsDisplayed()
+        compose.onNodeWithText("Al-Baqarah").assertIsDisplayed()
+        // The surahs can be read while a download is under way.
+        compose.onNodeWithText("Downloading the sound… 20%").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun recordingsInEnglishByDay() {
+        var cancelled: Track? = null
+        show("en-day-recordings") { Recordings(Status.Working(Progress("b", Step.LISTEN, 0.43f), "Surah Al-Baqarah"), onCancel = { cancelled = it }) }
         compose.onNodeWithText("2 of 7 ready").assertIsDisplayed()
         compose.onAllNodesWithText("Listening to the recitation… 43%").onFirst().assertIsDisplayed()
         compose.onNodeWithText("Waiting its turn").assertIsDisplayed()
         compose.onNodeWithText("2 · Al-Baqarah").assertIsDisplayed()
         compose.onNodeWithText("Choose surah").assertIsDisplayed()
+        compose.onNodeWithText("Pause").assertIsDisplayed()
+        // The cross on a queued recording takes just that one out.
+        compose.onAllNodesWithContentDescription("Cancel").onFirst().performClick()
+        assertTrue(cancelled?.id == "b")
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun pausedDownloads() {
+        var resumed = false
+        show("en-day-paused") { Recordings(Status.Paused, StatusActions(resume = { resumed = true })) }
+        compose.onNodeWithText("Downloads are paused. What was fetched so far is kept.").assertIsDisplayed()
+        compose.onAllNodesWithText("Paused").onFirst().assertIsDisplayed()
+        compose.onNodeWithText("Resume").performClick()
+        assertTrue(resumed)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun queuedRecordingsSayWhatTheyAreWaitingFor() {
+        // While the speech model is fetched, a queued recording shows that, not a bare "waiting".
+        show("en-day-model-download") { Recordings(Status.Working(Progress(null, Step.MODEL_DOWNLOAD, 0.37f), null)) }
+        compose.onAllNodesWithText("Downloading the speech model (318 MB)… 37%").assertCountEquals(3)
     }
 
     @Test
     @Config(qualifiers = "ar-rLB-w411dp-h891dp-night-420dpi")
     fun recordingsInArabicByNight() {
-        show("ar-night-recordings") {
-            RecordingsContent(playlist, null, null, {}, {}, {}, {}, {}, { _, _ -> }, {}, {})
-        }
+        show("ar-night-recordings") { Recordings(null) }
         compose.onNodeWithText("٢ من ٧ جاهزة").assertIsDisplayed()
         compose.onNodeWithText("٢ · البقرة").assertIsDisplayed()
         assertTrue("titles start from the right", startsFromTheRight("القرآن الكريم كاملاً"))
@@ -193,7 +257,7 @@ class ScreensTest {
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun firstOpenInEnglishByDay() {
-        show("en-day-empty") { PlaylistsContent(emptyList(), null, null, null, {}, {}, {}, {}) }
+        show("en-day-empty") { Home(tab = 1) }
         compose.onNodeWithText("Add a playlist to begin").assertIsDisplayed()
         compose.onNodeWithText("Add playlist").assertIsDisplayed()
         compose.onNodeWithText("Check for updates").assertIsDisplayed()
@@ -202,12 +266,19 @@ class ScreensTest {
     @Test
     @Config(qualifiers = "ar-rLB-w411dp-h891dp-night-420dpi")
     fun playlistsInArabicByNight() {
-        show("ar-night-playlists") {
-            PlaylistsContent(listOf(playlist), Progress(null, Step.MODEL_COPY, 0.6f), null, null, {}, {}, {}, {})
-        }
+        show("ar-night-playlists") { Home(tab = 1, playlists = listOf(playlist), status = Status.Working(Progress(null, Step.MODEL_COPY, 0.6f), null)) }
         compose.onNodeWithText("التلاوة").assertIsDisplayed()
         compose.onNodeWithText("جارٍ نسخ نموذج الصوت", substring = true).assertIsDisplayed()
         compose.onNodeWithText("البحث عن تحديثات").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "ar-rLB-w411dp-h891dp-night-420dpi")
+    fun theQuranTabInArabicByNight() {
+        show("ar-night-quran") { Home(tab = 0) }
+        compose.onNodeWithText("القرآن").assertIsDisplayed()
+        compose.onNodeWithText("البقرة").assertIsDisplayed()
+        compose.onNodeWithText("٢٨٦ آية").assertIsDisplayed()
     }
 
     @Test
@@ -215,10 +286,11 @@ class ScreensTest {
     fun accentCoachIsTooOldToLendItsModel() {
         var download: Boolean? = null
         show("en-day-model-problem") {
-            RecordingsContent(playlist, null, ModelProblem(ModelStore.Lender.TOO_OLD, null), { download = it }, {}, {}, {}, {}, { _, _ -> }, {}, {})
+            Recordings(Status.ModelBlocked(ModelProblem(ModelStore.Lender.TOO_OLD, null)), StatusActions(retryModel = { download = it }))
         }
         compose.onNodeWithText("Couldn't copy the speech model from Accent Coach").assertIsDisplayed()
         compose.onNodeWithText("accept its update", substring = true).assertIsDisplayed()
+        compose.onAllNodesWithText("Waiting for the speech model").onFirst().assertIsDisplayed()
         // Nothing is downloaded unless asked for.
         compose.onNodeWithText("Download it instead (318 MB)").performClick()
         assertTrue(download == true)

@@ -106,10 +106,20 @@ object YouTube {
                 total = response.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
                     ?: throw IOException("the server didn't say how big the file is")
                 FileOutputStream(file, true).use { out ->
-                    response.body!!.byteStream().use { have += it.copyTo(out, 1 shl 16) }
+                    response.body!!.byteStream().use { input ->
+                        val buffer = ByteArray(1 shl 16)
+                        while (true) {
+                            // Asked every 64 KB, so pausing or cancelling takes effect at once.
+                            if (!stillWanted()) throw InterruptedException()
+                            val n = input.read(buffer)
+                            if (n < 0) break
+                            out.write(buffer, 0, n)
+                            have += n
+                            onProgress((have.toFloat() / total).coerceIn(0f, 1f))
+                        }
+                    }
                 }
             }
-            onProgress((have.toFloat() / total).coerceIn(0f, 1f))
         }
     }
 

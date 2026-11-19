@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">التلاوة</string>
-    <string name="tagline">استمع إلى التلاوة وتابعها كلمةً كلمة.</string>
+    <string name="tagline">اقرأ القرآن كلمةً كلمة، وتابع التلاوة وأنت تستمع.</string>
 
     <!-- Playlists -->
     <string name="empty_title">أضف قائمة تشغيل للبدء</string>
@@ -12,7 +12,7 @@
     <string name="add">إضافة</string>
     <string name="add_looking">جارٍ البحث…</string>
     <string name="add_not_a_link">هذا ليس رابط قائمة تشغيل أو مقطع على يوتيوب.</string>
-    <string name="add_failed">تعذّرت قراءة القائمة. تحقّق من الرابط ومن اتصال الهاتف بالإنترنت.</string>
+    <string name="add_failed">تعذّرت قراءة القائمة. تحقّق من الرابط ومن اتصال الهاتف بالإنترنت. (%1$s)</string>
     <string name="cancel">إلغاء</string>
     <string name="ready_of">%1$d من %2$d جاهزة</string>
 
@@ -36,7 +36,6 @@
     <string name="remove_playlist">حذف القائمة</string>
     <string name="remove_playlist_body">ستُحذف القائمة وكل ما نُزّل لها من هذا الهاتف.</string>
     <string name="remove">حذف</string>
-    <string name="stop">إيقاف</string>
     <string name="mismatch_short">لا تبدو هذه السورة. تحقّق من السورة.</string>
 
     <!-- Getting a recording ready -->
@@ -47,8 +46,9 @@
     <string name="step_verses">جارٍ جلب الآيات…</string>
     <string name="step_listen">جارٍ الاستماع إلى التلاوة… %1$d%%</string>
     <string name="step_align">جارٍ مطابقة الكلمات مع التلاوة…</string>
-    <string name="error_network">تعذّر التنزيل. تحقّق من الاتصال وحاول مجدداً.</string>
-    <string name="error_unknown">حدث خطأ. حاول مجدداً.</string>
+    <string name="step_retry">مشكلة في الاتصال. جارٍ المحاولة مجدداً…</string>
+    <string name="error_network">تعذّر التنزيل. تحقّق من الاتصال وحاول مجدداً. (%1$s)</string>
+    <string name="error_other">حدث خطأ: %1$s</string>
     <string name="error_too_short">التسجيل أقصر من هذه السورة. تحقّق من السورة.</string>
 
     <!-- The speech model, when Accent Coach is installed but can't lend it -->
@@ -57,6 +57,34 @@
     <string name="model_no_model">لم يُكمل Accent Coach تنزيل نموذج الصوت بعد. افتح Accent Coach ودعه يُكمل، ثم حاول مجدداً.</string>
     <string name="model_refused">لم يسلّم Accent Coach النموذج. ردّ أندرويد: %1$s</string>
     <string name="model_download_instead">تنزيله بدلاً من ذلك (318 ميغابايت)</string>
+
+    <!-- The first screen's tabs, and the list of surahs -->
+    <string name="tab_quran">القرآن</string>
+    <string name="tab_playlists">قوائم التشغيل</string>
+    <string name="number">%1$d</string>
+    <plurals name="verses">
+        <item quantity="zero">%1$d آية</item>
+        <item quantity="one">آية واحدة</item>
+        <item quantity="two">آيتان</item>
+        <item quantity="few">%1$d آيات</item>
+        <item quantity="many">%1$d آية</item>
+        <item quantity="other">%1$d آية</item>
+    </plurals>
+
+    <!-- Pausing and what the queue is waiting for -->
+    <string name="pause_work">إيقاف مؤقت</string>
+    <string name="resume">متابعة</string>
+    <string name="paused">متوقف مؤقتاً</string>
+    <string name="status_paused">التنزيلات متوقفة مؤقتاً. ما نُزّل حتى الآن محفوظ.</string>
+    <string name="status_waiting">في انتظار الاتصال بالإنترنت…</string>
+    <string name="status_starting">جارٍ البدء…</string>
+    <string name="queued_for_model">في انتظار نموذج الصوت</string>
+
+    <!-- A surah open without a recitation -->
+    <string name="no_recitation">لا توجد تلاوة لهذه السورة في قوائمك.</string>
+    <string name="recitation_not_ready">لم تُنزَّل تلاوة هذه السورة بعد.</string>
+    <string name="recitation_ready">التلاوة جاهزة.</string>
+    <string name="surah_failed">تعذّر جلب هذه السورة. تحتاج إلى اتصال بالإنترنت عند فتحها أول مرة.</string>
 
     <!-- Reading along -->
     <string name="verse">الآية %1$d</string>

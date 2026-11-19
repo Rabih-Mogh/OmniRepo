@@ -2,6 +2,8 @@ package app.recitation.data
 
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -16,7 +18,8 @@ class Verse(val words: List<Word>, val translation: String)
 /**
  * The words of a surah in the Uthmani script, each word's meaning in English, and the
  * verse's translation (Saheeh International), from Quran.com. A surah is fetched the
- * first time one of its recordings is prepared and kept on the phone from then on.
+ * first time it is needed and kept on the phone from then on; the app also fetches the
+ * rest quietly while it is open, so the whole Quran ends up readable offline.
  */
 class QuranStore(context: Context) {
 
@@ -30,10 +33,15 @@ class QuranStore(context: Context) {
     suspend fun surah(surah: Int): List<Verse> = withContext(Dispatchers.IO) {
         val file = file(surah)
         if (!file.exists()) {
-            dir.mkdirs()
-            val tmp = File(dir, "$surah.json.tmp")
-            tmp.writeText(fetch(surah).toString())
-            tmp.renameTo(file)
+            // One fetch at a time: the same surah can be asked for by the screen and the background at once.
+            fetching.withLock {
+                if (!file.exists()) {
+                    dir.mkdirs()
+                    val tmp = File(dir, "$surah.json.tmp")
+                    tmp.writeText(fetch(surah).toString())
+                    tmp.renameTo(file)
+                }
+            }
         }
         val verses = JSONArray(file.readText())
         List(verses.length()) { i ->
@@ -87,6 +95,7 @@ class QuranStore(context: Context) {
     }
 
     companion object {
+        private val fetching = Mutex()
         private const val API = "https://api.quran.com/api/v4"
         private const val SAHEEH_INTERNATIONAL = 20
 
