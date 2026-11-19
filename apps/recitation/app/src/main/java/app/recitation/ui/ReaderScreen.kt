@@ -1,5 +1,12 @@
 package app.recitation.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.DragInteraction
@@ -111,7 +118,7 @@ private class WordIndex(timings: Timings) {
  * its verse in view. [position] is where the recording is, in ms; it is read as often as
  * the screen redraws, so it is a function rather than a value.
  */
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ReaderContent(
     reading: Reading,
@@ -137,8 +144,20 @@ fun ReaderContent(
     LaunchedEffect(list) {
         list.interactionSource.interactions.collect { if (it is DragInteraction.Start) follow = false }
     }
-    LaunchedEffect(currentVerse, follow) {
-        if (follow && currentVerse >= 0) list.animateScrollToItem(currentVerse + above, scrollOffset = -24)
+    val wordInView = remember { BringIntoViewRequester() }
+    val atTop = remember { intArrayOf(-1) } // the verse last brought to the top of the page
+    LaunchedEffect(current, follow) {
+        if (!follow || current < 0) return@LaunchedEffect
+        val item = currentVerse + above
+        // A new verse starts at the top of the page, so what comes next can be read ahead.
+        if (currentVerse != atTop[0] || list.layoutInfo.visibleItemsInfo.none { it.index == item }) {
+            list.animateScrollToItem(item, scrollOffset = -24)
+            atTop[0] = currentVerse
+        }
+        // A verse can be taller than the screen. Keep the word being recited in view: when
+        // it runs off the bottom, scroll just far enough to show its tile there.
+        withFrameNanos { }
+        runCatching { wordInView.bringIntoView() }
     }
 
     fun seekToVerse(verse: Int) {
@@ -196,7 +215,7 @@ fun ReaderContent(
                     color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            Verses(reading, index, list, basmala, current, currentVerse, position, showMeanings) { ms ->
+            Verses(reading, index, list, basmala, current, currentVerse, position, showMeanings, wordInView) { ms ->
                 onSeek(ms)
                 follow = true
             }
@@ -204,6 +223,7 @@ fun ReaderContent(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Verses(
     reading: Reading,
@@ -214,6 +234,7 @@ private fun Verses(
     currentVerse: Int,
     position: () -> Int,
     showMeanings: Boolean,
+    wordInView: BringIntoViewRequester,
     onSeek: (Int) -> Unit,
 ) {
     run {
@@ -236,6 +257,7 @@ private fun Verses(
                     current = if (currentVerse == v) current - first else -1,
                     position = position,
                     showMeanings = showMeanings,
+                    wordInView = wordInView,
                     onWord = { w -> index.starts.getOrNull(first + w)?.let(onSeek) },
                 )
             }
@@ -244,7 +266,7 @@ private fun Verses(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 private fun VerseBlock(
     number: Int,
@@ -253,6 +275,7 @@ private fun VerseBlock(
     current: Int,
     position: () -> Int,
     showMeanings: Boolean,
+    wordInView: BringIntoViewRequester,
     onWord: (Int) -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -275,6 +298,7 @@ private fun VerseBlock(
                         },
                         position = position,
                         showMeaning = showMeanings,
+                        wordInView = wordInView,
                         onClick = { onWord(w) },
                     )
                 }
@@ -293,8 +317,17 @@ private fun VerseBlock(
 
 private enum class WordState { RESTING, RECITED, CURRENT }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun WordTile(word: Word, timing: WordTiming?, state: WordState, position: () -> Int, showMeaning: Boolean, onClick: () -> Unit) {
+private fun WordTile(
+    word: Word,
+    timing: WordTiming?,
+    state: WordState,
+    position: () -> Int,
+    showMeaning: Boolean,
+    wordInView: BringIntoViewRequester,
+    onClick: () -> Unit,
+) {
     val colors = MaterialTheme.colorScheme
     val isCurrent = state == WordState.CURRENT
     val ink = when (state) {
@@ -303,7 +336,9 @@ private fun WordTile(word: Word, timing: WordTiming?, state: WordState, position
         WordState.CURRENT -> colors.onPrimaryContainer.copy(alpha = 0.6f)
     }
     Column(
-        Modifier.clip(RoundedCornerShape(10.dp)).background(if (isCurrent) colors.primaryContainer else Color.Transparent)
+        // The page scrolls to whichever tile holds this: the word being recited.
+        (if (isCurrent) Modifier.bringIntoViewRequester(wordInView) else Modifier)
+            .clip(RoundedCornerShape(10.dp)).background(if (isCurrent) colors.primaryContainer else Color.Transparent)
             .clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -346,27 +381,40 @@ private fun PlayerBar(
     // Four steps a second is plenty for a slider and a clock.
     val shown by remember { derivedStateOf { position() / 250 * 250 } }
     var dragged by remember { mutableStateOf<Float?>(null) }
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(Modifier.windowInsetsPadding(WindowInsets.navigationBars).padding(horizontal = 12.dp).padding(top = 2.dp, bottom = 6.dp)) {
-            // Players keep the same left-to-right order in every language.
+            // The time line runs left to right in every language, as on other players.
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                Slider(
-                    value = dragged ?: if (duration > 0) (shown.toFloat() / duration).coerceIn(0f, 1f) else 0f,
-                    onValueChange = { dragged = it },
-                    onValueChangeFinished = {
-                        dragged?.let { onSeek((it * duration).toInt()) }
-                        dragged = null
-                    },
-                    modifier = Modifier.height(32.dp),
-                )
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(clock(dragged?.let { (it * duration).toInt() } ?: shown), Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    IconButton(onClick = onPrevious) { Icon(AppIcons.SkipPrevious, stringResource(R.string.previous_verse)) }
-                    FilledIconButton(onClick = onPlayPause, modifier = Modifier.padding(horizontal = 8.dp).size(52.dp)) {
-                        if (playing) Icon(AppIcons.Pause, stringResource(R.string.pause)) else Icon(Icons.Filled.PlayArrow, stringResource(R.string.play))
-                    }
-                    IconButton(onClick = onNext) { Icon(AppIcons.SkipNext, stringResource(R.string.next_verse)) }
-                    Text(clock(duration), Modifier.weight(1f), textAlign = TextAlign.End, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(clock(dragged?.let { (it * duration).toInt() } ?: shown), style = MaterialTheme.typography.labelMedium, color = muted)
+                    Slider(
+                        value = dragged ?: if (duration > 0) (shown.toFloat() / duration).coerceIn(0f, 1f) else 0f,
+                        onValueChange = { dragged = it },
+                        onValueChangeFinished = {
+                            dragged?.let { onSeek((it * duration).toInt()) }
+                            dragged = null
+                        },
+                        modifier = Modifier.weight(1f).height(36.dp),
+                    )
+                    Text(clock(duration), style = MaterialTheme.typography.labelMedium, color = muted)
+                }
+            }
+            // Previous verse on the side reading starts from, next verse on the other; the arrows turn round with them.
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onPrevious, modifier = Modifier.weight(1f)) {
+                    Icon(AppIcons.SkipPrevious, null, Modifier.size(20.dp).scale(scaleX = if (rtl) -1f else 1f, scaleY = 1f))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.previous_verse), maxLines = 1)
+                }
+                FilledIconButton(onClick = onPlayPause, modifier = Modifier.padding(horizontal = 8.dp).size(52.dp)) {
+                    if (playing) Icon(AppIcons.Pause, stringResource(R.string.pause)) else Icon(Icons.Filled.PlayArrow, stringResource(R.string.play))
+                }
+                TextButton(onClick = onNext, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.next_verse), maxLines = 1)
+                    Spacer(Modifier.width(6.dp))
+                    Icon(AppIcons.SkipNext, null, Modifier.size(20.dp).scale(scaleX = if (rtl) -1f else 1f, scaleY = 1f))
                 }
             }
         }

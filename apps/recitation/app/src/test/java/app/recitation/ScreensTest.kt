@@ -6,6 +6,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -62,20 +63,6 @@ class ScreensTest {
         ),
     )
 
-    /** Each word a second long, its letters reached evenly through it. */
-    private fun timings(clarity: Float = 0.9f): Timings {
-        var ms = 0
-        return Timings(
-            fatihah.map { verse ->
-                verse.words.map { word ->
-                    val n = word.arabic.length
-                    WordTiming(ms, intArrayOf(n / 3, ms, 2 * n / 3, ms + 330, n, ms + 660)).also { ms += 1000 }
-                }
-            },
-            clarity,
-        )
-    }
-
     private val track = Track("a", "سورة الفاتحة | Surah Al-Fatiha", 74, surah = 1, ready = true, clarity = 0.9f)
 
     private val playlist = Playlist(
@@ -99,9 +86,23 @@ class ScreensTest {
         compose.onRoot().captureRoboImage("build/screens/$picture.png")
     }
 
+    /** Each word a second long, its letters reached evenly through it. */
+    private fun timings(verses: List<Verse>, clarity: Float = 0.9f): Timings {
+        var ms = 0
+        return Timings(
+            verses.map { verse ->
+                verse.words.map { word ->
+                    val n = word.arabic.length
+                    WordTiming(ms, intArrayOf(n / 3, ms, 2 * n / 3, ms + 330, n, ms + 660)).also { ms += 1000 }
+                }
+            },
+            clarity,
+        )
+    }
+
     @Composable
-    private fun Reader(positionMs: Int, meanings: Boolean = true, clarity: Float = 0.9f) = ReaderContent(
-        reading = Reading(track, fatihah, timings(clarity)), showMeanings = meanings, playing = true,
+    private fun Reader(positionMs: Int, meanings: Boolean = true, clarity: Float = 0.9f, verses: List<Verse> = fatihah) = ReaderContent(
+        reading = Reading(track, verses, timings(verses, clarity)), showMeanings = meanings, playing = true,
         position = { positionMs }, duration = 74_000, onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
     )
 
@@ -121,6 +122,21 @@ class ScreensTest {
         compose.onNodeWithText("of the universe").assertIsDisplayed()
         compose.onNodeWithText("[All] praise is [due] to Allah, Lord of the worlds -").assertIsDisplayed()
         assertTrue("a verse's first word sits on the right", startsFromTheRight("ٱلْحَمْدُ"))
+        compose.onNodeWithText("Previous verse").assertIsDisplayed()
+        compose.onNodeWithText("Next verse").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aVerseLongerThanTheScreenScrollsWithTheWord() {
+        // One verse of 120 words, several screens tall, followed by a short one.
+        val words = fatihah.flatMap { it.words }
+        val long = Verse(List(120) { Word(words[it % words.size].arabic, "word ${it + 1}") }, "A very long verse.")
+        // 90.5 s in: the 91st word, far below the first screen.
+        show("en-day-reader-long-verse") { Reader(90_500, verses = listOf(long, fatihah[2])) }
+        compose.onNodeWithText("word 91").assertIsDisplayed()
+        compose.onNodeWithText("word 1").assertIsNotDisplayed()
+        compose.onNodeWithText("word 120").assertIsNotDisplayed()
     }
 
     @Test

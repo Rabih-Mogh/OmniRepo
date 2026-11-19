@@ -23,10 +23,16 @@ gold in dark mode.
    This runs in the background with its progress in a notification. Listening is the slow
    step: expect it to take roughly as long as the recording, once. If it is interrupted
    (no signal, the phone restarts), it carries on from where it stopped.
-3. **Read along.** Open a recording that is ready. Tap a word to jump to it. The buttons
-   beside play go to the previous and next verse. The button at the top right shows or
-   hides the meanings. When a recording ends, the playlist's next prepared one follows.
-   Sound carries on with the screen off, with controls in the notification.
+3. **Read along.** Open a recording that is ready.
+   - The page follows the recitation. Each new verse moves to the top; inside a verse
+     taller than the screen, the page scrolls with the word being recited, so its tile is
+     always in view at the bottom. Scrolling by hand stops this until **Follow the
+     recitation** is tapped.
+   - Tap a word to jump to it. **Previous verse** and **Next verse** are either side of
+     the play button.
+   - The button at the top right shows or hides the meanings.
+   - When a recording ends, the playlist's next prepared one follows. Sound carries on
+     with the screen off, with controls in the notification.
 
 ### Lining words up with the sound
 
