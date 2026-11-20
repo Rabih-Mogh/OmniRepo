@@ -12,7 +12,8 @@ on white; in dark mode, gold on black. It follows the phone's dark mode unless l
 is chosen in its menu. The bars at the top and bottom of every screen are
 quiet: they take the page's own colour, with a thin gold rule between them and the page,
 and the player sits on the bottom one. Surah names are written in
-calligraphy, surah numbers sit under a pointed arch and verse numbers in an eight-point
+calligraphy. In the list of surahs each number is plain gold with a small gold diamond
+under it, and a fine gold line parts the rows; verse numbers sit in an eight-point
 star. A verse's words are laid out as blocks that share the verse's whole width between
 them, touching one another and stopping a small margin short of the screen's edges; the block of the word being recited, its meaning included,
 is filled with a tint and has no frame.
@@ -83,9 +84,11 @@ phone and nowhere else.
      app tries again a few times, then shows the error, in the system's own words, on the
      recording.
 3. **Read along.** Open a recording that is ready, or its surah from the Quran tab.
-   - A surah opens on its title page: its number, its name in calligraphy, what the name
-     means, how many verses it has, where it was revealed and its place in the order of
-     revelation, and then the basmala drawn as one calligraphic piece. (Al-Fatihah has
+   - A surah opens on its title page. Two gold rules, each with a small diamond at its
+     middle, run nearly from edge to edge, and between them stand its name in
+     calligraphy, what the name means, how many verses it has, where it was revealed and
+     its place in the order of revelation. Under them comes the basmala drawn as one
+     calligraphic piece. (Al-Fatihah has
      the piece too, though the basmala is also its first verse; At-Tawbah has none.) The
      title page fills the top half, so the first verse starts at the middle of the page.
    - The app remembers how far each recitation was listened to. Opened again from the

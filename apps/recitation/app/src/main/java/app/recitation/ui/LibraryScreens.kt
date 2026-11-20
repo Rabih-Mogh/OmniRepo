@@ -158,7 +158,8 @@ fun HomeContent(
                 if (lastRead != null) item { Box(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) { LastReadCard(lastRead, onLastRead) } }
                 items(SURAHS, key = { it.number }) { surah ->
                     SurahRow(surah, recited = surah.number in recited, onClick = { onSurah(surah.number) })
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    // A fine gold line from under the names to the far edge; the numbers stand clear of it.
+                    HorizontalDivider(Modifier.padding(start = 68.dp, end = 16.dp), thickness = 0.6.dp, color = LocalHighlight.current.copy(alpha = 0.6f))
                 }
             }
         } else if (tab == 2) {
@@ -288,7 +289,7 @@ private fun SurahRow(surah: Surah, recited: Boolean, onClick: () -> Unit) {
     val verses = pluralStringResource(R.plurals.verses, surah.verses, surah.verses)
     val colors = MaterialTheme.colorScheme
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        ArchNumber(surah.number)
+        RuledNumber(surah.number, Modifier.width(44.dp))
         Spacer(Modifier.width(12.dp))
         if (arabic) {
             // In Arabic the calligraphy is the name; the Latin spelling steps back to the far side.

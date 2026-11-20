@@ -1167,9 +1167,10 @@ private fun PlayButton(playing: Boolean, onClick: () -> Unit) {
 }
 
 /**
- * The surah's title page, above its first verse: its number, its name in calligraphy,
- * what the name means, how long it is and where it was revealed, inside a ruled frame,
- * and then the basmala drawn as one piece. It is at least [minHeight] tall.
+ * The surah's title page, above its first verse: between two gold rules that run nearly
+ * from edge to edge, its name in calligraphy, what the name means, how long it is and
+ * where it was revealed; and then the basmala drawn as one piece. It is at least
+ * [minHeight] tall.
  */
 @Composable
 private fun TitlePage(surah: Surah, minHeight: Dp, basmalaSize: TextUnit) {
@@ -1179,31 +1180,27 @@ private fun TitlePage(surah: Surah, minHeight: Dp, basmalaSize: TextUnit) {
         Modifier.fillMaxWidth().heightIn(min = minHeight).padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
     ) {
-        // Two rules, one inside the other, as round the heading of a surah in a mushaf.
-        Column(
-            Modifier.fillMaxWidth().border(1.5.dp, colors.primary, RoundedCornerShape(18.dp)).padding(5.dp)
-                .border(0.8.dp, colors.primary.faded(0.55f, colors.background), RoundedCornerShape(14.dp)).padding(horizontal = 12.dp, vertical = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            ArchNumber(surah.number)
-            SurahTitle(surah, 46.sp, colors.primary, withWord = true)
-            if (!arabic) {
-                Text(stringResource(R.string.name_and_meaning, surah.latin, surah.meaning), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
-            }
-            Text(
-                stringResource(
-                    R.string.surah_details,
-                    pluralStringResource(R.plurals.verses, surah.verses, surah.verses),
-                    stringResource(if (surah.madinan) R.string.revealed_madinah else R.string.revealed_makkah),
-                    surah.revealed,
-                ),
-                style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
-            )
+        // The rules are as wide as the rules between the verses below, so the page lines up.
+        DiamondRule(Modifier.fillMaxWidth().padding(horizontal = 8.dp))
+        SurahTitle(surah, 54.sp, colors.primary, Modifier.padding(top = 12.dp, bottom = 10.dp), withWord = true)
+        if (!arabic) {
+            Text(stringResource(R.string.name_and_meaning, surah.latin, surah.meaning), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         }
+        Text(
+            stringResource(
+                R.string.surah_details,
+                pluralStringResource(R.plurals.verses, surah.verses, surah.verses),
+                stringResource(if (surah.madinan) R.string.revealed_madinah else R.string.revealed_makkah),
+                surah.revealed,
+            ),
+            Modifier.padding(top = 4.dp, bottom = 16.dp),
+            style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
+        )
+        DiamondRule(Modifier.fillMaxWidth().padding(horizontal = 8.dp))
         // Every surah but At-Tawbah opens with the basmala. In Al-Fatihah it is also the first verse.
         if (surah.number != 9) {
             Text(
-                "\uFDFD", Modifier.fillMaxWidth().padding(top = 10.dp).semantics { contentDescription = Recital.BASMALA },
+                "\uFDFD", Modifier.fillMaxWidth().padding(top = 18.dp).semantics { contentDescription = Recital.BASMALA },
                 textAlign = TextAlign.Center, fontFamily = QuranFont, fontSize = basmalaSize, lineHeight = basmalaSize * 2,
                 maxLines = 1, softWrap = false, color = colors.primary,
             )

@@ -3,6 +3,8 @@ package app.recitation.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
@@ -23,6 +25,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -95,28 +99,51 @@ fun StarNumber(
     }
 }
 
-/** A number under a low pointed arch that fits a square, echoing the app's icon: a surah's number. */
+/** The gold the ornaments are drawn in: deeper on a light page, where it has to carry a number. */
 @Composable
-fun ArchNumber(number: Int, modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.primary) {
-    Box(modifier.size(40.dp), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.size(40.dp)) {
-            val w = size.width
-            val h = size.height
-            val arch = Path().apply {
-                moveTo(w * 0.1f, h * 0.92f)
-                lineTo(w * 0.1f, h * 0.5f)
-                quadraticTo(w * 0.1f, h * 0.26f, w * 0.5f, h * 0.08f)
-                quadraticTo(w * 0.9f, h * 0.26f, w * 0.9f, h * 0.5f)
-                lineTo(w * 0.9f, h * 0.92f)
-                close()
-            }
-            drawPath(arch, color, style = Stroke(1.3.dp.toPx(), join = StrokeJoin.Round))
-        }
-        // A touch below the middle, where the arch is widest.
-        Text(
-            stringResource(R.string.number, number), Modifier.padding(top = 7.dp),
-            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface,
-        )
+private fun ornamentGold(): Color {
+    val gold = LocalHighlight.current
+    return if (MaterialTheme.colorScheme.background.luminance() > 0.5f) gold.faded(0.86f, Color.Black) else gold
+}
+
+private fun DrawScope.diamond(color: Color, center: Offset, radius: Float) {
+    drawPath(
+        Path().apply {
+            moveTo(center.x, center.y - radius)
+            lineTo(center.x + radius, center.y)
+            lineTo(center.x, center.y + radius)
+            lineTo(center.x - radius, center.y)
+            close()
+        },
+        color,
+    )
+}
+
+/** A surah's number in the list of surahs: the number in gold, and a small gold diamond under it. */
+@Composable
+fun RuledNumber(number: Int, modifier: Modifier = Modifier) {
+    val gold = ornamentGold()
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(stringResource(R.string.number, number), style = MaterialTheme.typography.titleSmall, color = gold)
+        Canvas(Modifier.padding(top = 3.dp).size(5.dp)) { diamond(gold, center, size.minDimension / 2) }
+    }
+}
+
+/**
+ * A gold rule with a small diamond at its middle, as wide as it is given room. One stands
+ * above a surah's heading on its title page and one below it, and that is all the ornament
+ * the page has.
+ */
+@Composable
+fun DiamondRule(modifier: Modifier = Modifier) {
+    val gold = LocalHighlight.current
+    Canvas(modifier.height(8.dp)) {
+        val middle = size.width / 2
+        val y = size.height / 2
+        val gap = 9.dp.toPx()
+        drawLine(gold, Offset(0f, y), Offset(middle - gap, y), strokeWidth = 1.dp.toPx())
+        drawLine(gold, Offset(middle + gap, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
+        diamond(gold, Offset(middle, y), 3.4.dp.toPx())
     }
 }
 
