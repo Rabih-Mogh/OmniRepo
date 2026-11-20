@@ -410,6 +410,15 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 
     fun forget(track: Track) = library.forget(track.id)
 
+    /**
+     * Has a recording that is on the phone listened to once more and its words placed
+     * afresh, as a newer version of the app would place them. It stays playable meanwhile.
+     */
+    fun listenAgain(track: Track): Track {
+        library.update(track.id) { it.copy(ready = false, error = null) }
+        return library.track(track.id) ?: track.copy(ready = false)
+    }
+
     fun remove(playlist: Playlist) {
         library.remove(playlist.url)
         screen = Screen.Home

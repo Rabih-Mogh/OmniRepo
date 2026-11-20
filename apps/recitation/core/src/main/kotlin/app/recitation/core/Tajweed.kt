@@ -1,20 +1,29 @@
 package app.recitation.core
 
-/** The rules grouped as they are shown: one colour to a family. */
+/** The rules grouped as they are shown: one colour to a family, as in the printed mushafs that colour them. */
 enum class Family {
-    /** Sound held through the nose. */
+    /** Sound held through the nose (ghunnah), two counts. */
     NASAL,
 
-    /** A vowel that must be drawn out: four to six counts. */
-    MADD_MUST,
+    /** A long vowel that must be drawn out to six counts (madd lazim). */
+    MADD_LAZIM,
 
-    /** A vowel that may be drawn out: two, four or six counts. */
-    MADD_MAY,
+    /** A long vowel that must be drawn out to four or five counts (madd wajib). */
+    MADD_WAJIB,
 
-    /** A stopped letter let go with a slight echo. */
+    /** A long vowel that may be drawn out: two, four or six counts (madd ja'iz). */
+    MADD_JAIZ,
+
+    /** A long vowel of two counts written with a small letter, or one that comes of stopping. */
+    MADD_TABII,
+
+    /** A stopped letter let go with a slight echo (qalqalah). */
     ECHO,
 
-    /** A letter that is written but not sounded, or is merged into the next. */
+    /** A letter said full-mouthed (tafkhim). */
+    HEAVY,
+
+    /** A letter that is written but not sounded, or is merged whole into the next. */
     QUIET,
 }
 
@@ -23,31 +32,76 @@ enum class Rule(val family: Family) {
     /** Ghunnah: a doubled n or m, held through the nose for two counts. */
     GHUNNAH(Family.NASAL),
 
-    /** Ikhfa: an n (or an m before b) hidden into the letter after it, through the nose. */
+    /** Ikhfa haqiqi: an n, or the n of a tanween, hidden into one of fifteen letters after it. */
     IKHFA(Family.NASAL),
 
-    /** Iqlab: an n turned into an m before b, through the nose. */
+    /** Ikhfa shafawi: an m hidden before b. */
+    IKHFA_SHAFAWI(Family.NASAL),
+
+    /** Iqlab: an n turned into an m before b. */
     IQLAB(Family.NASAL),
 
-    /** Idgham with ghunnah: an n merged into y, n, m or w after it (or an m into an m), through the nose. */
+    /** Idgham bi-ghunnah: an n merged into y, n, m or w in the next word, through the nose. */
     IDGHAM_GHUNNAH(Family.NASAL),
 
-    /** Madd muttasil: a long vowel before a hamza in the same word, four or five counts. */
-    MADD_REQUIRED(Family.MADD_MUST),
+    /** Idgham shafawi: an m merged into the m after it. */
+    IDGHAM_SHAFAWI(Family.NASAL),
 
-    /** Madd lazim: a long vowel before a doubled or stopped letter, six counts. */
-    MADD_LAZIM(Family.MADD_MUST),
+    /** Madd lazim: a long vowel before a doubled or stopped letter, and the letters some surahs open with; six counts. */
+    MADD_LAZIM(Family.MADD_LAZIM),
 
-    /**
-     * A long vowel that may be drawn out: before a hamza that opens the next word (munfasil),
-     * or before the last letter of a word the reciter stops on ('arid lil-sukun, lin).
-     */
-    MADD_ALLOWED(Family.MADD_MAY),
+    /** Madd wajib muttasil: a long vowel before a hamza in the same word; four or five counts. */
+    MADD_MUTTASIL(Family.MADD_WAJIB),
+
+    /** Madd ja'iz munfasil: a long vowel before a hamza that opens the next word. */
+    MADD_MUNFASIL(Family.MADD_JAIZ),
+
+    /** Madd as-silah al-kubra: the long vowel of the pronoun "hu" or "hi" before a hamza. */
+    MADD_SILAH_KUBRA(Family.MADD_JAIZ),
+
+    /** Madd 'arid lil-sukun: a long vowel before the last letter of a word the reciter stops on. */
+    MADD_ARID(Family.MADD_JAIZ),
+
+    /** Madd al-lin: a soft w or y (after a fatha) before the last letter of a word the reciter stops on. */
+    MADD_LIN(Family.MADD_JAIZ),
+
+    /** Madd tabi'i: an ordinary long vowel, two counts; marked where it is written with a small letter. */
+    MADD_TABII(Family.MADD_TABII),
+
+    /** Madd as-silah as-sughra: the long vowel of the pronoun "hu" or "hi" when run on, two counts. */
+    MADD_SILAH_SUGHRA(Family.MADD_TABII),
+
+    /** Madd al-'iwad: stopping on "-an", which is said as a long a. */
+    MADD_IWAD(Family.MADD_TABII),
 
     /** Qalqalah: q, t, b, j or d without a vowel, released with an echo. */
     QALQALAH(Family.ECHO),
 
-    /** Written but not sounded: merged whole into the next letter, or simply silent. */
+    /** Tafkhim ar-ra': an r said full-mouthed. */
+    TAFKHIM_RA(Family.HEAVY),
+
+    /** The l of the name of Allah said full-mouthed, after a fatha or a damma. */
+    TAFKHIM_LAM(Family.HEAVY),
+
+    /** Idgham bi-ghayr ghunnah: an n merged whole into l or r. */
+    IDGHAM_BILA_GHUNNAH(Family.QUIET),
+
+    /** Idgham al-mutamathilayn: a letter merged into the same letter after it. */
+    IDGHAM_MUTAMATHILAYN(Family.QUIET),
+
+    /** Idgham al-mutajanisayn: a letter merged into one said from the same place (t, d and the heavy t; dh, th and the heavy dh; b and m). */
+    IDGHAM_MUTAJANISAYN(Family.QUIET),
+
+    /** Idgham al-mutaqaribayn: a letter merged into one said from close by (l and r, q and k). */
+    IDGHAM_MUTAQARIBAYN(Family.QUIET),
+
+    /** Al-lam ash-shamsiyyah: the l of "al-" merged into a sun letter. */
+    LAM_SHAMSIYYAH(Family.QUIET),
+
+    /** Hamzat al-wasl: a joining alif, silent when the reciter runs into it. */
+    HAMZAT_WASL(Family.QUIET),
+
+    /** Written but never sounded. */
     SILENT(Family.QUIET),
 }
 
@@ -64,8 +118,9 @@ data class Mark(val from: Int, val to: Int, val rule: Rule)
  * vowel before a word's last letter is drawn out only if he stops there. So the answer
  * is given for one way of reciting: [marks] is told after which words the reciter stops.
  *
- * This follows the reading of Hafs from 'Asim as the Madinah mushaf writes it. It leaves
- * out the heavy and light letters (tafkhim and tarqiq), which have no sign of their own.
+ * This follows the reading of Hafs from 'Asim as the Madinah mushaf writes it. Of the
+ * heavy and light letters it gives the two that change from place to place: the r, and
+ * the l of the name of Allah.
  */
 object Tajweed {
 
@@ -83,6 +138,9 @@ object Tajweed {
     private const val DAGGER_ALIF = 'ٰ'
     private const val SMALL_WAW = 'ۥ'
     private const val SMALL_YA = 'ۦ'
+
+    /** A small y written above the line: a long i the script leaves out ("an-nabiyyin"). */
+    private const val SMALL_HIGH_YA = '\u06E7'
     private const val TATWEEL = 'ـ'
     private const val WASLA = 'ٱ'
     private const val ALIF = 'ا'
@@ -102,6 +160,18 @@ object Tajweed {
     private val ECHOING = "قطبجد".toSet()
     private val LONG_VOWELS = setOf(ALIF, 'و', 'ي', 'ى', TATWEEL)
     private val CONSONANTS = "بتثجحخدذرزسشصضطظعغفقكلمنهة".toSet()
+
+    /** The letters said with the tongue raised, which keep an r before them heavy. */
+    private val RAISED = "خصضغطقظ".toSet()
+
+    /** Under an r that leans towards an i ("majraha"). */
+    private const val LEANING = '\u06EA'
+
+    /** Letters said from the same place, which merge into one another. */
+    private val SAME_PLACE = listOf("تدط".toSet(), "ثذظ".toSet(), "بم".toSet())
+
+    /** Letters said from close by, which merge into one another. */
+    private val CLOSE_BY = listOf("لر".toSet(), "قك".toSet())
 
     /** The letters some surahs open with, read out by name. */
     private val NAMED = "المصركهيعطسحقن".toSet()
@@ -127,6 +197,12 @@ object Tajweed {
         val bare = vowel == null && tanweenAt < 0 && !sukun && !shadda
         val hamza = base in HAMZAS || has(HAMZA_ABOVE) || has(HAMZA_BELOW) || (base == ALIF && (vowel != null || tanweenAt >= 0))
         val unsounded = has(NEVER_SOUNDED)
+
+        /** Where a long vowel written small on the letter begins, or -1. */
+        val smallAt: Int = (start + 1 until end).firstOrNull { text[it] == DAGGER_ALIF || text[it] == SMALL_WAW || text[it] == SMALL_YA || text[it] == SMALL_HIGH_YA } ?: -1
+
+        /** Up to where the letter itself and its own signs go: a long vowel written small after them is another sound. */
+        val own: Int get() = if (smallAt >= 0) smallAt else end
     }
 
     /** Where a reciter stops when nothing says otherwise: at the end of every verse. */
@@ -138,6 +214,47 @@ object Tajweed {
             if (word > 0) stops[word - 1] = true
         }
         return stops
+    }
+
+    /** Where the doubled l of the name of Allah is in [word] ("Allah", "lillah", "Allahumma"), or -1. */
+    private fun nameOfAllah(word: List<Unit>): Int {
+        for (j in 1 until word.size - 1) {
+            val l = word[j]
+            if (l.base != 'ل' || !l.shadda || l.vowel != FATHA || word[j - 1].base != 'ل' || word[j + 1].base != 'ه') continue
+            // "al-lahab" and "al-lahw" begin the same way and go on.
+            val rest = word.drop(j + 2).filter { !it.unsounded }
+            if (rest.isEmpty() || (rest.size == 1 && rest[0].base == 'م' && rest[0].shadda)) return j
+        }
+        return -1
+    }
+
+    /**
+     * Whether the r at [k] of [word] is said heavy. With a vowel of its own it follows the
+     * vowel: heavy with a or u, light with i. Without one, or [stoppedOn], it follows what
+     * comes before it.
+     */
+    private fun heavyR(word: List<Unit>, k: Int, stoppedOn: Boolean): Boolean {
+        val r = word[k]
+        if (r.has(LEANING)) return false
+        val tanween = if (r.tanweenAt >= 0) r.text[r.tanweenAt] else null
+        if (!stoppedOn) {
+            if (r.vowel == KASRA || tanween == KASRATAN) return false
+            if (r.vowel != null || tanween != null) return true
+        }
+        val before = word.take(k).lastOrNull { !it.unsounded } ?: return true
+        return when {
+            // The i a joining alif begins with is not the word's own ("irji'u").
+            before.base == WASLA -> true
+            before.vowel == FATHA || before.vowel == DAMMA -> true
+            // After an i it is light, unless a raised letter follows it in the word ("qirtas", "mirsad").
+            before.vowel == KASRA -> !stoppedOn && word.getOrNull(k + 1).let { it != null && it.base in RAISED && it.vowel != KASRA }
+            before.has(DAGGER_ALIF) || before.base == ALIF || before.base == TATWEEL || before.base == 'و' -> true
+            before.base == 'ي' || before.base == 'ى' -> false
+            // After a letter without a vowel, as the vowel before that one. With a raised letter
+            // between ("Misr", "al-qitr") it is said as it would be run on.
+            word.take(k - 1).lastOrNull { !it.unsounded }?.vowel == KASRA -> before.base in RAISED && r.vowel == FATHA
+            else -> true
+        }
     }
 
     /**
@@ -154,6 +271,9 @@ object Tajweed {
         }
         fun put(w: Int, u: Unit, rule: Rule) = put(w, u.start, u.end, rule)
 
+        /** The letter alone, leaving a long vowel written small on it to its own rule. */
+        fun putLetter(w: Int, u: Unit, rule: Rule) = put(w, u.start, u.own, rule)
+
         /** The letter the one at [k] of word [w] runs into, and whether it is in the same word; null at a stop. */
         fun after(w: Int, k: Int, afterTanween: Boolean = false): Pair<Unit, Boolean>? {
             var i = k + 1
@@ -162,6 +282,8 @@ object Tajweed {
             while (i < units[w].size && units[w][i].unsounded) i++
             if (i < units[w].size) return units[w][i] to true
             if (stopsAfter(w)) return null
+            // Before a joining alif a tanween is said "-ni", clear, and is under no rule.
+            if (afterTanween && units[w + 1].firstOrNull()?.base == WASLA) return null
             // A joining alif at the start of the next word is silent when run into.
             val next = units[w + 1].firstOrNull { it.base != WASLA && !it.unsounded } ?: return null
             return next to false
@@ -172,10 +294,17 @@ object Tajweed {
             next.base == 'ب' -> Rule.IQLAB
             // Inside one word an n before y or w stays clear (dunya, qinwan).
             next.base == 'ي' || next.base == 'و' || next.base == 'ن' || next.base == 'م' -> if (sameWord) null else Rule.IDGHAM_GHUNNAH
-            next.base == 'ل' || next.base == 'ر' -> if (sameWord) null else Rule.SILENT
+            next.base == 'ل' || next.base == 'ر' -> if (sameWord) null else Rule.IDGHAM_BILA_GHUNNAH
             next.hamza || next.base in THROAT -> null
             next.base in HIDING -> Rule.IKHFA
             else -> null
+        }
+
+        /** The vowel a word leaves in the ear as the next is begun: of its last letter that has one. */
+        fun endsOnAnI(w: Int): Boolean {
+            val last = units[w].lastOrNull { it.vowel != null || it.tanweenAt >= 0 } ?: return false
+            // A tanween before a joining alif is said "-ni".
+            return last.tanweenAt >= 0 || last.vowel == KASRA
         }
 
         for ((w, word) in units.withIndex()) {
@@ -185,25 +314,28 @@ object Tajweed {
             val named = word.none { it.vowel != null || it.tanweenAt >= 0 || it.sukun || it.shadda || it.has(DAGGER_ALIF) } && word.all { it.base in NAMED }
             // The last letter that is sounded: not a seat, nor a letter marked as silent.
             val last = word.indexOfLast { !it.unsounded && !(it.bare && (it.base == ALIF || it.base == 'ى') && word.any { t -> t.tanweenAt >= 0 }) }
+            val name = nameOfAllah(word)
 
             for ((k, u) in word.withIndex()) {
                 // ---- written, not sounded
                 when {
                     u.unsounded -> put(w, u, Rule.SILENT)
                     u.has(SOUNDED_AT_A_STOP) && !(stop && k == word.lastIndex) -> put(w, u, Rule.SILENT)
-                    u.base == WASLA && !(k == 0 && opens) -> put(w, u, Rule.SILENT)
+                    u.base == WASLA && !(k == 0 && opens) -> put(w, u, Rule.HAMZAT_WASL)
                 }
 
                 // ---- a long vowel under the wavy line
                 if (u.drawnOut) {
-                    val from = if (u.base in LONG_VOWELS || u.base == 'آ') u.start else listOf(u.at(DAGGER_ALIF), u.at(SMALL_WAW), u.at(SMALL_YA)).filter { it >= 0 }.minOrNull() ?: u.start
+                    val small = u.base !in LONG_VOWELS && u.base != 'آ'
+                    val from = if (!small && u.base != TATWEEL || u.smallAt < 0) u.start else if (u.base == TATWEEL) u.start else u.smallAt
                     val next = word.drop(k + 1).firstOrNull { !it.unsounded }
                     // "ya" and "ha" joined to the word they call to are still words of their own.
                     val calling = k == 1 && u.base == TATWEEL && (word[0].base == 'ي' || word[0].base == 'ه') && word[0].vowel == FATHA
                     when {
                         named -> put(w, from, u.end, Rule.MADD_LAZIM)
-                        next == null -> if (!stop) put(w, from, u.end, Rule.MADD_ALLOWED)
-                        next.hamza -> put(w, from, u.end, if (calling) Rule.MADD_ALLOWED else Rule.MADD_REQUIRED)
+                        // The pronoun's long "hu" or "hi" is written as a small w or y on its h.
+                        next == null -> if (!stop) put(w, from, u.end, if (small && u.base == 'ه') Rule.MADD_SILAH_KUBRA else Rule.MADD_MUNFASIL)
+                        next.hamza -> put(w, from, u.end, if (calling) Rule.MADD_MUNFASIL else Rule.MADD_MUTTASIL)
                         else -> put(w, from, u.end, Rule.MADD_LAZIM)
                     }
                 }
@@ -215,7 +347,7 @@ object Tajweed {
                     if (next != null && rule != null) {
                         val to = if (u.tanweenAt + 1 < u.end && u.text[u.tanweenAt + 1] in SMALL_MEEMS) u.tanweenAt + 2 else u.tanweenAt + 1
                         put(w, u.tanweenAt, to, rule)
-                        if (rule == Rule.IDGHAM_GHUNNAH && !next.second && (next.first.base == 'ي' || next.first.base == 'و')) put(w + 1, next.first, rule)
+                        if (rule == Rule.IDGHAM_GHUNNAH && !next.second && (next.first.base == 'ي' || next.first.base == 'و')) putLetter(w + 1, next.first, rule)
                     }
                 } else if (u.bare && u.base in CONSONANTS) {
                     val next = after(w, k)
@@ -224,18 +356,27 @@ object Tajweed {
                         when (u.base) {
                             'ن' -> ofN(into, same)?.let { rule ->
                                 put(w, u, rule)
-                                if (rule == Rule.IDGHAM_GHUNNAH && !same && (into.base == 'ي' || into.base == 'و')) put(w + 1, into, rule)
+                                if (rule == Rule.IDGHAM_GHUNNAH && !same && (into.base == 'ي' || into.base == 'و')) putLetter(w + 1, into, rule)
                             }
                             'م' -> when (into.base) {
-                                'ب' -> put(w, u, Rule.IKHFA)
-                                'م' -> put(w, u, Rule.IDGHAM_GHUNNAH)
+                                'ب' -> put(w, u, Rule.IKHFA_SHAFAWI)
+                                'م' -> put(w, u, Rule.IDGHAM_SHAFAWI)
                             }
                             // Any other bare letter is merged whole into the doubled letter after it: the l of
                             // "al-" before a sun letter, "qad tabayyana". Not in the name of Allah, whose two
                             // l's are written and read as the name's own.
-                            else -> {
-                                val name = u.base == 'ل' && into.base == 'ل' && same && word.getOrNull(k + 2)?.base == 'ه'
-                                if (into.shadda && !name) put(w, u, Rule.SILENT)
+                            else -> if (into.shadda && !(same && name == k + 1)) {
+                                val pair = setOf(u.base, into.base)
+                                put(
+                                    w, u,
+                                    when {
+                                        u.base == 'ل' && same -> Rule.LAM_SHAMSIYYAH
+                                        u.base == into.base -> Rule.IDGHAM_MUTAMATHILAYN
+                                        SAME_PLACE.any { it.containsAll(pair) } -> Rule.IDGHAM_MUTAJANISAYN
+                                        CLOSE_BY.any { it.containsAll(pair) } -> Rule.IDGHAM_MUTAQARIBAYN
+                                        else -> Rule.SILENT
+                                    },
+                                )
                             }
                         }
                     }
@@ -244,13 +385,23 @@ object Tajweed {
                 // ---- a doubled n or m. At the start of a word it is doubled only by the word before running into it.
                 if ((u.base == 'ن' || u.base == 'م') && u.shadda) {
                     val first = word.take(k).all { it.base == WASLA }
-                    if (!(first && opens)) put(w, u, Rule.GHUNNAH)
+                    if (!(first && opens)) putLetter(w, u, Rule.GHUNNAH)
                 }
 
                 // ---- the echo: on a stopped q, t, b, j or d, and on one the reciter stops on
-                if (u.base in ECHOING) {
-                    val stoppedOn = stop && k == last && u.tanweenAt.let { it < 0 || u.text[it] != FATHATAN }
-                    if (u.sukun || stoppedOn) put(w, u, Rule.QALQALAH)
+                val stoppedOn = stop && k == last && u.tanweenAt.let { it < 0 || u.text[it] != FATHATAN }
+                if (u.base in ECHOING && (u.sukun || stoppedOn)) put(w, u, Rule.QALQALAH)
+
+                // ---- the heavy r, and the heavy l of the name of Allah
+                if (u.base == 'ر' && (named || heavyR(word, k, stoppedOn))) putLetter(w, u, Rule.TAFKHIM_RA)
+                if (k == name) {
+                    val own = word[k - 1].vowel ?: word.take(k - 1).lastOrNull { it.vowel != null }?.vowel
+                    val heavy = when {
+                        own != null -> own != KASRA
+                        opens -> true
+                        else -> !endsOnAnI(w - 1)
+                    }
+                    if (heavy) putLetter(w, u, Rule.TAFKHIM_LAM)
                 }
             }
 
@@ -260,17 +411,43 @@ object Tajweed {
                 val before = word[last - 1]
                 val vowelBefore = word.getOrNull(last - 2)?.vowel
                 val endsOnALetter = (end.base in CONSONANTS || end.hamza) && !(end.tanweenAt >= 0 && end.text[end.tanweenAt] == FATHATAN)
+                val soft = before.sukun && vowelBefore == FATHA && (before.base == 'و' || before.base == 'ي' || before.base == 'ى')
                 val long = when {
                     before.base == ALIF -> before.bare && vowelBefore == FATHA
-                    before.base == 'و' -> (before.bare && vowelBefore == DAMMA) || (before.sukun && vowelBefore == FATHA)
-                    before.base == 'ي' || before.base == 'ى' -> (before.bare && vowelBefore == KASRA) || (before.sukun && vowelBefore == FATHA)
+                    before.base == 'و' -> before.bare && vowelBefore == DAMMA
+                    before.base == 'ي' || before.base == 'ى' -> before.bare && vowelBefore == KASRA
                     else -> false
                 }
                 when {
                     !endsOnALetter -> {}
-                    long || (before.base == TATWEEL && before.has(DAGGER_ALIF)) -> put(w, before, Rule.MADD_ALLOWED)
+                    soft -> put(w, before, Rule.MADD_LIN)
+                    long || (before.base == TATWEEL && before.smallAt >= 0) -> put(w, before, Rule.MADD_ARID)
                     // A long a written as a small alif on the letter itself.
-                    before.has(DAGGER_ALIF) -> put(w, before.at(DAGGER_ALIF), before.end, Rule.MADD_ALLOWED)
+                    before.smallAt >= 0 && before.text[before.smallAt] == DAGGER_ALIF -> put(w, before.smallAt, before.end, Rule.MADD_ARID)
+                }
+            }
+
+            // ---- stopping on "-an": it is said as a long a, on the alif it is written with
+            if (stop && last >= 0) {
+                val end = word[last]
+                if (end.tanweenAt >= 0 && end.text[end.tanweenAt] == FATHATAN && end.base != 'ة') {
+                    val seat = word.drop(last + 1).lastOrNull { it.bare && (it.base == ALIF || it.base == 'ى') }
+                    put(w, end.tanweenAt, seat?.end ?: end.end, Rule.MADD_IWAD)
+                }
+            }
+
+            // ---- ordinary long vowels written with a small letter, where nothing above has claimed them
+            for ((k, u) in word.withIndex()) {
+                if (u.drawnOut || named) continue
+                if (u.smallAt < 0) continue
+                if (u.text[u.smallAt] != DAGGER_ALIF && u.base != TATWEEL) {
+                    // The pronoun's "hu" and "hi" are long only when run on.
+                    val pronoun = u.base == 'ه' && k == last
+                    if (!(pronoun && stop)) put(w, u.smallAt, u.end, if (pronoun) Rule.MADD_SILAH_SUGHRA else Rule.MADD_TABII)
+                } else {
+                    // The small letter with the stroke or the silent letter it is written on, or alone on a sounded letter.
+                    val seat = u.base == TATWEEL || (u.vowel == null && (u.base == 'و' || u.base == 'ى' || u.base == 'ي'))
+                    put(w, if (seat) u.start else u.smallAt, if (seat) u.end else u.smallAt + 1, Rule.MADD_TABII)
                 }
             }
         }

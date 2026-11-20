@@ -67,8 +67,10 @@ class Aligner(
     }
 
     /** The row each sound starts at, or -1 for a sound that was left out. Null if the sounds can't fit. */
-    fun align(): IntArray? {
-        val path = path() ?: return null
+    fun align(): IntArray? = path()?.let(::starts)
+
+    /** The row each sound starts at along [path]. */
+    internal fun starts(path: IntArray): IntArray {
         val starts = IntArray(count) { -1 }
         for (t in 0 until frames) {
             val s = path[t]

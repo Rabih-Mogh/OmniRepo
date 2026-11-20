@@ -66,7 +66,16 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.rememberDrawerState
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -153,7 +162,7 @@ import app.recitation.data.Word
  * whole surah, [sizes] being how many each verse has; while the recording is still being
  * listened to, only the first of them have a time yet.
  */
-private class WordIndex(timings: Timings, sizes: List<Int>) {
+internal class WordIndex(timings: Timings, sizes: List<Int>) {
     val starts: IntArray = timings.verses.flatMap { verse -> verse.map { it.startMs } }.toIntArray()
     val firstOfVerse: IntArray
     private val verseOf: IntArray
@@ -169,21 +178,44 @@ private class WordIndex(timings: Timings, sizes: List<Int>) {
         verseOf = of.toIntArray()
     }
 
+    // Every time a word is said, in the order they are said: each word once, and once more
+    // for every passage the reciter went back over.
+    private val saidAt: IntArray
+    private val saidWord: IntArray
+    private val saidTiming: List<WordTiming>
+
+    init {
+        val said = ArrayList<Triple<Int, Int, WordTiming>>()
+        timings.verses.flatten().forEachIndexed { word, timing -> said += Triple(timing.startMs, word, timing) }
+        for (repeat in timings.repeats) repeat.words.forEachIndexed { i, timing -> said += Triple(timing.startMs, repeat.first + i, timing) }
+        said.sortBy { it.first }
+        saidAt = IntArray(said.size) { said[it].first }
+        saidWord = IntArray(said.size) { said[it].second }
+        saidTiming = said.map { it.third }
+    }
+
     // While the recording is still being listened to, words are placed only this far.
     private val placedUntil = if (timings.complete) Int.MAX_VALUE else timings.heardMs
 
-    /** The last word that has started by [ms]; -1 before the first, or past where words have been placed. */
-    fun at(ms: Int): Int {
+    /** Which saying of a word is under way at [ms]: the last to have started; -1 before the first, or past where words have been placed. */
+    fun said(ms: Int): Int {
         if (ms > placedUntil) return -1
         var lo = 0
-        var hi = starts.size - 1
+        var hi = saidAt.size - 1
         var found = -1
         while (lo <= hi) {
             val mid = (lo + hi) / 2
-            if (starts[mid] <= ms) { found = mid; lo = mid + 1 } else hi = mid - 1
+            if (saidAt[mid] <= ms) { found = mid; lo = mid + 1 } else hi = mid - 1
         }
         return found
     }
+
+    /** The word being said at [ms]; -1 as for [said]. */
+    fun at(ms: Int): Int = saidWord.getOrElse(said(ms)) { -1 }
+
+    /** The timing of that saying of the word, and when the next thing is said. */
+    fun timing(said: Int): WordTiming? = saidTiming.getOrNull(said)
+    fun ends(said: Int): Int = saidAt.getOrElse(said + 1) { Int.MAX_VALUE }
 
     fun verse(word: Int): Int = verseOf.getOrElse(word) { -1 }
 
@@ -233,6 +265,8 @@ fun ReaderContent(
     // With no recording there are no timings: the words are simply shown, and nothing is lit.
     val index = remember(reading) { reading.timings?.let { WordIndex(it, reading.verses.map { verse -> verse.words.size }) } }
     val current by remember(index) { derivedStateOf { index?.at(position()) ?: -1 } }
+    // A passage said again has timings of its own: which saying of the word this is.
+    val said by remember(index) { derivedStateOf { index?.said(position()) ?: -1 } }
     val currentVerse = index?.verse(current) ?: -1
     val above = 1 // the surah's title page comes before the first verse in the list
     // Opened at a verse (from a pin or a collection): that verse is at the top of the page.
@@ -336,60 +370,91 @@ fun ReaderContent(
         follow = true
     }
 
-    Scaffold(
-        topBar = {
-            Banner {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
-                    val onBanner = LocalBanner.current.content
-                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                        SurahTitle(surah, 24.sp, onBanner, Modifier.testTag("surah-title"), withWord = true)
-                        Text(
-                            if (arabic) verses else stringResource(R.string.name_and_verses, surah.latin, verses),
-                            style = MaterialTheme.typography.bodySmall, color = LocalBanner.current.quiet,
+    // The menu slides in from the side its button is on, and Back closes it. A drawer comes in
+    // from where the reading starts, so it is handed the page the other way round, and what is
+    // in it and under it is put back the right way.
+    val menu = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    BackHandler(enabled = menu.isOpen) { scope.launch { menu.close() } }
+    val direction = LocalLayoutDirection.current
+    CompositionLocalProvider(LocalLayoutDirection provides if (direction == LayoutDirection.Ltr) LayoutDirection.Rtl else LayoutDirection.Ltr) {
+        ModalNavigationDrawer(
+            drawerState = menu,
+            // Only the button opens it: a swipe from the edge is the phone's own Back.
+            gesturesEnabled = menu.isOpen,
+            drawerContent = {
+                ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.surface) {
+                    CompositionLocalProvider(LocalLayoutDirection provides direction) {
+                        Column(Modifier.fillMaxHeight().verticalScroll(rememberScrollState()).padding(vertical = 16.dp).testTag("reader-menu")) {
+                            Text(
+                                stringResource(R.string.menu), Modifier.padding(horizontal = 24.dp),
+                                style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary,
+                            )
+                            HorizontalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                            ReadingChoices(showMeanings, onMeanings, textScale, onTextScale, script, onScript, withIndoPak = indopak != null, appearance, onAppearance, tajweed, onTajweed)
+                        }
+                    }
+                }
+            },
+        ) {
+            CompositionLocalProvider(LocalLayoutDirection provides direction) {
+            Scaffold(
+                topBar = {
+                    Banner {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
+                            val onBanner = LocalBanner.current.content
+                            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                                SurahTitle(surah, 24.sp, onBanner, Modifier.testTag("surah-title"), withWord = true)
+                                Text(
+                                    if (arabic) verses else stringResource(R.string.name_and_verses, surah.latin, verses),
+                                    style = MaterialTheme.typography.bodySmall, color = LocalBanner.current.quiet,
+                                )
+                            }
+                            // One button at each end, so the title between them is in the middle of the bar.
+                            IconButton(onClick = { scope.launch { menu.open() } }) { Icon(AppIcons.Menu, stringResource(R.string.menu)) }
+                        }
+                    }
+                },
+                bottomBar = {
+                    Column {
+                        suggestion()
+                        if (index == null) {
+                            withoutRecitation()
+                        } else PlayerBar(
+                            // Still being listened to: say how far the words can light up.
+                            placedUntil = reading.timings?.takeIf { !it.complete }?.heardMs, listening = listening,
+                            range = range, verses = reading.verses.size, onRange = onRange,
+                            playing = playing, position = position, duration = duration, onPlayPause = onPlayPause,
+                            onSeek = { onSeek(it); follow = true },
+                            onPrevious = {
+                                // Back to the start of this verse, or to the one before if it has only just begun.
+                                val start = index.startOfVerse(currentVerse) ?: 0
+                                seekToVerse(if (position() - start > 2_000) currentVerse else currentVerse - 1)
+                            },
+                            onNext = { seekToVerse(currentVerse + 1) },
                         )
                     }
-                    // One button at each end, so the title between them is in the middle of the bar.
-                    ReaderMenuButton(showMeanings, onMeanings, textScale, onTextScale, script, onScript, withIndoPak = indopak != null, appearance, onAppearance, tajweed, onTajweed)
+                },
+                floatingActionButton = {
+                    if (!follow && index != null) FollowButton(up = recitedAbove, onClick = { follow = true })
+                },
+            ) { padding ->
+                Column(Modifier.fillMaxSize().padding(padding)) {
+                    if (reading.timings?.matches == false) {
+                        Text(
+                            stringResource(R.string.mismatch, surahName(surah)),
+                            Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.errorContainer).padding(12.dp),
+                            color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                    Verses(reading, index, list, current, currentVerse, index?.timing(said), index?.ends(said) ?: Int.MAX_VALUE, position, showMeanings, textScale, hand, tajweed, marks, onMark, place, { fade.value }, translated, { translated = it; taps++ }) { ms ->
+                        onSeek(ms)
+                        follow = true
+                    }
                 }
             }
-        },
-        bottomBar = {
-            Column {
-                suggestion()
-                if (index == null) {
-                    withoutRecitation()
-                } else PlayerBar(
-                    // Still being listened to: say how far the words can light up.
-                    placedUntil = reading.timings?.takeIf { !it.complete }?.heardMs, listening = listening,
-                    range = range, verses = reading.verses.size, onRange = onRange,
-                    playing = playing, position = position, duration = duration, onPlayPause = onPlayPause,
-                    onSeek = { onSeek(it); follow = true },
-                    onPrevious = {
-                        // Back to the start of this verse, or to the one before if it has only just begun.
-                        val start = index.startOfVerse(currentVerse) ?: 0
-                        seekToVerse(if (position() - start > 2_000) currentVerse else currentVerse - 1)
-                    },
-                    onNext = { seekToVerse(currentVerse + 1) },
-                )
-            }
-        },
-        floatingActionButton = {
-            if (!follow && index != null) FollowButton(up = recitedAbove, onClick = { follow = true })
-        },
-    ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
-            if (reading.timings?.matches == false) {
-                Text(
-                    stringResource(R.string.mismatch, surahName(surah)),
-                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.errorContainer).padding(12.dp),
-                    color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-            Verses(reading, index, list, current, currentVerse, position, showMeanings, textScale, hand, tajweed, marks, onMark, place, { fade.value }, translated, { translated = it; taps++ }) { ms ->
-                onSeek(ms)
-                follow = true
             }
         }
     }
@@ -501,6 +566,8 @@ private fun Verses(
     list: androidx.compose.foundation.lazy.LazyListState,
     current: Int,
     currentVerse: Int,
+    now: WordTiming?,
+    nowEnds: Int,
     position: () -> Int,
     showMeanings: Boolean,
     textScale: Float,
@@ -535,6 +602,8 @@ private fun Verses(
                     timings = reading.timings?.verses?.getOrElse(v) { emptyList() }.orEmpty(),
                     // The word of this verse being recited; -1 when the recitation is elsewhere.
                     current = if (currentVerse == v) current - first else -1,
+                    now = if (currentVerse == v) now else null,
+                    nowEnds = nowEnds,
                     position = position,
                     showMeanings = showMeanings,
                     textScale = textScale,
@@ -565,6 +634,8 @@ private fun VerseBlock(
     verse: Verse,
     timings: List<WordTiming>,
     current: Int,
+    now: WordTiming?,
+    nowEnds: Int,
     position: () -> Int,
     showMeanings: Boolean,
     textScale: Float,
@@ -622,7 +693,8 @@ private fun VerseBlock(
                 verse.words.forEachIndexed { w, word ->
                     WordTile(
                         word = word,
-                        timing = timings.getOrNull(w),
+                        // The word being recited goes by this saying of it, which may be a second one.
+                        timing = if (w == current && now != null) now else timings.getOrNull(w),
                         state = when {
                             current < 0 -> WordState.RESTING
                             w < current -> WordState.RECITED
@@ -631,7 +703,7 @@ private fun VerseBlock(
                         },
                         position = position,
                         // The word's last sound runs until the next word begins.
-                        endMs = timings.getOrNull(w + 1)?.startMs ?: Int.MAX_VALUE,
+                        endMs = if (w == current && now != null) nowEnds else timings.getOrNull(w + 1)?.startMs ?: Int.MAX_VALUE,
                         showMeaning = showMeanings,
                         textScale = textScale,
                         hand = hand,
@@ -759,7 +831,10 @@ private fun DrawScope.pool(family: Family?, color: Color, center: Offset, uttere
             val hum = sin(uttered.sinceMs / 1000f * 2f * PI.toFloat() * 1.7f) * 0.5f + 0.5f
             spot(color.copy(alpha = (0.2f + 0.22f * hum) * lit), center, radius * (0.9f + 0.2f * hum), flatten = 0.95f)
         }
-        Family.MADD_MUST, Family.MADD_MAY -> spot(color.copy(alpha = 0.3f * lit), center, radius, flatten = 0.95f, widen = 1f + 1.6f * uttered.fraction)
+        Family.MADD_LAZIM, Family.MADD_WAJIB, Family.MADD_JAIZ, Family.MADD_TABII ->
+            spot(color.copy(alpha = 0.3f * lit), center, radius, flatten = 0.95f, widen = 1f + 1.6f * uttered.fraction)
+        // A full-mouthed letter: a fuller, rounder light.
+        Family.HEAVY -> spot(color.copy(alpha = 0.34f * lit), center, radius * 1.25f, flatten = 1.1f)
         Family.ECHO -> {
             spot(color.copy(alpha = 0.26f * lit), center, radius, flatten = 0.95f)
             val out = (uttered.fraction - 0.5f) / 0.5f
@@ -894,7 +969,7 @@ private fun WordTile(
                 val from = shown(uttered.from)
                 val to = shown(uttered.to)
                 // A stretch that is only signs: the vowel of the letter just uttered.
-                val signs = repaint != null && to > from && (from until to).all { written[it].isMark() }
+                val signs = repaint != null && repaint.signsApart && to > from && (from until to).all { written[it].isMark() }
                 // The rule the stretch falls under gives the light its colour and its motion.
                 val family = coloured.firstOrNull { it.from < uttered.to && uttered.from < it.to }?.rule?.family
                 val glow = family?.let(tajweed::light) ?: gold
@@ -1138,34 +1213,6 @@ private fun TitlePage(surah: Surah, minHeight: Dp, basmalaSize: TextUnit) {
 
 /** The sizes the verses can be drawn at, as multiples of the usual size. */
 val TEXT_SCALES = 0.7f..2.0f
-
-/**
- * On a surah's bar: the menu button. Its menu switches between light and dark, shows or
- * hides the words' meanings, makes the verses smaller or larger, and chooses the script
- * they are written in.
- */
-@Composable
-private fun ReaderMenuButton(
-    meanings: Boolean,
-    onMeanings: (Boolean) -> Unit,
-    scale: Float,
-    onScale: (Float) -> Unit,
-    script: Script,
-    onScript: (Script) -> Unit,
-    withIndoPak: Boolean,
-    appearance: Appearance,
-    onAppearance: (Appearance) -> Unit,
-    tajweed: Boolean,
-    onTajweed: (Boolean) -> Unit,
-) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { open = true }) { Icon(AppIcons.Menu, stringResource(R.string.menu)) }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            ReadingChoices(meanings, onMeanings, scale, onScale, script, onScript, withIndoPak, appearance, onAppearance, tajweed, onTajweed)
-        }
-    }
-}
 
 /** The font a script is drawn in, and how large, so that the scripts come out about the same size on the page. */
 private class Hand(val script: Script, val font: FontFamily, val size: TextUnit, val line: TextUnit)

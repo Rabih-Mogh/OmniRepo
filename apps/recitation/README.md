@@ -112,8 +112,9 @@ phone and nowhere else.
      the three buttons and nothing else. Its buttons, and the round one that takes up
      following the recitation again, carry icons only.
    - A surah's bar has the way back at one end, the surah's name in the middle, and a
-     **menu** button at the other. The menu switches between light and dark, shows or
-     hides the meaning under each word,
+     **menu** button at the other. The menu is a panel that slides in from the side its
+     button is on (the right in English, the left in Arabic), like the first screen's. It
+     switches between light and dark, shows or hides the meaning under each word,
      makes the verses, meanings and translation smaller or larger (70% to 200%), and
      chooses the script the verses are written in (see [Scripts](#scripts)). All of
      these are remembered, and are in the first screen's menu too.
@@ -132,23 +133,43 @@ phone and nowhere else.
 
 The letters are coloured by the rule of recitation they fall under, and the light that
 follows the recitation takes the rule's colour and moves as the rule sounds. **Tajweed
-colours** in either menu turns the colours on or off and says what each means.
+colours** in either menu turns the colours on or off and names each colour's family in
+Arabic; **All the rules** under it opens a page that sets out every rule: its Arabic
+name (with the same in Latin letters where the app is in English), what it is, and words
+from the Quran that show it.
 
-| Colour | Rules | The light, while it is recited |
-|---|---|---|
-| Green | Sound held through the nose: a doubled n or m (ghunnah), an n or tanween hidden (ikhfa), turned into m before b (iqlab) or merged into y, n, m, w (idgham), and an m before b or m | Hums: it swells and fades for as long as the sound is held |
-| Red | A long vowel that must be drawn out, 4 to 6 counts: before a hamza in the same word (muttasil), before a doubled or stopped letter (lazim), the letters some surahs open with | Spreads sideways for as long as the vowel is held |
-| Purple | A long vowel that may be drawn out: before a hamza opening the next word (munfasil), and before the last letter of a word the reciter stops on ('arid, lin) | The same |
-| Blue | The echo (qalqalah) on a stopped q, t, b, j or d | Lets a ring go as the letter ends |
-| Grey | Written but not sounded: a letter merged whole into the next (the l of "al-" before a sun letter, an n before l or r), a joining alif that is run into, a silent alif | A grey touch and no pool of light |
+Eight colours, as in the mushafs printed with the rules in colour:
 
-A letter under no rule is lit in gold, as before. Heavy and light letters (tafkhim and
-tarqiq) are not marked.
+| Colour | Family | Rules | The light, while it is recited |
+|---|---|---|---|
+| Green | الغُنَّة, 2 counts | النون والميم المشدَّدتان, الإخفاء الحقيقي, الإخفاء الشفوي, الإقلاب, الإدغام بغُنَّة, الإدغام الشفوي | Hums: it swells and fades for as long as the sound is held |
+| Deep red | المدّ اللازم, 6 counts | A long vowel before a doubled or stopped letter; the letters some surahs open with | Spreads sideways for as long as the vowel is held |
+| Orange-red | المدّ الواجب, 4 or 5 counts | المدّ الواجب المتّصل | The same |
+| Purple | المدّ الجائز, 2, 4 or 6 counts | المدّ الجائز المنفصل, مدّ الصِّلة الكبرى, المدّ العارض للسكون, مدّ اللِّين | The same |
+| Brown | المدّ الطبيعي, 2 counts | المدّ الطبيعي where it is written with a small letter, مدّ الصِّلة الصغرى, مدّ العِوَض | The same |
+| Light blue | القلقلة | The echo on a stopped ق ط ب ج د | Lets a ring go as the letter ends |
+| Dark blue | التفخيم | تفخيم الراء, تفخيم لام لفظ الجلالة | A fuller, rounder light |
+| Grey | الإدغام وما لا يُلفَظ | الإدغام بغير غُنَّة, إدغام المتماثلَين, المتجانسَين and المتقاربَين, اللام الشمسية, همزة الوصل, ما لا يُلفَظ | A grey touch and no pool of light |
 
-- **Where the rules come from.** `core/Tajweed.kt` reads them off the Uthmani script,
-  which writes them into its signs: an n with no sukun is merged or hidden, a wavy line
-  over a long vowel means it is drawn out, and which letter follows decides the rest. It
-  follows the reading of Hafs from 'Asim as the Madinah mushaf writes it.
+A letter under no rule is lit in gold, as before. Letters read plainly (الإظهار), a light
+r, and ordinary long vowels written as full letters keep the text's colour. Not marked:
+the heavy letters that are always heavy (خ ص ض غ ط ق ظ), and the few one-off readings
+(saktah, imalah, ishmam, tashil).
+
+- **Where the rules come from.** There is no list of every place a rule applies behind
+  the colours: `core/Tajweed.kt` works them out from the Uthmani script, which writes the
+  rules into its signs: an n with no sukun is merged or hidden, a wavy line over a long
+  vowel means it is drawn out, and which letter follows decides the rest. It follows the
+  reading of Hafs from 'Asim as the Madinah mushaf writes it.
+- **Checked against Quran.com.** Quran.com publishes the same text with the rules tagged
+  (`text_uthmani_tajweed`). On 337 verses (surahs 1, 2:1-30, 3:1-50, 4:1-50, 18:1-50,
+  19:1-30, 36:1-30, 67, 78, 97, 112 to 114; 3,382 tagged places) every tagged place of
+  every kind is found here too. The differences are of naming and extent: Quran.com
+  calls both the muttasil and the munfasil "obligatory"; it greys the silent و of
+  "الصلوٰة" where the long a is coloured here; it tags the l of the name of Allah as a sun
+  letter. Coloured here and not tagged there: the heavy r and l, مدّ العِوَض, the letter
+  an n is merged into, a doubled m or n that opens a word, and rules that depend on a
+  stop inside a verse.
 - **Stopping and running on.** Several rules depend on whether the reciter stops after a
   word: an n at a word's end merges into the next word only if he runs on; the long vowel
   before a word's last letter is drawn out, and a final q, t, b, j or d echoes, only if he
@@ -166,11 +187,25 @@ tarqiq) are not marked.
   lit by itself, with a small light of its own, while the letter stays half lit under
   it. Recordings prepared from this version on time the letter and its vowel apart; for
   ones prepared earlier the time they shared is split between them.
+- **The heavy r.** An r is heavy with a fatha or damma and light with a kasra. Without a
+  vowel, or stopped on, it follows what comes before it: heavy after a, u, a long a or a
+  long u, and after a joining alif ("irji'u"); light after an i or a y, unless a raised
+  letter follows it in the word ("qirtas"). After a vowelless letter it follows the vowel
+  before that one. The l of the name of Allah is heavy after a or u and light after i,
+  looking back into the word before when the name opens a word.
 - **How it is painted.** Letters and signs are painted over the word in colour without
-  the word being laid out again (`ui/WordPaint.kt`), so nothing shifts. This needs the
-  shown spelling to have the Uthmani spelling's letters, which the two Uthmani scripts
-  do. In the IndoPak and everyday spellings, words spelt with other letters show no
-  colours, and the light falls on the letter's width as it did before.
+  the word being laid out again (`ui/WordPaint.kt`), so nothing shifts. A letter's shape
+  depends on the whole word (a kaf before a lam, a ya after a fa, and about half of all
+  words have some such letter), so the word is shaped once, whole, and the very glyphs
+  that came out are painted again one by one. Asking Android to draw a few characters of
+  a word gets them in their plain joined form instead, which showed as a second letter on
+  top of the first; that is how it was done before version 1.45. Android gives a word's
+  glyphs out from version 12. On Android 8 to 11 the whole word is painted across the
+  room the wanted letters take in it, which is exact for letters but can't tell a sign
+  from its letter: there a sign has no colour or light of its own.
+  Painting needs the shown spelling to have the Uthmani spelling's letters, which the two
+  Uthmani scripts do. In the IndoPak and everyday spellings, words spelt with other
+  letters show no colours, and the light falls on the letter's width as it did before.
 
 ### Pins and collections
 
@@ -226,6 +261,36 @@ fetched again, quietly, the next time the app is open with a connection.
 - **Wrong surah:** the alignment also says how much of the surah the model heard clearly.
   When that is low (the wrong surah was chosen, or the recording stops half way), the app
   says so instead of lighting words up at random.
+
+### A passage the reciter says again
+
+A reciter who runs out of breath, or wants a passage heard again, goes back some words and
+carries on from there. The placing above puts every sound of the surah once, in order, so
+it had nowhere to put the second time through: the words stood still, or ran ahead, for as
+long as the passage lasted.
+
+Once the whole recording has been placed, `core/Repeats.kt` goes through it again a stretch
+at a time, between places where a long run of sounds was each heard clearly where it was
+put. Each stretch is placed afresh, this time letting the reciter go back from the end of
+any word to the start of that word or an earlier one (up to 60 words). Going back costs
+enough that it is only chosen where it explains a good deal, and a passage said again is
+kept only if it has at least six sounds and three in five of them were heard clearly. The
+timings file then holds every word once, plus each passage said again with its own
+timings, and the light passes over those words a second time. Tapping a word, or a verse
+button, still goes to where it was first said.
+
+Tried on what the model heard of four real recordings: it found the passages their
+reciters really did say again (78:38 and 78:40 in one, 67:28 in another), which are the
+same ones the published word-by-word timings of those recordings show, and none in the
+recording that has none. With a passage spliced in a second time at five places in each,
+all five were found in two clear recordings and three exactly in the third (the other two
+began a word late). On a muffled recording (clarity 0.74) the spliced ones were mostly
+missed: there the words stand still as before.
+
+It runs when a recording has been heard to the end, not while it is still being listened
+to. Recordings prepared before version 1.45 don't have it: **Listen again**, in a
+recording's menu, has the phone hear it once more (the sound is kept, so nothing is
+downloaded) and places its words afresh.
 
 ### The speech model
 

@@ -19,7 +19,6 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import app.recitation.MainActivity
 import app.recitation.R
-import app.recitation.core.Aligner
 import app.recitation.core.Hearing
 import app.recitation.core.LiveAlignment
 import app.recitation.core.Recital
@@ -232,9 +231,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
 
         // Now that all of it has been heard, every word is placed again against the whole recording.
         report(Step.ALIGN, 0f)
-        val aligner = Aligner(heard.rows, recital.phones)
-        val starts = aligner.align() ?: throw TooShort()
-        val timings = recital.timings(starts, heard.frames, aligner)
+        val timings = recital.place(heard.rows, heard.frames) ?: throw TooShort()
         timingsFile.writeText(timings.encode())
         _live.value = Live(id, track.surah, timings)
         if (timings.matches) {

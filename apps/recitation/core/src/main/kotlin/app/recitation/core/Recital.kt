@@ -46,6 +46,49 @@ class Recital(surah: Int, verses: List<List<String>>) {
     }
 
     /**
+     * Places every word against the whole of what the model heard: [rows], and the model
+     * frame each came from. Passages the reciter said twice are found too (see [Repeats]).
+     * Null if the recording is too short to hold the surah.
+     */
+    fun place(rows: FloatArray, frameOfRow: IntArray): Timings? {
+        val aligner = Aligner(rows, phones)
+        val path = aligner.path() ?: return null
+        val starts = aligner.starts(path)
+        // Words numbered in order, the opening formulas included, for telling where one ends.
+        val ordinal = IntArray(wordOf.size)
+        for (i in 1 until wordOf.size) ordinal[i] = ordinal[i - 1] + if (wordOf[i] != wordOf[i - 1]) 1 else 0
+        val repeats = Repeats.find(phones, ordinal, rows, path, starts).mapNotNull { pass -> repeat(pass, frameOfRow) }
+        val once = build(starts, frameOfRow, aligner, phones.size, Timings.COMPLETE)
+        return Timings(once.verses, once.clarity, once.heardMs, repeats)
+    }
+
+    /** The words of one more pass over a passage, from the row each of its sounds began at. */
+    private fun repeat(pass: List<Pair<Int, Int>>, frameOfRow: IntArray): Repeat? {
+        val words = ArrayList<WordTiming>()
+        var first = -1
+        var i = 0
+        while (i < pass.size) {
+            val word = wordOf[pass[i].first]
+            var end = i
+            while (end < pass.size && wordOf[pass[end].first] == word) end++
+            // The opening formulas have no words on the page.
+            if (word >= 0) {
+                if (first < 0) first = word
+                val reached = ArrayList<Int>()
+                for ((sound, row) in pass.subList(i, end)) {
+                    if (reached.isEmpty() || phones[sound].upTo > reached[reached.size - 2]) {
+                        reached += phones[sound].upTo
+                        reached += maxOf(0, frameOfRow[row] * SoundColumns.FRAME_MS - LEAD_MS)
+                    }
+                }
+                words += WordTiming(reached[1], reached.toIntArray())
+            }
+            i = end
+        }
+        return if (words.isEmpty()) null else Repeat(first, words)
+    }
+
+    /**
      * When each word starts, from an alignment: [starts] is [Aligner.align]'s answer and
      * [frameOfRow] the model frame each kept row came from.
      */
@@ -196,9 +239,10 @@ data class Uttered(val from: Int, val to: Int, val fraction: Float, val before: 
  * being listened to, of the words placed so far ([heardMs] says how far that is).
  * [clarity]: the share of sounds the model heard clearly where the alignment put them. A
  * good match scores about 0.9 and a muffled old recording about 0.7; the wrong surah, or a
- * recording that stops half way, scores under 0.6.
+ * recording that stops half way, scores under 0.6. [repeats]: passages the reciter said
+ * once more, each with its own timings; [verses] has every word once.
  */
-class Timings(val verses: List<List<WordTiming>>, val clarity: Float, val heardMs: Int = COMPLETE) {
+class Timings(val verses: List<List<WordTiming>>, val clarity: Float, val heardMs: Int = COMPLETE, val repeats: List<Repeat> = emptyList()) {
 
     /** False while the recording is still being listened to: [verses] then stops at the last word placed. */
     val complete: Boolean get() = heardMs == COMPLETE
@@ -218,12 +262,18 @@ class Timings(val verses: List<List<WordTiming>>, val clarity: Float, val heardM
 
     /**
      * One line for the clarity and how far the listening has got (-1 once it is done), then
-     * one per verse: words apart by spaces, numbers by commas.
+     * one per verse: words apart by spaces, numbers by commas. Then one line for each
+     * passage said again: "R", the number of its first word, and its words the same way.
      */
     fun encode(): String = buildString {
         append(clarity).append(' ').append(heardMs).append('\n')
         for (verse in verses) {
             verse.joinTo(this, " ") { w -> (listOf(w.startMs) + w.letters.toList()).joinToString(",") }
+            append('\n')
+        }
+        for (repeat in repeats) {
+            append("R ").append(repeat.first).append(' ')
+            repeat.words.joinTo(this, " ") { w -> (listOf(w.startMs) + w.letters.toList()).joinToString(",") }
             append('\n')
         }
     }
@@ -236,14 +286,17 @@ class Timings(val verses: List<List<WordTiming>>, val clarity: Float, val heardM
 
         fun decode(text: String): Timings {
             val lines = text.trimEnd('\n').split('\n')
-            val verses = lines.drop(1).map { line ->
-                if (line.isEmpty()) emptyList() else line.split(' ').map { word ->
-                    val numbers = word.split(',').map(String::toInt)
-                    WordTiming(numbers[0], numbers.drop(1).toIntArray())
-                }
+            fun words(line: String) = if (line.isEmpty()) emptyList() else line.split(' ').map { word ->
+                val numbers = word.split(',').map(String::toInt)
+                WordTiming(numbers[0], numbers.drop(1).toIntArray())
+            }
+            val (again, once) = lines.drop(1).partition { it.startsWith("R ") }
+            val repeats = again.map { line ->
+                val rest = line.removePrefix("R ")
+                Repeat(rest.substringBefore(' ').toInt(), words(rest.substringAfter(' ', "")))
             }
             val head = lines[0].split(' ')
-            return Timings(verses, head[0].toFloat(), head.getOrNull(1)?.toInt() ?: COMPLETE)
+            return Timings(once.map(::words), head[0].toFloat(), head.getOrNull(1)?.toInt() ?: COMPLETE, repeats)
         }
     }
 }

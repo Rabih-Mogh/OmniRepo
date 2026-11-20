@@ -87,6 +87,9 @@ import app.recitation.ui.NoRecitationBar
 import app.recitation.ui.NowPlayingBar
 import app.recitation.ui.RangeChooser
 import app.recitation.ui.ReadingChoices
+import app.recitation.ui.named
+import app.recitation.ui.TajweedRulesPage
+import app.recitation.ui.LocalTajweedRules
 import app.recitation.ui.ReaderContent
 import app.recitation.ui.RecitationTheme
 import app.recitation.ui.RecordingsContent
@@ -1203,7 +1206,7 @@ class ScreensTest {
     fun aLongVowelsLightSpreadsAsItIsHeld() {
         val reading = Reading(2, ruled, track, sounded(ruled))
         // 2:5 "ula'ika": the long a before the hamza.
-        show("en-night-tajweed-light-madd") { Ruled(whenUttered(reading, 0, 0, app.recitation.core.Rule.MADD_REQUIRED) + 60, reading = reading) }
+        show("en-night-tajweed-light-madd") { Ruled(whenUttered(reading, 0, 0, app.recitation.core.Rule.MADD_MUTTASIL) + 60, reading = reading) }
     }
 
     @Test
@@ -1217,16 +1220,103 @@ class ScreensTest {
 
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
-    fun theMenuExplainsTheColours() {
+    fun theMenuNamesTheColoursAndLeadsToTheRules() {
         var shown: Boolean? = null
+        var rules = false
         show("en-day-tajweed-legend") {
-            Column(Modifier.padding(24.dp).width(300.dp)) {
-                ReadingChoices(true, {}, 1f, {}, Script.MADINAH, {}, withIndoPak = false, Appearance.AUTO, {}, tajweed = true) { shown = it }
+            CompositionLocalProvider(LocalTajweedRules provides { rules = true }) {
+                Column(Modifier.padding(24.dp).width(300.dp)) {
+                    ReadingChoices(true, {}, 1f, {}, Script.MADINAH, {}, withIndoPak = false, Appearance.AUTO, {}, tajweed = true) { shown = it }
+                }
             }
         }
-        compose.onNodeWithText("Echo (qalqalah)").assertIsDisplayed()
+        // Each colour by the family's Arabic name, with the same in Latin letters.
+        compose.onNodeWithText("القلقلة").assertIsDisplayed()
+        compose.onNodeWithText("Qalqalah").assertIsDisplayed()
+        compose.onNodeWithText("المدّ اللازم").assertIsDisplayed()
+        compose.onNodeWithText("All the rules").performClick()
+        assertTrue(rules)
         compose.onNodeWithText("Tajweed colours").performClick()
         assertTrue(shown == false)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h1600dp-420dpi")
+    fun thePageOfRulesSetsOutEveryRuleByItsArabicName() {
+        var back = false
+        show("en-day-tajweed-rules") { TajweedRulesPage(onBack = { back = true }) }
+        compose.onNodeWithText("The rules of tajweed").assertIsDisplayed()
+        compose.onNodeWithText("الإخفاء الحقيقي").assertIsDisplayed()
+        compose.onNodeWithText("Ikhfa’ haqiqi").assertIsDisplayed()
+        // Every rule the verses can be coloured by has a name, a meaning and an example.
+        for (rule in app.recitation.core.Rule.entries) assertTrue(rule.named().arabic.isNotBlank() && rule.named().example.isNotBlank())
+        compose.onNodeWithContentDescription("Back").performClick()
+        assertTrue(back)
+    }
+
+    @Test
+    @Config(qualifiers = "ar-w411dp-h1600dp-night-420dpi")
+    fun thePageOfRulesInArabic() {
+        show("ar-night-tajweed-rules") { TajweedRulesPage(onBack = {}) }
+        compose.onNodeWithText("أحكام التجويد").assertIsDisplayed()
+        compose.onNodeWithText("الإخفاء الشفوي").assertIsDisplayed()
+        // No Latin names where the app is in Arabic.
+        compose.onNodeWithText("Ikhfa’ haqiqi").assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theSurahsMenuSlidesInFromTheSideItsButtonIsOn() {
+        var meanings: Boolean? = null
+        compose.setContent {
+            RecitationTheme {
+                ReaderContent(
+                    reading = Reading(2, ruled), showMeanings = false, playing = false, position = { 0 }, duration = 0,
+                    onBack = {}, onMeanings = { meanings = it }, onPlayPause = {}, onSeek = {},
+                )
+            }
+        }
+        val button = compose.onNodeWithContentDescription("Menu").fetchSemanticsNode().boundsInRoot
+        val screen = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        assertTrue(button.right > screen.right - 40f)
+        compose.onNodeWithContentDescription("Menu").performClick()
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/en-day-reader-menu.png")
+        // A panel the height of the screen at the right edge, not a small menu under the button.
+        val panel = compose.onNodeWithTag("reader-menu").fetchSemanticsNode().boundsInRoot
+        assertTrue("panel at $panel on $screen", panel.right >= screen.right - 1f && panel.left > screen.width * 0.1f && panel.height > screen.height * 0.8f)
+        compose.onNodeWithText("Word meanings").performClick()
+        assertTrue(meanings == true)
+    }
+
+    @Test
+    @Config(qualifiers = "ar-w411dp-h891dp-night-420dpi")
+    fun inArabicTheSurahsMenuSlidesInFromTheLeft() {
+        compose.setContent {
+            RecitationTheme {
+                ReaderContent(
+                    reading = Reading(2, ruled), showMeanings = false, playing = false, position = { 0 }, duration = 0,
+                    onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("القائمة").performClick()
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/ar-night-reader-menu.png")
+        val panel = compose.onNodeWithTag("reader-menu").fetchSemanticsNode().boundsInRoot
+        val screen = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        assertTrue("panel at $panel on $screen", panel.left <= 1f && panel.right < screen.width * 0.9f)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aPassageSaidAgainIsFollowedASecondTime() {
+        // Each word a second long; after the fourth word of 2:5 the reciter goes back to its second and third.
+        val once = timings(ruled)
+        val again = app.recitation.core.Repeat(1, listOf(WordTiming(3300, intArrayOf(ruled[0].words[1].arabic.length, 3300)), WordTiming(3600, intArrayOf(ruled[0].words[2].arabic.length, 3600))))
+        val reading = Reading(2, ruled, track, Timings(once.verses, once.clarity, repeats = listOf(again)))
+        show("en-day-reader-said-again") { Ruled(3450, reading = reading) }
+        compose.onNodeWithText(ruled[0].words[1].madinah, useUnmergedTree = true).assertIsDisplayed()
     }
 
     private val week = LocalDate.of(2026, 11, 20).let { friday ->

@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -296,28 +297,36 @@ fun ReadingChoices(
     }
 }
 
-/** What each colour of the rules of recitation means: a dot of the colour and the rules it stands for. */
+/**
+ * What each colour of the rules of recitation stands for, by the family's Arabic name, and
+ * the way to the page that sets out every rule.
+ */
 @Composable
 fun TajweedLegend(modifier: Modifier = Modifier) {
     val colours = LocalTajweed.current
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    val arabic = LocalConfiguration.current.locales[0].language == "ar"
+    val rules = LocalTajweedRules.current
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         for (family in Family.entries) {
+            val name = family.named()
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(12.dp).background(colours.ink(family), CircleShape))
                 Spacer(Modifier.width(10.dp))
+                Text(name.arabic, style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.width(8.dp))
                 Text(
-                    stringResource(
-                        when (family) {
-                            Family.NASAL -> R.string.tajweed_nasal
-                            Family.MADD_MUST -> R.string.tajweed_madd_must
-                            Family.MADD_MAY -> R.string.tajweed_madd_may
-                            Family.ECHO -> R.string.tajweed_echo
-                            Family.QUIET -> R.string.tajweed_quiet
-                        },
-                    ),
+                    if (arabic) stringResource(name.note) else name.latin, Modifier.weight(1f),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
+        Row(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = rules).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.tajweed_all_rules), Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack, null,
+                Modifier.size(18.dp).graphicsLayer { rotationY = 180f }, tint = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }

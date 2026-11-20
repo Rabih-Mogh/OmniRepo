@@ -170,24 +170,31 @@ class TajweedColors(private val inks: Map<Family, Color>, private val lights: Ma
     fun light(family: Family): Color = lights.getValue(family)
 }
 
+// Eight families, as in the mushafs printed with the rules in colour: the long vowels run from
+// deep red (longest) through orange-red and purple to brown (shortest); the nasal sounds are
+// green, the echo light blue, the heavy letters dark blue, and what isn't said is grey.
 private val DayTajweed = TajweedColors(
     inks = mapOf(
-        Family.NASAL to Color(0xFF1E8E3E), Family.MADD_MUST to Color(0xFFD32F2F), Family.MADD_MAY to Color(0xFF8E24AA),
-        Family.ECHO to Color(0xFF1565C0), Family.QUIET to Color(0xFF9AA0A6),
+        Family.NASAL to Color(0xFF1E8E3E), Family.MADD_LAZIM to Color(0xFFB71C1C), Family.MADD_WAJIB to Color(0xFFF4511E),
+        Family.MADD_JAIZ to Color(0xFF8E24AA), Family.MADD_TABII to Color(0xFF8D5524), Family.ECHO to Color(0xFF0288D1),
+        Family.HEAVY to Color(0xFF283593), Family.QUIET to Color(0xFF9AA0A6),
     ),
     lights = mapOf(
-        Family.NASAL to Color(0xFF12A150), Family.MADD_MUST to Color(0xFFE53935), Family.MADD_MAY to Color(0xFFAB47BC),
-        Family.ECHO to Color(0xFF1E88E5), Family.QUIET to Color(0xFF80868B),
+        Family.NASAL to Color(0xFF12A150), Family.MADD_LAZIM to Color(0xFFD32F2F), Family.MADD_WAJIB to Color(0xFFFF7043),
+        Family.MADD_JAIZ to Color(0xFFAB47BC), Family.MADD_TABII to Color(0xFFA9682E), Family.ECHO to Color(0xFF039BE5),
+        Family.HEAVY to Color(0xFF3F51B5), Family.QUIET to Color(0xFF80868B),
     ),
 )
 private val NightTajweed = TajweedColors(
     inks = mapOf(
-        Family.NASAL to Color(0xFF66D17A), Family.MADD_MUST to Color(0xFFFF6E6E), Family.MADD_MAY to Color(0xFFCE93D8),
-        Family.ECHO to Color(0xFF64B5F6), Family.QUIET to Color(0xFF777777),
+        Family.NASAL to Color(0xFF66D17A), Family.MADD_LAZIM to Color(0xFFFF6E6E), Family.MADD_WAJIB to Color(0xFFFFA270),
+        Family.MADD_JAIZ to Color(0xFFCE93D8), Family.MADD_TABII to Color(0xFFC8A27A), Family.ECHO to Color(0xFF4FC3F7),
+        Family.HEAVY to Color(0xFF9FA8DA), Family.QUIET to Color(0xFF777777),
     ),
     lights = mapOf(
-        Family.NASAL to Color(0xFF8CF5A2), Family.MADD_MUST to Color(0xFFFF8A80), Family.MADD_MAY to Color(0xFFE6B4F0),
-        Family.ECHO to Color(0xFF9AD0FF), Family.QUIET to Color(0xFF9A9A9A),
+        Family.NASAL to Color(0xFF8CF5A2), Family.MADD_LAZIM to Color(0xFFFF8A80), Family.MADD_WAJIB to Color(0xFFFFB995),
+        Family.MADD_JAIZ to Color(0xFFE6B4F0), Family.MADD_TABII to Color(0xFFDDB892), Family.ECHO to Color(0xFF9ADFFF),
+        Family.HEAVY to Color(0xFFBEC5F0), Family.QUIET to Color(0xFF9A9A9A),
     ),
 )
 

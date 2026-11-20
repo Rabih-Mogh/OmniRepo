@@ -409,6 +409,7 @@ fun RecordingsContent(
     onForget: (Track) -> Unit,
     onRemove: () -> Unit,
     nowPlaying: @Composable () -> Unit = {},
+    onListenAgain: (Track) -> Unit = {},
 ) {
     var picking by remember { mutableStateOf<Track?>(null) }
     var menu by remember { mutableStateOf(false) }
@@ -456,6 +457,7 @@ fun RecordingsContent(
                     onCancel = { onCancel(track) },
                     onPickSurah = { picking = track },
                     onForget = { onForget(track) },
+                    onListenAgain = { onListenAgain(track) },
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
@@ -486,6 +488,7 @@ private fun RecordingRow(
     onCancel: () -> Unit,
     onPickSurah: () -> Unit,
     onForget: () -> Unit,
+    onListenAgain: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
     val surah = SURAHS.getOrNull(track.surah - 1)
@@ -548,6 +551,8 @@ private fun RecordingRow(
                     DropdownMenuItem(text = { Text(stringResource(R.string.stop_listening)) }, onClick = { menu = false; onCancel() })
                 }
                 DropdownMenuItem(text = { Text(stringResource(R.string.choose_surah)) }, onClick = { menu = false; onPickSurah() })
+                // What the model heard isn't kept once the words are placed, so placing them better means hearing it again.
+                if (track.ready) DropdownMenuItem(text = { Text(stringResource(R.string.listen_again)) }, onClick = { menu = false; onListenAgain() })
                 DropdownMenuItem(text = { Text(stringResource(R.string.forget)) }, onClick = { menu = false; onForget() })
             }
         }

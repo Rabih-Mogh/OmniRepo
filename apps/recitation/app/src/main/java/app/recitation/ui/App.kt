@@ -8,7 +8,13 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -68,7 +74,14 @@ fun App(model: AppModel, choices: Choices) {
 
     // The surahs' names in calligraphy, once that font has been fetched; plainer calligraphy until then.
     val surahNames by SurahNames.font.collectAsStateWithLifecycle()
-    CompositionLocalProvider(LocalSurahNames provides surahNames) { Screens(model, choices) }
+    // The rules of recitation open over whatever is showing, which stays as it was underneath.
+    var rules by rememberSaveable { mutableStateOf(false) }
+    CompositionLocalProvider(LocalSurahNames provides surahNames, LocalTajweedRules provides { rules = true }) {
+        Screens(model, choices)
+        AnimatedVisibility(rules, enter = fadeIn() + slideInVertically { it / 12 }, exit = fadeOut() + slideOutVertically { it / 12 }) {
+            TajweedRulesPage(onBack = { rules = false })
+        }
+    }
 }
 
 @Composable
@@ -203,6 +216,7 @@ private fun Screens(model: AppModel, choices: Choices) {
                     onCancel = model::cancel,
                     onSurah = model::setSurah,
                     onForget = model::forget,
+                    onListenAgain = { get(listOf(model.listenAgain(it))) },
                     onRemove = { model.remove(playlist) },
                     nowPlaying = nowPlaying,
                 )
