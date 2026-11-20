@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import app.recitation.R
+import app.recitation.core.Family
 
 // Every role is set: anything left out falls back to Material's purple baseline.
 
@@ -156,10 +157,50 @@ private val NightHighlight = Color(0xFFFFC61A)
 
 val LocalHighlight = staticCompositionLocalOf { DayHighlight }
 
+/**
+ * The colours of the rules of recitation: one to a family of rules. [ink] is the colour a
+ * letter under a rule is written in; [light] the colour it turns while it is being uttered.
+ * They follow the usual colours of a tajweed mushaf (green for sound held through the
+ * nose, reds for long vowels, blue for the echo, grey for what isn't sounded), except that
+ * the long vowel that may be drawn out is purple rather than orange, to stay clear of the
+ * gold a letter without a rule is lit in.
+ */
+class TajweedColors(private val inks: Map<Family, Color>, private val lights: Map<Family, Color>) {
+    fun ink(family: Family): Color = inks.getValue(family)
+    fun light(family: Family): Color = lights.getValue(family)
+}
+
+private val DayTajweed = TajweedColors(
+    inks = mapOf(
+        Family.NASAL to Color(0xFF1E8E3E), Family.MADD_MUST to Color(0xFFD32F2F), Family.MADD_MAY to Color(0xFF8E24AA),
+        Family.ECHO to Color(0xFF1565C0), Family.QUIET to Color(0xFF9AA0A6),
+    ),
+    lights = mapOf(
+        Family.NASAL to Color(0xFF12A150), Family.MADD_MUST to Color(0xFFE53935), Family.MADD_MAY to Color(0xFFAB47BC),
+        Family.ECHO to Color(0xFF1E88E5), Family.QUIET to Color(0xFF80868B),
+    ),
+)
+private val NightTajweed = TajweedColors(
+    inks = mapOf(
+        Family.NASAL to Color(0xFF66D17A), Family.MADD_MUST to Color(0xFFFF6E6E), Family.MADD_MAY to Color(0xFFCE93D8),
+        Family.ECHO to Color(0xFF64B5F6), Family.QUIET to Color(0xFF777777),
+    ),
+    lights = mapOf(
+        Family.NASAL to Color(0xFF8CF5A2), Family.MADD_MUST to Color(0xFFFF8A80), Family.MADD_MAY to Color(0xFFE6B4F0),
+        Family.ECHO to Color(0xFF9AD0FF), Family.QUIET to Color(0xFF9A9A9A),
+    ),
+)
+
+val LocalTajweed = staticCompositionLocalOf { DayTajweed }
+
 /** Green by day and gold by night, following the phone's dark mode. */
 @Composable
 fun RecitationTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalBanner provides if (dark) NightBanner else DayBanner, LocalHighlight provides if (dark) NightHighlight else DayHighlight) {
+    CompositionLocalProvider(
+        LocalBanner provides if (dark) NightBanner else DayBanner,
+        LocalHighlight provides if (dark) NightHighlight else DayHighlight,
+        LocalTajweed provides if (dark) NightTajweed else DayTajweed,
+    ) {
         MaterialTheme(colorScheme = if (dark) Gold else Green, content = content)
     }
 }

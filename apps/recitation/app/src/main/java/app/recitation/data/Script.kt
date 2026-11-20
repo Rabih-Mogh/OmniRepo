@@ -3,6 +3,7 @@ package app.recitation.data
 import android.content.Context
 import androidx.compose.ui.text.font.FontFamily
 import kotlinx.coroutines.flow.StateFlow
+import java.io.File
 
 /**
  * How the verses are written on the page. The words are the same in all of them, and the
@@ -41,6 +42,9 @@ object IndoPakFont {
     )
 
     val font: StateFlow<FontFamily?> get() = fetched.font
+
+    /** The font's file, once it is on the phone; null before. */
+    fun file(context: Context): File? = fetched.file(context)
 
     suspend fun load(context: Context) = fetched.load(context)
 }

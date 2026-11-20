@@ -39,6 +39,11 @@ object Settings {
 
     fun setScript(context: Context, script: Script) = store(context).edit().putString("script", script.key).apply()
 
+    /** Whether letters are coloured by the rule of recitation they fall under. */
+    fun tajweed(context: Context): Boolean = store(context).getBoolean("tajweed", true)
+
+    fun setTajweed(context: Context, shown: Boolean) = store(context).edit().putBoolean("tajweed", shown).apply()
+
     /** Light, dark, or following the phone: the phone, until the user chooses. */
     fun appearance(context: Context): Appearance = Appearance.of(store(context).getString("appearance", null))
 

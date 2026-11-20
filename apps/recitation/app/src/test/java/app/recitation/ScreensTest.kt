@@ -30,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import java.io.File
+import java.time.LocalDate
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import android.view.View
@@ -51,14 +52,17 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import app.recitation.core.Phonemizer
 import app.recitation.core.Timings
 import app.recitation.core.WordTiming
 import app.recitation.data.Appearance
 import app.recitation.data.Hit
+import app.recitation.data.Listening
 import app.recitation.data.Marks
 import app.recitation.data.Pin
 import app.recitation.data.Playlist
 import app.recitation.data.Script
+import app.recitation.data.Space
 import app.recitation.data.VerseCollection
 import app.recitation.data.VerseRef
 import app.recitation.data.Track
@@ -86,7 +90,10 @@ import app.recitation.ui.ReadingChoices
 import app.recitation.ui.ReaderContent
 import app.recitation.ui.RecitationTheme
 import app.recitation.ui.RecordingsContent
+import app.recitation.ui.RecordingStats
+import app.recitation.ui.SavedStats
 import app.recitation.ui.SavedTab
+import app.recitation.ui.StatsTab
 import app.recitation.ui.ScriptChooser
 import app.recitation.ui.Status
 import app.recitation.ui.StatusActions
@@ -994,7 +1001,7 @@ class ScreensTest {
         var appearance: Appearance? = null
         show("en-night-reader-menu") {
             Column(Modifier.padding(24.dp).width(280.dp)) {
-                ReadingChoices(true, { meanings = it }, 1f, { scale = it }, Script.MADINAH, { script = it }, withIndoPak = true, Appearance.AUTO) { appearance = it }
+                ReadingChoices(true, { meanings = it }, 1f, { scale = it }, Script.MADINAH, { script = it }, withIndoPak = true, Appearance.AUTO, onAppearance = { appearance = it })
             }
         }
         // Light or dark at a tap, whatever the phone is set to.
@@ -1093,6 +1100,170 @@ class ScreensTest {
         assertTrue("the leftmost word starts at ${leftmost()}, was at $without", leftmost() >= 120f && leftmost() >= without + 119f)
         compose.onNodeWithContentDescription("Back").assertIsDisplayed()
         assertTrue(compose.onNodeWithContentDescription("Back").fetchSemanticsNode().boundsInRoot.left >= 120f)
+    }
+
+    /** A word as the Uthmani text and the Madinah mushaf's text write it, with its meaning. */
+    private class T(val uthmani: String, val madinah: String, val meaning: String)
+
+    /** Five verses rich in rules of recitation (2:5, 2:8, 2:10, 112:3, 113:1), as Quran.com gives them. */
+    private val ruled = listOf(
+        listOf(T("\u0623\u064F\u0648\u06DF\u0644\u064E\u0640\u0670\u0653\u0626\u0650\u0643\u064E", "\u0623\u064F\u0648\u0652\u0644\u064E\u0670\u0653\u0626\u0650\u0643\u064E", "Those"), T("\u0639\u064E\u0644\u064E\u0649\u0670", "\u0639\u064E\u0644\u064E\u0649\u0670", "(are) on"), T("\u0647\u064F\u062F\u064B\u06ED\u0649", "\u0647\u064F\u062F\u0657\u0649", "Guidance"), T("\u0645\u0651\u0650\u0646", "\u0645\u0651\u0650\u0646", "from"), T("\u0631\u0651\u064E\u0628\u0651\u0650\u0647\u0650\u0645\u0652 \u06D6", "\u0631\u0651\u064E\u0628\u0651\u0650\u0647\u0650\u0645\u06E1\u06D6", "their Lord"), T("\u0648\u064E\u0623\u064F\u0648\u06DF\u0644\u064E\u0640\u0670\u0653\u0626\u0650\u0643\u064E", "\u0648\u064E\u0623\u064F\u0648\u0652\u0644\u064E\u0670\u0653\u0626\u0650\u0643\u064E", "and those "), T("\u0647\u064F\u0645\u064F", "\u0647\u064F\u0645\u064F", "they"), T("\u0671\u0644\u0652\u0645\u064F\u0641\u0652\u0644\u0650\u062D\u064F\u0648\u0646\u064E", "\u0671\u0644\u06E1\u0645\u064F\u0641\u06E1\u0644\u0650\u062D\u064F\u0648\u0646\u064E", "(are) the successful ones")), // 2:5
+        listOf(T("\u0648\u064E\u0645\u0650\u0646\u064E", "\u0648\u064E\u0645\u0650\u0646\u064E", "And of"), T("\u0671\u0644\u0646\u0651\u064E\u0627\u0633\u0650", "\u0671\u0644\u0646\u0651\u064E\u0627\u0633\u0650", "the people"), T("\u0645\u064E\u0646", "\u0645\u064E\u0646", "(are some) who"), T("\u064A\u064E\u0642\u064F\u0648\u0644\u064F", "\u064A\u064E\u0642\u064F\u0648\u0644\u064F", "say"), T("\u0621\u064E\u0627\u0645\u064E\u0646\u0651\u064E\u0627", "\u0621\u064E\u0627\u0645\u064E\u0646\u0651\u064E\u0627", "We believed"), T("\u0628\u0650\u0671\u0644\u0644\u0651\u064E\u0647\u0650", "\u0628\u0650\u0671\u0644\u0644\u0651\u064E\u0647\u0650", "in Allah"), T("\u0648\u064E\u0628\u0650\u0671\u0644\u0652\u064A\u064E\u0648\u0652\u0645\u0650", "\u0648\u064E\u0628\u0650\u0671\u0644\u06E1\u064A\u064E\u0648\u06E1\u0645\u0650", "and in the Day"), T("\u0671\u0644\u0652\u0640\u0654\u064E\u0627\u062E\u0650\u0631\u0650", "\u0671\u0644\u06E1\u0623\u0653\u062E\u0650\u0631\u0650", "[the] Last"), T("\u0648\u064E\u0645\u064E\u0627", "\u0648\u064E\u0645\u064E\u0627", "but not"), T("\u0647\u064F\u0645", "\u0647\u064F\u0645", "they"), T("\u0628\u0650\u0645\u064F\u0624\u0652\u0645\u0650\u0646\u0650\u064A\u0646\u064E", "\u0628\u0650\u0645\u064F\u0624\u06E1\u0645\u0650\u0646\u0650\u064A\u0646\u064E", "(are) believers (at all)")), // 2:8
+        listOf(T("\u0641\u0650\u0649", "\u0641\u0650\u064A", "In"), T("\u0642\u064F\u0644\u064F\u0648\u0628\u0650\u0647\u0650\u0645", "\u0642\u064F\u0644\u064F\u0648\u0628\u0650\u0647\u0650\u0645", "their hearts"), T("\u0645\u0651\u064E\u0631\u064E\u0636\u064C\u06ED", "\u0645\u0651\u064E\u0631\u064E\u0636\u065E", "(is) a disease"), T("\u0641\u064E\u0632\u064E\u0627\u062F\u064E\u0647\u064F\u0645\u064F", "\u0641\u064E\u0632\u064E\u0627\u062F\u064E\u0647\u064F\u0645\u064F", "so has increased them"), T("\u0671\u0644\u0644\u0651\u064E\u0647\u064F", "\u0671\u0644\u0644\u0651\u064E\u0647\u064F", "Allah"), T("\u0645\u064E\u0631\u064E\u0636\u064B\u06ED\u0627 \u06D6", "\u0645\u064E\u0631\u064E\u0636\u0657\u0627\u06D6", "(in) disease"), T("\u0648\u064E\u0644\u064E\u0647\u064F\u0645\u0652", "\u0648\u064E\u0644\u064E\u0647\u064F\u0645\u06E1", "and for them"), T("\u0639\u064E\u0630\u064E\u0627\u0628\u064C", "\u0639\u064E\u0630\u064E\u0627\u0628\u064C", "(is) a punishment"), T("\u0623\u064E\u0644\u0650\u064A\u0645\u064C\u06E2", "\u0623\u064E\u0644\u0650\u064A\u0645\u064F\u06E2", "painful"), T("\u0628\u0650\u0645\u064E\u0627", "\u0628\u0650\u0645\u064E\u0627", "because"), T("\u0643\u064E\u0627\u0646\u064F\u0648\u0627\u06DF", "\u0643\u064E\u0627\u0646\u064F\u0648\u0627\u0652", "they used to"), T("\u064A\u064E\u0643\u0652\u0630\u0650\u0628\u064F\u0648\u0646\u064E", "\u064A\u064E\u0643\u06E1\u0630\u0650\u0628\u064F\u0648\u0646\u064E", "[they] lie")), // 2:10
+        listOf(T("\u0644\u064E\u0645\u0652", "\u0644\u064E\u0645\u06E1", "Not"), T("\u064A\u064E\u0644\u0650\u062F\u0652", "\u064A\u064E\u0644\u0650\u062F\u06E1", "He begets"), T("\u0648\u064E\u0644\u064E\u0645\u0652", "\u0648\u064E\u0644\u064E\u0645\u06E1", "and not"), T("\u064A\u064F\u0648\u0644\u064E\u062F\u0652", "\u064A\u064F\u0648\u0644\u064E\u062F\u06E1", "He is begotten")), // 112:3
+        listOf(T("\u0642\u064F\u0644\u0652", "\u0642\u064F\u0644\u06E1", "Say"), T("\u0623\u064E\u0639\u064F\u0648\u0630\u064F", "\u0623\u064E\u0639\u064F\u0648\u0630\u064F", "I seek refuge"), T("\u0628\u0650\u0631\u064E\u0628\u0651\u0650", "\u0628\u0650\u0631\u064E\u0628\u0651\u0650", "in (the) Lord"), T("\u0671\u0644\u0652\u0641\u064E\u0644\u064E\u0642\u0650", "\u0671\u0644\u06E1\u0641\u064E\u0644\u064E\u0642\u0650", "(of) the dawn")), // 113:1
+    ).map { verse -> Verse(verse.map { Word(it.uthmani, it.meaning, madinah = it.madinah) }, "") }
+
+    /** Every sound of every word 150 ms after the one before, as an alignment would time them. */
+    private fun sounded(verses: List<Verse>): Timings {
+        var ms = 1000
+        return Timings(
+            verses.map { verse ->
+                verse.words.mapIndexed { i, word ->
+                    val start = ms
+                    val reached = ArrayList<Int>()
+                    for (phone in Phonemizer.word(word.arabic, verse.words.getOrNull(i + 1)?.arabic)) {
+                        if (phone.optional) continue
+                        if (reached.isEmpty() || phone.upTo > reached[reached.size - 2]) {
+                            reached += phone.upTo
+                            reached += ms
+                        }
+                        ms += 150
+                    }
+                    WordTiming(start, reached.toIntArray())
+                }
+            },
+            0.9f,
+        )
+    }
+
+    /** A moment inside the stretch of word [w] of verse [v] that falls under [rule], in [reading]'s own timings. */
+    private fun whenUttered(reading: Reading, v: Int, w: Int, rule: app.recitation.core.Rule): Int {
+        val mark = reading.rules[v][w].first { it.rule == rule }
+        val letters = reading.timings!!.verses[v][w].letters
+        var from = 0
+        for (k in letters.indices step 2) {
+            if (from < mark.to && mark.from < letters[k]) return letters[k + 1] + 60
+            from = letters[k]
+        }
+        error("no stretch of the word falls under $rule")
+    }
+
+    @Composable
+    private fun Ruled(position: Int, script: Script = Script.MADINAH, tajweed: Boolean = true, reading: Reading = Reading(2, ruled, track, sounded(ruled))) = ReaderContent(
+        reading = reading, showMeanings = false, playing = true, position = { position }, duration = 74_000,
+        onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {}, script = script, tajweed = tajweed,
+    )
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun lettersAreColouredByTheirRuleOfRecitation() {
+        // No recitation: the reciter is taken to stop at the end of each verse.
+        show("en-day-tajweed") {
+            ReaderContent(
+                reading = Reading(2, ruled), showMeanings = false, playing = false, position = { 0 }, duration = 0,
+                onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
+            )
+        }
+        compose.onNodeWithText(ruled[0].words[0].madinah, useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
+    fun lettersAreColouredByTheirRuleOfRecitationByNight() {
+        show("en-night-tajweed") {
+            ReaderContent(
+                reading = Reading(2, ruled), showMeanings = false, playing = false, position = { 0 }, duration = 0,
+                onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
+            )
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theColoursCanBeTurnedOff() {
+        show("en-day-tajweed-off") {
+            ReaderContent(
+                reading = Reading(2, ruled), showMeanings = false, playing = false, position = { 0 }, duration = 0,
+                onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {}, tajweed = false,
+            )
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theLightTakesTheColourOfTheRuleBeingRecited() {
+        val reading = Reading(2, ruled, track, sounded(ruled))
+        // 2:8 "man yaqulu": the n merged into the y, through the nose.
+        show("en-day-tajweed-light-nasal") { Ruled(whenUttered(reading, 1, 2, app.recitation.core.Rule.IDGHAM_GHUNNAH), reading = reading) }
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
+    fun aLongVowelsLightSpreadsAsItIsHeld() {
+        val reading = Reading(2, ruled, track, sounded(ruled))
+        // 2:5 "ula'ika": the long a before the hamza.
+        show("en-night-tajweed-light-madd") { Ruled(whenUttered(reading, 0, 0, app.recitation.core.Rule.MADD_REQUIRED) + 60, reading = reading) }
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
+    fun theLightFallsOnAVowelSignToo() {
+        val reading = Reading(2, ruled, track, sounded(ruled))
+        // 112:3 "lam yalid": the fatha of the first l, the moment after the letter itself.
+        val lam = reading.timings!!.verses[3][0].letters
+        show("en-night-light-on-a-sign") { Ruled(lam[3] + 40, reading = reading) }
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theMenuExplainsTheColours() {
+        var shown: Boolean? = null
+        show("en-day-tajweed-legend") {
+            Column(Modifier.padding(24.dp).width(300.dp)) {
+                ReadingChoices(true, {}, 1f, {}, Script.MADINAH, {}, withIndoPak = false, Appearance.AUTO, {}, tajweed = true) { shown = it }
+            }
+        }
+        compose.onNodeWithText("Echo (qalqalah)").assertIsDisplayed()
+        compose.onNodeWithText("Tajweed colours").performClick()
+        assertTrue(shown == false)
+    }
+
+    private val week = LocalDate.of(2026, 11, 20).let { friday ->
+        Listening(
+            days = mapOf(
+                friday to 24 * 60_000L, friday.minusDays(1) to 41 * 60_000L, friday.minusDays(2) to 8 * 60_000L,
+                friday.minusDays(4) to 65 * 60_000L, friday.minusDays(5) to 15 * 60_000L, friday.minusDays(30) to 600 * 60_000L,
+            ),
+            heard = mapOf(1 to (1..7).toSet(), 2 to (1..141).toSet(), 112 to (1..4).toSet()),
+        ).summary(friday)
+    }
+
+    @Composable
+    private fun StatsOnHome(space: Space?) = HomeContent(
+        3, {}, emptyList(), null, StatusActions(), recited = setOf(1), onSurah = {}, onOpen = {}, onAdd = {},
+        stats = { modifier -> StatsTab(week, RecordingStats(12, 114, 9 * 3_600_000L + 20 * 60_000L), SavedStats(2, 3, 17), space, modifier) },
+    )
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theStatsTab() {
+        show("en-day-stats") { StatsOnHome(Space(1_240_000_000, 34_331_256, 0, 21_400_000)) }
+        compose.onNodeWithText("Stats").assertIsDisplayed()
+        compose.onNodeWithText("24 min").assertIsDisplayed()
+        compose.onNodeWithText("2 h 33 min").assertIsDisplayed()
+        compose.onNodeWithText("3 days in a row").assertIsDisplayed()
+        compose.onNodeWithText("152 of 6236 verses").assertIsDisplayed()
+        compose.onNodeWithText("2 of 114 surahs heard in full").assertIsDisplayed()
+        compose.onNodeWithText("12 of 114").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "ar-rLB-w411dp-h891dp-night-420dpi")
+    fun theStatsTabInArabicByNight() {
+        show("ar-night-stats") { StatsOnHome(null) }
+        compose.onNodeWithText("إحصاءات").assertIsDisplayed()
+        compose.onNodeWithText("٣ أيام على التوالي").assertIsDisplayed()
     }
 
     @Test

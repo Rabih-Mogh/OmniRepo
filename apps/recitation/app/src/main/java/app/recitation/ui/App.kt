@@ -46,6 +46,9 @@ import app.recitation.data.Pin
 import app.recitation.data.Playlist
 import app.recitation.data.Script
 import app.recitation.data.Settings
+import app.recitation.data.Space
+import androidx.compose.runtime.produceState
+import java.time.LocalDate
 import app.recitation.data.SurahNames
 import app.recitation.data.Track
 import app.recitation.data.VerseCollection
@@ -99,6 +102,7 @@ private fun Screens(model: AppModel, choices: Choices) {
 
     val pins by model.marks.pins.collectAsStateWithLifecycle()
     val collections by model.marks.collections.collectAsStateWithLifecycle()
+    val listening by model.stats.listening.collectAsStateWithLifecycle()
 
     // One line of truth about the background work, so nothing ever just sits there unexplained.
     val tracks = playlists.flatMap { it.tracks }
@@ -147,6 +151,16 @@ private fun Screens(model: AppModel, choices: Choices) {
             saved = { modifier ->
                 SavedTab(pins, collections, onVerse = model::openVerse, onRemovePin = { model.marks.removePin(it.id) }, onCollection = model::open, modifier = modifier)
             },
+            stats = { modifier ->
+                // Measured afresh each time the tab is opened: downloads come and go.
+                val space by produceState<Space?>(null) { value = model.space() }
+                StatsTab(
+                    listening.summary(LocalDate.now()),
+                    RecordingStats(tracks.count { it.ready }, tracks.size, tracks.filter { it.ready }.sumOf { it.seconds * 1000L }),
+                    SavedStats(pins.size, collections.size, collections.sumOf { it.verses.size }),
+                    space, modifier,
+                )
+            },
             query = model.query,
             onQuery = model::search,
             hits = model.hits,
@@ -157,6 +171,7 @@ private fun Screens(model: AppModel, choices: Choices) {
                     textScale = choices.textScale, onTextScale = choices::size,
                     meanings = choices.meanings, onMeanings = choices::show,
                     appearance = choices.appearance, onAppearance = choices::look,
+                    tajweed = choices.tajweed, onTajweed = choices::colour,
                     footer = { VersionFooter() },
                 )
             },
@@ -237,6 +252,7 @@ private fun SurahScreen(
     val page = Page(
         meanings, setMeanings, textScale, setTextScale,
         choices.script, choices::write, indopak, startVerse, marks, { marking = it }, choices.appearance, choices::look,
+        choices.tajweed, choices::colour,
     )
     marking?.let { verse ->
         val here = VerseRef(screen.number, verse + 1)
@@ -265,6 +281,7 @@ private fun SurahScreen(
             script = page.script, onScript = page.onScript, indopak = page.indopak,
             startVerse = page.startVerse, marks = page.marks, onMark = page.onMark,
             appearance = page.appearance, onAppearance = page.onAppearance,
+            tajweed = page.tajweed, onTajweed = page.onTajweed,
             withoutRecitation = {
                 // Looked up afresh each time the playlists change, so the bar keeps up with the download.
                 val recording = remember(playlists, screen.number) { model.anyRecordingOf(screen.number) }
@@ -296,6 +313,13 @@ class Choices(private val context: Context, arabic: Boolean) {
         private set
     var appearance by mutableStateOf(Settings.appearance(context))
         private set
+    var tajweed by mutableStateOf(Settings.tajweed(context))
+        private set
+
+    fun colour(tajweed: Boolean) {
+        this.tajweed = tajweed
+        Settings.setTajweed(context, tajweed)
+    }
 
     fun look(appearance: Appearance) {
         this.appearance = appearance
@@ -318,6 +342,9 @@ class Choices(private val context: Context, arabic: Boolean) {
     }
 }
 
+/** How often, while a recitation plays, its place is kept and the listening noted. */
+private const val NOTE_EVERY_MS = 4_000
+
 /** How the reader has set the page up, and what marks its verses: the same whether or not a recitation plays along. */
 private class Page(
     val meanings: Boolean,
@@ -332,6 +359,8 @@ private class Page(
     val onMark: (Int) -> Unit,
     val appearance: Appearance,
     val onAppearance: (Appearance) -> Unit,
+    val tajweed: Boolean,
+    val onTajweed: (Boolean) -> Unit,
 )
 
 /** The line to the playback service, and what it is playing. */
@@ -474,14 +503,31 @@ private fun PlayingReader(
             }
         }
     }
+    // For the stats: every few seconds of reciting, the time listened and the verses heard since the last note.
+    val heardUpTo = remember(track.id) { intArrayOf(-1, -1) } // the verse and the place, in ms, at the last note
+    val noteListening by rememberUpdatedState {
+        val player = controller
+        val timings = reading.timings
+        if (player != null && timings != null && mine) {
+            val ms = player.currentPosition.toInt()
+            val verse = timings.verseAt(ms)
+            // Verses passed since the last note count as heard, unless the reciting jumped.
+            val ranOn = heardUpTo[1] >= 0 && ms - heardUpTo[1] in 0..2 * NOTE_EVERY_MS && heardUpTo[0] in 0..verse
+            model.stats.listened(reading.surah, if (ranOn) heardUpTo[0]..verse else verse..verse, NOTE_EVERY_MS.toLong())
+            heardUpTo[0] = verse
+            heardUpTo[1] = ms
+        }
+    }
     LaunchedEffect(controller, playing, track.id) {
         if (!playing) {
             keepPlace()
+            heardUpTo[1] = -1
             return@LaunchedEffect
         }
         while (true) {
-            delay(4_000)
+            delay(NOTE_EVERY_MS.toLong())
             keepPlace()
+            noteListening()
         }
     }
     DisposableEffect(track.id) { onDispose { keepPlace() } }
@@ -542,6 +588,7 @@ private fun PlayingReader(
             script = page.script, onScript = page.onScript, indopak = page.indopak,
             startVerse = page.startVerse, marks = page.marks, onMark = page.onMark,
             appearance = page.appearance, onAppearance = page.onAppearance,
+            tajweed = page.tajweed, onTajweed = page.onTajweed,
             // Whether the rest of it is still being listened to, or is waiting its turn for that.
             listening = !model.paused && playlists.any { p -> p.tracks.any { it.id == track.id && it.wanted } },
             range = range,

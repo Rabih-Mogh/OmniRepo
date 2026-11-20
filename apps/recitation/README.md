@@ -33,7 +33,7 @@ the search button at the far end:
   translation. Words are searched in the surahs already on the phone. Tapping a result
   opens the surah, at the verse found.
 
-Below it are three tabs, at the bottom.
+Below it are four tabs, at the bottom.
 
 **Quran** lists the 114 surahs, under a card that offers to **move to last read**: the
 surah and verse where the last recitation was left. Tap one to read it, whether or not a recitation of it has
@@ -44,6 +44,14 @@ first time a surah is opened, and the app fetches the rest quietly while it is o
 the whole Quran ends up readable without a connection.
 
 **Saved** lists the pins and the collections (see [Pins and collections](#pins-and-collections)).
+
+**Stats** shows what has been listened to: the time today, over the last seven days (as
+bars, a day each) and in all; how many days in a row; how many of the Quran's 6,236
+verses, and how many whole surahs, have been heard at least once; how many recordings are
+ready and how long they run; what is saved; and the room the app's files take on the
+phone. Listening is counted while a recitation plays with its surah on show, and a verse
+counts as heard once the recitation has passed through it. It is kept in a file on the
+phone and nowhere else.
 
 **Playlists** is where recitations come from:
 
@@ -119,6 +127,50 @@ the whole Quran ends up readable without a connection.
      arch, gold on near-black in dark mode and cream on green by day. Inside the app, a bar at the bottom of the
      lists shows what is reciting, with play or pause, a cross to stop it, and a tap to
      go back to its surah.
+
+### Tajweed
+
+The letters are coloured by the rule of recitation they fall under, and the light that
+follows the recitation takes the rule's colour and moves as the rule sounds. **Tajweed
+colours** in either menu turns the colours on or off and says what each means.
+
+| Colour | Rules | The light, while it is recited |
+|---|---|---|
+| Green | Sound held through the nose: a doubled n or m (ghunnah), an n or tanween hidden (ikhfa), turned into m before b (iqlab) or merged into y, n, m, w (idgham), and an m before b or m | Hums: it swells and fades for as long as the sound is held |
+| Red | A long vowel that must be drawn out, 4 to 6 counts: before a hamza in the same word (muttasil), before a doubled or stopped letter (lazim), the letters some surahs open with | Spreads sideways for as long as the vowel is held |
+| Purple | A long vowel that may be drawn out: before a hamza opening the next word (munfasil), and before the last letter of a word the reciter stops on ('arid, lin) | The same |
+| Blue | The echo (qalqalah) on a stopped q, t, b, j or d | Lets a ring go as the letter ends |
+| Grey | Written but not sounded: a letter merged whole into the next (the l of "al-" before a sun letter, an n before l or r), a joining alif that is run into, a silent alif | A grey touch and no pool of light |
+
+A letter under no rule is lit in gold, as before. Heavy and light letters (tafkhim and
+tarqiq) are not marked.
+
+- **Where the rules come from.** `core/Tajweed.kt` reads them off the Uthmani script,
+  which writes them into its signs: an n with no sukun is merged or hidden, a wavy line
+  over a long vowel means it is drawn out, and which letter follows decides the rest. It
+  follows the reading of Hafs from 'Asim as the Madinah mushaf writes it.
+- **Stopping and running on.** Several rules depend on whether the reciter stops after a
+  word: an n at a word's end merges into the next word only if he runs on; the long vowel
+  before a word's last letter is drawn out, and a final q, t, b, j or d echoes, only if he
+  stops there; a joining alif is silent only when run into. With a recording, the colours
+  and the light follow what its reciter did: he is taken to have stopped where he waits
+  long after a word (0.7 s after a short sound, 1.8 s after a long vowel, a quarter less
+  at a verse's end). Without a recording, a stop is assumed at the end of every verse.
+  This is an estimate from the word timings, not from the sound itself, so a short breath
+  can be missed and a very long vowel taken for a stop.
+- **No letter is skipped.** A letter merged into the next one has no sound of its own, so
+  the light used to jump over it. It now gets the opening part of the sound it is merged
+  into: the n of "min rabbihim" is lit as the doubled r begins. Silent letters before a
+  sounded one are passed over quickly rather than left out.
+- **Vowel signs.** The light falls on a letter and then on its vowel sign: the sign is
+  lit by itself, with a small light of its own, while the letter stays half lit under
+  it. Recordings prepared from this version on time the letter and its vowel apart; for
+  ones prepared earlier the time they shared is split between them.
+- **How it is painted.** Letters and signs are painted over the word in colour without
+  the word being laid out again (`ui/WordPaint.kt`), so nothing shifts. This needs the
+  shown spelling to have the Uthmani spelling's letters, which the two Uthmani scripts
+  do. In the IndoPak and everyday spellings, words spelt with other letters show no
+  colours, and the light falls on the letter's width as it did before.
 
 ### Pins and collections
 

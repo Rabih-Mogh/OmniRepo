@@ -22,7 +22,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.sin
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -94,6 +96,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.Dp
@@ -133,7 +137,10 @@ import app.recitation.R
 import app.recitation.data.Appearance
 import app.recitation.data.Script
 import app.recitation.Reading
+import app.recitation.core.Family
+import app.recitation.core.Mark
 import app.recitation.core.Recital
+import app.recitation.core.Uttered
 import app.recitation.core.SURAHS
 import app.recitation.core.Surah
 import app.recitation.core.Timings
@@ -216,6 +223,8 @@ fun ReaderContent(
     onMark: (Int) -> Unit = {},
     appearance: Appearance = Appearance.AUTO,
     onAppearance: (Appearance) -> Unit = {},
+    tajweed: Boolean = true,
+    onTajweed: (Boolean) -> Unit = {},
 ) {
     val surah = SURAHS[reading.surah - 1]
     val arabic = LocalConfiguration.current.locales[0].language == "ar"
@@ -341,7 +350,7 @@ fun ReaderContent(
                         )
                     }
                     // One button at each end, so the title between them is in the middle of the bar.
-                    ReaderMenuButton(showMeanings, onMeanings, textScale, onTextScale, script, onScript, withIndoPak = indopak != null, appearance, onAppearance)
+                    ReaderMenuButton(showMeanings, onMeanings, textScale, onTextScale, script, onScript, withIndoPak = indopak != null, appearance, onAppearance, tajweed, onTajweed)
                 }
             }
         },
@@ -378,7 +387,7 @@ fun ReaderContent(
                     color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            Verses(reading, index, list, current, currentVerse, position, showMeanings, textScale, hand, marks, onMark, place, { fade.value }, translated, { translated = it; taps++ }) { ms ->
+            Verses(reading, index, list, current, currentVerse, position, showMeanings, textScale, hand, tajweed, marks, onMark, place, { fade.value }, translated, { translated = it; taps++ }) { ms ->
                 onSeek(ms)
                 follow = true
             }
@@ -496,6 +505,7 @@ private fun Verses(
     showMeanings: Boolean,
     textScale: Float,
     hand: Hand,
+    tajweed: Boolean,
     marks: VerseMarks,
     onMark: (Int) -> Unit,
     place: WordPlace,
@@ -529,6 +539,8 @@ private fun Verses(
                     showMeanings = showMeanings,
                     textScale = textScale,
                     hand = hand,
+                    // The rules of recitation in each of the verse's words, when their colours are wanted.
+                    rules = if (tajweed) reading.rules.getOrNull(v).orEmpty() else emptyList(),
                     pins = marks.pins[v].orEmpty(),
                     saved = v in marks.saved,
                     onMark = { onMark(v) },
@@ -557,6 +569,7 @@ private fun VerseBlock(
     showMeanings: Boolean,
     textScale: Float,
     hand: Hand,
+    rules: List<List<Mark>>,
     pins: List<String>,
     saved: Boolean,
     onMark: () -> Unit,
@@ -622,6 +635,7 @@ private fun VerseBlock(
                         showMeaning = showMeanings,
                         textScale = textScale,
                         hand = hand,
+                        rules = rules.getOrNull(w).orEmpty(),
                         // Up to this verse's rule, and down to the next verse's, each short of it by a
                         // hair. Not down over the verse's translation while that is showing.
                         reachUp = { if (w <= firstRowEnds) RULE_TO_WORDS - RULE_MARGIN else 0.dp },
@@ -725,20 +739,41 @@ private enum class WordState { RESTING, RECITED, CURRENT }
 /** How long the light takes to pass from one letter to the next, in ms. */
 private const val GLIDE_MS = 130f
 
-/** Whether a character is a mark written on a letter (a vowel sign, a shadda, a small recitation sign) rather than a letter. */
-private fun Char.isMark(): Boolean = Character.getType(this).let {
-    it == Character.NON_SPACING_MARK.toInt() || it == Character.ENCLOSING_MARK.toInt() || it == Character.COMBINING_SPACING_MARK.toInt()
-}
-
 /** How eagerly the page follows the word: higher is quicker. At 8 it settles in about two thirds of a second. */
 private const val STIFFNESS = 8f
 
 /** How long a translation stays up, in ms: time to read it, between 6 and 25 seconds. */
 internal fun readingTime(translation: String): Long = (3_000L + 70L * translation.length).coerceIn(6_000L, 25_000L)
 
-/** A soft round light that fades to nothing at its edge, squashed to [flatten] of its height. */
-private fun DrawScope.spot(color: Color, center: Offset, radius: Float, flatten: Float) {
-    scale(scaleX = 1f, scaleY = flatten, pivot = center) {
+/**
+ * The pool of light behind the letter being uttered. A letter under a rule of recitation
+ * gets the rule's motion: sound held through the nose hums, a long vowel spreads for as
+ * long as it is held, an echoing letter lets a ring go as it ends, and a letter that isn't
+ * sounded gets no pool at all. Only the pool moves: the letter itself never changes size.
+ */
+private fun DrawScope.pool(family: Family?, color: Color, center: Offset, uttered: Uttered, lit: Float) {
+    val radius = 24.dp.toPx()
+    when (family) {
+        Family.QUIET -> {}
+        Family.NASAL -> {
+            val hum = sin(uttered.sinceMs / 1000f * 2f * PI.toFloat() * 1.7f) * 0.5f + 0.5f
+            spot(color.copy(alpha = (0.2f + 0.22f * hum) * lit), center, radius * (0.9f + 0.2f * hum), flatten = 0.95f)
+        }
+        Family.MADD_MUST, Family.MADD_MAY -> spot(color.copy(alpha = 0.3f * lit), center, radius, flatten = 0.95f, widen = 1f + 1.6f * uttered.fraction)
+        Family.ECHO -> {
+            spot(color.copy(alpha = 0.26f * lit), center, radius, flatten = 0.95f)
+            val out = (uttered.fraction - 0.5f) / 0.5f
+            if (out > 0f && out < 1f) {
+                drawCircle(color.copy(alpha = (1f - out) * 0.8f * lit), radius = 8.dp.toPx() + 22.dp.toPx() * out, center = center, style = Stroke(2.dp.toPx()))
+            }
+        }
+        null -> spot(color.copy(alpha = 0.26f * lit), center, radius, flatten = 0.95f)
+    }
+}
+
+/** A soft round light that fades to nothing at its edge, squashed to [flatten] of its height and stretched to [widen] times its width. */
+private fun DrawScope.spot(color: Color, center: Offset, radius: Float, flatten: Float, widen: Float = 1f) {
+    scale(scaleX = widen, scaleY = flatten, pivot = center) {
         drawCircle(Brush.radialGradient(listOf(color, Color.Transparent), center = center, radius = radius), radius = radius, center = center)
     }
 }
@@ -754,6 +789,7 @@ private fun WordTile(
     showMeaning: Boolean,
     textScale: Float,
     hand: Hand,
+    rules: List<Mark>,
     reachUp: () -> Dp,
     reachDown: () -> Dp,
     onPlaced: (LayoutCoordinates) -> Unit,
@@ -793,42 +829,82 @@ private fun WordTile(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // The letters themselves are never recoloured: recolouring part of a joined-up word
-        // makes Android shape it again, and the letters visibly shift. The letter being
-        // uttered is lit by drawing over it instead, afresh every frame, with nothing laid out again.
+        // makes Android shape it again, and the letters visibly shift. Colour is painted over
+        // them instead: the rules of recitation once, and the letter being uttered afresh every
+        // frame, with nothing laid out again.
         var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
-        val glow = LocalHighlight.current
+        val gold = LocalHighlight.current
+        val tajweed = LocalTajweed.current
+        val context = LocalContext.current
+        val letterSize = with(LocalDensity.current) { (hand.size * textScale).toPx() }
+        val spelling = remember(word, hand.script) { Spelling(word.arabic, written) }
+        // Single letters and signs can be painted only where the shown spelling has the Uthmani
+        // one's letters and its font is at hand; otherwise the light falls on the letter's width.
+        val repaint = remember(written, hand.script, letterSize, spelling) {
+            if (spelling.exact) Typefaces.of(context, hand.script)?.let { Repaint(written, it, letterSize) } else null
+        }
+        val coloured = if (repaint != null) rules else emptyList()
+        // A word that has been recited dims, and its colours with it.
+        val strength by animateFloatAsState(if (state == WordState.RECITED) 0.45f else 1f, tween(420), label = "colours")
         Text(
             written, fontFamily = hand.font, fontSize = hand.size * textScale, lineHeight = hand.line * textScale, color = ink,
             onTextLayout = { layout = it },
-            modifier = if (lit == 0f || timing == null) Modifier else Modifier.drawWithContent {
+            modifier = if (coloured.isEmpty() && (lit == 0f || timing == null)) Modifier else Modifier.drawWithContent {
                 val placed = layout
-                val uttered = timing.utteredAt(position(), endMs)
-                if (placed == null || uttered == null) {
+                val uttered = if (lit > 0f && timing != null) timing.utteredAt(position(), endMs) else null
+                if (placed == null || (repaint == null && uttered == null)) {
                     drawContent()
                     return@drawWithContent
                 }
-                val text = placed.layoutInput.text.text
-                // The letters were timed in the Uthmani spelling; another script's word is a
-                // letter or two longer or shorter, so the place is taken in proportion.
-                val stretch = text.length.toFloat() / word.arabic.length.coerceAtLeast(1)
-                // Where a stretch of characters lies across the word, as the whole letters it
-                // touches: a sound that is only a mark (a vowel) lights the letter the mark sits on.
-                fun letter(from: Int, to: Int): Pair<Float, Float> {
-                    var first = (from * stretch).roundToInt().coerceIn(0, text.length)
-                    while (first > 0 && first < text.length && text[first].isMark()) first--
-                    var end = (to * stretch).roundToInt().coerceIn(first, text.length)
-                    while (end < text.length && text[end].isMark()) end++
-                    if (end == first && end < text.length) end++
-                    val a = placed.getHorizontalPosition(first, usePrimaryDirection = true)
+                val edge = placed.getLineRight(0)
+                val baseline = placed.firstBaseline
+                val room = 12.dp.toPx()
+                val box = android.graphics.RectF(-room, -room, size.width + room, size.height + room)
+                // Where characters of the shown word lie across it, as the whole letters they belong
+                // to: a vowel sign lights the letter it sits on.
+                fun letters(from: Int, to: Int): IntRange {
+                    var first = from.coerceIn(0, written.length)
+                    while (first > 0 && first < written.length && written[first].isMark()) first--
+                    var end = to.coerceIn(first, written.length)
+                    while (end < written.length && written[end].isMark()) end++
+                    if (end == first && end < written.length) end++
+                    return first until end
+                }
+                fun across(range: IntRange): Pair<Float, Float> {
+                    val end = range.last + 1
+                    if (repaint != null) return (edge - repaint.reach(end)) to (edge - repaint.reach(range.first))
+                    val a = placed.getHorizontalPosition(range.first, usePrimaryDirection = true)
                     val b = placed.getHorizontalPosition(end, usePrimaryDirection = true)
                     return minOf(a, b) to maxOf(a, b)
                 }
-                // The light covers the letter being uttered, and glides to it from the letter before.
-                val now = letter(uttered.from, uttered.to)
-                val was = if (uttered.before == uttered.from) now else letter(uttered.before, uttered.from)
+                // Without exact places, the Uthmani place is taken in proportion to the shown word's length.
+                val rough = written.length.toFloat() / word.arabic.length.coerceAtLeast(1)
+                fun shown(index: Int) = if (repaint != null) spelling.at(index) else (index * rough).roundToInt()
+
+                if (uttered == null) {
+                    drawContent()
+                    drawIntoCanvas { canvas ->
+                        for (mark in coloured) {
+                            repaint?.draw(canvas.nativeCanvas, shown(mark.from), shown(mark.to), edge, baseline, box, tajweed.ink(mark.rule.family).faded(strength, colors.background))
+                        }
+                    }
+                    return@drawWithContent
+                }
+
+                val from = shown(uttered.from)
+                val to = shown(uttered.to)
+                // A stretch that is only signs: the vowel of the letter just uttered.
+                val signs = repaint != null && to > from && (from until to).all { written[it].isMark() }
+                // The rule the stretch falls under gives the light its colour and its motion.
+                val family = coloured.firstOrNull { it.from < uttered.to && uttered.from < it.to }?.rule?.family
+                val glow = family?.let(tajweed::light) ?: gold
+                val now = letters(from, to)
+                val was = if (uttered.before == uttered.from) now else letters(shown(uttered.before), from)
                 val moved = (uttered.sinceMs / GLIDE_MS).coerceIn(0f, 1f).let { it * it * (3 - 2 * it) }
-                var left = was.first + (now.first - was.first) * moved
-                var right = was.second + (now.second - was.second) * moved
+                val (nowLeft, nowRight) = across(now)
+                val (wasLeft, wasRight) = across(was)
+                var left = wasLeft + (nowLeft - wasLeft) * moved
+                var right = wasRight + (nowRight - wasRight) * moved
                 // A hairline of a letter still gets a light wide enough to see.
                 val least = 9.dp.toPx()
                 if (right - left < least) {
@@ -839,26 +915,38 @@ private fun WordTile(
                 // Full strength over the body of the letter, easing off across each end, where it joins its neighbours.
                 val ease = ((right - left) * 0.45f).coerceIn(3.dp.toPx(), 10.dp.toPx())
                 val whole = right - left + ease
-                // A soft pool of light behind the letter, then the word, then the letter itself lit up.
-                spot(glow.copy(alpha = 0.26f * lit), Offset((left + right) / 2, placed.firstBaseline - 8.dp.toPx()), radius = 24.dp.toPx(), flatten = 0.95f)
+                // A soft pool of light behind the letter, moving as its rule asks; then the word; then the letter itself lit up.
+                pool(family, glow, Offset((left + right) / 2, baseline - 8.dp.toPx()), uttered, lit)
                 drawContent()
-                // The word is drawn once more in the highlight colour, exactly over itself, and
-                // all of it but the letter is wiped away. The letter changes colour and nothing
-                // else: it isn't laid out again and gets no bloom, so it neither moves nor looks any bigger.
                 drawIntoCanvas { canvas ->
-                    val margin = 12.dp.toPx()
+                    val native = canvas.nativeCanvas
+                    for (mark in coloured) {
+                        repaint?.draw(native, shown(mark.from), shown(mark.to), edge, baseline, box, tajweed.ink(mark.rule.family).faded(strength, colors.background))
+                    }
+                    // The letter is painted once more in the light's colour, exactly over itself: it
+                    // isn't laid out again and gets no bloom, so it neither moves nor looks any bigger.
+                    // While its vowel sign is being uttered the letter stays half lit under it.
+                    val margin = room
                     canvas.saveLayer(Rect(-margin, -margin, size.width + margin, size.height + margin), Paint())
-                    drawText(placed, color = glow)
+                    if (repaint != null) {
+                        if (moved < 1f && was != now) repaint.draw(native, was.first, was.last + 1, edge, baseline, box, glow)
+                        repaint.draw(native, now.first, now.last + 1, edge, baseline, box, glow)
+                    } else {
+                        drawText(placed, color = glow)
+                    }
+                    val full = lit * if (signs) 0.5f else 1f
                     drawRect(
                         Brush.horizontalGradient(
-                            0f to Color.Transparent, ease / whole to Color.Black.copy(alpha = lit),
-                            1f - ease / whole to Color.Black.copy(alpha = lit), 1f to Color.Transparent,
+                            0f to Color.Transparent, ease / whole to Color.Black.copy(alpha = full),
+                            1f - ease / whole to Color.Black.copy(alpha = full), 1f to Color.Transparent,
                             startX = left - ease / 2, endX = right + ease / 2,
                         ),
                         topLeft = Offset(-margin, -margin), size = Size(size.width + 2 * margin, size.height + 2 * margin),
                         blendMode = BlendMode.DstIn,
                     )
                     canvas.restore()
+                    // The vowel sign itself, with a small light of its own round it.
+                    if (signs) repaint?.draw(native, from, to, edge, baseline, box, glow.copy(alpha = lit * moved), glow = 1.6.dp.toPx())
                 }
             },
         )
@@ -1067,12 +1155,14 @@ private fun ReaderMenuButton(
     withIndoPak: Boolean,
     appearance: Appearance,
     onAppearance: (Appearance) -> Unit,
+    tajweed: Boolean,
+    onTajweed: (Boolean) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }) { Icon(AppIcons.Menu, stringResource(R.string.menu)) }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            ReadingChoices(meanings, onMeanings, scale, onScale, script, onScript, withIndoPak, appearance, onAppearance)
+            ReadingChoices(meanings, onMeanings, scale, onScale, script, onScript, withIndoPak, appearance, onAppearance, tajweed, onTajweed)
         }
     }
 }

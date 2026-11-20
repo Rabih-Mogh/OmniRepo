@@ -38,7 +38,7 @@ object Phonemizer {
     private val SILENT = setOf('۟', '۠')
 
     /** Signs where a reciter may stop inside a verse. */
-    private val STOP_SIGNS = setOf('ۖ', 'ۗ', 'ۘ', 'ۙ', 'ۚ', 'ۛ')
+    internal val STOP_SIGNS = setOf('ۖ', 'ۗ', 'ۘ', 'ۙ', 'ۚ', 'ۛ')
 
     private val VOWELLING = setOf(FATHA, DAMMA, KASRA, FATHATAN, DAMMATAN, KASRATAN, SUKUN, SHADDA)
 
@@ -70,26 +70,40 @@ object Phonemizer {
         'ن' to listOf(Sound.N, Sound.UU, Sound.N),
     )
 
-    /** A letter with the marks written on it, and where it sits in the word. */
-    private class Letter(val base: Char, val start: Int) {
+    /**
+     * A letter with the marks written on it, and where it sits in the word: from [start]
+     * up to [end]. [body] is where its vowel sign begins (the letter itself and a shadda or
+     * sukun come before it), or [end] if it has none.
+     */
+    internal class Letter(val base: Char, val start: Int) {
         val marks = HashSet<Char>(4)
         var end = start + 1
+        var body = -1
     }
+
+    /** The signs that are a vowel's own: a short vowel, a doubled one, or a small long one written above. */
+    internal val VOWEL_SIGNS = setOf(FATHA, DAMMA, KASRA, FATHATAN, DAMMATAN, KASRATAN, DAGGER_ALIF, SMALL_WAW, SMALL_YA)
 
     private class Draft(var sound: Sound, var optional: Boolean, val upTo: Int, val tanween: Boolean = false)
 
-    private fun units(word: String): List<Letter> {
+    internal fun units(word: String): List<Letter> {
         val out = ArrayList<Letter>()
         for ((i, c) in word.withIndex()) {
             if (c in LETTERS) {
                 out += Letter(c, i)
             } else if (out.isNotEmpty() && c != ' ') {
-                out.last().marks += c
-                if (c !in STOP_SIGNS) out.last().end = i + 1
+                val letter = out.last()
+                letter.marks += c
+                if (c in VOWEL_SIGNS && letter.body < 0) letter.body = i
+                if (c !in STOP_SIGNS) letter.end = i + 1
             }
         }
+        for (letter in out) if (letter.body < 0 || letter.body > letter.end) letter.body = letter.end
         return out
     }
+
+    /** Whether [letter] is a consonant with a sound of its own (not a long vowel's letter, nor a hamza's seat). */
+    internal fun isConsonant(letter: Char): Boolean = letter in CONSONANTS
 
     /** Whether the word carries a sign that allows a stop after it. */
     fun allowsStop(word: String): Boolean = word.any { it in STOP_SIGNS }
@@ -115,8 +129,10 @@ object Phonemizer {
 
         val out = ArrayList<Draft>()
         fun last() = out.lastOrNull()?.sound
-        fun add(sound: Sound, u: Letter, optional: Boolean = false) {
-            out += Draft(sound, optional, u.end)
+        // A consonant is written by the letter's body; its vowel by the sign on it. Keeping the
+        // two apart lets the light fall on the letter and then on its vowel sign.
+        fun add(sound: Sound, u: Letter, optional: Boolean = false, body: Boolean = false) {
+            out += Draft(sound, optional, if (body) u.body else u.end)
         }
         fun lengthen(short: Sound, long: Sound, u: Letter) {
             when (last()) {
@@ -154,7 +170,7 @@ object Phonemizer {
             val b = u.base
             when {
                 b == TATWEEL -> when {
-                    HAMZA_ABOVE in m -> { add(Sound.HAMZA, u, optional = true); vowel(u) }
+                    HAMZA_ABOVE in m -> { add(Sound.HAMZA, u, optional = true, body = true); vowel(u) }
                     DAGGER_ALIF in m -> lengthen(Sound.A, Sound.AA, u)
                     SMALL_YA in m -> lengthen(Sound.I, Sound.II, u)
                     SMALL_WAW in m -> lengthen(Sound.U, Sound.UU, u)
@@ -163,18 +179,18 @@ object Phonemizer {
                 b == WASLA -> if (k == 0) add(Sound.LINK, u, optional = true)
                 // After an a it only draws the vowel out; otherwise it is a hamza with a long a.
                 b == ALIF_MADDA -> if (last() == Sound.A) lengthen(Sound.A, Sound.AA, u) else { add(Sound.HAMZA, u, optional = true); add(Sound.AA, u) }
-                b in HAMZAS || HAMZA_ABOVE in m || HAMZA_BELOW in m -> { add(Sound.HAMZA, u, optional = true); vowel(u) }
+                b in HAMZAS || HAMZA_ABOVE in m || HAMZA_BELOW in m -> { add(Sound.HAMZA, u, optional = true, body = true); vowel(u) }
                 b == ALIF -> when {
-                    marked -> { add(Sound.HAMZA, u, optional = true); vowel(u) }
+                    marked -> { add(Sound.HAMZA, u, optional = true, body = true); vowel(u) }
                     last() == Sound.A -> lengthen(Sound.A, Sound.AA, u)
                 }
                 b == 'و' -> when {
-                    marked -> { add(Sound.W, u); vowel(u) }
+                    marked -> { add(Sound.W, u, body = true); vowel(u) }
                     DAGGER_ALIF in m -> lengthen(Sound.A, Sound.AA, u)
                     last() == Sound.U -> lengthen(Sound.U, Sound.UU, u)
                 }
                 b == 'ي' || b == 'ى' -> when {
-                    marked -> { add(Sound.Y, u); vowel(u) }
+                    marked -> { add(Sound.Y, u, body = true); vowel(u) }
                     DAGGER_ALIF in m -> lengthen(Sound.A, Sound.AA, u)
                     last() == Sound.I -> lengthen(Sound.I, Sound.II, u)
                     last() == Sound.A && b == 'ى' -> lengthen(Sound.A, Sound.AA, u)
@@ -189,7 +205,7 @@ object Phonemizer {
                             add(if (b == 'ن' && following?.base == 'ب') Sound.M else sound, u)
                         }
                     } else {
-                        add(sound, u)
+                        add(sound, u, body = true)
                         vowel(u)
                         // "Allah": the a after its doubled l is long, though no alif is written.
                         if (b == 'ل' && SHADDA in m && FATHA in m && k > 0 && us[k - 1].base == 'ل') {

@@ -1,7 +1,11 @@
 package app.recitation.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -53,6 +57,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.recitation.R
+import app.recitation.core.Family
 import app.recitation.core.Surah
 import app.recitation.core.SurahSearch
 import app.recitation.data.Appearance
@@ -203,6 +208,8 @@ fun MenuContent(
     onMeanings: (Boolean) -> Unit,
     appearance: Appearance = Appearance.AUTO,
     onAppearance: (Appearance) -> Unit = {},
+    tajweed: Boolean = true,
+    onTajweed: (Boolean) -> Unit = {},
     footer: @Composable () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
@@ -212,7 +219,7 @@ fun MenuContent(
             Text(stringResource(R.string.tagline), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
         }
         HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
-        ReadingChoices(meanings, onMeanings, textScale, onTextScale, script, onScript, withIndoPak, appearance, onAppearance)
+        ReadingChoices(meanings, onMeanings, textScale, onTextScale, script, onScript, withIndoPak, appearance, onAppearance, tajweed, onTajweed)
         HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
         footer()
     }
@@ -234,6 +241,8 @@ fun ReadingChoices(
     withIndoPak: Boolean,
     appearance: Appearance = Appearance.AUTO,
     onAppearance: (Appearance) -> Unit = {},
+    tajweed: Boolean = true,
+    onTajweed: (Boolean) -> Unit = {},
 ) {
     Column {
         // Light or dark at a tap, or left to follow the phone.
@@ -272,7 +281,43 @@ fun ReadingChoices(
             Text(stringResource(R.string.text_size), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
             TextSizeControls(textScale, onTextScale)
         }
+        // Letters coloured by the rule of recitation they fall under, with what each colour means.
+        Row(
+            Modifier.fillMaxWidth().toggleable(value = tajweed, role = Role.Switch, onValueChange = onTajweed).padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(stringResource(R.string.tajweed_colours), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.width(12.dp))
+            Switch(checked = tajweed, onCheckedChange = null)
+        }
+        if (tajweed) TajweedLegend(Modifier.padding(horizontal = 16.dp))
         HorizontalDivider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
         ScriptChooser(script, withIndoPak, onScript)
+    }
+}
+
+/** What each colour of the rules of recitation means: a dot of the colour and the rules it stands for. */
+@Composable
+fun TajweedLegend(modifier: Modifier = Modifier) {
+    val colours = LocalTajweed.current
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        for (family in Family.entries) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(12.dp).background(colours.ink(family), CircleShape))
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    stringResource(
+                        when (family) {
+                            Family.NASAL -> R.string.tajweed_nasal
+                            Family.MADD_MUST -> R.string.tajweed_madd_must
+                            Family.MADD_MAY -> R.string.tajweed_madd_may
+                            Family.ECHO -> R.string.tajweed_echo
+                            Family.QUIET -> R.string.tajweed_quiet
+                        },
+                    ),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }

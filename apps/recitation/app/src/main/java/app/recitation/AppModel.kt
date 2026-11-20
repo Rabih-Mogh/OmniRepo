@@ -9,7 +9,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import app.recitation.core.Mark
+import app.recitation.core.Pointer
 import app.recitation.core.SURAHS
+import app.recitation.core.Tajweed
 import app.recitation.core.SurahMatcher
 import app.recitation.core.SurahSearch
 import app.recitation.core.Timings
@@ -21,6 +24,8 @@ import app.recitation.data.Place
 import app.recitation.data.Playlist
 import app.recitation.data.QuranStore
 import app.recitation.data.Settings
+import app.recitation.data.Space
+import app.recitation.data.Stats
 import app.recitation.data.SurahNames
 import app.recitation.data.Track
 import app.recitation.data.Verse
@@ -34,6 +39,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /** Which screen is showing. */
 sealed interface Screen {
@@ -49,8 +55,29 @@ sealed interface Screen {
     data class Surah(val number: Int, val trackId: String?, val from: Screen) : Screen
 }
 
-/** Everything the reading screen needs for one surah. [track] and [timings] are there when a recording goes with it. */
-class Reading(val surah: Int, val verses: List<Verse>, val track: Track? = null, val timings: Timings? = null)
+/**
+ * Everything the reading screen needs for one surah. [track] and [timings] are there when a
+ * recording goes with it. The timings are given as the alignment made them and kept here
+ * made finer: a time for every letter and vowel sign (see [Pointer]).
+ */
+class Reading(val surah: Int, val verses: List<Verse>, val track: Track? = null, timings: Timings? = null) {
+    private val words = verses.map { verse -> verse.words.map { it.arabic } }
+    private val refined = timings?.let { Pointer.refine(words, it) }
+
+    val timings: Timings? = refined?.timings
+
+    /**
+     * The rules of recitation at work in each word of each verse. Some depend on where the
+     * reciter stops: with a recording, that is where its reciter stopped; without one, at
+     * the end of each verse.
+     */
+    val rules: List<List<List<Mark>>> = run {
+        val stops = refined?.stops ?: Tajweed.stopsAtVerseEnds(words.map { it.size })
+        val marks = Tajweed.marks(words.flatten(), stops)
+        var w = 0
+        words.map { verse -> List(verse.size) { marks[w++] } }
+    }
+}
 
 class AppModel(app: Application) : AndroidViewModel(app) {
 
@@ -58,12 +85,15 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 
     /** The pins left on verses and the collections verses are kept in. */
     val marks = Marks.get(app)
+
+    /** How long has been listened on each day, and which verses have been heard. */
+    val stats = Stats.get(app)
     private val quran = QuranStore(app)
 
     var screen by mutableStateOf<Screen>(Screen.Home)
         private set
 
-    /** The tab of the first screen: 0 the Quran, 1 the playlists, 2 the pins and collections. */
+    /** The tab of the first screen: 0 the Quran, 1 the playlists, 2 the pins and collections, 3 the stats. */
     var tab by mutableIntStateOf(0)
 
     /** What is typed in the search box; null when it isn't open. */
@@ -119,7 +149,9 @@ class AppModel(app: Application) : AndroidViewModel(app) {
             PrepareWorker.live.collect { live ->
                 val open = reading
                 if (live != null && open?.track?.id == live.trackId && open.surah == live.surah) {
-                    reading = Reading(open.surah, open.verses, open.track, live.timings)
+                    // Working out every letter's time and the rules takes a moment on a long surah.
+                    val latest = withContext(Dispatchers.Default) { Reading(open.surah, open.verses, open.track, live.timings) }
+                    if (reading === open) reading = latest
                 }
             }
         }
@@ -187,6 +219,16 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         runCatching { quran.surah(verse.surah).getOrNull(verse.verse - 1) }.getOrNull()
     }
 
+    /** How much room the app's files take on the phone. */
+    suspend fun space(): Space = withContext(Dispatchers.IO) {
+        fun size(file: File): Long = if (file.isDirectory) file.listFiles().orEmpty().sumOf(::size) else file.length()
+        val files = getApplication<Application>().filesDir
+        val recordings = size(File(files, "audio"))
+        val engine = size(File(files, "engine"))
+        val model = size(File(files, "model"))
+        Space(recordings, engine, model, size(files) - recordings - engine - model)
+    }
+
     /** The place to start the recording now opening at, asked for once by the player. */
     fun takeStartAt(): Int = (startAt ?: 0).also { startAt = null }
 
@@ -238,7 +280,11 @@ class AppModel(app: Application) : AndroidViewModel(app) {
             if ((screen as? Screen.Surah)?.number != surah) return@launch
             // What the listening has placed since the file was written, if it is this recording being listened to.
             val live = PrepareWorker.live.value?.takeIf { loaded?.track != null && it.trackId == loaded.track.id && it.surah == surah }
-            reading = if (loaded != null && live != null) Reading(surah, loaded.verses, loaded.track, live.timings) else loaded
+            reading = if (loaded != null && live != null) {
+                withContext(Dispatchers.Default) { Reading(surah, loaded.verses, loaded.track, live.timings) }
+            } else {
+                loaded
+            }
             readingFailed = loaded == null
         }
     }
