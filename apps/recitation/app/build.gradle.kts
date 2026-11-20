@@ -32,9 +32,11 @@ android {
 
     // ONNX Runtime's native library is 34 MB, nine tenths of the app, and the same in every
     // build. It is left out of the package and put on the phone once (see speech/EngineStore.kt).
+    // The small library that joins it to the Java side (120 KB) stays in: on Android, ONNX
+    // Runtime will only load that one from the package itself.
     packaging {
         jniLibs {
-            excludes += setOf("**/libonnxruntime.so", "**/libonnxruntime4j_jni.so")
+            excludes += setOf("**/libonnxruntime.so")
         }
     }
 

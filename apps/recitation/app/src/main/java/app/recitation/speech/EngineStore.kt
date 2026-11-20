@@ -23,11 +23,11 @@ import kotlin.coroutines.coroutineContext
  * it was nine tenths of the app's download and the same in every build, so it is no longer
  * shipped inside the app. It is put on the phone once instead:
  *
- * - copied out of Accent Coach's installed package, which carries the very same files,
+ * - copied out of Accent Coach's installed package, which carries the very same file,
  *   when that app is on the phone;
  * - otherwise downloaded from this repo, compressed (13 MB).
  *
- * Either way every file must match its fixed checksum before it is kept, and it is kept in
+ * Either way the file must match its fixed checksum before it is kept, and it is kept in
  * the app's private storage, read-only.
  */
 class EngineStore(private val context: Context, private val parts: List<Part> = PARTS, private val source: String = SOURCE) {
@@ -134,18 +134,20 @@ class EngineStore(private val context: Context, private val parts: List<Part> = 
     }
 
     /**
-     * Loads the engine into the app, once. ONNX Runtime's Java side, when it sees it is
-     * running on Android, only looks for its library inside the app's own package
-     * (System.loadLibrary), where it no longer is. Off Android it loads the library from a
-     * folder it is pointed at, by full path, which works on Android just as well. So for
-     * the moment it starts up it is pointed at the folder and told it isn't on Android.
+     * Loads the engine into the app, once. ONNX Runtime's Java side, on Android, asks the
+     * system for one library only, by name: the small one that joins it to the engine, which
+     * is in the app's package. That one in turn needs the engine itself, by name too. A
+     * library that is already loaded is found by its name, so the engine is loaded first,
+     * from where it is kept, by its full path.
+     *
+     * (Until version 1.47 this tried to make ONNX Runtime think it wasn't on Android, so that
+     * it would load both from a folder. Android doesn't let an app change what it reports
+     * itself to be, so that never worked on a phone.)
      */
     fun start() = synchronized(lock) {
         if (started) return
-        val vendor = System.getProperty("java.vendor")
         try {
-            System.setProperty("onnxruntime.native.path", dir.path)
-            System.setProperty("java.vendor", "Recitation")
+            System.load(File(dir, ENGINE).path)
             OrtEnvironment.getEnvironment()
             started = true
         } catch (e: LinkageError) {
@@ -153,8 +155,6 @@ class EngineStore(private val context: Context, private val parts: List<Part> = 
             throw WontStart("${e.javaClass.simpleName}: ${(e.cause ?: e).message}")
         } catch (e: RuntimeException) {
             throw WontStart("${e.javaClass.simpleName}: ${(e.cause ?: e).message}")
-        } finally {
-            if (vendor != null) System.setProperty("java.vendor", vendor) else System.clearProperty("java.vendor")
         }
     }
 
@@ -168,10 +168,9 @@ class EngineStore(private val context: Context, private val parts: List<Part> = 
         private const val ABI = "arm64-v8a"
         private const val SOURCE = "https://raw.githubusercontent.com/Rabih-Mogh/OmniRepo/main/apps/recitation/engine/onnxruntime-$VERSION/$ABI/"
 
-        /** In the order they have to be loaded: the second needs the first. */
-        val PARTS = listOf(
-            Part("libonnxruntime.so", 34_208_680L, "46e0c16cd515c62a1dd6c5994448b5413705478354bc20a756a5a82634c3ca03"),
-            Part("libonnxruntime4j_jni.so", 122_576L, "c80ab74a6ff66f04943e509a7824742ea2dfe8c6aa1d9dfdaf86c31f8cebdcfc"),
-        )
+        private const val ENGINE = "libonnxruntime.so"
+
+        /** What is put on the phone: the engine itself. The small library that joins it to the Java side is in the app's package. */
+        val PARTS = listOf(Part(ENGINE, 34_208_680L, "46e0c16cd515c62a1dd6c5994448b5413705478354bc20a756a5a82634c3ca03"))
     }
 }

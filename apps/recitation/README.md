@@ -327,13 +327,17 @@ app's package used to weigh, and the same in every build. It is no longer inside
 package, which is about 4 MB instead of 38 MB, so every update is that much smaller. The
 engine is put on the phone once, the first time a recording is prepared:
 
-- **Accent Coach installed:** the two library files are copied out of Accent Coach's
-  installed package, which carries the very same ones. Nothing is downloaded.
-- **Otherwise:** they are downloaded from this repo ([engine/](engine/)), compressed
-  (13 MB).
+- **Accent Coach installed:** the library is copied out of Accent Coach's installed
+  package, which carries the very same file. Nothing is downloaded.
+- **Otherwise:** it is downloaded from this repo ([engine/](engine/)), compressed (13 MB).
 
-Each file must match its fixed SHA-256 before it is kept, and is kept read-only in the
-app's private storage. Reading and searching the Quran, and playing recordings that are
+The file must match its fixed SHA-256 before it is kept, and is kept read-only in the
+app's private storage. The small library that joins the engine to the app's Java side
+(120 KB) stays inside the package: on Android, ONNX Runtime will load that one only from
+the package. The app loads the engine first, by its full path, and the small library then
+finds it already loaded. Versions 1.43 to 1.46 kept both files outside the package and
+could not start the engine on a phone ("The speech engine couldn't be started"), so no
+recording could be prepared with them. Reading and searching the Quran, and playing recordings that are
 already prepared, don't need the engine.
 
 ## How accurate it is
