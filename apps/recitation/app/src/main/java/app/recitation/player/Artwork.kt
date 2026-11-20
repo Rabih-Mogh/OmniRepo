@@ -33,7 +33,7 @@ object Artwork {
         val key = "${surah.number}-$dark-${calligraphy != null}"
         made.get(key)?.let { return it }
 
-        val background = if (dark) 0xFF0A0E18.toInt() else 0xFF1B6B4A.toInt()
+        val background = if (dark) 0xFF0B0B0B.toInt() else 0xFF1B6B4A.toInt()
         val gold = 0xFFF2C14E.toInt()
         val ink = if (dark) gold else 0xFFFFF7E0.toInt()
         val bitmap = Bitmap.createBitmap(SIZE, SIZE, Bitmap.Config.ARGB_8888)
@@ -61,15 +61,19 @@ object Artwork {
         val text = if (calligraphy != null) SurahNames.glyph(surah.number) else surah.arabic
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = ink
-            textAlign = Paint.Align.CENTER
             typeface = calligraphy?.let { runCatching { Typeface.createFromFile(it) }.getOrNull() } ?: Typeface.DEFAULT_BOLD
             textSize = s * 0.34f
         }
-        // As large as fits between the arch's sides.
-        val widest = s * 0.58f
-        val width = paint.measureText(text)
-        if (width > widest) paint.textSize *= widest / width
-        canvas.drawText(text, s * 0.5f, s * 0.64f - (paint.descent() + paint.ascent()) / 2, paint)
+        // As large as fits between the arch's sides, and centred there by what is actually
+        // drawn: a calligraphic name's ink can sit well to one side of the space it is given.
+        val widest = s * 0.56f
+        val tallest = s * 0.3f
+        fun drawn() = android.graphics.Rect().also { paint.getTextBounds(text, 0, text.length, it) }
+        val atFullSize = drawn()
+        paint.textSize *= minOf(widest / atFullSize.width().coerceAtLeast(1), tallest / atFullSize.height().coerceAtLeast(1), 1f)
+        val drawn = drawn()
+        // The middle of the arch: half way across, and half way between its point and its feet.
+        canvas.drawText(text, s * 0.5f - drawn.exactCenterX(), s * 0.52f - drawn.exactCenterY(), paint)
 
         val png = ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
         bitmap.recycle()

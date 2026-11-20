@@ -11,7 +11,9 @@ import java.io.File
 /**
  * One recording of a playlist.
  * [surah]: which surah it is, 0 when the title didn't say. [wanted]: the user asked for it
- * to be downloaded and prepared. [ready]: its word timings are saved and it can be opened.
+ * to be downloaded and prepared. [playable]: its sound and its surah's words are on the
+ * phone, so it can be played; words light up as far as the listening has got. [ready]:
+ * the listening is finished and every word's timing is saved.
  * [clarity]: how well the recording matched the surah's words (see `Timings.clarity`).
  */
 data class Track(
@@ -23,7 +25,11 @@ data class Track(
     val ready: Boolean = false,
     val clarity: Float = 0f,
     val error: String? = null,
-)
+    val playable: Boolean = false,
+) {
+    /** Whether it can be opened to play: fully prepared, or far enough along. */
+    val canPlay: Boolean get() = ready || playable
+}
 
 data class Playlist(val url: String, val title: String, val channel: String, val tracks: List<Track>)
 
@@ -76,7 +82,7 @@ class Library private constructor(context: Context) {
     @Synchronized
     fun forget(id: String) {
         deleteFiles(id)
-        update(id) { it.copy(wanted = false, ready = false, error = null, clarity = 0f) }
+        update(id) { it.copy(wanted = false, ready = false, playable = false, error = null, clarity = 0f) }
     }
 
     /** Deletes a recording's half-finished download. */
@@ -98,7 +104,8 @@ class Library private constructor(context: Context) {
             for (t in p.tracks) {
                 tracks.put(
                     JSONObject().put("id", t.id).put("title", t.title).put("seconds", t.seconds).put("surah", t.surah)
-                        .put("wanted", t.wanted).put("ready", t.ready).put("clarity", t.clarity.toDouble()).put("error", t.error ?: JSONObject.NULL),
+                        .put("wanted", t.wanted).put("ready", t.ready).put("clarity", t.clarity.toDouble()).put("error", t.error ?: JSONObject.NULL)
+                        .put("playable", t.playable),
                 )
             }
             json.put(JSONObject().put("url", p.url).put("title", p.title).put("channel", p.channel).put("tracks", tracks))
@@ -121,6 +128,7 @@ class Library private constructor(context: Context) {
                         t.getString("id"), t.getString("title"), t.getLong("seconds"), t.getInt("surah"),
                         t.getBoolean("wanted"), t.getBoolean("ready"), t.getDouble("clarity").toFloat(),
                         if (t.isNull("error")) null else t.getString("error"),
+                        t.optBoolean("playable", false),
                     )
                 },
             )

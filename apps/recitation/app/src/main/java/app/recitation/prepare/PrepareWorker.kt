@@ -21,7 +21,9 @@ import app.recitation.MainActivity
 import app.recitation.R
 import app.recitation.core.Aligner
 import app.recitation.core.Hearing
+import app.recitation.core.LiveAlignment
 import app.recitation.core.Recital
+import app.recitation.core.Timings
 import app.recitation.data.Library
 import app.recitation.data.QuranStore
 import app.recitation.data.Settings
@@ -44,6 +46,9 @@ import java.io.IOException
 
 /** What is being done to a recording right now. */
 enum class Step { MODEL_COPY, MODEL_DOWNLOAD, DOWNLOAD, VERSES, LISTEN, ALIGN, RETRY }
+
+/** A recording's word timings while, and just after, it is listened to. */
+class Live(val trackId: String, val surah: Int, val timings: Timings)
 
 /** Why the speech model couldn't be copied from Accent Coach. */
 data class ModelProblem(val reason: ModelStore.Lender, val detail: String?)
@@ -130,8 +135,19 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
     /** The system's own words for what went wrong: the only clue there is from a phone. */
     private fun detail(e: Exception): String = e.message?.takeIf { it.isNotBlank() }?.let { "${e.javaClass.simpleName}: $it" } ?: e.javaClass.simpleName
 
-    private fun next(): Track? =
-        library.playlists.value.asSequence().flatMap { it.tracks }.firstOrNull { it.wanted && !it.ready && it.error == null && it.surah > 0 }
+    /** The recording to work on next: the one the reader has open, if it is waiting; otherwise the first in line. */
+    private fun next(): Track? {
+        val waiting = library.playlists.value.flatMap { it.tracks }.filter(::waits)
+        return waiting.firstOrNull { it.id == preferred } ?: waiting.firstOrNull()
+    }
+
+    private fun waits(track: Track) = track.wanted && !track.ready && track.error == null && track.surah > 0
+
+    /** Whether the recording the reader has open is waiting behind [id], in which case [id] steps aside. */
+    private fun outranked(id: String): Boolean {
+        val open = preferred ?: return false
+        return open != id && library.track(open)?.let(::waits) == true
+    }
 
     private fun fail(track: Track, message: String) = library.update(track.id) { it.copy(wanted = false, error = message) }
 
@@ -141,7 +157,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
 
     private suspend fun prepare(track: Track) {
         val id = track.id
-        fun wanted() = !isStopped && library.track(id)?.wanted == true
+        fun wanted() = !isStopped && library.track(id)?.wanted == true && !outranked(id)
         fun report(step: Step, fraction: Float, forModel: Boolean = false) {
             _progress.value = Progress(if (forModel) null else id, step, fraction)
             show(track, step, fraction)
@@ -167,6 +183,15 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
 
         report(Step.VERSES, 0f)
         val verses = quran.surah(track.surah)
+        val recital = Recital(track.surah, verses.map { verse -> verse.words.map { it.arabic } })
+        val timingsFile = library.timings(id, track.surah)
+
+        // With the sound and the words on the phone it can already be played: words light up
+        // as far as the listening has got, and the listening carries on meanwhile.
+        if (library.track(id)?.ready != true) {
+            if (!timingsFile.exists()) timingsFile.writeText(Timings(emptyList(), 1f, heardMs = 0).encode())
+            library.update(id) { it.copy(playable = true) }
+        }
 
         // What the model heard is kept, so choosing another surah for a recording doesn't mean listening again.
         val notes = library.heard(id)
@@ -176,20 +201,40 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         } else {
             report(Step.LISTEN, 0f)
             val listener = listener ?: Listener(model.modelFile, vocab()).also { listener = it }
-            (listener.listen(audio, notes, ::wanted) { report(Step.LISTEN, it) } ?: throw Stopped()).also { done.createNewFile() }
+            // The words are placed as the listening goes, a few seconds behind it, for the reader to follow meanwhile.
+            val live = LiveAlignment(recital)
+            listener.resume(notes).let { live.add(it.frames, it.rows) }
+            var pieces = 0
+            fun publish() {
+                val soFar = live.advance()
+                _live.value = Live(id, track.surah, soFar)
+                // Kept on the phone too, every half minute of recitation, in case the app is closed meanwhile.
+                if (pieces++ % 3 == 0) timingsFile.writeText(soFar.encode())
+            }
+            publish()
+            val whole = listener.listen(
+                audio, notes, ::wanted,
+                onPiece = { frames, rows ->
+                    live.add(frames, rows)
+                    publish()
+                },
+                onProgress = { report(Step.LISTEN, it) },
+            ) ?: throw Stopped()
+            whole.also { done.createNewFile() }
         }
 
+        // Now that all of it has been heard, every word is placed again against the whole recording.
         report(Step.ALIGN, 0f)
-        val recital = Recital(track.surah, verses.map { verse -> verse.words.map { it.arabic } })
         val aligner = Aligner(heard.rows, recital.phones)
         val starts = aligner.align() ?: throw TooShort()
         val timings = recital.timings(starts, heard.frames, aligner)
-        library.timings(id, track.surah).writeText(timings.encode())
+        timingsFile.writeText(timings.encode())
+        _live.value = Live(id, track.surah, timings)
         if (timings.matches) {
             notes.delete()
             done.delete()
         }
-        library.update(id) { it.copy(ready = true, wanted = false, clarity = timings.clarity, error = null) }
+        library.update(id) { it.copy(ready = true, playable = true, wanted = false, clarity = timings.clarity, error = null) }
     }
 
     private fun vocab(): List<String> {
@@ -239,6 +284,17 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
 
         /** What the worker is doing, for the screens; null when it isn't running. */
         val progress: StateFlow<Progress?> = _progress.asStateFlow()
+
+        private val _live = MutableStateFlow<Live?>(null)
+
+        /** The word timings of the recording being listened to, as far as they have got; then its final ones. */
+        val live: StateFlow<Live?> = _live.asStateFlow()
+
+        /**
+         * The recording the reader has open. If it is waiting to be prepared it goes first,
+         * ahead of whatever is being worked on.
+         */
+        @Volatile var preferred: String? = null
 
         private val _modelProblem = MutableStateFlow<ModelProblem?>(null)
 

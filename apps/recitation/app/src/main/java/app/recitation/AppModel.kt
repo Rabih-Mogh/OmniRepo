@@ -11,8 +11,12 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import app.recitation.core.SURAHS
 import app.recitation.core.SurahMatcher
+import app.recitation.core.SurahSearch
 import app.recitation.core.Timings
+import app.recitation.data.Hit
+import app.recitation.data.IndoPakFont
 import app.recitation.data.Library
+import app.recitation.data.Marks
 import app.recitation.data.Place
 import app.recitation.data.Playlist
 import app.recitation.data.QuranStore
@@ -20,9 +24,12 @@ import app.recitation.data.Settings
 import app.recitation.data.SurahNames
 import app.recitation.data.Track
 import app.recitation.data.Verse
+import app.recitation.data.VerseCollection
+import app.recitation.data.VerseRef
 import app.recitation.prepare.PrepareWorker
 import app.recitation.yt.YouTube
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -34,6 +41,9 @@ sealed interface Screen {
 
     data class Recordings(val url: String) : Screen
 
+    /** The verses kept in one collection. */
+    data class Collection(val id: String) : Screen
+
     /** A surah's words. [trackId] is the recording to play with it, or null to just read. [from] is where Back goes. */
     data class Surah(val number: Int, val trackId: String?, val from: Screen) : Screen
 }
@@ -44,13 +54,25 @@ class Reading(val surah: Int, val verses: List<Verse>, val track: Track? = null,
 class AppModel(app: Application) : AndroidViewModel(app) {
 
     val library = Library.get(app)
+
+    /** The pins left on verses and the collections verses are kept in. */
+    val marks = Marks.get(app)
     private val quran = QuranStore(app)
 
     var screen by mutableStateOf<Screen>(Screen.Home)
         private set
 
-    /** The tab of the first screen: 0 the Quran, 1 the playlists. */
+    /** The tab of the first screen: 0 the Quran, 1 the playlists, 2 the pins and collections. */
     var tab by mutableIntStateOf(0)
+
+    /** What is typed in the search box; null when it isn't open. */
+    var query by mutableStateOf<String?>(null)
+        private set
+
+    /** The verses whose words or translation contain [query]. */
+    var hits by mutableStateOf<List<Hit>>(emptyList())
+        private set
+    private var searching: Job? = null
 
     /** A link waiting in the "add playlist" box: shared from YouTube, or being typed. Null when the box is closed. */
     var link by mutableStateOf<String?>(null)
@@ -72,6 +94,9 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     /** How far into its recording the surah about to open should start, when carrying on from [lastRead]. */
     private var startAt: Int? = null
 
+    /** The verse (counted from 0) the surah about to open should open at, when coming from a pin or a collection. */
+    private var startVerse: Int? = null
+
     /** Downloads were paused by the user and stay so until resumed. */
     var paused by mutableStateOf(Settings.paused(app))
         private set
@@ -85,6 +110,16 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         if (!paused && library.playlists.value.any { p -> p.tracks.any { it.wanted && !it.ready } }) PrepareWorker.start(app)
         fetchTheRest()
         viewModelScope.launch { SurahNames.load(app) }
+        viewModelScope.launch { IndoPakFont.load(app) }
+        // While the open recording is being listened to its word timings grow: show the latest.
+        viewModelScope.launch {
+            PrepareWorker.live.collect { live ->
+                val open = reading
+                if (live != null && open?.track?.id == live.trackId && open.surah == live.surah) {
+                    reading = Reading(open.surah, open.verses, open.track, live.timings)
+                }
+            }
+        }
         viewModelScope.launch {
             WorkManager.getInstance(app).getWorkInfosForUniqueWorkFlow(PrepareWorker.WORK_NAME).collect { infos ->
                 waitingForNetwork = infos.any { it.state == WorkInfo.State.ENQUEUED }
@@ -117,6 +152,8 @@ class AppModel(app: Application) : AndroidViewModel(app) {
      */
     fun openSurah(number: Int, prefer: Track? = null) {
         val track = prefer?.takeIf(::playable) ?: recordingOf(number)
+        // Whatever recording of it is still being prepared goes to the front of the queue.
+        PrepareWorker.preferred = (prefer ?: track ?: anyRecordingOf(number))?.takeIf { !it.ready }?.id
         val from = (screen as? Screen.Surah)?.from ?: screen
         screen = Screen.Surah(number, track?.id, from)
         load(number, track)
@@ -127,6 +164,24 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         val track = library.track(place.trackId)?.takeIf(::playable) ?: return
         startAt = place.ms
         openSurah(place.surah, track)
+    }
+
+    /** Opens a surah at one of its verses: where a pin is, or a verse kept in a collection. */
+    fun openVerse(verse: VerseRef) {
+        startVerse = verse.verse - 1
+        openSurah(verse.surah)
+    }
+
+    /** The verse to open the surah now opening at, asked for once by its screen. */
+    fun takeStartVerse(): Int? = startVerse.also { startVerse = null }
+
+    fun open(collection: VerseCollection) {
+        screen = Screen.Collection(collection.id)
+    }
+
+    /** One verse's words and translation, for a list of kept verses; null if they can't be had. */
+    suspend fun verse(verse: VerseRef): Verse? = withContext(Dispatchers.IO) {
+        runCatching { quran.surah(verse.surah).getOrNull(verse.verse - 1) }.getOrNull()
     }
 
     /** The place to start the recording now opening at, asked for once by the player. */
@@ -145,7 +200,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         return all.firstOrNull(::playable) ?: all.firstOrNull { it.wanted } ?: all.firstOrNull()
     }
 
-    private fun playable(track: Track) = track.ready && library.audio(track.id) != null
+    private fun playable(track: Track) = track.canPlay && library.audio(track.id) != null
 
     /** The player has moved on to another recording: show its surah. */
     fun playing(trackId: String) {
@@ -178,8 +233,25 @@ class AppModel(app: Application) : AndroidViewModel(app) {
             }
             // The reader may have moved to another surah while this one was being fetched.
             if ((screen as? Screen.Surah)?.number != surah) return@launch
-            reading = loaded
+            // What the listening has placed since the file was written, if it is this recording being listened to.
+            val live = PrepareWorker.live.value?.takeIf { loaded?.track != null && it.trackId == loaded.track.id && it.surah == surah }
+            reading = if (loaded != null && live != null) Reading(surah, loaded.verses, loaded.track, live.timings) else loaded
             readingFailed = loaded == null
+        }
+    }
+
+    /** Opens the search box ([text] empty), searches for what is typed in it, or closes it (null). */
+    fun search(text: String?) {
+        query = text
+        searching?.cancel()
+        if (text == null || SurahSearch.plain(text).length < QuranStore.SHORTEST_SEARCH) {
+            hits = emptyList()
+            return
+        }
+        // A moment's pause, so the verses aren't gone through for every letter typed.
+        searching = viewModelScope.launch {
+            delay(250)
+            hits = quran.search(text)
         }
     }
 
@@ -187,8 +259,14 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     fun back(): Boolean {
         lastRead = Settings.lastRead(getApplication())
         screen = when (val s = screen) {
-            Screen.Home -> return false
+            Screen.Home -> {
+                // The search box closes first.
+                if (query == null) return false
+                search(null)
+                return true
+            }
             is Screen.Recordings -> Screen.Home
+            is Screen.Collection -> Screen.Home
             is Screen.Surah -> s.from
         }
         return true
@@ -277,7 +355,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     fun setSurah(track: Track, surah: Int) {
         if (surah == track.surah) return
         val downloaded = library.audio(track.id) != null
-        library.update(track.id) { it.copy(surah = surah, ready = false, clarity = 0f, error = null, wanted = downloaded) }
+        library.update(track.id) { it.copy(surah = surah, ready = false, playable = false, clarity = 0f, error = null, wanted = downloaded) }
         if (downloaded) resume()
     }
 

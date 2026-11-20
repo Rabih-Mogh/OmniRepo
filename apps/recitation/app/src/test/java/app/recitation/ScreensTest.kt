@@ -3,6 +3,7 @@ package app.recitation
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -16,6 +17,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -44,7 +46,13 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.recitation.core.Timings
 import app.recitation.core.WordTiming
+import app.recitation.data.Hit
+import app.recitation.data.Marks
+import app.recitation.data.Pin
 import app.recitation.data.Playlist
+import app.recitation.data.Script
+import app.recitation.data.VerseCollection
+import app.recitation.data.VerseRef
 import app.recitation.data.Track
 import app.recitation.data.Verse
 import app.recitation.data.Word
@@ -53,19 +61,26 @@ import app.recitation.prepare.ModelProblem
 import app.recitation.prepare.Progress
 import app.recitation.prepare.Step
 import app.recitation.speech.ModelStore
+import app.recitation.ui.CollectionContent
 import app.recitation.ui.HomeContent
 import app.recitation.ui.LastRead
 import app.recitation.ui.LastReadBar
 import app.recitation.ui.LocalSurahNames
+import app.recitation.ui.MarkActions
+import app.recitation.ui.MenuContent
 import app.recitation.ui.NoRecitationBar
 import app.recitation.ui.NowPlayingBar
 import app.recitation.ui.RangeChooser
 import app.recitation.ui.ReaderContent
 import app.recitation.ui.RecitationTheme
 import app.recitation.ui.RecordingsContent
+import app.recitation.ui.SavedTab
+import app.recitation.ui.ScriptChooser
 import app.recitation.ui.Status
 import app.recitation.ui.StatusActions
 import app.recitation.ui.TextSizeControls
+import app.recitation.ui.VerseMarks
+import app.recitation.ui.VerseMarksContent
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlin.math.abs
 import org.junit.Assert.assertTrue
@@ -220,8 +235,10 @@ class ScreensTest {
         // A verse's translation stays out of the way until the verse is tapped.
         compose.onNodeWithText("[All] praise is [due] to Allah, Lord of the worlds -").assertDoesNotExist()
         assertTrue("a verse's first word sits on the right", startsFromTheRight("ٱلْحَمْدُ"))
-        compose.onNodeWithText("Previous verse").assertIsDisplayed()
-        compose.onNodeWithText("Next verse").assertIsDisplayed()
+        // The player's buttons carry no words: they are named for screen readers only.
+        compose.onNodeWithContentDescription("Previous verse").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Next verse").assertIsDisplayed()
+        compose.onNodeWithText("Previous verse").assertDoesNotExist()
     }
 
     @Test
@@ -231,7 +248,7 @@ class ScreensTest {
         compose.setContent {
             RecitationTheme { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { Reader(7_500) } }
         }
-        compose.onNodeWithContentDescription("Verse 2").performClick()
+        compose.onNodeWithText("رَبِّ", useUnmergedTree = true).performClick()
         compose.waitForIdle()
         compose.onNodeWithText(translation).assertIsDisplayed()
         compose.onRoot().captureRoboImage("build/screens/en-day-reader-translation.png")
@@ -248,7 +265,7 @@ class ScreensTest {
         compose.onNodeWithText("of the universe").assertDoesNotExist()
         compose.onNodeWithContentDescription("Word meanings").assertIsDisplayed()
         // The verse's translation is still a tap away.
-        compose.onNodeWithContentDescription("Verse 2").performClick()
+        compose.onNodeWithText("رَبِّ", useUnmergedTree = true).performClick()
         compose.waitForIdle()
         compose.onNodeWithText("[All] praise is [due] to Allah, Lord of the worlds -").assertIsDisplayed()
     }
@@ -360,7 +377,7 @@ class ScreensTest {
         // The words and meanings are all there to read; there is just no player.
         compose.onNodeWithContentDescription("Verse 1").assertIsDisplayed()
         compose.onNodeWithText("In (the) name").assertIsDisplayed()
-        compose.onNodeWithText("Next verse").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Next verse").assertDoesNotExist()
         compose.onNodeWithText("Get ready").performClick()
         assertTrue(asked)
     }
@@ -439,7 +456,8 @@ class ScreensTest {
         }
         // Not playing: the recitation waits for the reader. The bar says which verses it will recite.
         compose.onNodeWithContentDescription("Play").assertIsDisplayed()
-        compose.onNodeWithText("Verses 2 – 4").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Verses 2 – 4").assertIsDisplayed()
+        compose.onNodeWithText("2 – 4").assertIsDisplayed()
     }
 
     @Test
@@ -514,6 +532,370 @@ class ScreensTest {
         assertTrue(cancelled?.id == "b")
     }
 
+    /** The first [words] words placed, each a second long, with the listening [heardMs] into the recording. */
+    private fun timingsSoFar(words: Int, heardMs: Int): Timings {
+        var left = words
+        val placed = timings(fatihah).verses.map { verse -> verse.take(left).also { left -= it.size } }.filter { it.isNotEmpty() }
+        return Timings(placed, 1f, heardMs)
+    }
+
+    @Composable
+    private fun HalfHeardReader(positionMs: Int, listening: Boolean = true, onSeek: (Int) -> Unit = {}) = ReaderContent(
+        reading = Reading(1, fatihah, track.copy(ready = false, playable = true, wanted = listening), timingsSoFar(words = 8, heardMs = 8_000)),
+        showMeanings = true, playing = true, position = { positionMs }, duration = 74_000,
+        onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = onSeek, listening = listening,
+    )
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aRecordingPlaysWhileItIsStillListenedTo() {
+        // The first two verses have been placed; the recitation is in the second.
+        var sought: Int? = null
+        show("en-day-reader-listening") { HalfHeardReader(6_500, onSeek = { sought = it }) }
+        compose.onNodeWithText("Still listening to this recording: words light up as far as 0:08.").assertIsDisplayed()
+        // A word that has a place can be jumped to; one the listening hasn't reached can't yet.
+        compose.onNodeWithText("ٱلْحَمْدُ", useUnmergedTree = true).performClick()
+        assertTrue(sought == 4_000)
+        sought = null
+        compose.onNodeWithText("مَـٰلِكِ", useUnmergedTree = true).performClick()
+        compose.onNodeWithContentDescription("Next verse").performClick()
+        assertTrue(sought == null)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
+    fun pastWhatHasBeenHeardNoWordIsLit() {
+        // The recitation has run ahead of the listening: the words are there to read, none framed.
+        show("en-night-reader-ahead-of-listening") { HalfHeardReader(20_000) }
+        compose.onNodeWithText("Still listening to this recording: words light up as far as 0:08.").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aRecordingWhoseListeningWasStoppedSaysSo() {
+        show("en-day-reader-listening-stopped") { HalfHeardReader(6_500, listening = false) }
+        compose.onNodeWithText("Not listened to the end yet: words light up as far as 0:08.").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aRecordingCanBePlayedWhileItIsListenedTo() {
+        val tracks = listOf(
+            track,
+            Track("b", "سورة البقرة | Surah Al-Baqarah", 8927, surah = 2, wanted = true, playable = true),
+            Track("c", "سورة آل عمران | Surah Al-imran", 5253, surah = 3, playable = true),
+        )
+        var opened: Track? = null
+        var asked: List<Track>? = null
+        show("en-day-recordings-listening") {
+            RecordingsContent(
+                playlist.copy(tracks = tracks), Status.Working(Progress("b", Step.LISTEN, 0.43f), "Surah Al-Baqarah"), StatusActions(),
+                {}, { opened = it }, { asked = it }, {}, { _, _ -> }, {}, {},
+            )
+        }
+        // Its sound is here, so it has a play button while the listening goes on.
+        compose.onAllNodesWithText("Listening to the recitation… 43%").onFirst().assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("Play")[1].performClick()
+        assertTrue(opened?.id == "b")
+        // One whose listening was stopped says so, and its button takes the listening up again.
+        compose.onNodeWithText("Plays, but not listened to the end yet").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Get ready").performClick()
+        assertTrue(asked?.single()?.id == "c")
+    }
+
+    /** Al-Fatihah as each script writes it: the Madinah mushaf's, the IndoPak one, and everyday spelling. */
+    private class S(val madinah: String, val indopak: String, val everyday: String)
+
+    private val fatihahInEveryScript = listOf(
+        listOf(S("بِسۡمِ", "بِسۡمِ", "بِسْمِ"), S("ٱللَّهِ", "اللهِ", "اللَّهِ"), S("ٱلرَّحۡمَٰنِ", "الرَّحۡمٰنِ", "الرَّحْمَٰنِ"), S("ٱلرَّحِيمِ", "الرَّحِيۡمِ", "الرَّحِيمِ")),
+        listOf(S("ٱلۡحَمۡدُ", "اَلۡحَمۡدُ", "الْحَمْدُ"), S("لِلَّهِ", "لِلّٰهِ", "لِلَّهِ"), S("رَبِّ", "رَبِّ", "رَبِّ"), S("ٱلۡعَٰلَمِينَ", "الۡعٰلَمِيۡنَۙ‏", "الْعَالَمِينَ")),
+        listOf(S("ٱلرَّحۡمَٰنِ", "الرَّحۡمٰنِ", "الرَّحْمَٰنِ"), S("ٱلرَّحِيمِ", "الرَّحِيۡمِۙ‏", "الرَّحِيمِ")),
+        listOf(S("مَٰلِكِ", "مٰلِكِ", "مَالِكِ"), S("يَوۡمِ", "يَوۡمِ", "يَوْمِ"), S("ٱلدِّينِ", "الدِّيۡنِؕ‏", "الدِّينِ")),
+        listOf(S("إِيَّاكَ", "اِيَّاكَ", "إِيَّاكَ"), S("نَعۡبُدُ", "نَعۡبُدُ", "نَعْبُدُ"), S("وَإِيَّاكَ", "وَاِيَّاكَ", "وَإِيَّاكَ"), S("نَسۡتَعِينُ", "نَسۡتَعِيۡنُؕ‏", "نَسْتَعِينُ")),
+        listOf(S("ٱهۡدِنَا", "اِهۡدِنَا", "اهْدِنَا"), S("ٱلصِّرَٰطَ", "الصِّرَاطَ", "الصِّرَاطَ"), S("ٱلۡمُسۡتَقِيمَ", "الۡمُسۡتَقِيۡمَۙ‏", "الْمُسْتَقِيمَ")),
+        listOf(
+            S("صِرَٰطَ", "صِرَاطَ", "صِرَاطَ"), S("ٱلَّذِينَ", "الَّذِيۡنَ", "الَّذِينَ"), S("أَنۡعَمۡتَ", "اَنۡعَمۡتَ", "أَنْعَمْتَ"), S("عَلَيۡهِمۡ", "عَلَيۡهِمۡ ۙ‏", "عَلَيْهِمْ"),
+            S("غَيۡرِ", "غَيۡرِ", "غَيْرِ"), S("ٱلۡمَغۡضُوبِ", "الۡمَغۡضُوۡبِ", "الْمَغْضُوبِ"), S("عَلَيۡهِمۡ", "عَلَيۡهِمۡ", "عَلَيْهِمْ"), S("وَلَا", "وَلَا", "وَلَا"), S("ٱلضَّآلِّينَ", "الضَّآلِّيۡنَ‏", "الضَّالِّينَ"),
+        ),
+    ).let { scripts ->
+        fatihah.mapIndexed { v, verse -> Verse(verse.words.mapIndexed { w, word -> scripts[v][w].let { Word(word.arabic, word.meaning, it.madinah, it.indopak, it.everyday) } }, verse.translation) }
+    }
+
+    /** The IndoPak font is fetched by the app, not kept in the repo: point INDOPAK_FONT at a copy to draw that script. */
+    private val indopak = System.getenv("INDOPAK_FONT")?.let(::File)?.takeIf { it.exists() }?.let { FontFamily(Font(it)) }
+
+    @Composable
+    private fun ReaderIn(script: Script, meanings: Boolean = false) = ReaderContent(
+        reading = Reading(1, fatihahInEveryScript, track, timings(fatihah)), showMeanings = meanings, playing = true,
+        position = { 7_500 }, duration = 74_000, onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
+        script = script, indopak = indopak,
+    )
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theVersesInTheMadinahMushafsScript() {
+        show("en-day-script-madinah") { ReaderIn(Script.MADINAH) }
+        // The Madinah mushaf writes the alif that isn't pronounced with a wasla, and its sukun as a small open head.
+        compose.onNodeWithText("ٱلۡحَمۡدُ", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theVersesInTheAmiriHand() {
+        show("en-day-script-amiri") { ReaderIn(Script.AMIRI) }
+        compose.onNodeWithText("ٱلْحَمْدُ", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theVersesInEverydaySpelling() {
+        show("en-day-script-everyday") { ReaderIn(Script.EVERYDAY) }
+        // "العالمين" with its alif written out, as at school.
+        compose.onNodeWithText("الْعَالَمِينَ", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theVersesInTheIndoPakScript() {
+        show("en-day-script-indopak") { ReaderIn(Script.INDOPAK) }
+        // Without its font on the phone the script isn't used: the Madinah mushaf's stands in.
+        compose.onNodeWithText(if (indopak != null) "اَلۡحَمۡدُ" else "ٱلۡحَمۡدُ", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theScriptCanBeChosen() {
+        var chosen: Script? = null
+        show("en-day-script-chooser") { Column { ScriptChooser(Script.MADINAH, withIndoPak = true) { chosen = it } } }
+        compose.onNodeWithText("Uthmani · Madinah mushaf").assertIsDisplayed()
+        compose.onNodeWithText("IndoPak").assertIsDisplayed()
+        compose.onNodeWithText("Everyday spelling").performClick()
+        assertTrue(chosen == Script.EVERYDAY)
+    }
+
+    @Test
+    @Config(qualifiers = "ar-w411dp-h891dp-night-420dpi")
+    fun theIndoPakScriptIsOfferedOnlyOnceItsFontIsHere() {
+        show("ar-night-script-chooser") { Column { ScriptChooser(Script.MADINAH, withIndoPak = false) {} } }
+        compose.onNodeWithText("عثماني · مصحف المدينة").assertIsDisplayed()
+        compose.onNodeWithText("الرسم الإملائي").assertIsDisplayed()
+        compose.onNodeWithText("إندوباك (شبه القارة الهندية)").assertDoesNotExist()
+    }
+
+    private val pinned = listOf(Pin("p1", "Reading", VerseRef(1, 2)), Pin("p2", "Memorising", VerseRef(2, 255)))
+    private val kept = listOf(
+        VerseCollection(Marks.LATER, "", listOf(VerseRef(1, 5), VerseRef(2, 255))),
+        VerseCollection("c1", "Verses of mercy", listOf(VerseRef(1, 3))),
+    )
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
+    fun pinsAndKeptVersesAreMarkedOnThePage() {
+        var marking: Int? = null
+        show("en-night-reader-marks") {
+            ReaderContent(
+                reading = Reading(1, fatihah, track, timings(fatihah)), showMeanings = true, playing = false,
+                position = { 7_500 }, duration = 74_000, onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
+                marks = VerseMarks(mapOf(1 to listOf("Reading")), setOf(2, 4)), onMark = { marking = it },
+            )
+        }
+        compose.onNodeWithText("Reading").assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("Kept in a collection").onFirst().assertIsDisplayed()
+        // A verse's number opens its pins and collections.
+        compose.onNodeWithContentDescription("Verse 3").performClick()
+        assertTrue(marking == 2)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h420dp-420dpi")
+    fun aSurahOpensAtThePinnedVerse() {
+        compose.setContent {
+            RecitationTheme {
+                ReaderContent(
+                    reading = Reading(1, fatihah), showMeanings = true, playing = false, position = { 0 }, duration = 0,
+                    onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {}, startVerse = 4,
+                )
+            }
+        }
+        compose.waitForIdle()
+        // Verse 5 is at the top of the page; the title page and the first verses are above it, out of sight.
+        compose.onNodeWithContentDescription("Verse 5").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Verse 1").assertDoesNotExist()
+        compose.onRoot().captureRoboImage("build/screens/en-day-reader-opened-at-verse.png")
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aVersesPinsAndCollections() {
+        var moved: Pin? = null
+        var added: String? = null
+        var keeping: Pair<VerseCollection, Boolean>? = null
+        show("en-day-verse-marks") {
+            Column(Modifier.padding(24.dp)) {
+                VerseMarksContent(
+                    VerseRef(1, 2), pinned, kept,
+                    MarkActions(newPin = { added = it }, movePin = { moved = it }, keep = { collection, on -> keeping = collection to on }),
+                )
+            }
+        }
+        // The pin on this verse can be taken off; the one elsewhere can be moved here.
+        compose.onNodeWithText("On this verse").assertIsDisplayed()
+        compose.onNodeWithText("Al-Baqarah · verse 255").assertIsDisplayed()
+        compose.onNodeWithText("Move here").performClick()
+        assertTrue(moved?.id == "p2")
+        // A pin left without a name gets one.
+        compose.onNodeWithContentDescription("Pin this verse").performClick()
+        assertTrue(added == "Pin 3")
+        // The collection that is always there, for questions to study later.
+        compose.onNodeWithText("To look into").assertIsDisplayed().performClick()
+        assertTrue(keeping?.first?.id == Marks.LATER && keeping?.second == true)
+    }
+
+    @Test
+    @Config(qualifiers = "ar-w411dp-h891dp-night-420dpi")
+    fun aVersesPinsAndCollectionsInArabic() {
+        show("ar-night-verse-marks") { Column(Modifier.padding(24.dp)) { VerseMarksContent(VerseRef(1, 2), pinned, kept, MarkActions()) } }
+        compose.onNodeWithText("للبحث والسؤال").assertIsDisplayed()
+        compose.onNodeWithText("البقرة · الآية ٢٥٥").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
+    fun theSavedTabListsPinsAndCollections() {
+        var opened: VerseRef? = null
+        var collection: VerseCollection? = null
+        show("en-night-saved") {
+            HomeContent(2, {}, emptyList(), null, StatusActions(), recited = setOf(1), onSurah = {}, onOpen = {}, onAdd = {}, saved = { modifier ->
+                SavedTab(pinned, kept, onVerse = { opened = it }, onRemovePin = {}, onCollection = { collection = it }, modifier = modifier)
+            })
+        }
+        compose.onNodeWithText("Saved").assertIsDisplayed()
+        compose.onNodeWithText("Al-Fatihah · verse 2").assertIsDisplayed()
+        compose.onNodeWithText("Memorising").performClick()
+        assertTrue(opened == VerseRef(2, 255))
+        compose.onNodeWithText("2 verses").assertIsDisplayed()
+        compose.onNodeWithText("Verses of mercy").performClick()
+        assertTrue(collection?.id == "c1")
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aCollectionShowsItsVerses() {
+        var opened: VerseRef? = null
+        var removed: VerseRef? = null
+        show("en-day-collection") {
+            CollectionContent(
+                VerseCollection(Marks.LATER, "", listOf(VerseRef(1, 2), VerseRef(1, 5))),
+                text = { fatihahInEveryScript[it.verse - 1] }, onBack = {}, onVerse = { opened = it }, onRemove = { removed = it }, onDelete = {},
+            )
+        }
+        compose.onNodeWithText("To look into").assertIsDisplayed()
+        compose.onNodeWithText("It is You we worship and You we ask for help.").assertIsDisplayed()
+        compose.onNodeWithText("Al-Fatihah · verse 5").performClick()
+        assertTrue(opened == VerseRef(1, 5))
+        compose.onAllNodesWithContentDescription("Take out").onFirst().performClick()
+        assertTrue(removed == VerseRef(1, 2))
+        // The collection that comes with the app can't be deleted.
+        compose.onNodeWithContentDescription("Delete collection").assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theTitleBandHasTheNameAMenuButtonAndASearchButton() {
+        var searching: String? = null
+        show("en-day-title-band") {
+            HomeContent(0, {}, emptyList(), null, StatusActions(), recited = setOf(1), onSurah = {}, onOpen = {}, onAdd = {}, onQuery = { searching = it })
+        }
+        compose.onNodeWithText("Recitation").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Menu").assertIsDisplayed()
+        // The name is at the left, right beside the menu button.
+        val name = compose.onNodeWithText("Recitation").fetchSemanticsNode().boundsInRoot
+        val menu = compose.onNodeWithContentDescription("Menu").fetchSemanticsNode().boundsInRoot
+        assertTrue(name.left >= menu.right && name.left - menu.right < 60f)
+        // No emblem and no second line: the band is the name between its two buttons.
+        compose.onNodeWithText("Read the Quran word by word, and follow a recitation as you listen.").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Search").performClick()
+        assertTrue(searching == "")
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
+    fun theMenuButtonOpensTheMenu() {
+        var script: Script? = null
+        var meanings: Boolean? = null
+        compose.setContent {
+            RecitationTheme {
+                HomeContent(0, {}, emptyList(), null, StatusActions(), recited = setOf(1), onSurah = {}, onOpen = {}, onAdd = {}, menu = {
+                    MenuContent(Script.MADINAH, { script = it }, withIndoPak = true, textScale = 1f, onTextScale = {}, meanings = true, onMeanings = { meanings = it }) {
+                        Text("Version 1.41")
+                    }
+                })
+            }
+        }
+        compose.onNodeWithContentDescription("Menu").performClick()
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/en-night-menu.png")
+        compose.onNodeWithText("Read the Quran word by word, and follow a recitation as you listen.").assertIsDisplayed()
+        compose.onNodeWithText("Everyday spelling").performClick()
+        assertTrue(script == Script.EVERYDAY)
+        compose.onNodeWithText("Word meanings").performClick()
+        assertTrue(meanings == false)
+        compose.onNodeWithText("100%").assertIsDisplayed()
+        compose.onNodeWithText("Version 1.41").assertIsDisplayed()
+    }
+
+    @Composable
+    private fun Searching(query: String, hits: List<Hit> = emptyList(), onSurah: (Int) -> Unit = {}, onVerse: (VerseRef) -> Unit = {}) =
+        HomeContent(0, {}, emptyList(), null, StatusActions(), recited = setOf(1), onSurah = onSurah, onOpen = {}, onAdd = {}, query = query, hits = hits, onVerse = onVerse)
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun searchingFindsSurahsAndAVerseByItsNumbers() {
+        var surah: Int? = null
+        var verse: VerseRef? = null
+        show("en-day-search") { Searching("kahf 10", onSurah = { surah = it }, onVerse = { verse = it }) }
+        // The tabs step aside while searching.
+        compose.onNodeWithText("Playlists").assertDoesNotExist()
+        compose.onNodeWithText("Al-Kahf · verse 10").performClick()
+        assertTrue(verse == VerseRef(18, 10))
+        compose.onNodeWithText("Al-Kahf").performClick()
+        assertTrue(surah == 18)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
+    fun searchingFindsWordsInTheVerses() {
+        var verse: VerseRef? = null
+        val hits = listOf(
+            Hit(VerseRef(1, 2), "ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ", "[All] praise is [due] to Allah, Lord of the worlds -"),
+            Hit(VerseRef(1, 5), "إِيَّاكَ نَعۡبُدُ وَإِيَّاكَ نَسۡتَعِينُ", "It is You we worship and You we ask for help."),
+        )
+        show("en-night-search-words") { Searching("worship", hits, onVerse = { verse = it }) }
+        compose.onNodeWithText("In the verses").assertIsDisplayed()
+        compose.onNodeWithText("Al-Fatihah · verse 5").performClick()
+        assertTrue(verse == VerseRef(1, 5))
+    }
+
+    @Test
+    @Config(qualifiers = "ar-rLB-w411dp-h891dp-night-420dpi")
+    fun searchingInArabic() {
+        show("ar-night-search") { Searching("البقرة ٢٥٥") }
+        compose.onNodeWithText("البقرة · الآية ٢٥٥").assertIsDisplayed()
+        compose.onNodeWithContentDescription("البقرة").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun searchSaysWhatCanBeTypedAndWhenNothingIsFound() {
+        var query by mutableStateOf("")
+        compose.setContent { RecitationTheme { Searching(query) } }
+        compose.onNodeWithText("Type a surah's name or number, a verse such as 2:255, or words from a verse or its translation.").assertIsDisplayed()
+        query = "zzzz"
+        compose.waitForIdle()
+        compose.onNodeWithText("Nothing found.").assertIsDisplayed()
+        compose.onNodeWithText("Words are looked for in the surahs already on the phone.").assertIsDisplayed()
+    }
+
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun pausedDownloads() {
@@ -548,16 +930,14 @@ class ScreensTest {
         show("en-day-empty") { Home(tab = 1) }
         compose.onNodeWithText("Add a playlist to begin").assertIsDisplayed()
         compose.onNodeWithText("Add playlist").assertIsDisplayed()
-        compose.onNodeWithText("Check for updates").assertIsDisplayed()
     }
 
     @Test
     @Config(qualifiers = "ar-rLB-w411dp-h891dp-night-420dpi")
     fun playlistsInArabicByNight() {
         show("ar-night-playlists") { Home(tab = 1, playlists = listOf(playlist), status = Status.Working(Progress(null, Step.MODEL_COPY, 0.6f), null)) }
-        compose.onNodeWithText("التلاوة").assertIsDisplayed()
+        compose.onNodeWithContentDescription("التلاوة").assertIsDisplayed()
         compose.onNodeWithText("جارٍ نسخ نموذج الصوت", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("البحث عن تحديثات").assertIsDisplayed()
     }
 
     @Test

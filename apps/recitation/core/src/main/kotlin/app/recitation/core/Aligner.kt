@@ -16,10 +16,14 @@ package app.recitation.core
  * at the middle row is found from a forward and a backward pass that keep one row of
  * scores each, and the two halves are solved the same way.
  */
-class Aligner(private val rows: FloatArray, sounds: List<Phone>, private val direct: Long = DIRECT) {
+class Aligner(
+    private val rows: FloatArray,
+    sounds: List<Phone>,
+    private val direct: Long = DIRECT,
+    private val frames: Int = rows.size / SoundColumns.WIDTH,
+) {
 
     private val width = SoundColumns.WIDTH
-    private val frames = rows.size / width
     private val count = sounds.size
 
     // Positions: pause, sound 0, pause, sound 1, … pause. Odd positions are sounds.
@@ -78,6 +82,31 @@ class Aligner(private val rows: FloatArray, sounds: List<Phone>, private val dir
         if (count == 0 || frames == 0) return null
         val path = IntArray(frames)
         return if (solve(0, frames, 0, states - 1, path)) path else null
+    }
+
+    /**
+     * For a recording that is still being listened to: places rows [from] until [until],
+     * given the path stood on state [lo] just before them, and lets it end wherever fits
+     * best, since the rest of the sounds haven't been heard yet. Returns the state at each
+     * of those rows. The last rows of the answer are the least sure: the sounds after them
+     * might yet change where they belong.
+     */
+    internal fun follow(from: Int, until: Int, lo: Int): IntArray {
+        val n = until - from
+        if (n <= 0) return IntArray(0)
+        // The path can climb two states a row, and further over optional sounds.
+        val hi = minOf(states - 1, lo + 2 * n + 2 * MAX_RUN + 2)
+        val size = hi - lo + 1
+        val came = ByteArray(n * size)
+        val scores = fill(from, until, lo, hi, came)
+        var at = 0
+        for (i in 1 until size) if (scores[i] > scores[at]) at = i
+        val path = IntArray(n)
+        for (t in n - 1 downTo 0) {
+            path[t] = lo + at
+            at -= came[t * size + at].toInt() and 0xFF
+        }
+        return path
     }
 
     /** The score the model gave sound [index] at [row]: about 0 when heard clearly, very negative when not. */
@@ -207,15 +236,17 @@ class Aligner(private val rows: FloatArray, sounds: List<Phone>, private val dir
         return newFloor
     }
 
-    /** Small enough to solve in one go, remembering for every row and state where the path came from. */
-    private fun direct(from: Int, until: Int, lo: Int, hi: Int, path: IntArray): Boolean {
+    /**
+     * The plain search over rows [from] until [until] and states [lo]..[hi], starting from
+     * [lo]: fills [came] with how many states back each state's best way in came from, and
+     * returns the best score of standing on each state at the last row.
+     */
+    private fun fill(from: Int, until: Int, lo: Int, hi: Int, came: ByteArray): FloatArray {
         val size = hi - lo + 1
-        val n = until - from
-        val came = ByteArray(n * size) // how many states back the best way in came from
         var prev = FloatArray(size) { NEVER }
         var cur = FloatArray(size)
         prev[0] = 0f
-        for (t in 0 until n) {
+        for (t in 0 until until - from) {
             val row = (from + t) * width
             val base = t * size
             for (i in 0 until size) {
@@ -233,12 +264,22 @@ class Aligner(private val rows: FloatArray, sounds: List<Phone>, private val dir
             }
             val swap = prev; prev = cur; cur = swap
         }
+        return prev
+    }
+
+    /** Small enough to solve in one go, remembering for every row and state where the path came from. */
+    private fun direct(from: Int, until: Int, lo: Int, hi: Int, path: IntArray): Boolean {
+        val size = hi - lo + 1
+        val n = until - from
+        val came = ByteArray(n * size)
+        val scores = fill(from, until, lo, hi, came)
         // The last row must be on a state that can step to `hi`.
-        back(FloatArray(size) { if (it == size - 1) 0f else NEVER }, cur, lo, hi, 0)
+        val reaches = FloatArray(size)
+        back(FloatArray(size) { if (it == size - 1) 0f else NEVER }, reaches, lo, hi, 0)
         var at = -1
         var bestScore = UNREACHABLE
         for (i in 0 until size) {
-            val score = prev[i] + cur[i]
+            val score = scores[i] + reaches[i]
             if (score > bestScore) { bestScore = score; at = i }
         }
         if (at < 0) return false

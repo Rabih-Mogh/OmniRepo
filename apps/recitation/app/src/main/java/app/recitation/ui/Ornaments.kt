@@ -108,44 +108,6 @@ fun ArchNumber(number: Int, modifier: Modifier = Modifier, color: Color = Materi
     }
 }
 
-/** The app's emblem, as on its icon: three low pointed arches, one inside the other, round an open book. */
-@Composable
-fun ArchEmblem(modifier: Modifier = Modifier, arch: Color, accent: Color) {
-    Canvas(modifier) {
-        val w = size.width
-        val h = size.height
-        // Each arch is as tall as it is wide, standing on the same line: [half] its width, as a share of the emblem's.
-        fun pointedArch(half: Float) = Path().apply {
-            val foot = 0.98f
-            val top = foot - 2 * half
-            val spring = top + half
-            val shoulder = top + 0.4f * half
-            moveTo(w * (0.5f - half), h * foot)
-            lineTo(w * (0.5f - half), h * spring)
-            quadraticTo(w * (0.5f - half), h * shoulder, w * 0.5f, h * top)
-            quadraticTo(w * (0.5f + half), h * shoulder, w * (0.5f + half), h * spring)
-            lineTo(w * (0.5f + half), h * foot)
-        }
-        drawPath(pointedArch(0.47f), accent, style = Stroke(w * 0.028f, join = StrokeJoin.Round))
-        drawPath(pointedArch(0.36f), arch, style = Stroke(w * 0.05f, join = StrokeJoin.Round))
-        drawPath(pointedArch(0.25f), accent, style = Stroke(w * 0.028f, join = StrokeJoin.Round))
-        // The book: two pages meeting at a spine.
-        val page = Path().apply {
-            moveTo(w * 0.5f, h * 0.73f)
-            quadraticTo(w * 0.43f, h * 0.69f, w * 0.34f, h * 0.71f)
-            lineTo(w * 0.34f, h * 0.86f)
-            quadraticTo(w * 0.43f, h * 0.84f, w * 0.5f, h * 0.88f)
-            close()
-            moveTo(w * 0.5f, h * 0.73f)
-            quadraticTo(w * 0.57f, h * 0.69f, w * 0.66f, h * 0.71f)
-            lineTo(w * 0.66f, h * 0.86f)
-            quadraticTo(w * 0.57f, h * 0.84f, w * 0.5f, h * 0.88f)
-            close()
-        }
-        drawPath(page, accent)
-    }
-}
-
 /**
  * The app's button: an icon and a word in a softly squared frame, in the theme's colour.
  * [filled] is for the one main action on a screen. [onBand] is for buttons sitting on the

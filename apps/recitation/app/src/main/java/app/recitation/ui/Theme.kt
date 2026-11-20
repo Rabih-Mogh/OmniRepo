@@ -67,7 +67,7 @@ private val Green = lightColorScheme(
     surfaceContainerHighest = Color(0xFFE0EAE4),
 )
 
-/** Night: gold on black with a breath of navy in it. */
+/** Night: gold on black, with neutral greys and no tint of any colour in them. */
 private val Gold = darkColorScheme(
     primary = Color(0xFFF2C14E),
     onPrimary = Color(0xFF3A2A00),
@@ -76,39 +76,45 @@ private val Gold = darkColorScheme(
     inversePrimary = Color(0xFF7A5A12),
     secondary = Color(0xFFD8C7A0),
     onSecondary = Color(0xFF3A2F12),
-    secondaryContainer = Color(0xFF131A2B),
+    secondaryContainer = Color(0xFF1A1A1A),
     onSecondaryContainer = Color(0xFFEDE6D3),
     tertiary = Color(0xFFE6C27A),
     onTertiary = Color(0xFF3A2A00),
     tertiaryContainer = Color(0xFF52401A),
     onTertiaryContainer = Color(0xFFFFE2A8),
-    background = Color(0xFF02040A),
+    background = Color(0xFF000000),
     onBackground = Color(0xFFEDE6D3),
-    surface = Color(0xFF02040A),
+    surface = Color(0xFF000000),
     onSurface = Color(0xFFEDE6D3),
-    surfaceVariant = Color(0xFF151B2B),
-    onSurfaceVariant = Color(0xFFA9B1C6),
+    surfaceVariant = Color(0xFF1C1C1C),
+    onSurfaceVariant = Color(0xFFB4B0A6),
     surfaceTint = Color(0xFFF2C14E),
     inverseSurface = Color(0xFFEDE6D3),
-    inverseOnSurface = Color(0xFF0D1220),
+    inverseOnSurface = Color(0xFF121212),
     error = Color(0xFFFFB4AB),
     onError = Color(0xFF690005),
     errorContainer = Color(0xFF5C1A17),
     onErrorContainer = Color(0xFFFFDAD6),
-    outline = Color(0xFF4E5672),
-    outlineVariant = Color(0xFF1B2336),
+    outline = Color(0xFF605C52),
+    outlineVariant = Color(0xFF262626),
     scrim = Color(0xFF000000),
-    surfaceBright = Color(0xFF1B2336),
-    surfaceDim = Color(0xFF02040A),
+    surfaceBright = Color(0xFF262626),
+    surfaceDim = Color(0xFF000000),
     surfaceContainerLowest = Color(0xFF000000),
-    surfaceContainerLow = Color(0xFF070A12),
-    surfaceContainer = Color(0xFF0A0E18),
-    surfaceContainerHigh = Color(0xFF0F1422),
-    surfaceContainerHighest = Color(0xFF151B2B),
+    surfaceContainerLow = Color(0xFF080808),
+    surfaceContainer = Color(0xFF0E0E0E),
+    surfaceContainerHigh = Color(0xFF161616),
+    surfaceContainerHighest = Color(0xFF1C1C1C),
 )
 
 /** Amiri Quran (SIL Open Font License): drawn for the Uthmani script and all its small signs. */
 val QuranFont = FontFamily(Font(R.font.amiri_quran))
+
+/**
+ * KFGQPC Uthmanic Script HAFS, the King Fahd Complex's own font for the text of the Madinah
+ * mushaf (free to use, copy and distribute unchanged; see licenses/UthmanicHafs-KFGQPC.txt).
+ */
+val MadinahFont = FontFamily(Font(R.font.uthmanic_hafs))
 
 /** Aref Ruqaa (SIL Open Font License): a flowing calligraphic hand, for the surahs' names. */
 val CalligraphyFont = FontFamily(Font(R.font.aref_ruqaa_bold))
@@ -127,14 +133,24 @@ class BannerColors(val background: Color, val content: Color, val rule: Color) {
 }
 
 private val DayBanner = BannerColors(background = Color(0xFF1B6B4A), content = Color(0xFFFFF7E0), rule = Color(0xFFF2C14E))
-private val NightBanner = BannerColors(background = Color(0xFF0A0E18), content = Color(0xFFF2C14E), rule = Color(0xFFF2C14E))
+private val NightBanner = BannerColors(background = Color(0xFF0B0B0B), content = Color(0xFFF2C14E), rule = Color(0xFFF2C14E))
 
 val LocalBanner = staticCompositionLocalOf { DayBanner }
+
+/**
+ * The colour the letter being uttered turns. It has to stand out from the ink of the word
+ * round it at a glance, so it is neither the ink's colour nor the frame's: a deep amber on
+ * the white page, a bright one on the black.
+ */
+private val DayHighlight = Color(0xFFE07A00)
+private val NightHighlight = Color(0xFFFF9D1A)
+
+val LocalHighlight = staticCompositionLocalOf { DayHighlight }
 
 /** Green by day and gold by night, following the phone's dark mode. */
 @Composable
 fun RecitationTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalBanner provides if (dark) NightBanner else DayBanner) {
+    CompositionLocalProvider(LocalBanner provides if (dark) NightBanner else DayBanner, LocalHighlight provides if (dark) NightHighlight else DayHighlight) {
         MaterialTheme(colorScheme = if (dark) Gold else Green, content = content)
     }
 }

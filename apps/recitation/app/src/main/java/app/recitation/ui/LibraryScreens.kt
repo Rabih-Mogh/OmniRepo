@@ -39,6 +39,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,6 +50,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,7 +67,11 @@ import androidx.compose.ui.unit.sp
 import app.recitation.R
 import app.recitation.core.SURAHS
 import app.recitation.core.Surah
+import androidx.activity.compose.BackHandler
+import app.recitation.data.Hit
 import app.recitation.data.Playlist
+import app.recitation.data.VerseRef
+import kotlinx.coroutines.launch
 import app.recitation.data.Track
 import app.recitation.prepare.ModelProblem
 import app.recitation.prepare.PrepareWorker
@@ -98,8 +107,11 @@ class StatusActions(
 )
 
 /**
- * The first screen, on two tabs: the Quran, every surah open to read whether or not a
- * recitation of it has been downloaded, and the playlists recitations come from.
+ * The first screen, on three tabs: the Quran, every surah open to read whether or not a
+ * recitation of it has been downloaded; the playlists recitations come from; and [saved],
+ * the pins and collections. The band at the top has the app's name between the button
+ * that opens [menu] and the search button; while searching ([query] isn't null) the
+ * screen shows what was found instead of the tabs.
  * [recited] holds the surahs that have a recording ready to play.
  */
 @Composable
@@ -116,28 +128,30 @@ fun HomeContent(
     nowPlaying: @Composable () -> Unit = {},
     lastRead: LastRead? = null,
     onLastRead: () -> Unit = {},
+    saved: @Composable (Modifier) -> Unit = {},
+    query: String? = null,
+    onQuery: (String?) -> Unit = {},
+    hits: List<Hit> = emptyList(),
+    onVerse: (VerseRef) -> Unit = {},
+    menu: @Composable () -> Unit = {},
 ) {
-    val band = LocalBanner.current
-    val arabic = LocalConfiguration.current.locales[0].language == "ar"
+    // The menu slides in from the side when its button is pressed, and Back closes it.
+    val drawer = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    BackHandler(enabled = drawer.isOpen) { scope.launch { drawer.close() } }
+    ModalNavigationDrawer(
+        drawerState = drawer,
+        // Only the button opens it: a swipe from the edge is the phone's own Back.
+        gesturesEnabled = drawer.isOpen,
+        drawerContent = { ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.surface) { menu() } },
+    ) {
     Column(Modifier.fillMaxSize()) {
-        // The app's name in the theme's own terms: the arches of its icon, gold, and calligraphy.
-        Banner {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                ArchEmblem(Modifier.size(44.dp), arch = band.content, accent = band.rule)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    if (arabic) {
-                        Text(stringResource(R.string.app_name), fontFamily = CalligraphyFont, fontSize = 30.sp, lineHeight = 40.sp, color = band.rule)
-                    } else {
-                        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall, color = band.rule)
-                    }
-                    Text(stringResource(R.string.tagline), style = MaterialTheme.typography.bodySmall, color = band.quiet)
-                }
-                // In other languages the name is also written in Arabic calligraphy, as an ornament.
-                if (!arabic) Text("التلاوة", fontFamily = CalligraphyFont, fontSize = 30.sp, lineHeight = 40.sp, color = band.content)
+        TitleBand(query, onQuery, onMenu = { scope.launch { drawer.open() } })
+        if (query != null) {
+            SearchResults(query, hits, onSurah, onVerse, Modifier.weight(1f)) { surah ->
+                SurahRow(surah, recited = surah.number in recited, onClick = { onSurah(surah.number) })
             }
-        }
-        if (tab == 0) {
+        } else if (tab == 0) {
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(bottom = 24.dp)) {
                 if (status != null) item { Box(Modifier.padding(16.dp)) { StatusCard(status, actions) } }
                 if (lastRead != null) item { Box(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) { LastReadCard(lastRead, onLastRead) } }
@@ -146,6 +160,8 @@ fun HomeContent(
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
             }
+        } else if (tab == 2) {
+            saved(Modifier.weight(1f))
         } else {
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (status != null) item { StatusCard(status, actions) }
@@ -177,20 +193,26 @@ fun HomeContent(
                     }
                 }
                 item { ThemeButton(stringResource(R.string.add_playlist), onAdd, Modifier.fillMaxWidth(), icon = AppIcons.Add, filled = true) }
-                item { VersionFooter() }
             }
         }
         nowPlaying()
-        BottomBand {
-            Row(Modifier.fillMaxWidth()) {
-                BottomTab(stringResource(R.string.tab_quran), AppIcons.Book, selected = tab == 0, onClick = { onTab(0) }, modifier = Modifier.weight(1f))
-                BottomTab(stringResource(R.string.tab_playlists), AppIcons.Playlists, selected = tab == 1, onClick = { onTab(1) }, modifier = Modifier.weight(1f))
+        // The tabs step aside while searching.
+        if (query == null) {
+            BottomBand {
+                Row(Modifier.fillMaxWidth()) {
+                    BottomTab(stringResource(R.string.tab_quran), AppIcons.Book, selected = tab == 0, onClick = { onTab(0) }, modifier = Modifier.weight(1f))
+                    BottomTab(stringResource(R.string.tab_playlists), AppIcons.Playlists, selected = tab == 1, onClick = { onTab(1) }, modifier = Modifier.weight(1f))
+                    BottomTab(stringResource(R.string.tab_saved), AppIcons.Bookmark, selected = tab == 2, onClick = { onTab(2) }, modifier = Modifier.weight(1f))
+                }
             }
+        } else {
+            Spacer(Modifier.windowInsetsPadding(WindowInsets.navigationBars))
         }
+    }
     }
 }
 
-/** One of the two tabs at the bottom of the first screen: gold, with a short gold bar over it, when it is the one showing. */
+/** One of the tabs at the bottom of the first screen: gold, with a short gold bar over it, when it is the one showing. */
 @Composable
 private fun BottomTab(label: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val band = LocalBanner.current
@@ -464,6 +486,7 @@ private fun RecordingRow(
     val surah = SURAHS.getOrNull(track.surah - 1)
     val working = (status as? Status.Working)?.progress
     val progress = working?.takeIf { it.trackId == track.id }
+    val listening = progress != null || track.wanted
     // Tapping a recording opens its surah: to play along if it is ready, otherwise just to read.
     Row(
         Modifier.fillMaxWidth().clickable(enabled = surah != null, onClick = onOpen).padding(start = 16.dp, top = 10.dp, bottom = 10.dp, end = 4.dp),
@@ -492,6 +515,8 @@ private fun RecordingRow(
                     else -> stringResource(R.string.queued)
                 }
                 mismatch -> stringResource(R.string.mismatch_short)
+                // It plays, but the listening was stopped before the end.
+                track.canPlay && !track.ready -> stringResource(R.string.heard_in_part)
                 else -> null
             }
             if (note != null) {
@@ -502,8 +527,10 @@ private fun RecordingRow(
             }
         }
         when {
-            progress != null || track.wanted -> IconButton(onClick = onCancel) { Icon(AppIcons.Close, stringResource(R.string.cancel)) }
             track.ready -> IconButton(onClick = onOpen) { Icon(AppIcons.Play, stringResource(R.string.play), tint = MaterialTheme.colorScheme.primary) }
+            // It can be played as soon as its sound is here, while the listening carries on. (Cancel moves to the menu.)
+            listening && track.canPlay -> IconButton(onClick = onOpen) { Icon(AppIcons.Play, stringResource(R.string.play), tint = MaterialTheme.colorScheme.primary) }
+            listening -> IconButton(onClick = onCancel) { Icon(AppIcons.Close, stringResource(R.string.cancel)) }
             track.error != null -> IconButton(onClick = onGet, enabled = surah != null) { Icon(AppIcons.Retry, stringResource(R.string.try_again), tint = MaterialTheme.colorScheme.primary) }
             else -> IconButton(onClick = onGet, enabled = surah != null) {
                 Icon(AppIcons.Download, stringResource(R.string.get), tint = if (surah != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
@@ -512,6 +539,9 @@ private fun RecordingRow(
         Box {
             IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.more)) }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                if (listening && track.canPlay) {
+                    DropdownMenuItem(text = { Text(stringResource(R.string.stop_listening)) }, onClick = { menu = false; onCancel() })
+                }
                 DropdownMenuItem(text = { Text(stringResource(R.string.choose_surah)) }, onClick = { menu = false; onPickSurah() })
                 DropdownMenuItem(text = { Text(stringResource(R.string.forget)) }, onClick = { menu = false; onForget() })
             }

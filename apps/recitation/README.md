@@ -7,14 +7,27 @@ is recited, and plays along: the word being recited is framed and kept at the mi
 the page, and the letter being uttered glows, the glow gliding from letter to letter.
 
 The app is in English and Arabic, following the phone's language. By day it is green on
-white; in dark mode, gold on near-black. Every screen has a coloured band at the top with a
+white; in dark mode, gold on black. Every screen has a coloured band at the top with a
 gold rule, and the player sits on the same band at the bottom. Surah names are written in
 calligraphy, surah numbers sit under a pointed arch and verse numbers in an eight-point
 star, and the word being recited sits in a tinted frame with its meaning.
 
 ## How it works
 
-The first screen has two tabs, at the bottom.
+The band at the top of the first screen has the menu button, the app's name beside it, and
+the search button at the far end:
+
+- **Menu** (the three lines) slides in a panel with the script the verses are written
+  in, their size, whether each word's meaning shows, and the app's version with
+  **Check for updates**.
+- **Search** turns the band into a search box. It finds a surah by its number or part of
+  its name (Arabic or Latin letters, or what the name means), a verse by its numbers
+  ("2:255", "kahf 10", "البقرة ٢٥٥"), and verses by their words: Arabic letters are
+  looked for in the verses however they are vowelled or spelt, anything else in the
+  translation. Words are searched in the surahs already on the phone. Tapping a result
+  opens the surah, at the verse found.
+
+Below it are three tabs, at the bottom.
 
 **Quran** lists the 114 surahs, under a card that offers to **move to last read**: the
 surah and verse where the last recitation was left. Tap one to read it, whether or not a recitation of it has
@@ -23,6 +36,8 @@ says how its recitation stands (none in the playlists, not downloaded, downloadi
 ready) and has the button for the next step. The words are fetched from Quran.com the
 first time a surah is opened, and the app fetches the rest quietly while it is open, so
 the whole Quran ends up readable without a connection.
+
+**Saved** lists the pins and the collections (see [Pins and collections](#pins-and-collections)).
 
 **Playlists** is where recitations come from:
 
@@ -39,6 +54,13 @@ the whole Quran ends up readable without a connection.
    This runs in the background with its progress in a notification, and the rest of the
    app stays usable meanwhile. Listening is the slow step: expect it to take roughly as
    long as the recording, once.
+   - **A recording can be played before it is ready.** As soon as its sound is
+     downloaded it has a play button. The listening carries on meanwhile, and words light
+     up as far as it has got; the player says how far. Past that point the recitation
+     plays and the words are there to read, but none is lit until the listening catches
+     up. Tapping a word, or **Next verse**, jumps only to words that have been placed.
+   - The recording that is open goes to the front of the queue, ahead of the one being
+     worked on.
    - **Pause** stops the work where it is and keeps what was fetched; **Resume** carries
      on from there, also after the app was closed.
    - **Cancel** empties the queue. The cross on a recording takes just that one out.
@@ -63,10 +85,13 @@ the whole Quran ends up readable without a connection.
    - **Verses 1 – 7** above the time line chooses which verses to recite: a first and a
      last verse. Play starts at the first and stops after the last. Left at the whole
      surah, the playlist's next recording follows as before.
-   - Tap a word to jump to it. **Previous verse** and **Next verse** are either side of
-     the play button.
-   - The **text size** button on the band makes the verses, meanings and translation
-     smaller or larger, from 70% to 200%; the size is remembered.
+   - Tap a word to jump to it. The previous-verse and next-verse buttons are either side
+     of the play button. The player is a slim band: a thin time line, then the verse range,
+     the three buttons and nothing else. Its buttons, and the round one that takes up
+     following the recitation again, carry icons only.
+   - The **text** button on the band makes the verses, meanings and translation smaller
+     or larger, from 70% to 200%, and chooses the script the verses are written in (see
+     [Scripts](#scripts)). Both are remembered.
    - The button at the top right shows or hides the meaning under each word; the choice
      is remembered.
    - Tap a verse to see its translation. It closes by itself after long enough to read
@@ -79,6 +104,37 @@ the whole Quran ends up readable without a connection.
      arch, gold on near-black in dark mode and cream on green by day. Inside the app, a bar at the bottom of the
      lists shows what is reciting, with play or pause, a cross to stop it, and a tap to
      go back to its surah.
+
+### Pins and collections
+
+Hold a verse, or tap its number, to open its pins and collections.
+
+- **A pin** marks a place reached. It has a name ("Reading", "Memorising"; left empty it
+  is called "Pin 1", "Pin 2", …) and sits on exactly one verse: putting it on another
+  verse moves it there. Make as many pins as there are places to keep. A pinned verse
+  shows the pin's name on the rule above it.
+- **A collection** is a named set of verses to come back to; a verse can be in several,
+  and shows a bookmark on its rule. One collection is there from the start and can't be
+  deleted: **To look into**, for a verse one has a question about, to study later.
+- The **Saved** tab lists every pin with the verse it is on, and every collection. Tapping
+  a pin, or a verse inside a collection, opens its surah at that verse; if a recitation
+  of the surah is loaded, it is moved to that verse and waits for play.
+- They are kept in a file on the phone and nowhere else.
+
+### Scripts
+
+The words are fetched once in four spellings, and the **text** button chooses which is
+shown. The recitation is always lined up with the Uthmani spelling, whichever is shown.
+
+| Script | What it is | Font |
+|---|---|---|
+| **Uthmani · Madinah mushaf** (the default) | The Uthmani spelling as the King Fahd Complex typesets it for the Madinah mushaf | KFGQPC Uthmanic Script HAFS, shipped in the app |
+| **Uthmani · Amiri hand** | The same spelling in a rounder hand | Amiri Quran, shipped in the app |
+| **IndoPak** | The spelling and pause marks of the mushafs of the Indian subcontinent | Fetched from Quran.com on first run; the script is offered once the font is on the phone |
+| **Everyday spelling** | Modern Arabic spelling (*imla'i*), fully vowelled | Amiri Quran |
+
+Surahs kept by an earlier version of the app have only the Uthmani spelling; they are
+fetched again, quietly, the next time the app is open with a connection.
 
 ### Lining words up with the sound
 
@@ -93,6 +149,14 @@ the whole Quran ends up readable without a connection.
   order, on what the model heard across the whole recording. Sounds a reciter may leave
   out (a vowel dropped at a stop, the opening *a'udhu* and *basmala*) are optional, and
   anything said before or after the surah is skipped.
+- **While listening:** `core/LiveAlignment.kt` places the words as the listening goes,
+  a stretch at a time, each stretch starting where the one before ended. It stays 13 to 22
+  seconds of recitation behind the listening, so that a word's place is settled
+  before it is shown. On a clear recording this gives the same places as the whole
+  recording does. On a muffled one it can drift, so it checks how clearly the sounds it
+  placed were heard and, when that is low, lights nothing until the listening is done.
+  Either way, once the whole recording has been heard every word is placed again against
+  all of it, and that is what is kept.
 - **Wrong surah:** the alignment also says how much of the surah the model heard clearly.
   When that is low (the wrong surah was chosen, or the recording stops half way), the app
   says so instead of lighting words up at random.
@@ -139,6 +203,8 @@ it against its published timings.
 - **Old or echoing recordings** are heard less clearly and line up less tightly.
 - **Speed on a phone is unknown.** On the Mac the model runs 25 times faster than the
   recording plays. A phone is much slower; "about as long as the recording" is a guess.
+  If a phone listens slower than the recitation plays, playing from the start will
+  overtake the listening, and the words stop lighting up until it catches up.
 - **YouTube changes.** Reading YouTube without its app depends on NewPipe Extractor
   keeping up with YouTube. When downloads stop working, the fix is a newer version of that
   library in `yt/build.gradle.kts` and a new build, which the app's updater delivers.
@@ -151,10 +217,12 @@ it against its published timings.
 
 | What | From | Licence |
 |---|---|---|
-| Quran text (Uthmani script), word meanings, verse translation (Saheeh International) | [Quran.com](https://quran.com) API, fetched by the app and kept on the phone; not stored in this repo | Their own terms |
+| Quran text (Uthmani, IndoPak and everyday spellings), word meanings, verse translation (Saheeh International) | [Quran.com](https://quran.com) API, fetched by the app and kept on the phone; not stored in this repo | Their own terms |
 | Speech model | [wav2vec2-lv-60-espeak-cv-ft](https://huggingface.co/facebook/wav2vec2-lv-60-espeak-cv-ft), ONNX export by onnx-community | Apache-2.0 |
 | Reading YouTube | [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor) | GPL-3.0 |
-| Font for the verses and the basmala | [Amiri Quran](https://github.com/aliftype/amiri) | SIL Open Font License ([text](licenses/AmiriQuran-OFL.txt)) |
+| Font for the Madinah mushaf script | KFGQPC Uthmanic Script HAFS, King Fahd Glorious Quran Printing Complex | Free to use, copy and distribute; may not be sold or modified ([text](licenses/UthmanicHafs-KFGQPC.txt)) |
+| Font for the Amiri and everyday scripts, and the basmala | [Amiri Quran](https://github.com/aliftype/amiri) | SIL Open Font License ([text](licenses/AmiriQuran-OFL.txt)) |
+| Font for the IndoPak script | "AlQuran IndoPak by QuranWBW", fetched by the app from Quran.com on first run and kept on the phone; not stored in this repo. Used only if it is byte for byte the file the app was written against | None stated: their own terms |
 | Calligraphy of the surahs' names | Quran.com's surah-name font, fetched by the app on first run and kept on the phone; not stored in this repo. It is used only if it is byte for byte the file the app was written against | None stated: their own terms |
 | Font for the surahs' names until that is fetched | [Aref Ruqaa](https://github.com/alif-type/aref-ruqaa) | SIL Open Font License ([text](licenses/ArefRuqaa-OFL.txt)) |
 
@@ -169,7 +237,7 @@ recitation/
 │            word timings, surah names and reading them from titles
 ├── yt/      Pure Kotlin/JVM: playlists and sound from YouTube (NewPipe Extractor)
 ├── app/     Android app (Jetpack Compose)
-│   ├── data/     The playlists added, and the verses from Quran.com
+│   ├── data/     The playlists added, the verses from Quran.com, pins and collections, fetched fonts
 │   ├── speech/   Model copy or download, sound decoding, ONNX model
 │   ├── prepare/  The background work that gets a recording ready
 │   ├── player/   Playback service
@@ -205,7 +273,7 @@ Builds are for 64-bit ARM phones only (`arm64-v8a`). Minimum Android version: 8.
 The app updates itself from this repo. Each time it opens it looks for a newer build, and
 a pop-up offers it with an **Update** button when there is one. **Later** closes the pop-up
 for now. The version and a **Check for updates** button, which brings the pop-up back, are
-at the bottom of the **Playlists** tab.
+at the bottom of the menu on the first screen.
 
 - The download is checked against the published SHA-256 before Android installs it.
 - The download carries on when the screen turns off or you leave the app, and shows its

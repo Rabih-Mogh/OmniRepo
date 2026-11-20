@@ -114,7 +114,15 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.RadioButton
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontFamily
 import app.recitation.R
+import app.recitation.data.Script
 import app.recitation.Reading
 import app.recitation.core.Recital
 import app.recitation.core.SURAHS
@@ -124,8 +132,12 @@ import app.recitation.core.WordTiming
 import app.recitation.data.Verse
 import app.recitation.data.Word
 
-/** Finds the word being recited at a moment of the recording. */
-private class WordIndex(timings: Timings) {
+/**
+ * Finds the word being recited at a moment of the recording. Words are counted through the
+ * whole surah, [sizes] being how many each verse has; while the recording is still being
+ * listened to, only the first of them have a time yet.
+ */
+private class WordIndex(timings: Timings, sizes: List<Int>) {
     val starts: IntArray = timings.verses.flatMap { verse -> verse.map { it.startMs } }.toIntArray()
     val firstOfVerse: IntArray
     private val verseOf: IntArray
@@ -133,16 +145,20 @@ private class WordIndex(timings: Timings) {
     init {
         val first = ArrayList<Int>()
         val of = ArrayList<Int>()
-        for ((v, verse) in timings.verses.withIndex()) {
+        for ((v, size) in sizes.withIndex()) {
             first += of.size
-            repeat(verse.size) { of += v }
+            repeat(size) { of += v }
         }
         firstOfVerse = first.toIntArray()
         verseOf = of.toIntArray()
     }
 
-    /** The last word that has started by [ms], or -1 before the first. */
+    // While the recording is still being listened to, words are placed only this far.
+    private val placedUntil = if (timings.complete) Int.MAX_VALUE else timings.heardMs
+
+    /** The last word that has started by [ms]; -1 before the first, or past where words have been placed. */
     fun at(ms: Int): Int {
+        if (ms > placedUntil) return -1
         var lo = 0
         var hi = starts.size - 1
         var found = -1
@@ -153,7 +169,10 @@ private class WordIndex(timings: Timings) {
         return found
     }
 
-    fun verse(word: Int): Int = if (word < 0) -1 else verseOf[word]
+    fun verse(word: Int): Int = verseOf.getOrElse(word) { -1 }
+
+    /** When [verse] starts, or null if the listening hasn't reached it yet. */
+    fun startOfVerse(verse: Int): Int? = firstOfVerse.getOrNull(verse)?.let(starts::getOrNull)
 }
 
 /**
@@ -178,20 +197,31 @@ fun ReaderContent(
     textScale: Float = 1f,
     onTextScale: (Float) -> Unit = {},
     range: IntRange? = null,
+    listening: Boolean = true,
     onRange: (IntRange) -> Unit = {},
+    script: Script = Script.MADINAH,
+    onScript: (Script) -> Unit = {},
+    indopak: FontFamily? = null,
+    startVerse: Int? = null,
+    marks: VerseMarks = VerseMarks(),
+    onMark: (Int) -> Unit = {},
 ) {
     val surah = SURAHS[reading.surah - 1]
     val arabic = LocalConfiguration.current.locales[0].language == "ar"
     val verses = pluralStringResource(R.plurals.verses, surah.verses, surah.verses)
     // With no recording there are no timings: the words are simply shown, and nothing is lit.
-    val index = remember(reading) { reading.timings?.let(::WordIndex) }
+    val index = remember(reading) { reading.timings?.let { WordIndex(it, reading.verses.map { verse -> verse.words.size }) } }
     val current by remember(index) { derivedStateOf { index?.at(position()) ?: -1 } }
     val currentVerse = index?.verse(current) ?: -1
-    val list = rememberLazyListState()
     val above = 1 // the surah's title page comes before the first verse in the list
+    // Opened at a verse (from a pin or a collection): that verse is at the top of the page.
+    val list = rememberLazyListState(initialFirstVisibleItemIndex = startVerse?.let { it + above } ?: 0)
+    // The IndoPak script needs its own font, which is fetched; until it is here, the Madinah mushaf's.
+    val hand = hand(if (script == Script.INDOPAK && indopak == null) Script.MADINAH else script, indopak)
 
-    // The page follows the recitation until the reader scrolls it themselves.
-    var follow by remember { mutableStateOf(true) }
+    // The page follows the recitation until the reader scrolls it themselves. Opened at a
+    // verse the recitation can't be moved to, it stays on that verse instead.
+    var follow by remember { mutableStateOf(startVerse == null || index?.startOfVerse(startVerse) != null) }
     LaunchedEffect(list) {
         list.interactionSource.interactions.collect { if (it is DragInteraction.Start) follow = false }
     }
@@ -250,7 +280,7 @@ fun ReaderContent(
 
     // A verse's translation shows when the verse is tapped, and goes away by itself after
     // long enough to read it. Tapping again while it shows starts the wait afresh.
-    var translated by remember(reading) { mutableStateOf<Int?>(null) }
+    var translated by remember(reading.surah) { mutableStateOf<Int?>(null) }
     var taps by remember { mutableIntStateOf(0) }
     LaunchedEffect(translated, taps) {
         val verse = translated ?: return@LaunchedEffect
@@ -259,9 +289,10 @@ fun ReaderContent(
     }
 
     fun seekToVerse(verse: Int) {
-        val words = index ?: return
-        val v = verse.coerceIn(0, words.firstOfVerse.size - 1)
-        onSeek(words.starts[words.firstOfVerse[v]])
+        val words = index?.takeIf { it.firstOfVerse.isNotEmpty() } ?: return
+        // A verse the listening hasn't reached yet has no place to jump to.
+        val start = words.startOfVerse(verse.coerceIn(0, words.firstOfVerse.size - 1)) ?: return
+        onSeek(start)
         follow = true
     }
 
@@ -278,7 +309,7 @@ fun ReaderContent(
                             style = MaterialTheme.typography.bodySmall, color = LocalBanner.current.quiet,
                         )
                     }
-                    TextSizeButton(textScale, onTextScale, onBanner)
+                    TextMenuButton(textScale, onTextScale, script, onScript, withIndoPak = indopak != null, tint = onBanner)
                     // The button would otherwise colour itself green, on the green banner.
                     IconToggleButton(checked = showMeanings, onCheckedChange = onMeanings) {
                         Icon(AppIcons.Meanings, stringResource(R.string.meanings), tint = onBanner.copy(alpha = if (showMeanings) 1f else 0.45f))
@@ -292,12 +323,14 @@ fun ReaderContent(
                 if (index == null) {
                     withoutRecitation()
                 } else PlayerBar(
+                    // Still being listened to: say how far the words can light up.
+                    placedUntil = reading.timings?.takeIf { !it.complete }?.heardMs, listening = listening,
                     range = range, verses = reading.verses.size, onRange = onRange,
                     playing = playing, position = position, duration = duration, onPlayPause = onPlayPause,
                     onSeek = { onSeek(it); follow = true },
                     onPrevious = {
                         // Back to the start of this verse, or to the one before if it has only just begun.
-                        val start = if (currentVerse >= 0) index.starts[index.firstOfVerse[currentVerse]] else 0
+                        val start = index.startOfVerse(currentVerse) ?: 0
                         seekToVerse(if (position() - start > 2_000) currentVerse else currentVerse - 1)
                     },
                     onNext = { seekToVerse(currentVerse + 1) },
@@ -305,8 +338,12 @@ fun ReaderContent(
             }
         },
         floatingActionButton = {
+            // A round gold seal with no words on it, like the play button.
             if (!follow && index != null) {
-                ThemeButton(stringResource(R.string.follow), onClick = { follow = true }, icon = AppIcons.Follow, filled = true)
+                FilledIconButton(
+                    onClick = { follow = true }, modifier = Modifier.size(48.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
+                ) { Icon(AppIcons.Follow, stringResource(R.string.follow)) }
             }
         },
     ) { padding ->
@@ -319,7 +356,7 @@ fun ReaderContent(
                     color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            Verses(reading, index, list, current, currentVerse, position, showMeanings, textScale, place, { fade.value }, translated, { translated = it; taps++ }) { ms ->
+            Verses(reading, index, list, current, currentVerse, position, showMeanings, textScale, hand, marks, onMark, place, { fade.value }, translated, { translated = it; taps++ }) { ms ->
                 onSeek(ms)
                 follow = true
             }
@@ -358,6 +395,9 @@ private fun Verses(
     position: () -> Int,
     showMeanings: Boolean,
     textScale: Float,
+    hand: Hand,
+    marks: VerseMarks,
+    onMark: (Int) -> Unit,
     place: WordPlace,
     fade: () -> Float,
     translated: Int?,
@@ -388,6 +428,10 @@ private fun Verses(
                     position = position,
                     showMeanings = showMeanings,
                     textScale = textScale,
+                    hand = hand,
+                    pins = marks.pins[v].orEmpty(),
+                    saved = v in marks.saved,
+                    onMark = { onMark(v) },
                     showTranslation = translated == v,
                     onPlaced = { w, tile -> place.placed(first + w, tile) },
                     onTap = { onTranslate(v) },
@@ -402,7 +446,7 @@ private fun Verses(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 private fun VerseBlock(
     number: Int,
@@ -412,15 +456,20 @@ private fun VerseBlock(
     position: () -> Int,
     showMeanings: Boolean,
     textScale: Float,
+    hand: Hand,
+    pins: List<String>,
+    saved: Boolean,
+    onMark: () -> Unit,
     showTranslation: Boolean,
     onPlaced: (Int, LayoutCoordinates) -> Unit,
     onTap: () -> Unit,
     onWord: (Int) -> Unit,
 ) {
-    // The whole verse answers a tap, quietly: no ripple across a block of scripture.
+    // The whole verse answers a tap, quietly: no ripple across a block of scripture. A long
+    // press, like a tap on its number, opens its pins and collections.
     Column(
         Modifier.fillMaxWidth()
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onTap)
+            .combinedClickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onTap, onLongClick = onMark)
             .padding(horizontal = 12.dp),
     ) {
         // The verse's number sits on the rule above it, at the left in every language.
@@ -428,13 +477,35 @@ private fun VerseBlock(
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 HorizontalDivider(Modifier.width(8.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                StarNumber(number, Modifier.padding(horizontal = 4.dp).semantics { contentDescription = label })
+                StarNumber(
+                    number,
+                    Modifier.padding(horizontal = 4.dp).clip(CircleShape).clickable(onClickLabel = stringResource(R.string.marks_open), onClick = onMark)
+                        .semantics { contentDescription = label },
+                )
+                // What marks the verse: each pin left on it, by name, and a bookmark if it is in a collection.
+                for (pin in pins) {
+                    Row(
+                        Modifier.padding(end = 6.dp).clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.primary).padding(horizontal = 8.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(AppIcons.Pin, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                        Spacer(Modifier.width(4.dp))
+                        Text(pin, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary, maxLines = 1)
+                    }
+                }
+                if (saved) Icon(AppIcons.Bookmark, stringResource(R.string.saved_mark), Modifier.padding(end = 6.dp).size(18.dp), tint = MaterialTheme.colorScheme.primary)
                 HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
         // Arabic runs from the right, whatever the phone's language.
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            // Room between the words and between the lines, growing with the text. With the
+            // meanings showing, those already hold the words apart.
+            FlowRow(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy((if (showMeanings) 4.dp else 12.dp) * textScale),
+                verticalArrangement = Arrangement.spacedBy(6.dp * textScale),
+            ) {
                 verse.words.forEachIndexed { w, word ->
                     WordTile(
                         word = word,
@@ -450,8 +521,10 @@ private fun VerseBlock(
                         endMs = timings.getOrNull(w + 1)?.startMs ?: Int.MAX_VALUE,
                         showMeaning = showMeanings,
                         textScale = textScale,
+                        hand = hand,
                         onPlaced = { onPlaced(w, it) },
                         onClick = { onWord(w) },
+                        onLongClick = onMark,
                     )
                 }
             }
@@ -474,6 +547,14 @@ private fun VerseBlock(
 
 private enum class WordState { RESTING, RECITED, CURRENT }
 
+/** How long the light takes to pass from one letter to the next, in ms. */
+private const val GLIDE_MS = 130f
+
+/** Whether a character is a mark written on a letter (a vowel sign, a shadda, a small recitation sign) rather than a letter. */
+private fun Char.isMark(): Boolean = Character.getType(this).let {
+    it == Character.NON_SPACING_MARK.toInt() || it == Character.ENCLOSING_MARK.toInt() || it == Character.COMBINING_SPACING_MARK.toInt()
+}
+
 /** How eagerly the page follows the word: higher is quicker. At 8 it settles in about two thirds of a second. */
 private const val STIFFNESS = 8f
 
@@ -487,6 +568,7 @@ private fun DrawScope.spot(color: Color, center: Offset, radius: Float, flatten:
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun WordTile(
     word: Word,
@@ -496,10 +578,13 @@ private fun WordTile(
     endMs: Int,
     showMeaning: Boolean,
     textScale: Float,
+    hand: Hand,
     onPlaced: (LayoutCoordinates) -> Unit,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val written = word.shownIn(hand.script)
     val isCurrent = state == WordState.CURRENT
     // Nothing switches on or off: the frame and the light fade from one word to the next,
     // and a word dims gently once it has been recited.
@@ -514,16 +599,16 @@ private fun WordTile(
         // and tells the page where it is so the page can keep it in the middle.
         (if (isCurrent) Modifier.onGloballyPositioned(onPlaced) else Modifier)
             .then(if (lit > 0f) Modifier.border(1.5.dp, colors.primary.copy(alpha = lit), shape).background(colors.primary.copy(alpha = 0.12f * lit), shape) else Modifier)
-            .clip(shape).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 2.dp),
+            .clip(shape).combinedClickable(onClick = onClick, onLongClick = onLongClick).padding(horizontal = 8.dp, vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // The letters themselves never change: recolouring part of a joined-up word makes
-        // Android shape it again, and the letters visibly shift. A pool of light glides
-        // under them instead, drawn afresh every frame without laying anything out again.
+        // The letters themselves are never recoloured: recolouring part of a joined-up word
+        // makes Android shape it again, and the letters visibly shift. The letter being
+        // uttered is lit by drawing over it instead, afresh every frame, with nothing laid out again.
         var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
-        val glow = colors.primary
+        val glow = LocalHighlight.current
         Text(
-            word.arabic, fontFamily = QuranFont, fontSize = 26.sp * textScale, lineHeight = 46.sp * textScale, color = ink,
+            written, fontFamily = hand.font, fontSize = hand.size * textScale, lineHeight = hand.line * textScale, color = ink,
             onTextLayout = { layout = it },
             modifier = if (lit == 0f || timing == null) Modifier else Modifier.drawWithContent {
                 val placed = layout
@@ -532,27 +617,55 @@ private fun WordTile(
                     drawContent()
                     return@drawWithContent
                 }
-                val length = placed.layoutInput.text.length
-                val from = placed.getHorizontalPosition(uttered.from.coerceIn(0, length), usePrimaryDirection = true)
-                val to = placed.getHorizontalPosition(uttered.to.coerceIn(0, length), usePrimaryDirection = true)
-                val x = from + (to - from) * uttered.fraction
-                val reach = maxOf(abs(to - from) * 0.75f, 12.dp.toPx())
-                // A halo behind the letter being uttered, then the word, then the letter itself lit up.
-                spot(glow.copy(alpha = 0.38f * lit), Offset(x, placed.firstBaseline - 8.dp.toPx()), radius = 26.dp.toPx(), flatten = 0.95f)
+                val text = placed.layoutInput.text.text
+                // The letters were timed in the Uthmani spelling; another script's word is a
+                // letter or two longer or shorter, so the place is taken in proportion.
+                val stretch = text.length.toFloat() / word.arabic.length.coerceAtLeast(1)
+                // Where a stretch of characters lies across the word, as the whole letters it
+                // touches: a sound that is only a mark (a vowel) lights the letter the mark sits on.
+                fun letter(from: Int, to: Int): Pair<Float, Float> {
+                    var first = (from * stretch).roundToInt().coerceIn(0, text.length)
+                    while (first > 0 && first < text.length && text[first].isMark()) first--
+                    var end = (to * stretch).roundToInt().coerceIn(first, text.length)
+                    while (end < text.length && text[end].isMark()) end++
+                    if (end == first && end < text.length) end++
+                    val a = placed.getHorizontalPosition(first, usePrimaryDirection = true)
+                    val b = placed.getHorizontalPosition(end, usePrimaryDirection = true)
+                    return minOf(a, b) to maxOf(a, b)
+                }
+                // The light covers the letter being uttered, and glides to it from the letter before.
+                val now = letter(uttered.from, uttered.to)
+                val was = if (uttered.before == uttered.from) now else letter(uttered.before, uttered.from)
+                val moved = (uttered.sinceMs / GLIDE_MS).coerceIn(0f, 1f).let { it * it * (3 - 2 * it) }
+                var left = was.first + (now.first - was.first) * moved
+                var right = was.second + (now.second - was.second) * moved
+                // A hairline of a letter still gets a light wide enough to see.
+                val least = 9.dp.toPx()
+                if (right - left < least) {
+                    val middle = (left + right) / 2
+                    left = middle - least / 2
+                    right = middle + least / 2
+                }
+                // Full strength over the body of the letter, easing off across each end, where it joins its neighbours.
+                val ease = ((right - left) * 0.45f).coerceIn(3.dp.toPx(), 10.dp.toPx())
+                val whole = right - left + ease
+                // A soft pool of light behind the letter, then the word, then the letter itself lit up.
+                spot(glow.copy(alpha = 0.26f * lit), Offset((left + right) / 2, placed.firstBaseline - 8.dp.toPx()), radius = 24.dp.toPx(), flatten = 0.95f)
                 drawContent()
-                // The word is drawn once more in the glowing colour, exactly over itself, and all of
-                // it but the stretch around the letter is wiped away. The letter changes colour and
-                // nothing else: it isn't laid out again and gets no bloom, so it neither moves nor
-                // looks any bigger.
+                // The word is drawn once more in the highlight colour, exactly over itself, and
+                // all of it but the letter is wiped away. The letter changes colour and nothing
+                // else: it isn't laid out again and gets no bloom, so it neither moves nor looks any bigger.
                 drawIntoCanvas { canvas ->
-                    canvas.saveLayer(Rect(-reach, -reach, size.width + reach, size.height + reach), Paint())
+                    val margin = 12.dp.toPx()
+                    canvas.saveLayer(Rect(-margin, -margin, size.width + margin, size.height + margin), Paint())
                     drawText(placed, color = glow)
                     drawRect(
                         Brush.horizontalGradient(
-                            0f to Color.Transparent, 0.5f to Color.Black.copy(alpha = lit), 1f to Color.Transparent,
-                            startX = x - reach, endX = x + reach,
+                            0f to Color.Transparent, ease / whole to Color.Black.copy(alpha = lit),
+                            1f - ease / whole to Color.Black.copy(alpha = lit), 1f to Color.Transparent,
+                            startX = left - ease / 2, endX = right + ease / 2,
                         ),
-                        topLeft = Offset(-reach, -reach), size = Size(size.width + 2 * reach, size.height + 2 * reach),
+                        topLeft = Offset(-margin, -margin), size = Size(size.width + 2 * margin, size.height + 2 * margin),
                         blendMode = BlendMode.DstIn,
                     )
                     canvas.restore()
@@ -577,8 +690,11 @@ private fun WordTile(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PlayerBar(
+    placedUntil: Int?,
+    listening: Boolean,
     range: IntRange?,
     verses: Int,
     onRange: (IntRange) -> Unit,
@@ -600,22 +716,28 @@ private fun PlayerBar(
         RangeDialog(verses, range, onDone = { choosing = false; onRange(it) }, onDismiss = { choosing = false })
     }
     BottomBand {
-        Column(Modifier.padding(horizontal = 12.dp).padding(top = 2.dp, bottom = 6.dp)) {
-            // Which verses will be recited; tap to choose where to start and where to stop.
-            if (range != null) {
-                TextButton(
-                    onClick = { choosing = true }, modifier = Modifier.align(Alignment.CenterHorizontally),
-                    colors = ButtonDefaults.textButtonColors(contentColor = band.rule), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
-                ) {
-                    Icon(AppIcons.Range, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.range_label, range.first + 1, range.last + 1))
-                }
+        Column(Modifier.padding(horizontal = 12.dp).padding(top = 2.dp, bottom = 2.dp)) {
+            if (placedUntil != null) {
+                Text(
+                    when {
+                        listening && placedUntil > 0 -> stringResource(R.string.listening_ahead, clock(placedUntil))
+                        listening -> stringResource(R.string.listening_not_yet)
+                        placedUntil > 0 -> stringResource(R.string.listening_stopped, clock(placedUntil))
+                        else -> stringResource(R.string.listening_stopped_none)
+                    },
+                    Modifier.fillMaxWidth().padding(top = 4.dp), textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodySmall, color = band.quiet,
+                )
             }
-            // The time line runs left to right in every language, as on other players.
+            // The time line runs left to right in every language, as on other players: a thin
+            // gold line with a small bead on it.
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(clock(dragged?.let { (it * duration).toInt() } ?: shown), style = MaterialTheme.typography.labelMedium, color = band.quiet)
+                    val line = SliderDefaults.colors(
+                        thumbColor = band.rule, activeTrackColor = band.rule,
+                        inactiveTrackColor = band.content.faded(0.25f, band.background),
+                    )
                     Slider(
                         value = dragged ?: if (duration > 0) (shown.toFloat() / duration).coerceIn(0f, 1f) else 0f,
                         onValueChange = { dragged = it },
@@ -623,35 +745,49 @@ private fun PlayerBar(
                             dragged?.let { onSeek((it * duration).toInt()) }
                             dragged = null
                         },
-                        modifier = Modifier.weight(1f).height(36.dp),
-                        colors = SliderDefaults.colors(
-                            thumbColor = band.rule, activeTrackColor = band.rule,
-                            inactiveTrackColor = band.content.faded(0.25f, band.background),
-                        ),
+                        modifier = Modifier.weight(1f).height(24.dp),
+                        colors = line,
+                        thumb = { Box(Modifier.size(12.dp).background(band.rule, CircleShape)) },
+                        track = { state ->
+                            SliderDefaults.Track(
+                                state, Modifier.height(3.dp), colors = line,
+                                drawStopIndicator = null, thumbTrackGapSize = 0.dp, trackInsideCornerSize = 0.dp,
+                            )
+                        },
                     )
                     Text(clock(duration), style = MaterialTheme.typography.labelMedium, color = band.quiet)
                 }
             }
-            // Previous verse on the side reading starts from, next verse on the other; the arrows turn round with them.
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = onPrevious, modifier = Modifier.weight(1f), colors = ButtonDefaults.textButtonColors(contentColor = band.content)) {
-                    Icon(AppIcons.SkipPrevious, null, Modifier.size(20.dp).scale(scaleX = if (rtl) -1f else 1f, scaleY = 1f))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.previous_verse), maxLines = 1)
-                }
-                // The play button wears the band's gold, ringed like a seal.
-                Box(Modifier.padding(horizontal = 8.dp).size(58.dp).border(1.5.dp, band.rule, CircleShape), contentAlignment = Alignment.Center) {
-                    FilledIconButton(
-                        onClick = onPlayPause, modifier = Modifier.size(48.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = band.rule, contentColor = band.background),
+            Box(Modifier.fillMaxWidth()) {
+                // Which verses will be recited; tap to choose where to start and where to stop.
+                if (range != null) {
+                    val label = stringResource(R.string.range_label, range.first + 1, range.last + 1)
+                    TextButton(
+                        onClick = { choosing = true }, modifier = Modifier.align(Alignment.CenterStart).semantics { contentDescription = label },
+                        colors = ButtonDefaults.textButtonColors(contentColor = band.rule), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                     ) {
-                        if (playing) Icon(AppIcons.Pause, stringResource(R.string.pause)) else Icon(AppIcons.Play, stringResource(R.string.play))
+                        Icon(AppIcons.Range, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.range_short, range.first + 1, range.last + 1), maxLines = 1)
                     }
                 }
-                TextButton(onClick = onNext, modifier = Modifier.weight(1f), colors = ButtonDefaults.textButtonColors(contentColor = band.content)) {
-                    Text(stringResource(R.string.next_verse), maxLines = 1)
-                    Spacer(Modifier.width(6.dp))
-                    Icon(AppIcons.SkipNext, null, Modifier.size(20.dp).scale(scaleX = if (rtl) -1f else 1f, scaleY = 1f))
+                // Previous verse on the side reading starts from, next verse on the other; the arrows turn round with them.
+                Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onPrevious) {
+                        Icon(AppIcons.SkipPrevious, stringResource(R.string.previous_verse), Modifier.scale(scaleX = if (rtl) -1f else 1f, scaleY = 1f), tint = band.content)
+                    }
+                    // The play button wears the band's gold, ringed like a seal.
+                    Box(Modifier.padding(horizontal = 10.dp).size(46.dp).border(1.2.dp, band.rule, CircleShape), contentAlignment = Alignment.Center) {
+                        FilledIconButton(
+                            onClick = onPlayPause, modifier = Modifier.size(38.dp),
+                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = band.rule, contentColor = band.background),
+                        ) {
+                            if (playing) Icon(AppIcons.Pause, stringResource(R.string.pause)) else Icon(AppIcons.Play, stringResource(R.string.play))
+                        }
+                    }
+                    IconButton(onClick = onNext) {
+                        Icon(AppIcons.SkipNext, stringResource(R.string.next_verse), Modifier.scale(scaleX = if (rtl) -1f else 1f, scaleY = 1f), tint = band.content)
+                    }
                 }
             }
         }
@@ -706,15 +842,60 @@ private fun TitlePage(surah: Surah, minHeight: Dp, basmalaSize: TextUnit) {
 /** The sizes the verses can be drawn at, as multiples of the usual size. */
 val TEXT_SCALES = 0.7f..2.0f
 
-/** On the band: opens a small menu to make the verses smaller or larger. */
+/** On the band: opens a small menu to make the verses smaller or larger, and to choose the script they are written in. */
 @Composable
-private fun TextSizeButton(scale: Float, onScale: (Float) -> Unit, tint: Color) {
+private fun TextMenuButton(scale: Float, onScale: (Float) -> Unit, script: Script, onScript: (Script) -> Unit, withIndoPak: Boolean, tint: Color) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }) { Icon(AppIcons.TextSize, stringResource(R.string.text_size), tint = tint) }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) { TextSizeControls(scale, onScale) }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            TextSizeControls(scale, onScale)
+            HorizontalDivider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            ScriptChooser(script, withIndoPak, onScript)
+        }
     }
 }
+
+/** The font a script is drawn in, and how large, so that the scripts come out about the same size on the page. */
+private class Hand(val script: Script, val font: FontFamily, val size: TextUnit, val line: TextUnit)
+
+private fun hand(script: Script, indopak: FontFamily?): Hand = when (script) {
+    Script.MADINAH -> Hand(script, MadinahFont, 27.sp, 50.sp)
+    Script.AMIRI -> Hand(script, QuranFont, 26.sp, 46.sp)
+    Script.INDOPAK -> Hand(script, indopak ?: QuranFont, 27.sp, 54.sp)
+    Script.EVERYDAY -> Hand(script, QuranFont, 26.sp, 46.sp)
+}
+
+/** The scripts the verses can be written in; the IndoPak one only once its font is on the phone ([withIndoPak]). */
+@Composable
+fun ScriptChooser(script: Script, withIndoPak: Boolean, onScript: (Script) -> Unit) {
+    Column(Modifier.padding(horizontal = 8.dp)) {
+        Text(stringResource(R.string.script_title), Modifier.padding(horizontal = 8.dp, vertical = 4.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        for (each in Script.entries) {
+            if (each == Script.INDOPAK && !withIndoPak) continue
+            Row(
+                Modifier.fillMaxWidth().selectable(selected = each == script, role = Role.RadioButton, onClick = { onScript(each) }).padding(end = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(selected = each == script, onClick = null, modifier = Modifier.padding(10.dp))
+                Text(
+                    stringResource(
+                        when (each) {
+                            Script.MADINAH -> R.string.script_madinah
+                            Script.AMIRI -> R.string.script_amiri
+                            Script.INDOPAK -> R.string.script_indopak
+                            Script.EVERYDAY -> R.string.script_everyday
+                        },
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
+        }
+    }
+}
+
+/** What marks the verses of the open surah: the names of the pins on each verse (counted from 0), and the verses kept in a collection. */
+class VerseMarks(val pins: Map<Int, List<String>> = emptyMap(), val saved: Set<Int> = emptySet())
 
 /** Smaller, the size as a percentage, larger. */
 @Composable

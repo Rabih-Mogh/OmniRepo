@@ -25,6 +25,11 @@ object Settings {
 
     fun setTextScale(context: Context, scale: Float) = store(context).edit().putFloat("text_scale", scale).apply()
 
+    /** The script the verses are written in: the Madinah mushaf's until the user chooses another. */
+    fun script(context: Context): Script = Script.of(store(context).getString("script", null))
+
+    fun setScript(context: Context, script: Script) = store(context).edit().putString("script", script.key).apply()
+
     /** Whether the user paused the downloads. Paused work isn't picked up again until they say so. */
     fun paused(context: Context): Boolean = store(context).getBoolean("paused", false)
 

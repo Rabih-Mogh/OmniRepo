@@ -106,9 +106,10 @@ class AlignerTest {
         }
     }
 
-    @Test
-    fun `lines a real recitation up with its published word timings`() {
-        // Al-Fatihah recited by Mishari al-`Afasy, as the model heard it. See tools/make_test_recitation.py.
+    /** The real recitation the tests use: the frame each kept row came from, the rows, the verses, the published starts. */
+    private class Fatihah(val frames: IntArray, val rows: FloatArray, val verses: List<List<String>>, val published: List<Int>)
+
+    private fun fatihah(): Fatihah {
         val bytes = javaClass.getResourceAsStream("/fatihah.rows")!!.use { DataInputStream(it).readBytes() }
         val data = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
         val kept = data.int
@@ -119,8 +120,52 @@ class AlignerTest {
             for (c in 0 until width) rows[t * width + c] = data.float
         }
         val lines = javaClass.getResourceAsStream("/fatihah.txt")!!.bufferedReader().readLines()
-        val verses = lines.map { line -> line.split(' ').map { it.substringBefore('|') } }
-        val published = lines.flatMap { line -> line.split(' ').map { it.substringAfter('|').toInt() } }
+        return Fatihah(
+            frames, rows,
+            lines.map { line -> line.split(' ').map { it.substringBefore('|') } },
+            lines.flatMap { line -> line.split(' ').map { it.substringAfter('|').toInt() } },
+        )
+    }
+
+    @Test
+    fun `places the words as the recording is listened to, a few seconds behind`() {
+        val real = fatihah()
+        val recital = Recital(1, real.verses)
+        val live = LiveAlignment(recital)
+        var placedBefore = 0
+        var heardBefore = 0
+        var timings = live.advance()
+        assertEquals(0, timings.verses.size, "nothing placed before anything is heard")
+        // The rows arrive forty at a time, about three seconds of recitation.
+        for (from in real.frames.indices step 40) {
+            val until = minOf(real.frames.size, from + 40)
+            live.add(real.frames.copyOfRange(from, until), real.rows.copyOfRange(from * width, until * width))
+            timings = live.advance()
+            val placed = timings.verses.sumOf { it.size }
+            assertTrue(placed >= placedBefore && timings.heardMs >= heardBefore, "it only ever moves forward")
+            assertTrue(!timings.complete && timings.matches, "still listening: no verdict on the surah yet")
+            placedBefore = placed
+            heardBefore = timings.heardMs
+        }
+        // Most of the surah is placed; the last few seconds wait for what would come after.
+        val ours = timings.verses.flatten().map { it.startMs }
+        assertTrue(ours.size in 20..real.published.size, "placed ${ours.size} of ${real.published.size} words")
+        assertTrue(ours.zipWithNext().all { (a, b) -> b >= a })
+        val off = ours.zip(real.published) { a, b -> abs(a - b) }.sorted()
+        assertTrue(off[off.size / 2] <= 100, "half the words placed so far within 100 ms, got ${off[off.size / 2]}")
+        assertTrue(off[off.size * 9 / 10] <= 300, "nine in ten within 300 ms, got ${off[off.size * 9 / 10]}")
+        // Nothing is claimed beyond what has been heard.
+        assertTrue(ours.last() <= timings.heardMs)
+    }
+
+    @Test
+    fun `lines a real recitation up with its published word timings`() {
+        // Al-Fatihah recited by Mishari al-`Afasy, as the model heard it. See tools/make_test_recitation.py.
+        val real = fatihah()
+        val frames = real.frames
+        val rows = real.rows
+        val verses = real.verses
+        val published = real.published
 
         val recital = Recital(1, verses)
         val aligner = Aligner(rows, recital.phones)

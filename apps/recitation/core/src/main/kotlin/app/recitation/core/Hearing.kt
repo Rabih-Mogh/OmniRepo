@@ -47,11 +47,18 @@ class Hearing(private val model: SpeechModel, vocab: List<String>) {
     private val width = SoundColumns.WIDTH
 
     /**
-     * Listens to [source], keeping its work in [notes]. [onProgress] gets 0..1. [stillWanted]
+     * Listens to [source], keeping its work in [notes]. [onPiece] is handed each piece's kept
+     * frames as soon as it is heard. [onProgress] gets 0..1. [stillWanted]
      * is asked between pieces; when it says no the listening stops, with what was heard so
      * far kept, and null is returned.
      */
-    fun listen(source: Samples, notes: File, stillWanted: () -> Boolean = { true }, onProgress: (Float) -> Unit = {}): Heard? {
+    fun listen(
+        source: Samples,
+        notes: File,
+        stillWanted: () -> Boolean = { true },
+        onPiece: (frames: IntArray, rows: FloatArray) -> Unit = { _, _ -> },
+        onProgress: (Float) -> Unit = {},
+    ): Heard? {
         var piece = piecesIn(notes)
         val total = source.total.coerceAtLeast(1)
         // `window` holds the samples from `windowStart` on. A piece needs its own ten seconds and a second either side.
@@ -90,7 +97,7 @@ class Hearing(private val model: SpeechModel, vocab: List<String>) {
                 if (bodyOffset >= held) break // the recording ended before this piece
                 val bodySamples = minOf(PIECE, held - bodyOffset)
                 val length = minOf(held, need)
-                if (length >= MIN_SAMPLES) write(out, piece, window, length, bodyOffset, bodySamples, windowStart)
+                if (length >= MIN_SAMPLES) write(out, piece, window, length, bodyOffset, bodySamples, windowStart, onPiece)
                 out.flush()
                 piece++
                 onProgress(((bodyStart + bodySamples).toFloat() / total).coerceIn(0f, 1f))
@@ -109,7 +116,16 @@ class Hearing(private val model: SpeechModel, vocab: List<String>) {
     }
 
     /** Runs the model on window[0 until length] and appends the kept frames of the piece's own ten seconds. */
-    private fun write(out: DataOutputStream, piece: Int, window: FloatArray, length: Int, bodyOffset: Int, bodySamples: Int, windowStart: Long) {
+    private fun write(
+        out: DataOutputStream,
+        piece: Int,
+        window: FloatArray,
+        length: Int,
+        bodyOffset: Int,
+        bodySamples: Int,
+        windowStart: Long,
+        onPiece: (IntArray, FloatArray) -> Unit,
+    ) {
         val logits = model.run(normalized(window, length))
         val frames = logits.size / symbols
         val first = bodyOffset / HOP
@@ -130,6 +146,15 @@ class Hearing(private val model: SpeechModel, vocab: List<String>) {
             out.writeInt(kept[i])
             for (v in rows[i]) out.writeFloat(v)
         }
+        val flat = FloatArray(kept.size * width)
+        for (i in kept.indices) System.arraycopy(rows[i], 0, flat, i * width, width)
+        onPiece(kept.toIntArray(), flat)
+    }
+
+    /** What an earlier, unfinished listening left in [notes], ready to carry on from: whole pieces only. */
+    fun resume(notes: File): Heard {
+        piecesIn(notes)
+        return if (notes.exists()) read(notes) else Heard(IntArray(0), FloatArray(0))
     }
 
     /** Zero mean, unit variance, as the model was trained on. */

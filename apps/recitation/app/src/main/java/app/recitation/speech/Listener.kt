@@ -36,8 +36,16 @@ class Listener(modelFile: File, vocab: List<String>) : SpeechModel, AutoCloseabl
         }
 
     /** Listens to a downloaded recording; see [Hearing.listen]. */
-    fun listen(audio: File, notes: File, stillWanted: () -> Boolean, onProgress: (Float) -> Unit): Heard? =
-        AudioDecoder(audio).use { hearing.listen(it, notes, stillWanted, onProgress) }
+    fun listen(
+        audio: File,
+        notes: File,
+        stillWanted: () -> Boolean,
+        onPiece: (frames: IntArray, rows: FloatArray) -> Unit,
+        onProgress: (Float) -> Unit,
+    ): Heard? = AudioDecoder(audio).use { hearing.listen(it, notes, stillWanted, onPiece, onProgress) }
+
+    /** What an earlier, unfinished listening left in [notes]; see [Hearing.resume]. */
+    fun resume(notes: File): Heard = hearing.resume(notes)
 
     override fun close() {
         session.close()

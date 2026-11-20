@@ -32,10 +32,21 @@ class RecitalTest {
             0.91f,
         )
         val back = Timings.decode(timings.encode())
+        assertTrue(back.complete)
         assertEquals(0.91f, back.clarity)
         assertEquals(listOf(2, 1), back.verses.map { it.size })
         assertEquals(listOf(2, 0, 5, 240), back.verses[0][0].letters.toList())
         assertEquals(6020, back.verses[1][0].startMs)
+    }
+
+    @Test
+    fun `timings of a recording still being listened to say how far they go`() {
+        val partial = Timings(listOf(listOf(WordTiming(0, intArrayOf(2, 0)))), 1f, heardMs = 12_340)
+        val back = Timings.decode(partial.encode())
+        assertEquals(12_340, back.heardMs)
+        assertTrue(!back.complete && back.matches)
+        // Files written before this was added have only the clarity on their first line.
+        assertTrue(Timings.decode("0.9\n0,2,0\n").complete)
     }
 
     @Test
@@ -55,17 +66,18 @@ class RecitalTest {
         // Letters 0-2 from 1000 ms, 2-4 from 1200 ms, 4-9 from 1500 ms; the next word starts at 2000 ms.
         val word = WordTiming(1000, intArrayOf(2, 1000, 4, 1200, 9, 1500))
         assertEquals(Uttered(0, 2, 0f), word.utteredAt(900, 2000))
-        assertEquals(Uttered(0, 2, 0.5f), word.utteredAt(1100, 2000))
-        assertEquals(Uttered(2, 4, 0f), word.utteredAt(1200, 2000))
-        assertEquals(Uttered(4, 9, 0.5f), word.utteredAt(1750, 2000))
-        assertEquals(Uttered(4, 9, 1f), word.utteredAt(5000, 2000))
+        assertEquals(Uttered(0, 2, 0.5f, before = 0, sinceMs = 100), word.utteredAt(1100, 2000))
+        // Each stretch also says where the one before it began, and how long ago it took over.
+        assertEquals(Uttered(2, 4, 0f, before = 0, sinceMs = 0), word.utteredAt(1200, 2000))
+        assertEquals(Uttered(4, 9, 0.5f, before = 2, sinceMs = 250), word.utteredAt(1750, 2000))
+        assertEquals(Uttered(4, 9, 1f, before = 2, sinceMs = 3500), word.utteredAt(5000, 2000))
     }
 
     @Test
     fun `a long breath after a word doesn't slow its last letter to a crawl`() {
         val word = WordTiming(1000, intArrayOf(3, 1000))
         // The next word starts ten seconds later; the letter is crossed in 1.2 s all the same.
-        assertEquals(Uttered(0, 3, 0.5f), word.utteredAt(1600, 11_000))
+        assertEquals(Uttered(0, 3, 0.5f, before = 0, sinceMs = 600), word.utteredAt(1600, 11_000))
         assertEquals(null, WordTiming(1000, intArrayOf()).utteredAt(1000, 2000))
     }
 }

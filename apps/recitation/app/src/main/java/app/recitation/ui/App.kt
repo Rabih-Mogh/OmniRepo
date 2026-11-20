@@ -18,7 +18,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.platform.LocalConfiguration
@@ -37,10 +36,17 @@ import app.recitation.Reading
 import app.recitation.Screen
 import app.recitation.core.SURAHS
 import app.recitation.data.Place
+import android.content.Context
+import androidx.compose.ui.text.font.FontFamily
+import app.recitation.data.IndoPakFont
+import app.recitation.data.Pin
 import app.recitation.data.Playlist
+import app.recitation.data.Script
 import app.recitation.data.Settings
 import app.recitation.data.SurahNames
 import app.recitation.data.Track
+import app.recitation.data.VerseCollection
+import app.recitation.data.VerseRef
 import app.recitation.player.Artwork
 import app.recitation.player.PlaybackService
 import app.recitation.prepare.PrepareWorker
@@ -51,7 +57,7 @@ import kotlinx.coroutines.withContext
 /** The whole app: which screen shows, and the pop-ups over it. */
 @Composable
 fun App(model: AppModel) {
-    BackHandler(enabled = model.screen != Screen.Home) { model.back() }
+    BackHandler(enabled = model.screen != Screen.Home || model.query != null) { model.back() }
     UpdateDialog()
 
     // The surahs' names in calligraphy, once that font has been fetched; plainer calligraphy until then.
@@ -65,6 +71,11 @@ private fun Screens(model: AppModel) {
     val playlists by model.library.playlists.collectAsStateWithLifecycle()
     val progress by PrepareWorker.progress.collectAsStateWithLifecycle()
     val modelProblem by PrepareWorker.modelProblem.collectAsStateWithLifecycle()
+
+    // How the reader likes the page: set from the menu or from a surah's own buttons, and kept.
+    val arabic = LocalConfiguration.current.locales[0].language == "ar"
+    val choices = remember { Choices(context.applicationContext, arabic) }
+    val indopak by IndoPakFont.font.collectAsStateWithLifecycle()
 
     // One line to the player for the whole app, so leaving a surah, or the app, doesn't stop the recitation.
     val playback = rememberPlayback(onMovedOn = model::playing)
@@ -85,6 +96,9 @@ private fun Screens(model: AppModel) {
             model.want(tracks)
         }
     }
+
+    val pins by model.marks.pins.collectAsStateWithLifecycle()
+    val collections by model.marks.collections.collectAsStateWithLifecycle()
 
     // One line of truth about the background work, so nothing ever just sits there unexplained.
     val tracks = playlists.flatMap { it.tracks }
@@ -122,7 +136,7 @@ private fun Screens(model: AppModel) {
             playlists = playlists,
             status = status,
             actions = actions,
-            recited = tracks.filter { it.ready }.map { it.surah }.toSet(),
+            recited = tracks.filter { it.canPlay }.map { it.surah }.toSet(),
             onSurah = { model.openSurah(it) },
             onOpen = model::open,
             onAdd = { model.link = "" },
@@ -130,7 +144,34 @@ private fun Screens(model: AppModel) {
             // Not offered while that very recording is the one playing.
             lastRead = model.lastReadable()?.takeIf { it.trackId != playback.trackId }?.let { LastRead(SURAHS[it.surah - 1], it.verse) },
             onLastRead = { model.lastReadable()?.let(model::continueFrom) },
+            saved = { modifier ->
+                SavedTab(pins, collections, onVerse = model::openVerse, onRemovePin = { model.marks.removePin(it.id) }, onCollection = model::open, modifier = modifier)
+            },
+            query = model.query,
+            onQuery = model::search,
+            hits = model.hits,
+            onVerse = model::openVerse,
+            menu = {
+                MenuContent(
+                    choices.script, choices::write, withIndoPak = indopak != null,
+                    textScale = choices.textScale, onTextScale = choices::size,
+                    meanings = choices.meanings, onMeanings = choices::show,
+                    footer = { VersionFooter() },
+                )
+            },
         )
+        is Screen.Collection -> {
+            val collection = collections.firstOrNull { it.id == screen.id }
+            if (collection == null) {
+                LaunchedEffect(Unit) { model.back() }
+            } else {
+                CollectionContent(
+                    collection, text = model::verse, onBack = { model.back() }, onVerse = model::openVerse,
+                    onRemove = { model.marks.setSaved(collection.id, it, false) },
+                    onDelete = { model.marks.removeCollection(collection.id) },
+                )
+            }
+        }
         is Screen.Recordings -> {
             val playlist = playlists.firstOrNull { it.url == screen.url }
             if (playlist == null) {
@@ -151,7 +192,7 @@ private fun Screens(model: AppModel) {
                 )
             }
         }
-        is Screen.Surah -> SurahScreen(model, screen, playlists, status, playback, get)
+        is Screen.Surah -> SurahScreen(model, screen, playlists, status, playback, get, pins, collections, choices, indopak)
     }
 
     model.link?.let { link ->
@@ -166,38 +207,69 @@ private fun Screens(model: AppModel) {
 
 /** A surah open to read: with its recitation playing along when one is ready, and on its own when not. */
 @Composable
-private fun SurahScreen(model: AppModel, screen: Screen.Surah, playlists: List<Playlist>, status: Status?, playback: Playback, get: (List<Track>) -> Unit) {
-    val arabic = LocalConfiguration.current.locales[0].language == "ar"
-    // Word meanings are in English, so they start hidden when the phone is in Arabic. The choice is kept.
-    val context = LocalContext.current
-    var meanings by rememberSaveable { mutableStateOf(Settings.wordMeanings(context, byDefault = !arabic)) }
-    val setMeanings: (Boolean) -> Unit = {
-        meanings = it
-        Settings.setWordMeanings(context, it)
+private fun SurahScreen(
+    model: AppModel,
+    screen: Screen.Surah,
+    playlists: List<Playlist>,
+    status: Status?,
+    playback: Playback,
+    get: (List<Track>) -> Unit,
+    pins: List<Pin>,
+    collections: List<VerseCollection>,
+    choices: Choices,
+    indopak: FontFamily?,
+) {
+    val meanings = choices.meanings
+    val setMeanings: (Boolean) -> Unit = choices::show
+    val textScale = choices.textScale
+    val setTextScale: (Float) -> Unit = choices::size
+    // The verse to open at, when the surah was opened from a pin or a collection.
+    val startVerse = remember(screen.number) { model.takeStartVerse() }
+    // What marks this surah's verses, and the verse whose pins and collections are open.
+    val marks = remember(pins, collections, screen.number) {
+        VerseMarks(
+            pins.filter { it.at.surah == screen.number }.groupBy({ it.at.verse - 1 }, { it.name }),
+            collections.flatMap { it.verses }.filter { it.surah == screen.number }.map { it.verse - 1 }.toSet(),
+        )
     }
-    var textScale by remember { mutableFloatStateOf(Settings.textScale(context)) }
-    val setTextScale: (Float) -> Unit = {
-        textScale = it
-        Settings.setTextScale(context, it)
+    var marking by remember(screen.number) { mutableStateOf<Int?>(null) }
+    val page = Page(
+        meanings, setMeanings, textScale, setTextScale,
+        choices.script, choices::write, indopak, startVerse, marks, { marking = it },
+    )
+    marking?.let { verse ->
+        val here = VerseRef(screen.number, verse + 1)
+        VerseMarksDialog(
+            here, pins, collections,
+            MarkActions(
+                newPin = { model.marks.addPin(it, here) },
+                movePin = { model.marks.movePin(it.id, here) },
+                removePin = { model.marks.removePin(it.id) },
+                keep = { collection, kept -> model.marks.setSaved(collection.id, here, kept) },
+                newCollection = { model.marks.setSaved(model.marks.addCollection(it).id, here, true) },
+            ),
+            onDismiss = { marking = null },
+        )
     }
     val reading = model.reading
     val track = reading?.track
     when {
         reading == null || reading.surah != screen.number ->
             ReaderLoading(failed = model.readingFailed, onRetry = model::reload, onBack = { model.back() })
-        track != null && reading.timings != null ->
-            PlayingReader(model, reading, track, playlists, playback, meanings, setMeanings, textScale, setTextScale)
+        track != null && reading.timings != null -> PlayingReader(model, reading, track, playlists, playback, page)
         else -> ReaderContent(
             reading = reading, showMeanings = meanings, playing = false, position = { 0 }, duration = 0,
             onBack = { model.back() }, onMeanings = setMeanings, onPlayPause = {}, onSeek = {},
             textScale = textScale, onTextScale = setTextScale,
+            script = page.script, onScript = page.onScript, indopak = page.indopak,
+            startVerse = page.startVerse, marks = page.marks, onMark = page.onMark,
             withoutRecitation = {
                 // Looked up afresh each time the playlists change, so the bar keeps up with the download.
                 val recording = remember(playlists, screen.number) { model.anyRecordingOf(screen.number) }
                 val working = (status as? Status.Working)?.progress?.takeIf { recording != null && it.trackId == recording.id }
                 when {
                     recording == null -> NoRecitationBar(stringResource(R.string.no_recitation))
-                    recording.ready -> NoRecitationBar(stringResource(R.string.recitation_ready), stringResource(R.string.play), AppIcons.Play) { model.openSurah(screen.number, recording) }
+                    recording.canPlay -> NoRecitationBar(stringResource(R.string.recitation_ready), stringResource(R.string.play), AppIcons.Play) { model.openSurah(screen.number, recording) }
                     working != null -> NoRecitationBar(stringResource(PrepareWorker.stepLabel(working.step), (working.fraction * 100).toInt()))
                     recording.wanted -> NoRecitationBar(stringResource(if (status == Status.Paused) R.string.paused else R.string.queued))
                     recording.error != null -> NoRecitationBar(recording.error, stringResource(R.string.try_again), AppIcons.Retry) { get(listOf(recording)) }
@@ -207,6 +279,49 @@ private fun SurahScreen(model: AppModel, screen: Screen.Surah, playlists: List<P
         )
     }
 }
+
+/**
+ * How the reader likes the page, kept from one opening of the app to the next: whether
+ * each word's meaning shows, how large the verses are, and the script they are written in.
+ * Word meanings are in English, so they start hidden when the phone is in Arabic.
+ */
+class Choices(private val context: Context, arabic: Boolean) {
+    var meanings by mutableStateOf(Settings.wordMeanings(context, byDefault = !arabic))
+        private set
+    var textScale by mutableFloatStateOf(Settings.textScale(context))
+        private set
+    var script by mutableStateOf(Settings.script(context))
+        private set
+
+    fun show(meanings: Boolean) {
+        this.meanings = meanings
+        Settings.setWordMeanings(context, meanings)
+    }
+
+    fun size(scale: Float) {
+        textScale = scale
+        Settings.setTextScale(context, scale)
+    }
+
+    fun write(script: Script) {
+        this.script = script
+        Settings.setScript(context, script)
+    }
+}
+
+/** How the reader has set the page up, and what marks its verses: the same whether or not a recitation plays along. */
+private class Page(
+    val meanings: Boolean,
+    val onMeanings: (Boolean) -> Unit,
+    val textScale: Float,
+    val onTextScale: (Float) -> Unit,
+    val script: Script,
+    val onScript: (Script) -> Unit,
+    val indopak: FontFamily?,
+    val startVerse: Int?,
+    val marks: VerseMarks,
+    val onMark: (Int) -> Unit,
+)
 
 /** The line to the playback service, and what it is playing. */
 class Playback {
@@ -284,17 +399,17 @@ private fun PlayingReader(
     track: Track,
     playlists: List<Playlist>,
     playback: Playback,
-    meanings: Boolean,
-    onMeanings: (Boolean) -> Unit,
-    textScale: Float,
-    onTextScale: (Float) -> Unit,
+    page: Page,
 ) {
     val controller = playback.controller
     val arabic = LocalConfiguration.current.locales[0].language == "ar"
     // Until the player has switched to this recording, what it reports belongs to the one before.
     val mine = playback.trackId == track.id
     val playing = mine && playback.playing
-    val position = remember { mutableIntStateOf(0) }
+    // Opened at a verse: the recitation is moved to where that verse begins, if the listening has reached it.
+    val startMs = remember(track.id) { page.startVerse?.let { reading.timings?.verses?.getOrNull(it)?.firstOrNull()?.startMs } }
+    var moved by remember(track.id) { mutableStateOf(false) }
+    val position = remember { mutableIntStateOf(startMs ?: 0) }
     val context = LocalContext.current
     // Where this recording was left last time, read before listening now overwrites it.
     val left = remember(track.id) { Settings.place(context, track.id) }
@@ -303,12 +418,17 @@ private fun PlayingReader(
 
     LaunchedEffect(controller, track.id) {
         val player = controller ?: return@LaunchedEffect
-        if (player.currentMediaItem?.mediaId == track.id) return@LaunchedEffect
+        if (player.currentMediaItem?.mediaId == track.id) {
+            // Already loaded: only the place changes, and only once.
+            if (startMs != null && !moved) player.seekTo(startMs.toLong())
+            moved = true
+            return@LaunchedEffect
+        }
         // Queue the rest of the playlist the recording is from, so listening carries on after it.
         val playlist = playlists.firstOrNull { p -> p.tracks.any { it.id == track.id } } ?: return@LaunchedEffect
         // Each comes with a picture in the theme's colours; Android's own media player takes its colours from it.
         val items = withContext(Dispatchers.Default) {
-            playlist.tracks.filter { it.ready }.mapNotNull { queued ->
+            playlist.tracks.filter { it.canPlay }.mapNotNull { queued ->
                 val file = model.library.audio(queued.id) ?: return@mapNotNull null
                 val surah = SURAHS[queued.surah - 1]
                 val metadata = MediaMetadata.Builder().setTitle(if (arabic) surah.arabic else surah.latin).setArtist(playlist.channel)
@@ -318,7 +438,8 @@ private fun PlayingReader(
         }
         val start = items.indexOfFirst { it.mediaId == track.id }
         if (start < 0) return@LaunchedEffect
-        val startAt = model.takeStartAt()
+        val startAt = startMs?.takeIf { !moved } ?: model.takeStartAt()
+        moved = true
         // Loaded and waiting: the recitation starts when the reader presses play, not on opening the surah.
         player.pause()
         player.setMediaItems(items, start, startAt.toLong())
@@ -359,8 +480,9 @@ private fun PlayingReader(
     }
 
     // Which verses to recite: the whole surah unless the reader chooses a first and a last verse.
+    // While the recording is still being listened to, only the first verses have a place yet.
     val verses = reading.timings?.verses.orEmpty()
-    var range by remember(track.id) { mutableStateOf(0..verses.lastIndex.coerceAtLeast(0)) }
+    var range by remember(track.id) { mutableStateOf(0..reading.verses.lastIndex.coerceAtLeast(0)) }
     // The first verse starts at the very beginning, so the opening formulas are heard with it.
     fun startOf(r: IntRange): Int = if (r.first == 0) 0 else verses.getOrNull(r.first)?.firstOrNull()?.startMs ?: 0
     // The stretch ends where the verse after its last one begins; the last verse runs to the end.
@@ -370,7 +492,7 @@ private fun PlayingReader(
     LaunchedEffect(controller, playing, mine) {
         val player = controller ?: return@LaunchedEffect
         while (true) {
-            position.intValue = if (mine) player.currentPosition.toInt() else 0
+            position.intValue = if (mine) player.currentPosition.toInt() else startMs ?: 0
             // The last verse asked for has been recited: stop there.
             if (playing && mine && position.intValue >= endOf(range)) player.pause()
             if (playing) withFrameMillis { } else delay(200)
@@ -382,12 +504,12 @@ private fun PlayingReader(
     } else {
         ReaderContent(
             reading = reading,
-            showMeanings = meanings,
+            showMeanings = page.meanings,
             playing = playing,
             position = { position.intValue },
             duration = if (mine) playback.duration else 0,
             onBack = { model.back() },
-            onMeanings = onMeanings,
+            onMeanings = page.onMeanings,
             onPlayPause = {
                 if (controller.isPlaying) {
                     controller.pause()
@@ -402,8 +524,12 @@ private fun PlayingReader(
                 }
             },
             onSeek = { ms -> controller.seekTo(ms.toLong()); position.intValue = ms },
-            textScale = textScale,
-            onTextScale = onTextScale,
+            textScale = page.textScale,
+            onTextScale = page.onTextScale,
+            script = page.script, onScript = page.onScript, indopak = page.indopak,
+            startVerse = page.startVerse, marks = page.marks, onMark = page.onMark,
+            // Whether the rest of it is still being listened to, or is waiting its turn for that.
+            listening = !model.paused && playlists.any { p -> p.tracks.any { it.id == track.id && it.wanted } },
             range = range,
             onRange = { chosen ->
                 range = chosen
