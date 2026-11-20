@@ -216,7 +216,8 @@ fun HomeContent(
 @Composable
 private fun BottomTab(label: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val band = LocalBanner.current
-    val ink = if (selected) band.rule else band.quiet
+    // On a bar the colour of the page, the tab showing is in full colour and the others are faint.
+    val ink = if (selected) band.content else band.content.faded(0.55f, band.background)
     Column(
         modifier.selectable(selected = selected, onClick = onClick, role = Role.Tab).padding(bottom = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -239,8 +240,8 @@ fun NowPlayingBar(title: String, playing: Boolean, onPlayPause: () -> Unit, onOp
         BottomBand(clearOfSystemBar = false) {
             Row(Modifier.padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onPlayPause) {
-                    if (playing) Icon(AppIcons.Pause, stringResource(R.string.pause), tint = band.rule)
-                    else Icon(AppIcons.Play, stringResource(R.string.play), tint = band.rule)
+                    if (playing) Icon(AppIcons.Pause, stringResource(R.string.pause), tint = band.content)
+                    else Icon(AppIcons.Play, stringResource(R.string.play), tint = band.content)
                 }
                 Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
                     Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)

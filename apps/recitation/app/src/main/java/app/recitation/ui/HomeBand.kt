@@ -79,12 +79,12 @@ fun TitleBand(query: String?, onQuery: (String?) -> Unit, onMenu: () -> Unit) {
                     val plain = stringResource(R.string.app_name)
                     Text(
                         NAME_WITH_VOWELS, Modifier.weight(1f).padding(horizontal = 8.dp).semantics { heading(); contentDescription = plain },
-                        fontFamily = QuranFont, fontSize = 26.sp, lineHeight = 40.sp, color = band.rule, maxLines = 1,
+                        fontFamily = QuranFont, fontSize = 26.sp, lineHeight = 40.sp, color = band.content, maxLines = 1,
                     )
                 } else {
                     Text(
                         stringResource(R.string.app_name), Modifier.weight(1f).padding(horizontal = 8.dp).semantics { heading() },
-                        style = MaterialTheme.typography.headlineSmall, color = band.rule, maxLines = 1,
+                        style = MaterialTheme.typography.headlineSmall, color = band.content, maxLines = 1,
                     )
                 }
                 IconButton(onClick = { onQuery("") }) { Icon(AppIcons.Search, stringResource(R.string.search)) }
@@ -101,7 +101,7 @@ fun TitleBand(query: String?, onQuery: (String?) -> Unit, onMenu: () -> Unit) {
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,
                         focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
-                        focusedTextColor = band.content, unfocusedTextColor = band.content, cursorColor = band.rule,
+                        focusedTextColor = band.content, unfocusedTextColor = band.content, cursorColor = band.content,
                     ),
                 )
                 if (query.isNotEmpty()) IconButton(onClick = { onQuery("") }) { Icon(AppIcons.Close, stringResource(R.string.search_clear)) }

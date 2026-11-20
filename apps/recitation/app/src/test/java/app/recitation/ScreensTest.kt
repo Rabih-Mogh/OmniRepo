@@ -29,6 +29,8 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import java.io.File
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
+import android.view.View
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -62,6 +64,7 @@ import app.recitation.prepare.Progress
 import app.recitation.prepare.Step
 import app.recitation.speech.ModelStore
 import app.recitation.ui.CollectionContent
+import app.recitation.ui.FollowButton
 import app.recitation.ui.HomeContent
 import app.recitation.ui.LastRead
 import app.recitation.ui.LastReadBar
@@ -894,6 +897,68 @@ class ScreensTest {
         compose.waitForIdle()
         compose.onNodeWithText("Nothing found.").assertIsDisplayed()
         compose.onNodeWithText("Words are looked for in the surahs already on the phone.").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theScreenStaysOnWhileTheRecitationPlays() {
+        var playing by mutableStateOf(true)
+        var open by mutableStateOf(true)
+        lateinit var screen: View
+        compose.setContent {
+            screen = LocalView.current
+            RecitationTheme {
+                if (open) {
+                    ReaderContent(
+                        reading = Reading(1, fatihah, track, timings(fatihah)), showMeanings = true, playing = playing,
+                        position = { 7_500 }, duration = 74_000, onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        assertTrue(screen.keepScreenOn)
+        // Paused, the phone may dim and sleep as usual.
+        playing = false
+        compose.waitForIdle()
+        assertTrue(!screen.keepScreenOn)
+        // Playing again, then the surah is left while it plays: the lists don't hold the screen on.
+        playing = true
+        compose.waitForIdle()
+        assertTrue(screen.keepScreenOn)
+        open = false
+        compose.waitForIdle()
+        assertTrue(!screen.keepScreenOn)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
+    fun theFollowButtonPointsTheWayToTheRecitedWord() {
+        var followed = 0
+        show("en-night-follow-button") {
+            Row(Modifier.padding(24.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                FollowButton(up = true) { followed++ }
+                FollowButton(up = false) {}
+            }
+        }
+        compose.onAllNodesWithContentDescription("Follow the recitation").onFirst().performClick()
+        assertTrue(followed == 1)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theWordsBlocksShareAllOfTheVersesWidth() {
+        compose.setContent { RecitationTheme { Reader(7_500, meanings = false) } }
+        compose.waitForIdle()
+        // The second verse's four words sit on one row; their blocks touch, and reach the page's edges but for a small margin.
+        val blocks = listOf("ٱلْحَمْدُ", "لِلَّهِ", "رَبِّ", "ٱلْعَـٰلَمِينَ").map { word ->
+            compose.onNodeWithText(word, useUnmergedTree = true).fetchSemanticsNode().parent!!.boundsInRoot
+        }
+        val page = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        val margin = 6 * 420 / 160f
+        assertTrue(abs(page.right - blocks.first().right - margin) < 1.5f && abs(blocks.last().left - page.left - margin) < 1.5f)
+        for ((right, left) in blocks.zipWithNext()) assertTrue(abs(right.left - left.right) < 1f)
+        assertTrue(blocks.all { abs(it.height - blocks.first().height) < 1f })
     }
 
     @Test

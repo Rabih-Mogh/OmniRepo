@@ -21,8 +21,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Every screen has the dark banner under the status bar, so its icons are always the light ones.
-        enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT))
+        // The bars at the top and bottom take the page's colour, white by day and black by
+        // night, so the phone's own icons over them are dark by day and light by night.
+        val clear = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
+        enableEdgeToEdge(statusBarStyle = clear, navigationBarStyle = clear)
         if (savedInstanceState == null) shared(intent)
         setContent {
             RecitationTheme {

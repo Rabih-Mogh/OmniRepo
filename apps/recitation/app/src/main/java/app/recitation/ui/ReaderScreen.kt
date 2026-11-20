@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -40,8 +41,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -80,6 +79,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -90,6 +90,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -121,6 +122,16 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.RadioButton
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Placeable
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.zIndex
 import app.recitation.R
 import app.recitation.data.Script
 import app.recitation.Reading
@@ -209,6 +220,7 @@ fun ReaderContent(
     val surah = SURAHS[reading.surah - 1]
     val arabic = LocalConfiguration.current.locales[0].language == "ar"
     val verses = pluralStringResource(R.plurals.verses, surah.verses, surah.verses)
+    KeepScreenOn(playing)
     // With no recording there are no timings: the words are simply shown, and nothing is lit.
     val index = remember(reading) { reading.timings?.let { WordIndex(it, reading.verses.map { verse -> verse.words.size }) } }
     val current by remember(index) { derivedStateOf { index?.at(position()) ?: -1 } }
@@ -278,6 +290,20 @@ fun ReaderContent(
         }
     }
 
+    // Whether the word being recited is above where the page now is: the way the follow button points.
+    val recitedAbove by remember(index) {
+        derivedStateOf {
+            val item = (index?.verse(current) ?: -1) + above
+            val showing = list.layoutInfo.visibleItemsInfo
+            when {
+                item < above || showing.isEmpty() -> false
+                item < showing.first().index -> true
+                item > showing.last().index -> false
+                else -> (place.offCentre(current) ?: 0f) < 0f
+            }
+        }
+    }
+
     // A verse's translation shows when the verse is tapped, and goes away by itself after
     // long enough to read it. Tapping again while it shows starts the wait afresh.
     var translated by remember(reading.surah) { mutableStateOf<Int?>(null) }
@@ -338,13 +364,7 @@ fun ReaderContent(
             }
         },
         floatingActionButton = {
-            // A round gold seal with no words on it, like the play button.
-            if (!follow && index != null) {
-                FilledIconButton(
-                    onClick = { follow = true }, modifier = Modifier.size(48.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
-                ) { Icon(AppIcons.Follow, stringResource(R.string.follow)) }
-            }
+            if (!follow && index != null) FollowButton(up = recitedAbove, onClick = { follow = true })
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
@@ -360,6 +380,55 @@ fun ReaderContent(
                 onSeek(ms)
                 follow = true
             }
+        }
+    }
+}
+
+/**
+ * Keeps the phone's screen from dimming and turning off while [on]: while a recitation is
+ * playing with its words on show. Someone glancing at the words as they drive can't keep
+ * tapping the screen awake. Paused, or with the surah left, the phone sleeps as usual.
+ */
+@Composable
+private fun KeepScreenOn(on: Boolean) {
+    val view = LocalView.current
+    DisposableEffect(view, on) {
+        view.keepScreenOn = on
+        onDispose { view.keepScreenOn = false }
+    }
+}
+
+/**
+ * Takes up following the recitation again, after the page was scrolled away from it: the
+ * eight-point star that frames the verse numbers, filled, with an arrow pointing the way
+ * to the word being recited ([up] the page, or down it).
+ */
+@Composable
+fun FollowButton(up: Boolean, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val label = stringResource(R.string.follow)
+    Box(
+        Modifier.size(60.dp).clip(CircleShape).clickable(role = Role.Button, onClick = onClick).semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.size(54.dp)) {
+            // Two squares, one turned an eighth of a turn.
+            val side = size.minDimension * 0.7f
+            val corner = Offset((size.width - side) / 2, (size.height - side) / 2)
+            drawRect(colors.primary, corner, Size(side, side))
+            rotate(45f) { drawRect(colors.primary, corner, Size(side, side)) }
+            val reach = size.minDimension * 0.17f
+            val tip = center.y + if (up) -reach else reach
+            val tail = center.y + if (up) reach else -reach
+            val barb = if (up) reach * 0.8f else -reach * 0.8f
+            val arrow = Path().apply {
+                moveTo(center.x, tail)
+                lineTo(center.x, tip)
+                moveTo(center.x - reach * 0.8f, tip + barb)
+                lineTo(center.x, tip)
+                lineTo(center.x + reach * 0.8f, tip + barb)
+            }
+            drawPath(arrow, colors.onPrimary, style = Stroke(2.6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
     }
 }
@@ -446,7 +515,7 @@ private fun Verses(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun VerseBlock(
     number: Int,
@@ -469,17 +538,19 @@ private fun VerseBlock(
     // press, like a tap on its number, opens its pins and collections.
     Column(
         Modifier.fillMaxWidth()
-            .combinedClickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onTap, onLongClick = onMark)
-            .padding(horizontal = 12.dp),
+            .combinedClickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onTap, onLongClick = onMark),
     ) {
         // The verse's number sits on the rule above it, at the left in every language.
         val label = stringResource(R.string.verse, number)
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-            Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            // Drawn over the words' blocks, not under them: a filled block reaches up to the rule,
+            // and the star, which is solid, covers the corner of it.
+            Row(Modifier.fillMaxWidth().zIndex(1f).padding(start = 12.dp, end = 12.dp, top = ABOVE_RULE), verticalAlignment = Alignment.CenterVertically) {
                 HorizontalDivider(Modifier.width(8.dp), color = MaterialTheme.colorScheme.outlineVariant)
                 StarNumber(
                     number,
-                    Modifier.padding(horizontal = 4.dp).clip(CircleShape).clickable(onClickLabel = stringResource(R.string.marks_open), onClick = onMark)
+                    size = STAR,
+                    modifier = Modifier.padding(horizontal = 4.dp).clip(CircleShape).clickable(onClickLabel = stringResource(R.string.marks_open), onClick = onMark)
                         .semantics { contentDescription = label },
                 )
                 // What marks the verse: each pin left on it, by name, and a bookmark if it is in a collection.
@@ -499,13 +570,11 @@ private fun VerseBlock(
         }
         // Arabic runs from the right, whatever the phone's language.
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-            // Room between the words and between the lines, growing with the text. With the
-            // meanings showing, those already hold the words apart.
-            FlowRow(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy((if (showMeanings) 4.dp else 12.dp) * textScale),
-                verticalArrangement = Arrangement.spacedBy(6.dp * textScale),
-            ) {
+            // Which words are on the verse's first row and which on its last, as the blocks were
+            // last laid out: those blocks' fill reaches on to the rule above and the rule below.
+            var firstRowEnds by remember { mutableIntStateOf(Int.MAX_VALUE) }
+            var lastRowStarts by remember { mutableIntStateOf(0) }
+            WordBlocks(Modifier.fillMaxWidth().padding(horizontal = EDGE_MARGIN), onRows = { firstEnds, lastStarts -> firstRowEnds = firstEnds; lastRowStarts = lastStarts }) {
                 verse.words.forEachIndexed { w, word ->
                     WordTile(
                         word = word,
@@ -522,6 +591,10 @@ private fun VerseBlock(
                         showMeaning = showMeanings,
                         textScale = textScale,
                         hand = hand,
+                        // Up to this verse's rule, and down to the next verse's, each short of it by a
+                        // hair. Not down over the verse's translation while that is showing.
+                        reachUp = { if (w <= firstRowEnds) RULE_TO_WORDS - RULE_MARGIN else 0.dp },
+                        reachDown = { if (w >= lastRowStarts && !showTranslation) WORDS_TO_NEXT_RULE - RULE_MARGIN else 0.dp },
                         onPlaced = { onPlaced(w, it) },
                         onClick = { onWord(w) },
                         onLongClick = onMark,
@@ -536,7 +609,7 @@ private fun VerseBlock(
             exit = fadeOut(tween(420)) + shrinkVertically(tween(420)),
         ) {
             Text(
-                verse.translation, Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
+                verse.translation, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(textDirection = TextDirection.Ltr),
                 fontSize = 14.sp * textScale, lineHeight = 20.sp * textScale,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -544,6 +617,77 @@ private fun VerseBlock(
         }
     }
 }
+
+/**
+ * Lays a verse's words out as blocks that take up all of the verse's room between them:
+ * rows are filled from the side reading starts from, each row's whole width is shared out
+ * among its words (every word gets its own width plus an equal share of what is left
+ * over), and every block in a row is as tall as the tallest. The blocks touch: there is no
+ * gap between one block's edge and the next, nor between rows. [onRows] is told the last
+ * word of the first row and the first word of the last row.
+ */
+@Composable
+private fun WordBlocks(modifier: Modifier = Modifier, onRows: (firstRowEnds: Int, lastRowStarts: Int) -> Unit = { _, _ -> }, content: @Composable () -> Unit) {
+    Layout(content, modifier) { measurables, constraints ->
+        val width = constraints.maxWidth
+        val natural = measurables.map { minOf(it.maxIntrinsicWidth(Constraints.Infinity), width) }
+        // As many words to a row as fit at their own widths.
+        val rows = ArrayList<IntRange>()
+        var first = 0
+        var used = 0
+        for (i in measurables.indices) {
+            if (i > first && used + natural[i] > width) {
+                rows += first until i
+                first = i
+                used = 0
+            }
+            used += natural[i]
+        }
+        if (measurables.isNotEmpty()) rows += first until measurables.size
+        if (rows.isNotEmpty()) onRows(rows.first().last, rows.last().first)
+
+        val widths = IntArray(measurables.size)
+        val heights = IntArray(rows.size)
+        val placeables = arrayOfNulls<Placeable>(measurables.size)
+        for ((r, row) in rows.withIndex()) {
+            val spare = width - row.sumOf { natural[it] }
+            val share = spare / row.count()
+            var odd = spare - share * row.count()
+            for (i in row) widths[i] = natural[i] + share + if (odd-- > 0) 1 else 0
+            heights[r] = row.maxOf { measurables[it].maxIntrinsicHeight(widths[it]) }
+            for (i in row) placeables[i] = measurables[i].measure(Constraints.fixed(widths[i], heights[r]))
+        }
+        layout(width, heights.sum()) {
+            var y = 0
+            for ((r, row) in rows.withIndex()) {
+                var x = 0
+                for (i in row) {
+                    placeables[i]?.placeRelative(x, y)
+                    x += widths[i]
+                }
+                y += heights[r]
+            }
+        }
+    }
+}
+
+/** The star a verse's number sits in, on the rule above the verse; the rule runs through its middle. */
+private val STAR = 38.dp
+
+/** The room above a verse's rule. */
+private val ABOVE_RULE = 6.dp
+
+/** From a verse's rule down to the top of its first row of words: the lower half of the star. */
+private val RULE_TO_WORDS = STAR / 2
+
+/** From the bottom of a verse's last row of words down to the next verse's rule. */
+private val WORDS_TO_NEXT_RULE = ABOVE_RULE + STAR / 2
+
+/** How far short of the screen's edges the word blocks stop. */
+private val EDGE_MARGIN = 6.dp
+
+/** How far short of a rule the filled block stops. */
+private val RULE_MARGIN = 3.dp
 
 private enum class WordState { RESTING, RECITED, CURRENT }
 
@@ -579,6 +723,8 @@ private fun WordTile(
     showMeaning: Boolean,
     textScale: Float,
     hand: Hand,
+    reachUp: () -> Dp,
+    reachDown: () -> Dp,
     onPlaced: (LayoutCoordinates) -> Unit,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
@@ -586,20 +732,33 @@ private fun WordTile(
     val colors = MaterialTheme.colorScheme
     val written = word.shownIn(hand.script)
     val isCurrent = state == WordState.CURRENT
-    // Nothing switches on or off: the frame and the light fade from one word to the next,
-    // and a word dims gently once it has been recited.
+    // Nothing switches on or off: the block's fill and the light fade from one word to the
+    // next, and a word dims gently once it has been recited.
     val lit by animateFloatAsState(if (isCurrent) 1f else 0f, tween(if (isCurrent) 220 else 420), label = "lit")
     val ink by animateColorAsState(
         // Solid, not see-through: see-through ink shows dark patches where the letters join.
         if (state == WordState.RECITED) colors.onSurface.faded(0.45f, colors.background) else colors.onSurface, tween(420), label = "ink",
     )
-    val shape = RoundedCornerShape(10.dp)
     Column(
-        // The word being recited sits in a lightly tinted frame that takes in its meaning too,
-        // and tells the page where it is so the page can keep it in the middle.
+        // The word's block is as large as the verse gives it (see WordBlocks). The block of the
+        // word being recited is filled, its meaning included, with no frame round it, and
+        // tells the page where it is so the page can keep it in the middle. The space inside
+        // the block is the word's own: it is what keeps neighbouring words apart.
         (if (isCurrent) Modifier.onGloballyPositioned(onPlaced) else Modifier)
-            .then(if (lit > 0f) Modifier.border(1.5.dp, colors.primary.copy(alpha = lit), shape).background(colors.primary.copy(alpha = 0.12f * lit), shape) else Modifier)
-            .clip(shape).combinedClickable(onClick = onClick, onLongClick = onLongClick).padding(horizontal = 8.dp, vertical = 2.dp),
+            // On the verse's first and last rows the fill carries on past the block, to the
+            // rules above and below the verse, so the block stands the full height between them.
+            .then(
+                if (lit > 0f) {
+                    Modifier.drawBehind {
+                        val up = reachUp().toPx()
+                        drawRect(colors.primary.copy(alpha = 0.2f * lit), Offset(0f, -up), Size(size.width, size.height + up + reachDown().toPx()))
+                    }
+                } else {
+                    Modifier
+                },
+            )
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(horizontal = (if (showMeaning) 8.dp else 14.dp) * textScale, vertical = 3.dp * textScale),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // The letters themselves are never recoloured: recolouring part of a joined-up word
@@ -730,12 +889,12 @@ private fun PlayerBar(
                 )
             }
             // The time line runs left to right in every language, as on other players: a thin
-            // gold line with a small bead on it.
+            // line with a small bead on it.
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(clock(dragged?.let { (it * duration).toInt() } ?: shown), style = MaterialTheme.typography.labelMedium, color = band.quiet)
                     val line = SliderDefaults.colors(
-                        thumbColor = band.rule, activeTrackColor = band.rule,
+                        thumbColor = band.content, activeTrackColor = band.content,
                         inactiveTrackColor = band.content.faded(0.25f, band.background),
                     )
                     Slider(
@@ -747,7 +906,7 @@ private fun PlayerBar(
                         },
                         modifier = Modifier.weight(1f).height(24.dp),
                         colors = line,
-                        thumb = { Box(Modifier.size(12.dp).background(band.rule, CircleShape)) },
+                        thumb = { Box(Modifier.size(12.dp).background(band.content, CircleShape)) },
                         track = { state ->
                             SliderDefaults.Track(
                                 state, Modifier.height(3.dp), colors = line,
@@ -764,7 +923,7 @@ private fun PlayerBar(
                     val label = stringResource(R.string.range_label, range.first + 1, range.last + 1)
                     TextButton(
                         onClick = { choosing = true }, modifier = Modifier.align(Alignment.CenterStart).semantics { contentDescription = label },
-                        colors = ButtonDefaults.textButtonColors(contentColor = band.rule), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        colors = ButtonDefaults.textButtonColors(contentColor = band.content), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                     ) {
                         Icon(AppIcons.Range, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
@@ -780,7 +939,7 @@ private fun PlayerBar(
                     Box(Modifier.padding(horizontal = 10.dp).size(46.dp).border(1.2.dp, band.rule, CircleShape), contentAlignment = Alignment.Center) {
                         FilledIconButton(
                             onClick = onPlayPause, modifier = Modifier.size(38.dp),
-                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = band.rule, contentColor = band.background),
+                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = band.rule, contentColor = band.onRule),
                         ) {
                             if (playing) Icon(AppIcons.Pause, stringResource(R.string.pause)) else Icon(AppIcons.Play, stringResource(R.string.play))
                         }

@@ -3,14 +3,18 @@
 An Android app for reading the Quran word by word and following a recitation of it.
 Every surah can be opened and read, each word with its meaning underneath. Give the app a
 YouTube playlist of a recitation and it downloads the sound only, works out when each word
-is recited, and plays along: the word being recited is framed and kept at the middle of
-the page, and the letter being uttered glows, the glow gliding from letter to letter.
+is recited, and plays along: the block of the word being recited is filled in and kept at
+the middle of the page, and the letter being uttered is lit in gold,
+the light gliding from letter to letter.
 
 The app is in English and Arabic, following the phone's language. By day it is green on
-white; in dark mode, gold on black. Every screen has a coloured band at the top with a
-gold rule, and the player sits on the same band at the bottom. Surah names are written in
+white; in dark mode, gold on black. The bars at the top and bottom of every screen are
+quiet: they take the page's own colour, with a thin gold rule between them and the page,
+and the player sits on the bottom one. Surah names are written in
 calligraphy, surah numbers sit under a pointed arch and verse numbers in an eight-point
-star, and the word being recited sits in a tinted frame with its meaning.
+star. A verse's words are laid out as blocks that share the verse's whole width between
+them, touching one another and stopping a small margin short of the screen's edges; the block of the word being recited, its meaning included,
+is filled with a tint and has no frame.
 
 ## How it works
 
@@ -78,10 +82,14 @@ the whole Quran ends up readable without a connection.
      start, a bar offers **Move to last read** with the verse it had reached.
    - The page follows the recitation and keeps the word being recited at the middle of
      the page, so it is always in the same place for a glance. The page glides after
-     the word rather than jumping, the frame and light fade from one word to the next, and
+     the word rather than jumping, the block's fill and the light fade from one word to the next, and
      a jump to a far part of the surah is covered by a short dissolve. Scrolling by hand
-     stops the following until **Follow the recitation** is tapped.
+     stops the following until the follow button is tapped: a gold star, like the verse
+     numbers', with an arrow pointing up or down the page to the word being recited.
    - The recitation doesn't start by itself: it is loaded and waits for **play**.
+   - While a recitation plays with its surah on show, the screen stays on: it doesn't dim
+     or turn off, so the word can be glanced at without touching the phone. Paused, or
+     with the surah left, the phone sleeps as usual.
    - **Verses 1 – 7** above the time line chooses which verses to recite: a first and a
      last verse. Play starts at the first and stops after the last. Left at the whole
      surah, the playlist's next recording follows as before.

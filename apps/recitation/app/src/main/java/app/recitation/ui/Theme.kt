@@ -126,24 +126,30 @@ val CalligraphyFont = FontFamily(Font(R.font.aref_ruqaa_bold))
  */
 fun Color.faded(strength: Float, background: Color): Color = copy(alpha = strength).compositeOver(background)
 
-/** The band across the top of every screen, with a gold rule under it. */
-class BannerColors(val background: Color, val content: Color, val rule: Color) {
+/**
+ * The bars across the top and bottom of every screen. They are quiet: they take the page's
+ * own colour and are set off from it by a thin gold rule. [content] is the text and the
+ * icons on a bar; [rule] is the gold of the rule, and of the few things on a bar that are
+ * solid gold (the play button); [onRule] is what is drawn on that gold.
+ */
+class BannerColors(val background: Color, val content: Color, val rule: Color, val onRule: Color) {
     /** For the second line on the banner: fainter than [content], and solid. */
     val quiet: Color get() = content.faded(0.8f, background)
 }
 
-private val DayBanner = BannerColors(background = Color(0xFF1B6B4A), content = Color(0xFFFFF7E0), rule = Color(0xFFF2C14E))
-private val NightBanner = BannerColors(background = Color(0xFF0B0B0B), content = Color(0xFFF2C14E), rule = Color(0xFFF2C14E))
+private val DayBanner = BannerColors(background = Color(0xFFFFFFFF), content = Color(0xFF1B6B4A), rule = Color(0xFFF2C14E), onRule = Color(0xFF1B6B4A))
+private val NightBanner = BannerColors(background = Color(0xFF000000), content = Color(0xFFF2C14E), rule = Color(0xFFF2C14E), onRule = Color(0xFF000000))
 
 val LocalBanner = staticCompositionLocalOf { DayBanner }
 
 /**
  * The colour the letter being uttered turns. It has to stand out from the ink of the word
- * round it at a glance, so it is neither the ink's colour nor the frame's: a deep amber on
- * the white page, a bright one on the black.
+ * round it at a glance. It is gold in both themes: a deep gold on the white page, where
+ * the pale gold of the rules would be lost, and on the black a gold richer than the cream
+ * of the ink.
  */
-private val DayHighlight = Color(0xFFE07A00)
-private val NightHighlight = Color(0xFFFF9D1A)
+private val DayHighlight = Color(0xFFC9980B)
+private val NightHighlight = Color(0xFFFFC61A)
 
 val LocalHighlight = staticCompositionLocalOf { DayHighlight }
 
@@ -166,7 +172,7 @@ fun Banner(content: @Composable () -> Unit) {
         Box(Modifier.windowInsetsPadding(WindowInsets.statusBars).fillMaxWidth()) {
             CompositionLocalProvider(LocalContentColor provides banner.content, content = content)
         }
-        Box(Modifier.fillMaxWidth().height(2.dp).background(banner.rule))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(banner.rule))
     }
 }
 
@@ -179,7 +185,7 @@ fun Banner(content: @Composable () -> Unit) {
 fun BottomBand(clearOfSystemBar: Boolean = true, content: @Composable () -> Unit) {
     val banner = LocalBanner.current
     Column(Modifier.fillMaxWidth().background(banner.background)) {
-        Box(Modifier.fillMaxWidth().height(2.dp).background(banner.rule))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(banner.rule))
         Box((if (clearOfSystemBar) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier).fillMaxWidth()) {
             CompositionLocalProvider(LocalContentColor provides banner.content, content = content)
         }

@@ -68,14 +68,26 @@ fun SurahTitle(surah: Surah, size: TextUnit, color: Color, modifier: Modifier = 
     }
 }
 
-/** A number inside the eight-point star made of two crossed squares: a verse's number. */
+/**
+ * A number inside the eight-point star made of two crossed squares: a verse's number. The
+ * star is solid, in [ground] (the page's colour unless told otherwise), so whatever lies
+ * behind it doesn't show through between its lines.
+ */
 @Composable
-fun StarNumber(number: Int, modifier: Modifier = Modifier, size: Dp = 38.dp, color: Color = MaterialTheme.colorScheme.primary) {
+fun StarNumber(
+    number: Int,
+    modifier: Modifier = Modifier,
+    size: Dp = 38.dp,
+    color: Color = MaterialTheme.colorScheme.primary,
+    ground: Color = MaterialTheme.colorScheme.background,
+) {
     Box(modifier.size(size), contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(size)) {
             val side = this.size.minDimension * 0.62f
             val corner = Offset((this.size.width - side) / 2, (this.size.height - side) / 2)
             val stroke = Stroke(1.3.dp.toPx())
+            drawRect(ground, corner, Size(side, side))
+            rotate(45f) { drawRect(ground, corner, Size(side, side)) }
             drawRect(color, corner, Size(side, side), style = stroke)
             rotate(45f) { drawRect(color, corner, Size(side, side), style = stroke) }
         }
@@ -139,13 +151,13 @@ fun ThemeButton(
             onClick, modifier, enabled = enabled, shape = shape, contentPadding = padding,
             colors = ButtonDefaults.buttonColors(
                 containerColor = accent,
-                contentColor = if (onBand) band.background else MaterialTheme.colorScheme.onPrimary,
+                contentColor = if (onBand) band.onRule else MaterialTheme.colorScheme.onPrimary,
             ),
         ) { content() }
     } else {
         OutlinedButton(
             onClick, modifier, enabled = enabled, shape = shape, contentPadding = padding,
-            border = BorderStroke(1.2.dp, accent.copy(alpha = if (enabled) 1f else 0.4f)),
+            border = BorderStroke(1.2.dp, (if (onBand) band.content else accent).copy(alpha = if (enabled) 1f else 0.4f)),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = if (onBand) band.content else accent),
         ) { content() }
     }
