@@ -6,6 +6,15 @@ import org.json.JSONObject
 /** Where a recitation was left: which recording, of which surah, how far in, and the verse that was being recited. */
 data class Place(val trackId: String, val surah: Int, val ms: Int, val verse: Int)
 
+/** Whether the app is light or dark: as the phone is set, or one of them whatever the phone says. */
+enum class Appearance(val key: String) {
+    AUTO("auto"), LIGHT("light"), DARK("dark");
+
+    companion object {
+        fun of(key: String?): Appearance = entries.firstOrNull { it.key == key } ?: AUTO
+    }
+}
+
 /** The user's choices, and the place they reached, kept from one opening of the app to the next. */
 object Settings {
     private fun store(context: Context) = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
@@ -29,6 +38,11 @@ object Settings {
     fun script(context: Context): Script = Script.of(store(context).getString("script", null))
 
     fun setScript(context: Context, script: Script) = store(context).edit().putString("script", script.key).apply()
+
+    /** Light, dark, or following the phone: the phone, until the user chooses. */
+    fun appearance(context: Context): Appearance = Appearance.of(store(context).getString("appearance", null))
+
+    fun setAppearance(context: Context, appearance: Appearance) = store(context).edit().putString("appearance", appearance.key).apply()
 
     /** Whether the user paused the downloads. Paused work isn't picked up again until they say so. */
     fun paused(context: Context): Boolean = store(context).getBoolean("paused", false)

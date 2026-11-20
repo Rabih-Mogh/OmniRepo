@@ -26,8 +26,16 @@ android {
         targetSdk = 35
         versionCode = buildNumber
         versionName = "1.$buildNumber"
-        // The speech runtime ships native code; only 64-bit ARM phones are built for.
+        // The speech runtime is native code; only 64-bit ARM phones are built for.
         ndk { abiFilters += "arm64-v8a" }
+    }
+
+    // ONNX Runtime's native library is 34 MB, nine tenths of the app, and the same in every
+    // build. It is left out of the package and put on the phone once (see speech/EngineStore.kt).
+    packaging {
+        jniLibs {
+            excludes += setOf("**/libonnxruntime.so", "**/libonnxruntime4j_jni.so")
+        }
     }
 
     buildTypes {

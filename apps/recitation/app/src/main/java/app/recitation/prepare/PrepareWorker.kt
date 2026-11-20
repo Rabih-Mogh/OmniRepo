@@ -29,6 +29,7 @@ import app.recitation.data.QuranStore
 import app.recitation.data.Settings
 import app.recitation.data.Track
 import app.recitation.speech.Listener
+import app.recitation.speech.EngineStore
 import app.recitation.speech.ModelStore
 import app.recitation.yt.YouTube
 import kotlinx.coroutines.CancellationException
@@ -45,7 +46,7 @@ import java.io.File
 import java.io.IOException
 
 /** What is being done to a recording right now. */
-enum class Step { MODEL_COPY, MODEL_DOWNLOAD, DOWNLOAD, VERSES, LISTEN, ALIGN, RETRY }
+enum class Step { MODEL_CHECK, MODEL_DOWNLOAD, ENGINE, DOWNLOAD, VERSES, LISTEN, ALIGN, RETRY }
 
 /** A recording's word timings while, and just after, it is listened to. */
 class Live(val trackId: String, val surah: Int, val timings: Timings)
@@ -69,6 +70,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
     private val library = Library.get(context)
     private val quran = QuranStore(context)
     private val model = ModelStore(context)
+    private val engine = EngineStore(context)
     private var listener: Listener? = null
     private var shown = ""
 
@@ -118,6 +120,9 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                     } catch (e: TooShort) {
                         fail(track, applicationContext.getString(R.string.error_too_short))
                         break
+                    } catch (e: EngineStore.WontStart) {
+                        fail(track, applicationContext.getString(R.string.error_engine, e.detail))
+                        break
                     } catch (e: Exception) {
                         fail(track, applicationContext.getString(R.string.error_other, detail(e)))
                         break
@@ -163,11 +168,12 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             show(track, step, fraction)
         }
 
-        if (!model.isReady) {
-            model.obtain(download = Settings.downloadModel(applicationContext)) { copied, p ->
-                report(if (copied) Step.MODEL_COPY else Step.MODEL_DOWNLOAD, p, forModel = true)
-            }
+        // The speech model: Accent Coach's copy, read where it is, or this app's own.
+        model.obtain(download = Settings.downloadModel(applicationContext)) { checking, p ->
+            report(if (checking) Step.MODEL_CHECK else Step.MODEL_DOWNLOAD, p, forModel = true)
         }
+        // The engine that runs it isn't shipped inside the app: it is put on the phone once.
+        if (!engine.isReady) engine.obtain { report(Step.ENGINE, it, forModel = true) }
 
         val audio = library.audio(id) ?: run {
             report(Step.DOWNLOAD, 0f)
@@ -200,7 +206,8 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             Hearing.read(notes)
         } else {
             report(Step.LISTEN, 0f)
-            val listener = listener ?: Listener(model.modelFile, vocab()).also { listener = it }
+            engine.start()
+            val listener = listener ?: Listener(model.open(), vocab()).also { listener = it }
             // The words are placed as the listening goes, a few seconds behind it, for the reader to follow meanwhile.
             val live = LiveAlignment(recital)
             listener.resume(notes).let { live.add(it.frames, it.rows) }
@@ -246,7 +253,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
 
     private fun show(track: Track, step: Step, fraction: Float) {
         val text = applicationContext.getString(stepLabel(step), (fraction * 100).toInt())
-        val line = if (step == Step.MODEL_COPY || step == Step.MODEL_DOWNLOAD) text else "${track.title}\n$text"
+        val line = if (step == Step.MODEL_CHECK || step == Step.MODEL_DOWNLOAD || step == Step.ENGINE) text else "${track.title}\n$text"
         if (line == shown) return
         shown = line
         notifications.notify(NOTIFICATION_ID, notification(line))
@@ -302,8 +309,9 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         val modelProblem: StateFlow<ModelProblem?> = _modelProblem.asStateFlow()
 
         fun stepLabel(step: Step): Int = when (step) {
-            Step.MODEL_COPY -> R.string.step_model_copy
+            Step.MODEL_CHECK -> R.string.step_model_check
             Step.MODEL_DOWNLOAD -> R.string.step_model_download
+            Step.ENGINE -> R.string.step_engine
             Step.DOWNLOAD -> R.string.step_download
             Step.VERSES -> R.string.step_verses
             Step.LISTEN -> R.string.step_listen

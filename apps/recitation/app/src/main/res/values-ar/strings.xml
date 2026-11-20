@@ -40,7 +40,9 @@
 
     <!-- Getting a recording ready -->
     <string name="preparing">تجهيز التلاوات</string>
-    <string name="step_model_copy">جارٍ نسخ نموذج الصوت من Accent Coach… %1$d%%</string>
+    <string name="step_model_check">جارٍ التحقق من نموذج الصوت في Accent Coach… %1$d%%</string>
+    <string name="step_engine">جارٍ جلب محرّك الصوت… %1$d%%</string>
+    <string name="error_engine">تعذّر تشغيل محرّك الصوت على هذا الهاتف. (%1$s)</string>
     <string name="step_model_download">جارٍ تنزيل نموذج الصوت (318 ميغابايت)… %1$d%%</string>
     <string name="step_download">جارٍ تنزيل الصوت… %1$d%%</string>
     <string name="step_verses">جارٍ جلب الآيات…</string>
@@ -52,10 +54,10 @@
     <string name="error_too_short">التسجيل أقصر من هذه السورة. تحقّق من السورة.</string>
 
     <!-- The speech model, when Accent Coach is installed but can't lend it -->
-    <string name="model_problem_title">تعذّر نسخ نموذج الصوت من Accent Coach</string>
+    <string name="model_problem_title">تعذّر استعمال نموذج الصوت في Accent Coach</string>
     <string name="model_too_old">نسخة Accent Coach على هذا الهاتف أقدم من أن تشارك نموذج الصوت. افتح Accent Coach واقبل تحديثه، ثم حاول مجدداً.</string>
     <string name="model_no_model">لم يُكمل Accent Coach تنزيل نموذج الصوت بعد. افتح Accent Coach ودعه يُكمل، ثم حاول مجدداً.</string>
-    <string name="model_refused">لم يسلّم Accent Coach النموذج. ردّ أندرويد: %1$s</string>
+    <string name="model_refused">تعذّر استعمال نموذج الصوت في Accent Coach: %1$s</string>
     <string name="model_download_instead">تنزيله بدلاً من ذلك (318 ميغابايت)</string>
 
     <!-- The first screen's tabs, and the list of surahs -->
@@ -161,6 +163,9 @@
     <string name="search_words_note">يُبحث عن الكلمات في السور الموجودة على الهاتف.</string>
     <string name="search_clear">مسح</string>
     <string name="search_in_verses">في الآيات</string>
+    <string name="appearance_auto">تلقائي</string>
+    <string name="appearance_light">فاتح</string>
+    <string name="appearance_dark">داكن</string>
     <string name="previous_verse">الآية السابقة</string>
     <string name="next_verse">الآية التالية</string>
 

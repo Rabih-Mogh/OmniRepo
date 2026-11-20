@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
@@ -22,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -31,6 +33,9 @@ import java.io.File
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import android.view.View
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -48,6 +53,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.recitation.core.Timings
 import app.recitation.core.WordTiming
+import app.recitation.data.Appearance
 import app.recitation.data.Hit
 import app.recitation.data.Marks
 import app.recitation.data.Pin
@@ -63,6 +69,8 @@ import app.recitation.prepare.ModelProblem
 import app.recitation.prepare.Progress
 import app.recitation.prepare.Step
 import app.recitation.speech.ModelStore
+import app.recitation.ui.Choices
+import app.recitation.ui.ClearOfTheSides
 import app.recitation.ui.CollectionContent
 import app.recitation.ui.FollowButton
 import app.recitation.ui.HomeContent
@@ -74,6 +82,7 @@ import app.recitation.ui.MenuContent
 import app.recitation.ui.NoRecitationBar
 import app.recitation.ui.NowPlayingBar
 import app.recitation.ui.RangeChooser
+import app.recitation.ui.ReadingChoices
 import app.recitation.ui.ReaderContent
 import app.recitation.ui.RecitationTheme
 import app.recitation.ui.RecordingsContent
@@ -266,7 +275,9 @@ class ScreensTest {
     fun wordMeaningsCanBeHidden() {
         show("en-day-reader-no-meanings") { Reader(7_500, meanings = false) }
         compose.onNodeWithText("of the universe").assertDoesNotExist()
-        compose.onNodeWithContentDescription("Word meanings").assertIsDisplayed()
+        // Showing them again is in the surah's menu, with the text size and the script.
+        compose.onNodeWithContentDescription("Menu").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Word meanings").assertDoesNotExist()
         // The verse's translation is still a tap away.
         compose.onNodeWithText("رَبِّ", useUnmergedTree = true).performClick()
         compose.waitForIdle()
@@ -498,7 +509,7 @@ class ScreensTest {
             }
         }
         compose.waitForIdle()
-        compose.onNodeWithContentDescription("Text size").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Menu").assertIsDisplayed()
         val before = wordHeight()
         scale = 1.5f
         compose.waitForIdle()
@@ -963,6 +974,129 @@ class ScreensTest {
 
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theSurahsTitleIsInTheMiddleOfItsBar() {
+        show("en-day-reader-bar") { Reader(7_500) }
+        val page = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        val title = compose.onNodeWithTag("surah-title").fetchSemanticsNode().boundsInRoot
+        assertTrue(abs(title.center.x - page.center.x) < 2f)
+        // Back at one end, the menu at the other, and nothing else on the bar.
+        compose.onNodeWithContentDescription("Back").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Menu").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Text size").assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
+    fun aSurahsMenuHoldsTheMeaningsTheSizeAndTheScript() {
+        var meanings: Boolean? = null
+        var scale: Float? = null
+        var script: Script? = null
+        var appearance: Appearance? = null
+        show("en-night-reader-menu") {
+            Column(Modifier.padding(24.dp).width(280.dp)) {
+                ReadingChoices(true, { meanings = it }, 1f, { scale = it }, Script.MADINAH, { script = it }, withIndoPak = true, Appearance.AUTO) { appearance = it }
+            }
+        }
+        // Light or dark at a tap, whatever the phone is set to.
+        compose.onNodeWithText("Auto").assertIsDisplayed()
+        compose.onNodeWithText("Light").performClick()
+        assertTrue(appearance == Appearance.LIGHT)
+        compose.onNodeWithText("Word meanings").performClick()
+        assertTrue(meanings == false)
+        compose.onNodeWithContentDescription("Larger").performClick()
+        assertTrue(scale == 1.1f)
+        compose.onNodeWithText("IndoPak").performClick()
+        assertTrue(script == Script.INDOPAK)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theChoiceOfLightOrDarkIsKept() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        // The phone decides until the reader does.
+        assertTrue(Choices(context, arabic = false).appearance == Appearance.AUTO)
+        Choices(context, arabic = false).look(Appearance.DARK)
+        assertTrue(Choices(context, arabic = false).appearance == Appearance.DARK)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun darkCanBeChosenWhileThePhoneIsLight() {
+        // The phone is in its light mode; the app draws dark because that is what was chosen.
+        compose.setContent { RecitationTheme(dark = true) { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { Reader(7_500) } } }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/en-dark-chosen-on-a-light-phone.png")
+        compose.onNodeWithTag("surah-title").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w891dp-h411dp-land-420dpi")
+    fun onItsSideThePageKeepsTheLineJustReadInViewToo() {
+        // One verse of 40 words, several lines long even on a phone held on its side.
+        val all = fatihah.flatMap { it.words }
+        val long = Verse(List(40) { Word(all[it % all.size].arabic, "word ${it + 1}") }, "A long verse.")
+        val words = long.words
+        val firstOfVerse = 0
+        var position by mutableIntStateOf(500)
+        compose.setContent {
+            CompositionLocalProvider(LocalSurahNames provides surahNames) {
+                RecitationTheme {
+                    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                        ReaderContent(
+                            reading = Reading(1, listOf(long), track, timings(listOf(long))), showMeanings = true, playing = true,
+                            position = { position }, duration = 74_000, onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
+                        )
+                    }
+                }
+            }
+        }
+        compose.waitForIdle()
+        // Where the block of the verse's [w]th word is.
+        fun block(w: Int) = compose.onNodeWithText("word ${w + 1}").fetchSemanticsNode().boundsInRoot
+        var linesTurned = 0
+        for (w in 1 until words.size) {
+            position = (firstOfVerse + w) * 1000 + 500
+            compose.waitForIdle()
+            val page = compose.onNodeWithTag("verses").fetchSemanticsNode().boundsInRoot
+            val now = block(w)
+            val before = block(w - 1)
+            if (now.top > before.top + 1f) {
+                linesTurned++
+                if (linesTurned == 1) compose.onRoot().captureRoboImage("build/screens/en-day-reader-on-its-side.png")
+                // The recitation has gone on to the next line: the line it left is still wholly on the page...
+                assertTrue("the line just read starts at ${before.top}, above the page's top at ${page.top}", before.top >= page.top - 1f)
+                // ...and so is the line being recited.
+                assertTrue(now.bottom <= page.bottom + 1f)
+            }
+        }
+        assertTrue("the verse was meant to run over more than one line", linesTurned >= 1)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w891dp-h411dp-land-420dpi")
+    fun nothingLiesUnderACameraCutOutAtTheSide() {
+        lateinit var screen: View
+        compose.setContent {
+            screen = LocalView.current
+            RecitationTheme {
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { ClearOfTheSides { Reader(7_500, meanings = false) } }
+            }
+        }
+        compose.waitForIdle()
+        fun leftmost() = compose.onAllNodesWithText("ٱلْعَـٰلَمِينَ", useUnmergedTree = true).onFirst().fetchSemanticsNode().parent!!.boundsInRoot.left
+        val without = leftmost()
+        // The phone reports a camera hole 120 px deep at its left edge.
+        val cutOut = WindowInsetsCompat.Builder().setInsets(WindowInsetsCompat.Type.displayCutout(), Insets.of(120, 0, 0, 0)).build()
+        compose.runOnUiThread { ViewCompat.dispatchApplyWindowInsets(screen, cutOut) }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/en-day-reader-cut-out.png")
+        assertTrue("the leftmost word starts at ${leftmost()}, was at $without", leftmost() >= 120f && leftmost() >= without + 119f)
+        compose.onNodeWithContentDescription("Back").assertIsDisplayed()
+        assertTrue(compose.onNodeWithContentDescription("Back").fetchSemanticsNode().boundsInRoot.left >= 120f)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun pausedDownloads() {
         var resumed = false
         show("en-day-paused") { Recordings(Status.Paused, StatusActions(resume = { resumed = true })) }
@@ -1000,9 +1134,9 @@ class ScreensTest {
     @Test
     @Config(qualifiers = "ar-rLB-w411dp-h891dp-night-420dpi")
     fun playlistsInArabicByNight() {
-        show("ar-night-playlists") { Home(tab = 1, playlists = listOf(playlist), status = Status.Working(Progress(null, Step.MODEL_COPY, 0.6f), null)) }
+        show("ar-night-playlists") { Home(tab = 1, playlists = listOf(playlist), status = Status.Working(Progress(null, Step.MODEL_CHECK, 0.6f), null)) }
         compose.onNodeWithContentDescription("التلاوة").assertIsDisplayed()
-        compose.onNodeWithText("جارٍ نسخ نموذج الصوت", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("جارٍ التحقق من نموذج الصوت", substring = true).assertIsDisplayed()
     }
 
     @Test
@@ -1021,7 +1155,7 @@ class ScreensTest {
         show("en-day-model-problem") {
             Recordings(Status.ModelBlocked(ModelProblem(ModelStore.Lender.TOO_OLD, null)), StatusActions(retryModel = { download = it }))
         }
-        compose.onNodeWithText("Couldn't copy the speech model from Accent Coach").assertIsDisplayed()
+        compose.onNodeWithText("Couldn't use Accent Coach's speech model").assertIsDisplayed()
         compose.onNodeWithText("accept its update", substring = true).assertIsDisplayed()
         compose.onAllNodesWithText("Waiting for the speech model").onFirst().assertIsDisplayed()
         // Nothing is downloaded unless asked for.

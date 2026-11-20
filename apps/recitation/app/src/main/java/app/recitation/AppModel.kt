@@ -27,6 +27,7 @@ import app.recitation.data.Verse
 import app.recitation.data.VerseCollection
 import app.recitation.data.VerseRef
 import app.recitation.prepare.PrepareWorker
+import app.recitation.speech.ModelStore
 import app.recitation.yt.YouTube
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -111,6 +112,8 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         fetchTheRest()
         viewModelScope.launch { SurahNames.load(app) }
         viewModelScope.launch { IndoPakFont.load(app) }
+        // A copy of the speech model made before the app learnt to read Accent Coach's: free its 318 MB.
+        viewModelScope.launch { runCatching { ModelStore(app).tidy() } }
         // While the open recording is being listened to its word timings grow: show the latest.
         viewModelScope.launch {
             PrepareWorker.live.collect { live ->

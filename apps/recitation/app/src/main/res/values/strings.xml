@@ -36,7 +36,9 @@
 
     <!-- Getting a recording ready -->
     <string name="preparing">Getting recitations ready</string>
-    <string name="step_model_copy">Copying the speech model from Accent Coach… %1$d%%</string>
+    <string name="step_model_check">Checking Accent Coach\'s speech model… %1$d%%</string>
+    <string name="step_engine">Getting the speech engine… %1$d%%</string>
+    <string name="error_engine">The speech engine couldn\'t be started on this phone. (%1$s)</string>
     <string name="step_model_download">Downloading the speech model (318 MB)… %1$d%%</string>
     <string name="step_download">Downloading the sound… %1$d%%</string>
     <string name="step_verses">Fetching the verses…</string>
@@ -48,10 +50,10 @@
     <string name="error_too_short">The recording is too short for this surah. Check the surah.</string>
 
     <!-- The speech model, when Accent Coach is installed but can't lend it -->
-    <string name="model_problem_title">Couldn\'t copy the speech model from Accent Coach</string>
+    <string name="model_problem_title">Couldn\'t use Accent Coach\'s speech model</string>
     <string name="model_too_old">The Accent Coach on this phone is from before it could share its speech model. Open Accent Coach, accept its update, then try again.</string>
     <string name="model_no_model">Accent Coach hasn\'t finished downloading the speech model itself. Open Accent Coach and let it finish, then try again.</string>
-    <string name="model_refused">Accent Coach didn\'t hand it over. Android said: %1$s</string>
+    <string name="model_refused">Accent Coach\'s speech model couldn\'t be used: %1$s</string>
     <string name="model_download_instead">Download it instead (318 MB)</string>
 
     <!-- The first screen's tabs, and the list of surahs -->
@@ -153,6 +155,9 @@
     <string name="search_words_note">Words are looked for in the surahs already on the phone.</string>
     <string name="search_clear">Clear</string>
     <string name="search_in_verses">In the verses</string>
+    <string name="appearance_auto">Auto</string>
+    <string name="appearance_light">Light</string>
+    <string name="appearance_dark">Dark</string>
     <string name="previous_verse">Previous verse</string>
     <string name="next_verse">Next verse</string>
 

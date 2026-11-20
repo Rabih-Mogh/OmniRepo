@@ -8,7 +8,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -162,6 +165,17 @@ fun RecitationTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable 
 }
 
 /**
+ * Keeps everything clear of whatever cuts into the screen at its sides: the camera's hole
+ * or notch when the phone is held on its side, and the phone's own buttons when they sit
+ * there. The app draws from edge to edge, so without this a word at the end of a line can
+ * lie under the camera. The page's colour carries on underneath.
+ */
+@Composable
+fun ClearOfTheSides(content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) { content() }
+}
+
+/**
  * The band at the top of a screen: [content] sits on the banner colour, clear of the
  * status bar, with the gold rule beneath.
  */
@@ -169,7 +183,8 @@ fun RecitationTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable 
 fun Banner(content: @Composable () -> Unit) {
     val banner = LocalBanner.current
     Column(Modifier.fillMaxWidth().background(banner.background)) {
-        Box(Modifier.windowInsetsPadding(WindowInsets.statusBars).fillMaxWidth()) {
+        // Clear of the status bar, and of a camera cut-out if that reaches lower than the bar.
+        Box(Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).fillMaxWidth()) {
             CompositionLocalProvider(LocalContentColor provides banner.content, content = content)
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(banner.rule))

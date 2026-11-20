@@ -38,6 +38,9 @@ import app.recitation.core.SURAHS
 import app.recitation.data.Place
 import android.content.Context
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.luminance
+import app.recitation.data.Appearance
 import app.recitation.data.IndoPakFont
 import app.recitation.data.Pin
 import app.recitation.data.Playlist
@@ -56,25 +59,22 @@ import kotlinx.coroutines.withContext
 
 /** The whole app: which screen shows, and the pop-ups over it. */
 @Composable
-fun App(model: AppModel) {
+fun App(model: AppModel, choices: Choices) {
     BackHandler(enabled = model.screen != Screen.Home || model.query != null) { model.back() }
     UpdateDialog()
 
     // The surahs' names in calligraphy, once that font has been fetched; plainer calligraphy until then.
     val surahNames by SurahNames.font.collectAsStateWithLifecycle()
-    CompositionLocalProvider(LocalSurahNames provides surahNames) { Screens(model) }
+    CompositionLocalProvider(LocalSurahNames provides surahNames) { Screens(model, choices) }
 }
 
 @Composable
-private fun Screens(model: AppModel) {
+private fun Screens(model: AppModel, choices: Choices) {
     val context = LocalContext.current
     val playlists by model.library.playlists.collectAsStateWithLifecycle()
     val progress by PrepareWorker.progress.collectAsStateWithLifecycle()
     val modelProblem by PrepareWorker.modelProblem.collectAsStateWithLifecycle()
 
-    // How the reader likes the page: set from the menu or from a surah's own buttons, and kept.
-    val arabic = LocalConfiguration.current.locales[0].language == "ar"
-    val choices = remember { Choices(context.applicationContext, arabic) }
     val indopak by IndoPakFont.font.collectAsStateWithLifecycle()
 
     // One line to the player for the whole app, so leaving a surah, or the app, doesn't stop the recitation.
@@ -156,6 +156,7 @@ private fun Screens(model: AppModel) {
                     choices.script, choices::write, withIndoPak = indopak != null,
                     textScale = choices.textScale, onTextScale = choices::size,
                     meanings = choices.meanings, onMeanings = choices::show,
+                    appearance = choices.appearance, onAppearance = choices::look,
                     footer = { VersionFooter() },
                 )
             },
@@ -235,7 +236,7 @@ private fun SurahScreen(
     var marking by remember(screen.number) { mutableStateOf<Int?>(null) }
     val page = Page(
         meanings, setMeanings, textScale, setTextScale,
-        choices.script, choices::write, indopak, startVerse, marks, { marking = it },
+        choices.script, choices::write, indopak, startVerse, marks, { marking = it }, choices.appearance, choices::look,
     )
     marking?.let { verse ->
         val here = VerseRef(screen.number, verse + 1)
@@ -263,6 +264,7 @@ private fun SurahScreen(
             textScale = textScale, onTextScale = setTextScale,
             script = page.script, onScript = page.onScript, indopak = page.indopak,
             startVerse = page.startVerse, marks = page.marks, onMark = page.onMark,
+            appearance = page.appearance, onAppearance = page.onAppearance,
             withoutRecitation = {
                 // Looked up afresh each time the playlists change, so the bar keeps up with the download.
                 val recording = remember(playlists, screen.number) { model.anyRecordingOf(screen.number) }
@@ -281,9 +283,9 @@ private fun SurahScreen(
 }
 
 /**
- * How the reader likes the page, kept from one opening of the app to the next: whether
- * each word's meaning shows, how large the verses are, and the script they are written in.
- * Word meanings are in English, so they start hidden when the phone is in Arabic.
+ * How the reader likes the app, kept from one opening of it to the next: light or dark,
+ * whether each word's meaning shows, how large the verses are, and the script they are
+ * written in. Word meanings are in English, so they start hidden when the phone is in Arabic.
  */
 class Choices(private val context: Context, arabic: Boolean) {
     var meanings by mutableStateOf(Settings.wordMeanings(context, byDefault = !arabic))
@@ -292,6 +294,13 @@ class Choices(private val context: Context, arabic: Boolean) {
         private set
     var script by mutableStateOf(Settings.script(context))
         private set
+    var appearance by mutableStateOf(Settings.appearance(context))
+        private set
+
+    fun look(appearance: Appearance) {
+        this.appearance = appearance
+        Settings.setAppearance(context, appearance)
+    }
 
     fun show(meanings: Boolean) {
         this.meanings = meanings
@@ -321,6 +330,8 @@ private class Page(
     val startVerse: Int?,
     val marks: VerseMarks,
     val onMark: (Int) -> Unit,
+    val appearance: Appearance,
+    val onAppearance: (Appearance) -> Unit,
 )
 
 /** The line to the playback service, and what it is playing. */
@@ -411,6 +422,8 @@ private fun PlayingReader(
     var moved by remember(track.id) { mutableStateOf(false) }
     val position = remember { mutableIntStateOf(startMs ?: 0) }
     val context = LocalContext.current
+    // The picture Android's own media player is given follows the app's light or dark, not the phone's.
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     // Where this recording was left last time, read before listening now overwrites it.
     val left = remember(track.id) { Settings.place(context, track.id) }
     // Set when the recording starts from the beginning though it was left further in: offer to go there.
@@ -432,7 +445,7 @@ private fun PlayingReader(
                 val file = model.library.audio(queued.id) ?: return@mapNotNull null
                 val surah = SURAHS[queued.surah - 1]
                 val metadata = MediaMetadata.Builder().setTitle(if (arabic) surah.arabic else surah.latin).setArtist(playlist.channel)
-                    .setArtworkData(Artwork.of(context, surah), MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+                    .setArtworkData(Artwork.of(context, surah, dark = dark), MediaMetadata.PICTURE_TYPE_FRONT_COVER)
                 MediaItem.Builder().setMediaId(queued.id).setUri(Uri.fromFile(file)).setMediaMetadata(metadata.build()).build()
             }
         }
@@ -528,6 +541,7 @@ private fun PlayingReader(
             onTextScale = page.onTextScale,
             script = page.script, onScript = page.onScript, indopak = page.indopak,
             startVerse = page.startVerse, marks = page.marks, onMark = page.onMark,
+            appearance = page.appearance, onAppearance = page.onAppearance,
             // Whether the rest of it is still being listened to, or is waiting its turn for that.
             listening = !model.paused && playlists.any { p -> p.tracks.any { it.id == track.id && it.wanted } },
             range = range,

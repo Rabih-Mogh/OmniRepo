@@ -7,8 +7,9 @@ is recited, and plays along: the block of the word being recited is filled in an
 the middle of the page, and the letter being uttered is lit in gold,
 the light gliding from letter to letter.
 
-The app is in English and Arabic, following the phone's language. By day it is green on
-white; in dark mode, gold on black. The bars at the top and bottom of every screen are
+The app is in English and Arabic, following the phone's language. In light mode it is green
+on white; in dark mode, gold on black. It follows the phone's dark mode unless light or dark
+is chosen in its menu. The bars at the top and bottom of every screen are
 quiet: they take the page's own colour, with a thin gold rule between them and the page,
 and the player sits on the bottom one. Surah names are written in
 calligraphy, surah numbers sit under a pointed arch and verse numbers in an eight-point
@@ -21,9 +22,10 @@ is filled with a tint and has no frame.
 The band at the top of the first screen has the menu button, the app's name beside it, and
 the search button at the far end:
 
-- **Menu** (the three lines) slides in a panel with the script the verses are written
-  in, their size, whether each word's meaning shows, and the app's version with
-  **Check for updates**.
+- **Menu** (the three lines) slides in a panel with a switch between light and dark (or
+  **Auto**, which follows the phone, as the app does until one is chosen), whether each
+  word's meaning shows, the verses' size, the script they are written in, and the app's
+  version with **Check for updates**.
 - **Search** turns the band into a search box. It finds a surah by its number or part of
   its name (Arabic or Latin letters, or what the name means), a verse by its numbers
   ("2:255", "kahf 10", "البقرة ٢٥٥"), and verses by their words: Arabic letters are
@@ -81,7 +83,11 @@ the whole Quran ends up readable without a connection.
    - The app remembers how far each recitation was listened to. Opened again from the
      start, a bar offers **Move to last read** with the verse it had reached.
    - The page follows the recitation and keeps the word being recited at the middle of
-     the page, so it is always in the same place for a glance. The page glides after
+     the page, so it is always in the same place for a glance. Where the page is short (a
+     phone held on its side) and that would push the line just read off the top, the word
+     sits lower instead, so that line stays in view above it.
+   - Nothing is drawn under the camera's hole or notch: when the phone is on its side the
+     page stops short of it, in the page's own colour. The page glides after
      the word rather than jumping, the block's fill and the light fade from one word to the next, and
      a jump to a far part of the surah is covered by a short dissolve. Scrolling by hand
      stops the following until the follow button is tapped: a gold star, like the verse
@@ -97,11 +103,12 @@ the whole Quran ends up readable without a connection.
      of the play button. The player is a slim band: a thin time line, then the verse range,
      the three buttons and nothing else. Its buttons, and the round one that takes up
      following the recitation again, carry icons only.
-   - The **text** button on the band makes the verses, meanings and translation smaller
-     or larger, from 70% to 200%, and chooses the script the verses are written in (see
-     [Scripts](#scripts)). Both are remembered.
-   - The button at the top right shows or hides the meaning under each word; the choice
-     is remembered.
+   - A surah's bar has the way back at one end, the surah's name in the middle, and a
+     **menu** button at the other. The menu switches between light and dark, shows or
+     hides the meaning under each word,
+     makes the verses, meanings and translation smaller or larger (70% to 200%), and
+     chooses the script the verses are written in (see [Scripts](#scripts)). All of
+     these are remembered, and are in the first screen's menu too.
    - Tap a verse to see its translation. It closes by itself after long enough to read
      it (6 to 25 seconds, by its length).
    - When a recording ends, the playlist's next prepared one follows.
@@ -131,8 +138,7 @@ Hold a verse, or tap its number, to open its pins and collections.
 
 ### Scripts
 
-The words are fetched once in four spellings, and the **text** button chooses which is
-shown. The recitation is always lined up with the Uthmani spelling, whichever is shown.
+The words are fetched once in four spellings, and the menu chooses which is shown. The recitation is always lined up with the Uthmani spelling, whichever is shown.
 
 | Script | What it is | Font |
 |---|---|---|
@@ -173,15 +179,42 @@ fetched again, quietly, the next time the app is open with a connection.
 
 The model is 318 MB, too big to ship in the APK.
 
-- **Accent Coach installed:** Recitation copies the model from
-  [Accent Coach](../accent-coach/) instead of downloading it. If Accent Coach can't hand
-  it over (it is a version from before it shared the model, or it hasn't finished
-  downloading the model itself), Recitation stops and says which, with **Try again** and
-  **Download it instead**. It never downloads 318 MB on its own while Accent Coach is there.
-- **Accent Coach not installed:** the model is downloaded once, pinned to one revision.
+- **Accent Coach installed:** Recitation reads [Accent Coach](../accent-coach/)'s copy of
+  the model where it lies, and keeps none of its own, so the phone holds the file once.
+  Accent Coach hands the open file only to apps signed with the same key. If Accent Coach
+  can't lend it (it is a version from before it shared the model, it hasn't finished
+  downloading the model itself, or its file doesn't match the checksum), Recitation stops
+  and says which, with **Try again** and **Download it instead**. It never downloads
+  318 MB on its own while Accent Coach is there.
+- **A copy from before:** versions up to 1.42 copied the model out of Accent Coach, so the
+  phone held it twice. The next time the app is opened it checks Accent Coach's copy
+  against the checksum and, if it matches, deletes its own, freeing 318 MB. Preparing a
+  recording does the same. A copy Recitation downloaded itself is kept for as long as
+  Accent Coach can't lend one.
+- **Accent Coach not installed:** the model is downloaded once, pinned to one revision, into
+  the app's own storage.
+- **Accent Coach removed later:** Recitation then has no model. The next recording to be
+  prepared downloads it, as on a phone that never had Accent Coach. Recordings already
+  prepared don't need the model and keep working.
 
-Either way the file is checked against its SHA-256. Everything after that runs on the
-phone with ONNX Runtime.
+Either way the file is checked against its SHA-256 before it is used. Everything after
+that runs on the phone with ONNX Runtime.
+
+### The speech engine
+
+ONNX Runtime's native library, which runs the model, is 34 MB: nine tenths of what the
+app's package used to weigh, and the same in every build. It is no longer inside the
+package, which is about 4 MB instead of 38 MB, so every update is that much smaller. The
+engine is put on the phone once, the first time a recording is prepared:
+
+- **Accent Coach installed:** the two library files are copied out of Accent Coach's
+  installed package, which carries the very same ones. Nothing is downloaded.
+- **Otherwise:** they are downloaded from this repo ([engine/](engine/)), compressed
+  (13 MB).
+
+Each file must match its fixed SHA-256 before it is kept, and is kept read-only in the
+app's private storage. Reading and searching the Quran, and playing recordings that are
+already prepared, don't need the engine.
 
 ## How accurate it is
 
@@ -205,7 +238,10 @@ it against its published timings.
 
 - **Not yet run on a phone.** The app was built and its logic tested on a Mac. Decoding
   the sound, running the model, playback, background work and installing updates use
-  Android itself and have only been compiled.
+  Android itself and have only been compiled. That includes starting the engine from the
+  app's storage rather than from inside its package, and reading the model straight out of
+  Accent Coach's file. If the engine won't start on a phone, the recording being prepared
+  says so, with Android's own wording.
 - **One surah per video.** A video with several surahs, part of a surah, or verses
   repeated (as in prayer) won't line up; the app will usually say it doesn't match.
 - **Old or echoing recordings** are heard less clearly and line up less tightly.
@@ -227,6 +263,7 @@ it against its published timings.
 |---|---|---|
 | Quran text (Uthmani, IndoPak and everyday spellings), word meanings, verse translation (Saheeh International) | [Quran.com](https://quran.com) API, fetched by the app and kept on the phone; not stored in this repo | Their own terms |
 | Speech model | [wav2vec2-lv-60-espeak-cv-ft](https://huggingface.co/facebook/wav2vec2-lv-60-espeak-cv-ft), ONNX export by onnx-community | Apache-2.0 |
+| Speech engine | [ONNX Runtime](https://github.com/microsoft/onnxruntime) 1.31.1: its Java classes in the app, its native library in [engine/](engine/) and fetched by the app | MIT ([text](licenses/ONNXRuntime-MIT.txt)) |
 | Reading YouTube | [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor) | GPL-3.0 |
 | Font for the Madinah mushaf script | KFGQPC Uthmanic Script HAFS, King Fahd Glorious Quran Printing Complex | Free to use, copy and distribute; may not be sold or modified ([text](licenses/UthmanicHafs-KFGQPC.txt)) |
 | Font for the Amiri and everyday scripts, and the basmala | [Amiri Quran](https://github.com/aliftype/amiri) | SIL Open Font License ([text](licenses/AmiriQuran-OFL.txt)) |
@@ -246,10 +283,11 @@ recitation/
 ├── yt/      Pure Kotlin/JVM: playlists and sound from YouTube (NewPipe Extractor)
 ├── app/     Android app (Jetpack Compose)
 │   ├── data/     The playlists added, the verses from Quran.com, pins and collections, fetched fonts
-│   ├── speech/   Model copy or download, sound decoding, ONNX model
+│   ├── speech/   Where the model and the engine come from, sound decoding, ONNX model
 │   ├── prepare/  The background work that gets a recording ready
 │   ├── player/   Playback service
 │   └── ui/       The surah list, playlists, recordings and reading screens
+├── engine/  ONNX Runtime's native library, compressed, for the app to fetch once
 ├── tools/
 │   ├── make_surahs.py            Writes core's list of surah names from Quran.com
 │   └── make_test_recitation.py   Writes the real recitation core's tests align

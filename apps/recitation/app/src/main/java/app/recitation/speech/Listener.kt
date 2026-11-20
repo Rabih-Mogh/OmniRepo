@@ -14,16 +14,18 @@ import java.nio.FloatBuffer
  * It writes down the sounds actually made rather than guessing words, which is what
  * lining a known text up with a recording needs.
  */
-class Listener(modelFile: File, vocab: List<String>) : SpeechModel, AutoCloseable {
+class Listener(model: ModelStore.Opened, vocab: List<String>) : SpeechModel, AutoCloseable {
 
     private val env = OrtEnvironment.getEnvironment()
-    private val session: OrtSession = env.createSession(
-        modelFile.path,
-        OrtSession.SessionOptions().apply {
-            setIntraOpNumThreads(4)
-            setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
-        },
-    )
+    private val options = OrtSession.SessionOptions().apply {
+        setIntraOpNumThreads(4)
+        setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
+    }
+
+    // Accent Coach's copy of the model is read straight out of its file, mapped into memory;
+    // this app's own copy is opened by its path. The mapping is held for as long as the session is.
+    private val borrowed = model.bytes
+    private val session: OrtSession = if (borrowed != null) env.createSession(borrowed, options) else env.createSession(model.file!!.path, options)
     private val inputName = session.inputNames.first()
     private val hearing = Hearing(this, vocab)
 

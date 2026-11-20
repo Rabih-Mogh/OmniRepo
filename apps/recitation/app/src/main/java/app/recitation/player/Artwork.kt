@@ -28,8 +28,12 @@ object Artwork {
      * A PNG for [surah], in the colours of the phone's current light or dark mode. The name
      * is drawn with the font in [calligraphy] when there is one.
      */
-    fun of(context: Context, surah: Surah, calligraphy: File? = SurahNames.file(context)): ByteArray {
-        val dark = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+    fun of(
+        context: Context,
+        surah: Surah,
+        calligraphy: File? = SurahNames.file(context),
+        dark: Boolean = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES,
+    ): ByteArray {
         val key = "${surah.number}-$dark-${calligraphy != null}"
         made.get(key)?.let { return it }
 

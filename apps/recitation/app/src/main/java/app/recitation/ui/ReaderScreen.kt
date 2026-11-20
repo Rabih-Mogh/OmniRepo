@@ -66,13 +66,10 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.RangeSlider
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
@@ -133,6 +130,7 @@ import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.zIndex
 import app.recitation.R
+import app.recitation.data.Appearance
 import app.recitation.data.Script
 import app.recitation.Reading
 import app.recitation.core.Recital
@@ -216,6 +214,8 @@ fun ReaderContent(
     startVerse: Int? = null,
     marks: VerseMarks = VerseMarks(),
     onMark: (Int) -> Unit = {},
+    appearance: Appearance = Appearance.AUTO,
+    onAppearance: (Appearance) -> Unit = {},
 ) {
     val surah = SURAHS[reading.surah - 1]
     val arabic = LocalConfiguration.current.locales[0].language == "ar"
@@ -242,6 +242,11 @@ fun ReaderContent(
     // down gently and never restarts when the next word comes. A jump too far to glide
     // (a seek to another part of the surah) is covered by a short dissolve instead.
     val place = remember { WordPlace() }
+    with(LocalDensity.current) {
+        place.margin = 4.dp.toPx()
+        // Between a verse's last line and the next verse's first there is the rule with its star, and perhaps a translation.
+        place.gap = 120.dp.toPx()
+    }
     val fade = remember { Animatable(1f) }
     LaunchedEffect(follow, index) {
         if (!follow || index == null) {
@@ -335,11 +340,8 @@ fun ReaderContent(
                             style = MaterialTheme.typography.bodySmall, color = LocalBanner.current.quiet,
                         )
                     }
-                    TextMenuButton(textScale, onTextScale, script, onScript, withIndoPak = indopak != null, tint = onBanner)
-                    // The button would otherwise colour itself green, on the green banner.
-                    IconToggleButton(checked = showMeanings, onCheckedChange = onMeanings) {
-                        Icon(AppIcons.Meanings, stringResource(R.string.meanings), tint = onBanner.copy(alpha = if (showMeanings) 1f else 0.45f))
-                    }
+                    // One button at each end, so the title between them is in the middle of the bar.
+                    ReaderMenuButton(showMeanings, onMeanings, textScale, onTextScale, script, onScript, withIndoPak = indopak != null, appearance, onAppearance)
                 }
             }
         },
@@ -439,18 +441,47 @@ private class WordPlace {
     private var word = -1
     private var tile: LayoutCoordinates? = null
 
+    /** A word on the line that was being recited just before the line the word is on now. */
+    private var lineBefore: LayoutCoordinates? = null
+
+    /** The room kept between a line and the edge of the page, and the most that may lie between two lines for one to count as the line before the other, in px. */
+    var margin = 0f
+    var gap = 0f
+
     fun placed(word: Int, tile: LayoutCoordinates) {
+        val page = list
+        val old = this.tile
+        if (page != null && old != null && old !== tile && page.isAttached && old.isAttached && tile.isAttached) {
+            val was = page.localBoundingBoxOf(old, clipBounds = false)
+            val now = page.localBoundingBoxOf(tile, clipBounds = false)
+            when {
+                now.top - was.top > was.height / 2 -> lineBefore = old // on to the next line
+                was.top - now.top > was.height / 2 -> lineBefore = null // gone back: the line above wasn't just read
+            }
+        }
         this.word = word
         this.tile = tile
     }
 
     fun pageHeight(): Float = list?.size?.height?.toFloat() ?: 0f
 
-    /** How far below the middle of the page [word]'s tile is, in px; null if it isn't laid out. */
+    /**
+     * How far the page has to move for [word] to be where it should: at the middle of
+     * the page, or lower than that when a short page (a phone on its side) would
+     * otherwise push the line just read off the top. That line stays on the page too, as
+     * long as the line being recited still fits under it. In px; null if the word isn't
+     * laid out.
+     */
     fun offCentre(word: Int): Float? {
         val page = list?.takeIf { it.isAttached } ?: return null
         val tile = tile?.takeIf { this.word == word && it.isAttached } ?: return null
-        return page.localBoundingBoxOf(tile, clipBounds = false).center.y - page.size.height / 2f
+        val now = page.localBoundingBoxOf(tile, clipBounds = false)
+        val centred = now.center.y - page.size.height / 2f
+        val before = lineBefore?.takeIf { it.isAttached }?.let { page.localBoundingBoxOf(it, clipBounds = false) } ?: return centred
+        // Only the line right above counts: after a jump, what was recited before is somewhere else.
+        if (before.top >= now.top || now.top - before.bottom > gap) return centred
+        if (before.top - centred >= margin) return centred
+        return maxOf(before.top - margin, now.bottom - (page.size.height - margin))
     }
 }
 
@@ -935,20 +966,39 @@ private fun PlayerBar(
                     IconButton(onClick = onPrevious) {
                         Icon(AppIcons.SkipPrevious, stringResource(R.string.previous_verse), Modifier.scale(scaleX = if (rtl) -1f else 1f, scaleY = 1f), tint = band.content)
                     }
-                    // The play button wears the band's gold, ringed like a seal.
-                    Box(Modifier.padding(horizontal = 10.dp).size(46.dp).border(1.2.dp, band.rule, CircleShape), contentAlignment = Alignment.Center) {
-                        FilledIconButton(
-                            onClick = onPlayPause, modifier = Modifier.size(38.dp),
-                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = band.rule, contentColor = band.onRule),
-                        ) {
-                            if (playing) Icon(AppIcons.Pause, stringResource(R.string.pause)) else Icon(AppIcons.Play, stringResource(R.string.play))
-                        }
-                    }
+                    PlayButton(playing, onPlayPause)
                     IconButton(onClick = onNext) {
                         Icon(AppIcons.SkipNext, stringResource(R.string.next_verse), Modifier.scale(scaleX = if (rtl) -1f else 1f, scaleY = 1f), tint = band.content)
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * The play button: a gold disc inside a thin gold ring, like a seal. The ring and the disc
+ * are drawn together, round one centre, so they can't sit askew of each other. (As a ring
+ * drawn round a separate button they came out a pixel or two off on some screens, because
+ * each was rounded to whole pixels on its own.)
+ */
+@Composable
+private fun PlayButton(playing: Boolean, onClick: () -> Unit) {
+    val band = LocalBanner.current
+    Box(
+        Modifier.padding(horizontal = 10.dp).size(46.dp).clip(CircleShape)
+            .drawBehind {
+                val ring = 1.2.dp.toPx()
+                drawCircle(band.rule, radius = size.minDimension / 2 - ring / 2, style = Stroke(ring))
+                drawCircle(band.rule, radius = size.minDimension / 2 - 4.dp.toPx())
+            }
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (playing) {
+            Icon(AppIcons.Pause, stringResource(R.string.pause), tint = band.onRule)
+        } else {
+            Icon(AppIcons.Play, stringResource(R.string.play), tint = band.onRule)
         }
     }
 }
@@ -1001,16 +1051,28 @@ private fun TitlePage(surah: Surah, minHeight: Dp, basmalaSize: TextUnit) {
 /** The sizes the verses can be drawn at, as multiples of the usual size. */
 val TEXT_SCALES = 0.7f..2.0f
 
-/** On the band: opens a small menu to make the verses smaller or larger, and to choose the script they are written in. */
+/**
+ * On a surah's bar: the menu button. Its menu switches between light and dark, shows or
+ * hides the words' meanings, makes the verses smaller or larger, and chooses the script
+ * they are written in.
+ */
 @Composable
-private fun TextMenuButton(scale: Float, onScale: (Float) -> Unit, script: Script, onScript: (Script) -> Unit, withIndoPak: Boolean, tint: Color) {
+private fun ReaderMenuButton(
+    meanings: Boolean,
+    onMeanings: (Boolean) -> Unit,
+    scale: Float,
+    onScale: (Float) -> Unit,
+    script: Script,
+    onScript: (Script) -> Unit,
+    withIndoPak: Boolean,
+    appearance: Appearance,
+    onAppearance: (Appearance) -> Unit,
+) {
     var open by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { open = true }) { Icon(AppIcons.TextSize, stringResource(R.string.text_size), tint = tint) }
+        IconButton(onClick = { open = true }) { Icon(AppIcons.Menu, stringResource(R.string.menu)) }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            TextSizeControls(scale, onScale)
-            HorizontalDivider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
-            ScriptChooser(script, withIndoPak, onScript)
+            ReadingChoices(meanings, onMeanings, scale, onScale, script, onScript, withIndoPak, appearance, onAppearance)
         }
     }
 }

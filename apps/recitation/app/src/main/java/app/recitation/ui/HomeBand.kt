@@ -23,6 +23,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -52,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import app.recitation.R
 import app.recitation.core.Surah
 import app.recitation.core.SurahSearch
+import app.recitation.data.Appearance
 import app.recitation.data.Hit
 import app.recitation.data.Script
 import app.recitation.data.VerseRef
@@ -185,8 +189,8 @@ fun SearchResults(
 }
 
 /**
- * The menu behind the menu button: the script the verses are written in, their size,
- * whether each word's meaning shows, and [footer], the app's version and its updates.
+ * The menu behind the first screen's menu button: how the verses read (see
+ * [ReadingChoices]), and [footer], the app's version and its updates.
  */
 @Composable
 fun MenuContent(
@@ -197,6 +201,8 @@ fun MenuContent(
     onTextScale: (Float) -> Unit,
     meanings: Boolean,
     onMeanings: (Boolean) -> Unit,
+    appearance: Appearance = Appearance.AUTO,
+    onAppearance: (Appearance) -> Unit = {},
     footer: @Composable () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
@@ -206,20 +212,67 @@ fun MenuContent(
             Text(stringResource(R.string.tagline), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
         }
         HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
-        ScriptChooser(script, withIndoPak, onScript)
+        ReadingChoices(meanings, onMeanings, textScale, onTextScale, script, onScript, withIndoPak, appearance, onAppearance)
         HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
-        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.text_size), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-            TextSizeControls(textScale, onTextScale)
+        footer()
+    }
+}
+
+/**
+ * How the app looks and the verses read: light or dark (or as the phone is set), whether
+ * each word's meaning shows under it, how large the text is, and the script it is written
+ * in. The same choices are offered in the first screen's menu and in the menu of a surah.
+ */
+@Composable
+fun ReadingChoices(
+    meanings: Boolean,
+    onMeanings: (Boolean) -> Unit,
+    textScale: Float,
+    onTextScale: (Float) -> Unit,
+    script: Script,
+    onScript: (Script) -> Unit,
+    withIndoPak: Boolean,
+    appearance: Appearance = Appearance.AUTO,
+    onAppearance: (Appearance) -> Unit = {},
+) {
+    Column {
+        // Light or dark at a tap, or left to follow the phone.
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 4.dp)) {
+            Appearance.entries.forEachIndexed { i, each ->
+                SegmentedButton(
+                    selected = each == appearance, onClick = { onAppearance(each) },
+                    shape = SegmentedButtonDefaults.itemShape(i, Appearance.entries.size), icon = {},
+                    // The one chosen is filled in the theme's colour, so it can't be mistaken.
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = MaterialTheme.colorScheme.primary, activeContentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                ) {
+                    Text(
+                        stringResource(
+                            when (each) {
+                                Appearance.AUTO -> R.string.appearance_auto
+                                Appearance.LIGHT -> R.string.appearance_light
+                                Appearance.DARK -> R.string.appearance_dark
+                            },
+                        ),
+                        maxLines = 1,
+                    )
+                }
+            }
         }
         Row(
             Modifier.fillMaxWidth().toggleable(value = meanings, role = Role.Switch, onValueChange = onMeanings).padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(stringResource(R.string.meanings), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.width(12.dp))
             Switch(checked = meanings, onCheckedChange = null)
         }
-        HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
-        footer()
+        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.text_size), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+            TextSizeControls(textScale, onTextScale)
+        }
+        HorizontalDivider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+        ScriptChooser(script, withIndoPak, onScript)
     }
 }

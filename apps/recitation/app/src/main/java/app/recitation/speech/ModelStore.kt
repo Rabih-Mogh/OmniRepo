@@ -3,6 +3,7 @@ package app.recitation.speech
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.ParcelFileDescriptor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -13,22 +14,38 @@ import java.io.FileOutputStream
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
 import java.security.MessageDigest
 import kotlin.coroutines.coroutineContext
 
 /**
  * The speech model that hears which sound is being recited. It is the same 318 MB file
- * Accent Coach uses, too big to ship inside the app. If Accent Coach is installed, the file
- * is copied from there; if it isn't, the file is downloaded once. Either way it is checked
- * against a fixed checksum and kept in the app's private storage.
+ * Accent Coach uses, too big to ship inside the app.
+ *
+ * - If Accent Coach is installed and has the model, Recitation reads Accent Coach's copy
+ *   where it lies and keeps none of its own, so the phone holds the file once. A copy
+ *   Recitation made or downloaded earlier is deleted as soon as Accent Coach's has been
+ *   checked.
+ * - If Accent Coach isn't installed, the file is downloaded once into the app's private
+ *   storage.
+ *
+ * Either way the file is checked against a fixed checksum before it is used.
  */
-class ModelStore(private val context: Context) {
+class ModelStore(private val context: Context, private val size: Long = MODEL_BYTES, private val checksum: String = MODEL_SHA256) {
 
     private val dir = File(context.filesDir, "model")
-    val modelFile = File(dir, "phonemes_int8.onnx")
+    private val ownFile = File(dir, "phonemes_int8.onnx")
     private val partFile = File(dir, "phonemes_int8.onnx.part")
 
-    val isReady: Boolean get() = modelFile.length() == MODEL_BYTES
+    /** Accent Coach's copy has been checked against the checksum by this store. */
+    @Volatile private var borrowedIsGood = false
+
+    /** Whether this app holds a whole copy of its own. */
+    private val hasOwn: Boolean get() = ownFile.length() == size
+
+    /** The model opened for the speech engine: [bytes] when it is Accent Coach's copy, read where it lies; [file] when it is this app's own. */
+    class Opened(val bytes: ByteBuffer?, val file: File?)
 
     /** Whether Accent Coach can lend its copy of the model, and if not, why. */
     enum class Lender {
@@ -44,7 +61,7 @@ class ModelStore(private val context: Context) {
         /** It shares, but hasn't (fully) downloaded the model itself. */
         NO_MODEL,
 
-        /** It said no, or the copy broke off. */
+        /** It said no, or the file it handed over isn't the model. */
         REFUSED,
     }
 
@@ -71,37 +88,82 @@ class ModelStore(private val context: Context) {
     }
 
     /**
-     * Gets the model if it isn't here yet, reporting progress 0..1 and whether it is being
-     * [copied] or downloaded. It is copied from Accent Coach when that app is installed.
-     * If it is installed but can't lend the model, this throws [Unavailable] rather than
-     * quietly downloading 318 MB, unless [download] says a download is fine.
+     * Makes sure there is a model to use. Accent Coach's copy is used when it can lend one:
+     * it is checked ([checking] is true while it is), never copied, and this app's own copy,
+     * if it has one, is deleted. Otherwise this app's own copy is used, downloaded first if
+     * need be. If Accent Coach is installed but can't lend the model, and there is no copy
+     * here, this throws [Unavailable] rather than quietly downloading 318 MB, unless
+     * [download] says a download is fine.
      */
-    suspend fun obtain(download: Boolean, onProgress: (copied: Boolean, progress: Float) -> Unit) = withContext(Dispatchers.IO) {
-        if (isReady) return@withContext
-        dir.mkdirs()
+    suspend fun obtain(download: Boolean, onProgress: (checking: Boolean, progress: Float) -> Unit) = withContext(Dispatchers.IO) {
         val (lender, detail) = lender()
-        when {
-            lender == Lender.READY -> copyFromAccentCoach { onProgress(true, it) }
-            lender == Lender.NOT_INSTALLED || download -> download { onProgress(false, it) }
-            else -> throw Unavailable(lender, detail)
+        if (lender == Lender.READY) {
+            val problem = checkBorrowed { onProgress(true, it) }
+            if (problem == null) {
+                dropOwn()
+                return@withContext
+            }
+            if (!hasOwn && !download) throw Unavailable(Lender.REFUSED, problem)
         }
-        if (sha256(partFile) != MODEL_SHA256) {
+        if (hasOwn) return@withContext
+        if (lender != Lender.READY && lender != Lender.NOT_INSTALLED && !download) throw Unavailable(lender, detail)
+        dir.mkdirs()
+        download { onProgress(false, it) }
+        if (sha256(FileInputStream(partFile).use { it.channel.map(FileChannel.MapMode.READ_ONLY, 0, partFile.length()) }) { } != checksum) {
             partFile.delete()
             error("The speech model was damaged on the way. Try again.")
         }
-        if (!partFile.renameTo(modelFile)) error("Couldn't save the speech model.")
+        if (!partFile.renameTo(ownFile)) error("Couldn't save the speech model.")
     }
 
-    private suspend fun copyFromAccentCoach(onProgress: (Float) -> Unit) {
-        try {
-            val input = context.contentResolver.openInputStream(ACCENT_COACH_MODEL) ?: throw FileNotFoundException("nothing to read")
-            input.use { FileOutputStream(partFile, false).use { out -> copy(it, out, 0, onProgress) } }
+    /**
+     * Opens the model for the speech engine, after [obtain]: Accent Coach's copy, mapped
+     * into memory straight from its file, if that is the one in use; else this app's own.
+     */
+    fun open(): Opened = if (borrowedIsGood) Opened(borrowed(), null) else Opened(null, ownFile)
+
+    /**
+     * Frees the room this app's own copy takes, when Accent Coach's can be used instead:
+     * for a phone where Recitation copied or downloaded the model before it learnt to read
+     * Accent Coach's. Returns whether anything was deleted.
+     */
+    suspend fun tidy(): Boolean = withContext(Dispatchers.IO) {
+        if (!ownFile.exists() && !partFile.exists()) return@withContext false
+        if (lender().first != Lender.READY || checkBorrowed { } != null) return@withContext false
+        dropOwn()
+        true
+    }
+
+    private fun dropOwn() {
+        ownFile.delete()
+        partFile.delete()
+    }
+
+    /** Accent Coach's copy of the model, mapped into memory for reading. Nothing is copied. */
+    private fun borrowed(): ByteBuffer {
+        val descriptor = context.contentResolver.openFileDescriptor(ACCENT_COACH_MODEL, "r") ?: throw FileNotFoundException("nothing to read")
+        return ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { it.channel.map(FileChannel.MapMode.READ_ONLY, 0, it.channel.size()) }
+    }
+
+    /**
+     * Checks that what Accent Coach lends is the model, byte for byte. Null if it is;
+     * otherwise what is wrong with it. Once it has passed, this store doesn't read
+     * through it again.
+     */
+    private suspend fun checkBorrowed(onProgress: (Float) -> Unit): String? {
+        if (borrowedIsGood) return null
+        return try {
+            val bytes = borrowed()
+            when {
+                bytes.remaining().toLong() != size -> "its model file is ${bytes.remaining()} bytes, not $size"
+                sha256(bytes, onProgress) != checksum -> "its model file is damaged"
+                else -> null.also { borrowedIsGood = true }
+            }
         } catch (e: java.io.IOException) {
-            throw Unavailable(Lender.REFUSED, "${e.javaClass.simpleName}: ${e.message}")
+            "${e.javaClass.simpleName}: ${e.message}"
         } catch (e: SecurityException) {
-            throw Unavailable(Lender.REFUSED, "${e.javaClass.simpleName}: ${e.message}")
+            "${e.javaClass.simpleName}: ${e.message}"
         }
-        if (partFile.length() != MODEL_BYTES) throw Unavailable(Lender.REFUSED, "the copy stopped at ${partFile.length()} bytes")
     }
 
     /** Downloads the model, carrying on from a partial download. */
@@ -143,15 +205,18 @@ class ModelStore(private val context: Context) {
         }
     }
 
-    private fun sha256(file: File): String {
+    private suspend fun sha256(bytes: ByteBuffer, onProgress: (Float) -> Unit): String {
         val md = MessageDigest.getInstance("SHA-256")
-        FileInputStream(file).use { input ->
-            val buf = ByteArray(1 shl 16)
-            while (true) {
-                val n = input.read(buf)
-                if (n < 0) break
-                md.update(buf, 0, n)
-            }
+        val view = bytes.duplicate()
+        val total = view.remaining().coerceAtLeast(1)
+        while (view.hasRemaining()) {
+            coroutineContext.ensureActive()
+            val piece = view.slice()
+            piece.limit(minOf(piece.remaining(), 8 shl 20))
+            val taken = piece.remaining()
+            md.update(piece)
+            view.position(view.position() + taken)
+            onProgress(view.position().toFloat() / total)
         }
         return md.digest().joinToString("") { "%02x".format(it) }
     }
