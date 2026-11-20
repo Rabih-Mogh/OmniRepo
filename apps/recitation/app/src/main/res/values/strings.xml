@@ -29,6 +29,10 @@
     <string name="surah_chip">%1$d · %2$s</string>
     <string name="choose_surah">Choose surah</string>
     <string name="listen_again">Listen again</string>
+    <string name="listen_again_verses">Listen again to some verses…</string>
+    <string name="listen_again_verses_title">Listen again to some verses</string>
+    <string name="listen_again_verses_body">Only that part of the recording is heard again, which takes about as long as the part itself. If the words were off near where a verse begins or ends, take in the verse next to it too.</string>
+    <string name="listen_again_verses_go">Listen</string>
     <string name="forget">Remove download</string>
     <string name="remove_playlist">Remove playlist</string>
     <string name="remove_playlist_body">The playlist and everything downloaded for it will be removed from this phone.</string>

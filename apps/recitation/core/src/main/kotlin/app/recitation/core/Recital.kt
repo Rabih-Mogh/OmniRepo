@@ -4,7 +4,7 @@ package app.recitation.core
  * Everything a reciter says for one surah, as a run of sounds: the two opening formulas
  * (which a recording may or may not include), then every verse.
  */
-class Recital(surah: Int, verses: List<List<String>>) {
+class Recital(surah: Int, verses: List<List<String>>, withOpening: Boolean = true) {
 
     val phones: List<Phone>
 
@@ -28,9 +28,10 @@ class Recital(surah: Int, verses: List<List<String>>) {
                 opening--
             }
         }
-        formula(ISTIADHA)
+        // Not before verses from the middle of a surah, heard again by themselves.
+        if (withOpening) formula(ISTIADHA)
         // Al-Fatihah's first verse is the basmala itself; At-Tawbah has none.
-        if (surah != 1 && surah != 9) formula(BASMALA)
+        if (withOpening && surah != 1 && surah != 9) formula(BASMALA)
         var word = 0
         for (verse in verses) {
             for (phones in Phonemizer.verse(verse)) {
@@ -249,6 +250,33 @@ class Timings(val verses: List<List<WordTiming>>, val clarity: Float, val heardM
 
     /** Whether the recording is this surah. Not judged until all of it has been heard. */
     val matches: Boolean get() = !complete || clarity >= GOOD_ENOUGH
+
+    /**
+     * When verses [first] to [last] (counting from 0) are recited, with [margin] ms to spare
+     * either side: from the first's first word to the first word after the last. Null if
+     * they haven't been placed.
+     */
+    fun spanOf(first: Int, last: Int, margin: Int = 3000): IntRange? {
+        val start = verses.getOrNull(first)?.firstOrNull()?.startMs ?: return null
+        if (verses.getOrNull(last).isNullOrEmpty()) return null
+        val after = verses.drop(last + 1).firstOrNull { it.isNotEmpty() }?.first()?.startMs
+        return maxOf(0, start - margin)..(after?.plus(margin) ?: Int.MAX_VALUE)
+    }
+
+    /**
+     * These timings with the verses from [first] on replaced by [part]'s: verses heard again
+     * by themselves, from [offsetMs] into the recording. Passages said again inside them go
+     * with them; the rest stay as they were.
+     */
+    fun with(first: Int, part: Timings, offsetMs: Int): Timings {
+        fun moved(t: WordTiming) = WordTiming(t.startMs + offsetMs, IntArray(t.letters.size) { if (it % 2 == 1) t.letters[it] + offsetMs else t.letters[it] })
+        val count = minOf(part.verses.size, verses.size - first)
+        val before = verses.take(first).sumOf { it.size }
+        val replaced = verses.subList(first, first + count).sumOf { it.size }
+        val kept = repeats.filter { it.first + it.words.size <= before || it.first >= before + replaced }
+        val again = part.repeats.map { Repeat(it.first + before, it.words.map(::moved)) }
+        return Timings(verses.take(first) + part.verses.take(count).map { it.map(::moved) } + verses.drop(first + count), clarity, heardMs, kept + again)
+    }
 
     /** The verse (counting from 0) being recited at [ms]: the last one whose first word has started. */
     fun verseAt(ms: Int): Int {

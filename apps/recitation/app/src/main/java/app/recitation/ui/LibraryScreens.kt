@@ -411,8 +411,10 @@ fun RecordingsContent(
     onRemove: () -> Unit,
     nowPlaying: @Composable () -> Unit = {},
     onListenAgain: (Track) -> Unit = {},
+    onListenToVerses: (Track, IntRange) -> Unit = { _, _ -> },
 ) {
     var picking by remember { mutableStateOf<Track?>(null) }
+    var again by remember { mutableStateOf<Track?>(null) }
     var menu by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf(false) }
     val waiting = playlist.tracks.filter { !it.ready && !it.wanted && it.surah > 0 }
@@ -459,6 +461,7 @@ fun RecordingsContent(
                     onPickSurah = { picking = track },
                     onForget = { onForget(track) },
                     onListenAgain = { onListenAgain(track) },
+                    onListenToVerses = { again = track },
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
@@ -468,6 +471,22 @@ fun RecordingsContent(
 
     picking?.let { track ->
         SurahPicker(onPick = { onSurah(track, it); picking = null }, onDismiss = { picking = null })
+    }
+    again?.let { track ->
+        val verses = SURAHS.getOrNull(track.surah - 1)?.verses ?: 1
+        var range by remember(track.id) { mutableStateOf(0..0) }
+        AlertDialog(
+            onDismissRequest = { again = null },
+            title = { Text(stringResource(R.string.listen_again_verses_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(stringResource(R.string.listen_again_verses_body), style = MaterialTheme.typography.bodyMedium)
+                    RangeChooser(verses, range) { range = it }
+                }
+            },
+            confirmButton = { TextButton(onClick = { again = null; onListenToVerses(track, range) }) { Text(stringResource(R.string.listen_again_verses_go)) } },
+            dismissButton = { TextButton(onClick = { again = null }) { Text(stringResource(R.string.cancel)) } },
+        )
     }
     if (removing) {
         AlertDialog(
@@ -490,6 +509,7 @@ private fun RecordingRow(
     onPickSurah: () -> Unit,
     onForget: () -> Unit,
     onListenAgain: () -> Unit,
+    onListenToVerses: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
     val surah = SURAHS.getOrNull(track.surah - 1)
@@ -554,6 +574,7 @@ private fun RecordingRow(
                 DropdownMenuItem(text = { Text(stringResource(R.string.choose_surah)) }, onClick = { menu = false; onPickSurah() })
                 // What the model heard isn't kept once the words are placed, so placing them better means hearing it again.
                 if (track.ready) DropdownMenuItem(text = { Text(stringResource(R.string.listen_again)) }, onClick = { menu = false; onListenAgain() })
+                if (track.ready && surah != null) DropdownMenuItem(text = { Text(stringResource(R.string.listen_again_verses)) }, onClick = { menu = false; onListenToVerses() })
                 DropdownMenuItem(text = { Text(stringResource(R.string.forget)) }, onClick = { menu = false; onForget() })
             }
         }

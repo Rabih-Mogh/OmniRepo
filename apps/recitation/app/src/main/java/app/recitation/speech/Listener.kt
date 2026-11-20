@@ -5,6 +5,7 @@ import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import app.recitation.core.Heard
 import app.recitation.core.Hearing
+import app.recitation.core.Span
 import app.recitation.core.SpeechModel
 import java.io.File
 import java.nio.FloatBuffer
@@ -44,7 +45,13 @@ class Listener(model: ModelStore.Opened, vocab: List<String>) : SpeechModel, Aut
         stillWanted: () -> Boolean,
         onPiece: (frames: IntArray, rows: FloatArray) -> Unit,
         onProgress: (Float) -> Unit,
-    ): Heard? = AudioDecoder(audio).use { hearing.listen(it, notes, stillWanted, onPiece, onProgress) }
+        fromMs: Int = 0,
+        untilMs: Int = Int.MAX_VALUE,
+    ): Heard? = AudioDecoder(audio).use { whole ->
+        // Only a stretch of it, when some verses are being listened to again by themselves.
+        val source = if (fromMs == 0 && untilMs == Int.MAX_VALUE) whole else Span(whole, fromMs.toLong() * hearing.samplesPerMs, untilMs.toLong() * hearing.samplesPerMs)
+        hearing.listen(source, notes, stillWanted, onPiece, onProgress)
+    }
 
     /** What an earlier, unfinished listening left in [notes]; see [Hearing.resume]. */
     fun resume(notes: File): Heard = hearing.resume(notes)

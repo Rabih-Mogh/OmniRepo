@@ -295,6 +295,15 @@ to. Recordings prepared before version 1.45 don't have it: **Listen again**, in 
 recording's menu, has the phone hear it once more (the sound is kept, so nothing is
 downloaded) and places its words afresh.
 
+**Listen again to some verses…**, in the same menu, does that for a part of the recording
+only: choose the first and last verse, and just that stretch of the sound is heard again
+(from three seconds before the first verse's first word to three seconds after the last
+verse ends, by the timings the recording has), its words are placed afresh, passages said
+again in it are looked for, and the result is put in place of those verses' timings. It
+takes about as long as the stretch itself, not the whole recording. The stretch is found
+from the timings there are, so if those were off right at a verse's start or end, take in
+the verse next to it too.
+
 ### The speech model
 
 The model is 318 MB, too big to ship in the APK.

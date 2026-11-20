@@ -217,6 +217,7 @@ private fun Screens(model: AppModel, choices: Choices) {
                     onSurah = model::setSurah,
                     onForget = model::forget,
                     onListenAgain = { get(listOf(model.listenAgain(it))) },
+                    onListenToVerses = model::listenAgain,
                     onRemove = { model.remove(playlist) },
                     nowPlaying = nowPlaying,
                 )

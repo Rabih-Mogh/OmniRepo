@@ -23,6 +23,34 @@ interface Samples {
     fun read(): FloatArray?
 }
 
+/**
+ * A stretch of a recording, from sample [from] up to [until], as a recording of its own:
+ * for listening again to some verses only. What is heard of it is timed from its start.
+ */
+class Span(private val whole: Samples, private val from: Long, until: Long) : Samples {
+    private val until = if (whole.total > 0) minOf(until, whole.total) else until
+    private var started = false
+
+    override val total: Long get() = (until - from).coerceAtLeast(0)
+    override val position: Long get() = whole.position - from
+
+    override fun seekTo(sample: Long) {
+        whole.seekTo(from + sample)
+        started = true
+    }
+
+    override fun read(): FloatArray? {
+        if (!started) {
+            if (from > 0) whole.seekTo(from)
+            started = true
+        }
+        if (whole.position >= until) return null
+        val block = whole.read() ?: return null
+        val over = whole.position - until
+        return if (over > 0) block.copyOf((block.size - over).toInt().coerceAtLeast(0)) else block
+    }
+}
+
 /** The speech model: takes a stretch of sound and gives, for each 20 ms frame of it, a score per symbol. */
 fun interface SpeechModel {
     fun run(samples: FloatArray): FloatArray
@@ -45,6 +73,9 @@ class Hearing(private val model: SpeechModel, vocab: List<String>) {
     private val columns = SoundColumns(vocab)
     private val symbols = vocab.size
     private val width = SoundColumns.WIDTH
+
+    /** How many samples a millisecond of a recording is. */
+    val samplesPerMs: Int get() = SAMPLE_RATE / 1000
 
     /**
      * Listens to [source], keeping its work in [notes]. [onPiece] is handed each piece's kept

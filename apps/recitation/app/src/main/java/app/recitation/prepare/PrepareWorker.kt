@@ -145,7 +145,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         return waiting.firstOrNull { it.id == preferred } ?: waiting.firstOrNull()
     }
 
-    private fun waits(track: Track) = track.wanted && !track.ready && track.error == null && track.surah > 0
+    private fun waits(track: Track) = track.wanted && (!track.ready || track.againFrom >= 0) && track.error == null && track.surah > 0
 
     /** Whether the recording the reader has open is waiting behind [id], in which case [id] steps aside. */
     private fun outranked(id: String): Boolean {
@@ -153,7 +153,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         return open != id && library.track(open)?.let(::waits) == true
     }
 
-    private fun fail(track: Track, message: String) = library.update(track.id) { it.copy(wanted = false, error = message) }
+    private fun fail(track: Track, message: String) = library.update(track.id) { it.copy(wanted = false, error = message, againFrom = -1, againTo = -1) }
 
     private class Stopped : Exception()
 
@@ -190,6 +190,32 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         val verses = quran.surah(track.surah)
         val recital = Recital(track.surah, verses.map { verse -> verse.words.map { it.arabic } })
         val timingsFile = library.timings(id, track.surah)
+
+        // Only some verses are to be heard again: that stretch of the sound is listened to, its
+        // words placed afresh, and put into the timings the recording already has.
+        if (track.ready && track.againFrom >= 0) {
+            val old = Timings.decode(timingsFile.readText())
+            val first = track.againFrom.coerceIn(0, verses.size - 1)
+            val last = track.againTo.coerceIn(first, verses.size - 1)
+            val span = old.spanOf(first, last) ?: throw TooShort()
+            report(Step.LISTEN, 0f)
+            engine.start()
+            val listener = listener ?: Listener(model.open(), vocab()).also { listener = it }
+            val notes = File(library.heard(id).path + ".$first-$last")
+            val heard = listener.listen(
+                audio, notes, ::wanted, onPiece = { _, _ -> }, onProgress = { report(Step.LISTEN, it) },
+                fromMs = span.first, untilMs = span.last,
+            ) ?: throw Stopped()
+            report(Step.ALIGN, 0f)
+            val words = verses.subList(first, last + 1).map { verse -> verse.words.map { it.arabic } }
+            val part = Recital(track.surah, words, withOpening = false).place(heard.rows, heard.frames) ?: throw TooShort()
+            val timings = old.with(first, part, span.first)
+            timingsFile.writeText(timings.encode())
+            notes.delete()
+            _live.value = Live(id, track.surah, timings)
+            library.update(id) { it.copy(wanted = false, againFrom = -1, againTo = -1, error = null) }
+            return
+        }
 
         // With the sound and the words on the phone it can already be played: words light up
         // as far as the listening has got, and the listening carries on meanwhile.

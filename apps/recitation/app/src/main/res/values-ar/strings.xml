@@ -33,6 +33,10 @@
     <string name="surah_chip">%1$d · %2$s</string>
     <string name="choose_surah">اختر السورة</string>
     <string name="listen_again">الاستماع من جديد</string>
+    <string name="listen_again_verses">الاستماع من جديد إلى بعض الآيات…</string>
+    <string name="listen_again_verses_title">الاستماع من جديد إلى بعض الآيات</string>
+    <string name="listen_again_verses_body">يُستمع إلى ذلك الجزء من التسجيل فقط، ويستغرق نحو مدة الجزء نفسه. وإن كان الخلل قريبًا من أول آية أو آخرها فضُمَّ إليها الآية المجاورة.</string>
+    <string name="listen_again_verses_go">استمع</string>
     <string name="forget">حذف التنزيل</string>
     <string name="remove_playlist">حذف القائمة</string>
     <string name="remove_playlist_body">ستُحذف القائمة وكل ما نُزّل لها من هذا الهاتف.</string>

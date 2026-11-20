@@ -138,7 +138,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 
     init {
         // Recordings still waiting from last time (the app was closed, or the model couldn't be had): carry on.
-        if (!paused && library.playlists.value.any { p -> p.tracks.any { it.wanted && !it.ready } }) PrepareWorker.start(app)
+        if (!paused && library.playlists.value.any { p -> p.tracks.any { it.wanted && (!it.ready || it.againFrom >= 0) } }) PrepareWorker.start(app)
         fetchTheRest()
         viewModelScope.launch { SurahNames.load(app) }
         viewModelScope.launch { IndoPakFont.load(app) }
@@ -361,6 +361,8 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     fun want(tracks: List<Track>) {
         for (track in tracks) {
             if (!track.ready && track.surah in 1..SURAHS.size) library.update(track.id) { it.copy(wanted = true, error = null) }
+            // A recording that is ready and shows that some verses couldn't be heard again: that is put away.
+            else if (track.ready && track.error != null) library.update(track.id) { it.copy(error = null) }
         }
         resume()
     }
@@ -414,6 +416,15 @@ class AppModel(app: Application) : AndroidViewModel(app) {
      * Has a recording that is on the phone listened to once more and its words placed
      * afresh, as a newer version of the app would place them. It stays playable meanwhile.
      */
+    /**
+     * Has only [verses] (counting from 0) of a recording listened to once more and placed
+     * afresh: much quicker than the whole of it, when the words were off in one place.
+     */
+    fun listenAgain(track: Track, verses: IntRange) {
+        library.update(track.id) { it.copy(wanted = true, error = null, againFrom = verses.first, againTo = verses.last) }
+        resume()
+    }
+
     fun listenAgain(track: Track): Track {
         library.update(track.id) { it.copy(ready = false, error = null) }
         return library.track(track.id) ?: track.copy(ready = false)
