@@ -139,11 +139,11 @@
     <string name="mission_sum">Solve a sum</string>
     <string name="mission_sum_summary">Solve a quick sum to turn it off</string>
     <string name="mission_sink">Find a sink</string>
-    <string name="mission_sink_summary">Get up and point the camera at a sink to turn it off</string>
+    <string name="mission_sink_summary">Get up, stand at a sink and point the camera at it to turn it off</string>
     <string name="sink_no_photos">Any real sink works, no photos needed</string>
     <string name="test_it">Test it</string>
     <string name="camera_off_falls_back">Camera permission is off. Until it\'s on, the alarm falls back to a sum.</string>
-    <string name="sink_no_snooze">No snooze with this mission: the alarm keeps ringing until the camera sees a sink.</string>
+    <string name="sink_snooze_sunrise">Snooze turns off once sunrise is close, so there is still time to pray.</string>
     <string name="test_alarm_now">Test the alarm now</string>
     <string name="close">Close</string>
 
@@ -166,12 +166,13 @@
         <item quantity="one">Snooze %d min</item>
         <item quantity="other">Snooze %d min</item>
     </plurals>
+    <string name="snooze_sunrise_close">No snooze now: sunrise is close.</string>
     <string name="camera_off_sum_instead">Camera permission is off, so solve a sum instead.</string>
     <string name="sum_prompt">Solve to turn off the alarm</string>
     <string name="sum_wrong">Not quite, try this one</string>
     <string name="turn_off">Turn off</string>
     <string name="sink_detector_sum_instead">The sink detector couldn\'t start, so solve a sum instead.</string>
-    <string name="sink_go">Go to a sink and point the camera at it</string>
+    <string name="sink_go">Stand at a sink and point the camera at it</string>
 
     <!-- Looking for a sink with the camera -->
     <string name="sink_detector_failed">The sink detector couldn\'t start on this phone.</string>
@@ -179,13 +180,15 @@
     <string name="sink_looking">Looking for a sink…</string>
     <string name="sink_too_dark">Too dark. Turn the light on.</string>
     <string name="sink_on_screen">That sink is on a screen. Find a real one.</string>
+    <string name="sink_move_closer">Too far. Go right up to the sink.</string>
+    <string name="sink_face_it">Point the camera straight at the sink.</string>
     <string name="sink_keep_in_view">Sink found, keep it in view…</string>
     <string name="sink_found">Sink found</string>
     <string name="camera_unavailable">Camera unavailable: %1$s</string>
 
     <!-- Sink test screen -->
     <string name="sink_test_title">Test sink detection</string>
-    <string name="sink_test_intro">When the alarm rings it only turns off once the camera sees a real sink: any bathroom or kitchen sink works, no photos needed. Try it here with the light on, standing where you can see the basin and tap. It only starts looking once the phone has been picked up, and a sink shown on a phone or TV screen doesn\'t count.</string>
+    <string name="sink_test_intro">When the alarm rings it only turns off once the camera sees a real sink: any bathroom or kitchen sink works, no photos needed. Try it here with the light on, standing at the sink with the basin in the middle of the picture. A sink seen from across the room or through a doorway doesn\'t count. It only starts looking once the phone has been picked up, and a sink shown on a phone or TV screen doesn\'t count.</string>
     <string name="camera_needed">Camera permission is needed for this mission.</string>
     <string name="allow_camera">Allow camera</string>
     <string name="sink_recognised">✓ Sink recognised. The alarm would turn off here.</string>

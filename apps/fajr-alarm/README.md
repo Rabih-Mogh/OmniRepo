@@ -17,14 +17,14 @@ alarm follows the prayer time as it moves through the year.
   - full-screen alarm over the lock screen
   - plays on the alarm stream with any alarm sound or ringtone on the phone (pick your own adhan file if you have one)
   - optional fade-in and vibration
-- **Snooze** with a configurable length and a cap on how many times you can snooze. There is no snooze with the sink mission.
+- **Snooze** with a configurable length and a cap on how many times you can snooze. With the sink mission it turns off once sunrise is close.
 - **Dismiss missions**: choose what it takes to turn the alarm off.
-  - **Find a sink**: the alarm only stops once the live camera recognises a real sink, and it can't be snoozed. See below.
+  - **Find a sink**: the alarm only stops once the live camera recognises a real sink from right in front of it. See below.
   - **Solve a sum**.
   - **None**: a normal dismiss button.
 
   With a mission on, the notification has no dismiss button, so the alarm screen is the only way to turn it off.
-- **Auto-stop**: after 10 minutes with nobody answering, it snoozes if snoozes are left, otherwise it stops. With the sink mission it rings for 60 minutes, rests for 5 and rings again, and only gives up after four such rounds, so a phone left at home doesn't ring all day.
+- **Auto-stop**: after 10 minutes with nobody answering, it snoozes if snoozes are left, otherwise it stops. With the sink mission it rings for up to 60 minutes and never past sunrise, so a phone left at home doesn't ring all day.
 - **Last alarm**: the main screen shows when the alarm last rang and how it stopped (sink, sum, snooze, ringing out, or Android closing the app). On Android 11 and later it also says whether the app crashed, froze or was force-stopped.
 - **"Test the alarm now"** button.
 - **English and Arabic**: the app follows the phone's language. See [Languages](#languages).
@@ -33,17 +33,19 @@ alarm follows the prayer time as it moves through the year.
 ## Sink mission
 
 1. In **To turn the alarm off → Mission**, pick **Find a sink**. No photos are needed. **Test it** opens a dry run where you can check that your sink is recognised.
-2. When the alarm rings, it keeps ringing while you walk to a sink: any bathroom or kitchen sink works. Point the in-app camera at it, with the basin in view, and keep it there for about 2 seconds. The alarm stops on its own.
+2. When the alarm rings, it keeps ringing while you walk to a sink: any bathroom or kitchen sink works. Stand at it and point the in-app camera at the basin, so it sits in the middle of the picture, and keep it there for about 2 seconds. The alarm stops on its own. A sink seen from across the room or through a doorway doesn't count: the screen says to go right up to it.
 
 How it works and its limits:
 - **On-phone recognition**: a bundled object-detection model (EfficientDet-Lite0, trained on the 80 everyday COCO objects, "sink" among them) runs on the phone through LiteRT, 3 times a second. It is the TensorFlow Lite build with box decoding built in; if the detector fails to start or errors, the alarm screen switches to a sum instead of closing. Nothing leaves the phone. The one frame that turned the alarm off is kept on the phone and shown under **Last alarm**, so a wrong call can be seen.
 - **Why no photos**: there's nothing to set up, so there's no way to register a bedside object as "the sink".
+- **Close up and facing it**: the sink's box must cover at least 15% of the picture, which a basin does from about a metre, and the centre of the box must be within a quarter of the picture of its middle. From a doorway two metres off a basin covers about 4%, so it can't be picked off from bed or from outside the bathroom. Both figures are estimates, not measured on real sinks; they are `minArea` and `maxOffCentre` in `SinkVerifier`.
 - **Cheating checks**: nothing counts until the phone has been picked up (tilted at least 25° from where it lay, measured with the accelerometer; the alarm's vibration doesn't count). A sink that sits inside a detected phone, TV or laptop screen doesn't count. The sink must stay in view for 2 seconds while the camera moves by at least 5% of the frame, as it does in a hand. Dark frames reset the check.
-- **Accuracy**: works best with the light on and most of the basin in view. A close-up of just the tap, or a very dark room, may not be recognised. The thresholds haven't been tuned on many real sinks yet.
+- **Accuracy**: works best with the light on and the whole basin in view. A close-up of just the tap, or a very dark room, may not be recognised. If your sink isn't recognised from close up, **Test it** shows that before an alarm does. The thresholds haven't been tuned on many real sinks yet.
 - **Fallback**: if the camera permission is off or the detector can't start, the alarm falls back to the sum, so you're never stuck with an alarm you can't stop.
-- **No way round it from bed**: there is no snooze with this mission. The button is gone from the alarm screen and the notification, and the snooze settings are hidden while it is picked. With any mission set, neither the ringing notification nor the "Snoozed until" notification can turn the alarm off.
-- **If nobody answers**: it rings for 60 minutes, rests for 5 minutes and rings again. After four rounds (about four hours) it gives up.
-- **Not tamper-proof**: a determined person can still show the camera a printed photo of a sink, turn the camera permission off to get the sum, or force-stop the app from system settings.
+- **No way round it from bed**: with a mission set, neither the ringing notification nor the "Snoozed until" notification can turn the alarm off. A snoozed alarm always rings again, and only the mission stops it.
+- **Snooze stops near sunrise**: you can snooze as set under **Ringing**, until a snooze would bring the alarm back with less than 15 minutes before sunrise. From then on the snooze button is gone, the alarm screen says sunrise is close, and a snooze tap on the notification does nothing. After sunrise the rule no longer applies.
+- **If nobody answers**: it rings for 60 minutes, or up to sunrise if that comes first (at least 10 minutes). If sunrise is still ahead and less than about an hour away, it rests for 5 minutes and rings again until sunrise. Then it gives up: two hours at the most, and one hour for an alarm set after sunrise.
+- **Not tamper-proof**: a determined person can still snooze while sunrise is far off (set Snooze to Off), show the camera a printed photo of a sink, turn the camera permission off to get the sum, or force-stop the app from system settings.
 
 ## Project layout
 

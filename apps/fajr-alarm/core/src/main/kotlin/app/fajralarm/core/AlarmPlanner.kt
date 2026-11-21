@@ -45,6 +45,17 @@ object AlarmPlanner {
         }
         return null
     }
+
+    /** The first sunrise after [now], or null with no location set or where the sun doesn't rise. */
+    fun nextSunrise(settings: AlarmSettings, now: ZonedDateTime, zone: ZoneId = now.zone): ZonedDateTime? {
+        val params = settings.calcParams() ?: return null
+        val today = now.withZoneSameInstant(zone).toLocalDate()
+        for (i in -1..1L) {
+            val sunrise = PrayerTimeCalculator.compute(today.plusDays(i), zone, params).sunrise ?: continue
+            if (sunrise.isAfter(now)) return sunrise
+        }
+        return null
+    }
 }
 
 /** A small arithmetic problem that must be solved to switch the alarm off. */

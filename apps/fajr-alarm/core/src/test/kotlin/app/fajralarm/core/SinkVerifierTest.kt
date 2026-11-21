@@ -79,6 +79,39 @@ class SinkVerifierTest {
     }
 
     @Test
+    fun aSinkSeenFromAcrossTheRoomDoesNotCount() {
+        // A basin from a doorway two metres off: a sixth of the picture's width, in the middle.
+        val far = Detection("sink", 0.8f, Box(0.4f, 0.45f, 0.6f, 0.6f))
+        val v = SinkVerifier()
+        var t = 0L
+        repeat(12) { i ->
+            val dx = if (i % 2 == 0) 0f else 0.06f
+            val status = v.offer(frame(t, far.copy(box = far.box.copy(left = far.box.left + dx, right = far.box.right + dx))))
+            assertEquals(SinkStatus.TooFar, status)
+            t += 333
+        }
+    }
+
+    @Test
+    fun walkingUpToTheSinkStartsTheHoldFromThere() {
+        val v = SinkVerifier()
+        val far = Detection("sink", 0.8f, Box(0.4f, 0.45f, 0.6f, 0.6f))
+        // Long enough to pass, had the sink been close.
+        for (t in 0L..3_000L step 333) assertEquals(SinkStatus.TooFar, v.offer(frame(t, far)))
+        // Close up, the hold starts from nothing rather than carrying over.
+        assertIs<SinkStatus.Holding>(feed(v, 1_500, start = 3_333, drift = 0.06f))
+        assertEquals(SinkStatus.Confirmed, feed(v, 1_000, start = 5_000, drift = 0.06f))
+    }
+
+    @Test
+    fun aCloseSinkAtTheEdgeOfThePictureDoesNotCount() {
+        // Big enough, but hard against the right edge: the camera is looking past it.
+        val aside = Detection("sink", 0.8f, Box(0.55f, 0.3f, 1.0f, 0.8f))
+        val v = SinkVerifier()
+        for (t in 0L..3_000L step 333) assertEquals(SinkStatus.OffCentre, v.offer(frame(t, aside)))
+    }
+
+    @Test
     fun lowConfidenceSinksAreIgnored() {
         val v = SinkVerifier()
         assertEquals(SinkStatus.Searching, v.offer(frame(0, sink(score = 0.2f))))

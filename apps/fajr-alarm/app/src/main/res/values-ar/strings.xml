@@ -151,11 +151,11 @@
     <string name="mission_sum">حلّ مسألة حسابية</string>
     <string name="mission_sum_summary">حلّ مسألة حسابية سريعة لإيقافه</string>
     <string name="mission_sink">ابحث عن مغسلة</string>
-    <string name="mission_sink_summary">انهض ووجّه الكاميرا نحو مغسلة لإيقافه</string>
+    <string name="mission_sink_summary">انهض وقف أمام مغسلة ووجّه الكاميرا نحوها لإيقافه</string>
     <string name="sink_no_photos">أي مغسلة حقيقية تصلح، ولا حاجة لصور</string>
     <string name="test_it">جرّبها</string>
     <string name="camera_off_falls_back">إذن الكاميرا غير مفعّل. إلى أن يُفعَّل، سيطلب المنبّه حلّ مسألة حسابية بدلاً من المغسلة.</string>
-    <string name="sink_no_snooze">لا غفوة مع هذه المهمة: يبقى المنبّه يرنّ إلى أن ترى الكاميرا مغسلة.</string>
+    <string name="sink_snooze_sunrise">تتوقّف الغفوة عندما يقترب الشروق، ليبقى وقت للصلاة.</string>
     <string name="test_alarm_now">جرّب المنبّه الآن</string>
     <string name="close">إغلاق</string>
 
@@ -182,12 +182,13 @@
         <item quantity="many">غفوة %d دقيقة</item>
         <item quantity="other">غفوة %d دقيقة</item>
     </plurals>
+    <string name="snooze_sunrise_close">لا غفوة الآن: الشروق قريب.</string>
     <string name="camera_off_sum_instead">إذن الكاميرا غير مفعّل، لذا حلّ مسألة حسابية بدلاً من ذلك.</string>
     <string name="sum_prompt">حلّ المسألة لإيقاف المنبّه</string>
     <string name="sum_wrong">إجابة غير صحيحة، جرّب هذه</string>
     <string name="turn_off">إيقاف</string>
     <string name="sink_detector_sum_instead">تعذّر تشغيل كاشف المغسلة، لذا حلّ مسألة حسابية بدلاً من ذلك.</string>
-    <string name="sink_go">اذهب إلى مغسلة ووجّه الكاميرا نحوها</string>
+    <string name="sink_go">قف أمام مغسلة ووجّه الكاميرا نحوها</string>
 
     <!-- Looking for a sink with the camera -->
     <string name="sink_detector_failed">تعذّر تشغيل كاشف المغسلة على هذا الهاتف.</string>
@@ -195,13 +196,15 @@
     <string name="sink_looking">جارٍ البحث عن مغسلة…</string>
     <string name="sink_too_dark">المكان مظلم جداً. أضئ النور.</string>
     <string name="sink_on_screen">هذه المغسلة معروضة على شاشة. ابحث عن مغسلة حقيقية.</string>
+    <string name="sink_move_closer">المغسلة بعيدة. اقترب منها حتى تقف أمامها.</string>
+    <string name="sink_face_it">وجّه الكاميرا مباشرةً نحو المغسلة.</string>
     <string name="sink_keep_in_view">تم العثور على مغسلة، أبقِها أمام الكاميرا…</string>
     <string name="sink_found">تم العثور على مغسلة</string>
     <string name="camera_unavailable">الكاميرا غير متاحة: %1$s</string>
 
     <!-- Sink test screen -->
     <string name="sink_test_title">اختبار كشف المغسلة</string>
-    <string name="sink_test_intro">عندما يرنّ المنبّه لن يتوقف إلا بعد أن ترى الكاميرا مغسلة حقيقية: أي مغسلة في الحمّام أو المطبخ تصلح، ولا حاجة لصور. جرّب ذلك هنا والنور مضاء، وقف حيث ترى الحوض والصنبور. لا يبدأ البحث إلا بعد حمل الهاتف، والمغسلة المعروضة على شاشة هاتف أو تلفاز لا تُحتسب.</string>
+    <string name="sink_test_intro">عندما يرنّ المنبّه لن يتوقف إلا بعد أن ترى الكاميرا مغسلة حقيقية: أي مغسلة في الحمّام أو المطبخ تصلح، ولا حاجة لصور. جرّب ذلك هنا والنور مضاء، وقف أمام المغسلة واجعل الحوض في وسط الصورة. المغسلة التي تُرى من آخر الغرفة أو من الباب لا تُحتسب. لا يبدأ البحث إلا بعد حمل الهاتف، والمغسلة المعروضة على شاشة هاتف أو تلفاز لا تُحتسب.</string>
     <string name="camera_needed">هذه المهمة تحتاج إلى إذن الكاميرا.</string>
     <string name="allow_camera">السماح بالكاميرا</string>
     <string name="sink_recognised">✓ تم التعرّف على المغسلة. كان المنبّه سيتوقف هنا.</string>

@@ -36,6 +36,10 @@ sealed interface SinkStatus {
     data object Searching : SinkStatus
     /** The sink is inside a phone, TV or laptop screen, so it doesn't count. */
     data object OnScreen : SinkStatus
+    /** A sink is in view but too small in the picture: the camera isn't at it yet. */
+    data object TooFar : SinkStatus
+    /** A sink is close enough but off to one side: the camera isn't facing it. */
+    data object OffCentre : SinkStatus
     /** A sink is in view; [progress] runs 0..1 over the hold time. */
     data class Holding(val progress: Float) : SinkStatus
     data object Confirmed : SinkStatus
@@ -47,8 +51,11 @@ sealed interface SinkStatus {
  *
  * A sink must stay in view for [holdMs] (short gaps of up to [maxGapMs] are forgiven,
  * since the detector misses the odd frame) and the camera must move a little meanwhile,
- * as it does in a hand. A sink that sits inside a detected phone, TV or laptop is a
- * picture on a screen and resets the check. Not thread-safe: feed it from one thread.
+ * as it does in a hand. The sink only counts while the camera is at it and facing it:
+ * it must fill [minArea] of the picture and sit near the middle, so one glimpsed across
+ * the room or through a doorway resets the check. So does a sink inside a detected
+ * phone, TV or laptop, which is a picture on a screen. Not thread-safe: feed it from
+ * one thread.
  */
 class SinkVerifier(
     private val minScore: Float = 0.45f,
@@ -60,6 +67,13 @@ class SinkVerifier(
      * Well above the detector's own frame-to-frame jitter on a phone lying still.
      */
     private val minMovement: Float = 0.05f,
+    /**
+     * Smallest share of the picture the sink box must cover. A basin seen from about a
+     * metre fills this much; from a doorway two metres off it fills a quarter of it.
+     */
+    private val minArea: Float = 0.15f,
+    /** How far from the middle of the picture the centre of the sink box may be, on either axis. */
+    private val maxOffCentre: Float = 0.25f,
 ) {
     private data class Sighting(val timeMs: Long, val box: Box)
 
@@ -86,6 +100,14 @@ class SinkVerifier(
         if (onScreen(sink, frame.detections)) {
             reset()
             return SinkStatus.OnScreen
+        }
+        if (sink.box.area < minArea) {
+            reset()
+            return SinkStatus.TooFar
+        }
+        if (abs(sink.box.centerX - 0.5f) > maxOffCentre || abs(sink.box.centerY - 0.5f) > maxOffCentre) {
+            reset()
+            return SinkStatus.OffCentre
         }
         track.lastOrNull()?.let { if (frame.timeMs - it.timeMs > maxGapMs) reset() }
         track.addLast(Sighting(frame.timeMs, sink.box))

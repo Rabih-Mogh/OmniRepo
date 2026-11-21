@@ -104,7 +104,6 @@ class AlarmActivity : ComponentActivity() {
                 BackHandler { /* the alarm must be snoozed or dismissed explicitly */ }
                 AlarmScreen(
                     settings = settings,
-                    canSnooze = AlarmService.canSnooze(this),
                     onSnooze = { send(AlarmService.ACTION_SNOOZE, StopReason.SNOOZED) },
                     onDismiss = { reason -> send(AlarmService.ACTION_DISMISS, reason) },
                 )
@@ -145,13 +144,15 @@ private fun effectiveMission(context: Context, s: AlarmSettings): Pair<DismissMi
 @Composable
 private fun AlarmScreen(
     settings: AlarmSettings,
-    canSnooze: Boolean,
     onSnooze: () -> Unit,
     onDismiss: (StopReason) -> Unit,
 ) {
     val context = LocalContext.current
     val (mission, fallbackNote) = remember { effectiveMission(context, settings) }
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    // Checked again as the clock moves: the sink mission stops snoozing when sunrise is close.
+    val canSnooze = remember(now) { AlarmService.canSnooze(context) }
+    val sunriseStopsSnooze = remember(now) { AlarmService.sunriseStopsSnooze(context) }
     LaunchedEffect(Unit) {
         while (true) {
             delay(1_000)
@@ -214,6 +215,13 @@ private fun AlarmScreen(
                     onClick = onSnooze,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                 ) { Text(pluralStringResource(R.plurals.snooze_for, settings.snoozeMinutes, settings.snoozeMinutes)) }
+            } else if (sunriseStopsSnooze) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    stringResource(R.string.snooze_sunrise_close),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
             }
         }
     }

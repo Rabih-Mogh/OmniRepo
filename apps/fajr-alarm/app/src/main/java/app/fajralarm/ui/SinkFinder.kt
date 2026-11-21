@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Live camera that looks for a real sink and calls [onConfirmed] once, with the frame
- * that settled it, when one has been held in view long enough. Nothing counts until
+ * that settled it, when one has been held in view, close up and facing it, long enough. Nothing counts until
  * the phone has been picked up, so a phone left ringing on the nightstand can't
  * mistake something for a sink. Calls [onUnavailable] if the detector can't start or fails.
  */
@@ -95,6 +95,8 @@ fun SinkFinder(onConfirmed: (Bitmap) -> Unit, onUnavailable: () -> Unit = {}) {
                 SinkStatus.Searching -> R.string.sink_looking
                 SinkStatus.Dark -> R.string.sink_too_dark
                 SinkStatus.OnScreen -> R.string.sink_on_screen
+                SinkStatus.TooFar -> R.string.sink_move_closer
+                SinkStatus.OffCentre -> R.string.sink_face_it
                 is SinkStatus.Holding -> if (s.progress > 0f) R.string.sink_keep_in_view else R.string.sink_looking
                 SinkStatus.Confirmed -> R.string.sink_found
             },

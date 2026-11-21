@@ -23,7 +23,10 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import app.fajralarm.FajrAlarmApp
 import app.fajralarm.R
+import app.fajralarm.core.AlarmPlanner
+import app.fajralarm.core.AlarmSettings
 import app.fajralarm.core.DismissMission
+import app.fajralarm.core.SinkRinging
 import app.fajralarm.data.SettingsStore
 import app.fajralarm.data.SinkProof
 import app.fajralarm.data.StopReason
@@ -33,6 +36,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.text.DateFormat
+import java.time.Duration
+import java.time.ZonedDateTime
 import java.util.Date
 
 /**
@@ -79,9 +84,13 @@ class AlarmService : Service() {
         // A sink photo from an earlier alarm would be misleading next to this one.
         SinkProof.clear(this)
         val settings = store.load()
-        // The sink-photo mission is meant to be impossible to sleep through, so it keeps
-        // ringing much longer; the cap only stops a phone left at home ringing all day.
-        val ringLimit = if (settings.dismissMission == DismissMission.SINK_PHOTO) PHOTO_AUTO_STOP_MS else AUTO_STOP_MS
+        // The sink mission is meant to be impossible to sleep through, so it keeps ringing
+        // much longer, though not past sunrise.
+        val ringLimit = if (settings.dismissMission == DismissMission.SINK_PHOTO) {
+            SinkRinging.round(untilSunrise(settings)).toMillis()
+        } else {
+            AUTO_STOP_MS
+        }
 
         wakeLock = getSystemService(PowerManager::class.java)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "FajrAlarm:ringing")
@@ -163,7 +172,7 @@ class AlarmService : Service() {
 
     private fun snooze(reason: StopReason) {
         if (!canSnooze(this)) {
-            // Out of snoozes, or a mission without any: a snooze tap mustn't become a way round it.
+            // No snooze to be had: a snooze tap mustn't become a way round the mission.
             if (missionRequired()) ignoreCommand() else dismiss(reason)
             return
         }
@@ -212,15 +221,17 @@ class AlarmService : Service() {
 
     private fun timeout() {
         if (!_ringing.value) return
-        val store = SettingsStore(this)
-        val settings = store.load()
+        val settings = SettingsStore(this).load()
         when {
+            // The sink mission rings on towards sunrise, whatever snoozes are left.
+            settings.dismissMission == DismissMission.SINK_PHOTO ->
+                if (SinkRinging.ringsAgain(untilSunrise(settings))) {
+                    pause(StopReason.TIMED_OUT_SNOOZED, SinkRinging.REST_MINUTES)
+                } else {
+                    dismiss(StopReason.TIMED_OUT)
+                }
             // Nobody responded: snooze once if allowed, otherwise give up quietly.
             canSnooze(this) -> pause(StopReason.TIMED_OUT_SNOOZED, settings.snoozeMinutes)
-            // The sink mission can't be snoozed, but it doesn't give up after one round:
-            // it rests for a few minutes and rings again.
-            settings.dismissMission == DismissMission.SINK_PHOTO && store.snoozeCount < SINK_EXTRA_ROUNDS ->
-                pause(StopReason.TIMED_OUT_SNOOZED, SINK_REST_MINUTES)
             else -> dismiss(StopReason.TIMED_OUT)
         }
     }
@@ -287,11 +298,6 @@ class AlarmService : Service() {
         private const val NOTIFICATION_ID = 42
         private const val SNOOZE_NOTIFICATION_ID = 43
         private const val AUTO_STOP_MS = 10 * 60 * 1000L
-        private const val PHOTO_AUTO_STOP_MS = 60 * 60 * 1000L
-
-        /** How often an unanswered sink-mission alarm rings again, and the rest before each. */
-        private const val SINK_EXTRA_ROUNDS = 3
-        private const val SINK_REST_MINUTES = 5
 
         const val ACTION_START = "app.fajralarm.action.START"
         const val ACTION_SNOOZE = "app.fajralarm.action.SNOOZE"
@@ -314,7 +320,23 @@ class AlarmService : Service() {
         fun canSnooze(context: Context): Boolean {
             val store = SettingsStore(context)
             val s = store.load()
-            return s.snoozeAllowed && store.snoozeCount < s.maxSnoozes
+            return snoozesLeft(store, s) && s.snoozeAllowed(untilSunrise(s))
+        }
+
+        /** True when there are snoozes left and only the coming sunrise rules one out. */
+        fun sunriseStopsSnooze(context: Context): Boolean {
+            val store = SettingsStore(context)
+            val s = store.load()
+            return snoozesLeft(store, s) && !s.snoozeAllowed(untilSunrise(s))
+        }
+
+        private fun snoozesLeft(store: SettingsStore, s: AlarmSettings): Boolean =
+            s.snoozeMinutes > 0 && store.snoozeCount < s.maxSnoozes
+
+        /** Time left until the next sunrise, or null where it isn't known. */
+        private fun untilSunrise(s: AlarmSettings): Duration? {
+            val now = ZonedDateTime.now()
+            return AlarmPlanner.nextSunrise(s, now)?.let { Duration.between(now, it) }
         }
 
         /** The ways the alarm screen turns the alarm off once a mission is done. */
