@@ -4,6 +4,8 @@
 
     <!-- Fetching recitations, the verses' text and meanings, the speech model, and the app's own updates. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Knowing whether there is a connection: without one, only what is already on the phone is worked on. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Download and prepare recordings in the background, with the progress in a notification. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />

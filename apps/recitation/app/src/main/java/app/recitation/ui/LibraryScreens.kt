@@ -79,10 +79,16 @@ import app.recitation.prepare.PrepareWorker
 import app.recitation.prepare.Progress
 import app.recitation.speech.ModelStore
 
-/** A surah's name in the phone's language: Arabic script, or Latin letters. */
+/**
+ * A surah's name. The app is for readers whose first language is Arabic and whose second is
+ * English, so the Arabic name always comes first: alone in Arabic, and in English with
+ * the Latin spelling after it.
+ */
 @Composable
 fun surahName(surah: Surah): String =
-    if (LocalConfiguration.current.locales[0].language == "ar") surah.arabic else surah.latin
+    if (LocalConfiguration.current.locales[0].language == "ar") surah.arabic else arabicThenLatin(surah)
+
+fun arabicThenLatin(surah: Surah): String = "${surah.arabic} · ${surah.latin}"
 
 /** What the background work is up to, for the card at the top of the lists. */
 sealed interface Status {
@@ -302,11 +308,12 @@ private fun SurahRow(surah: Surah, recited: Boolean, onClick: () -> Unit) {
             }
             Text(surah.latin, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
         } else {
-            Column(Modifier.weight(1f)) {
+            // In English too the Arabic name comes first; its Latin spelling and meaning follow, at the far side.
+            SurahTitle(surah, 32.sp, colors.primary, Modifier.weight(1f))
+            Column(horizontalAlignment = Alignment.End) {
                 Text(surah.latin, style = MaterialTheme.typography.titleMedium)
                 Text("${surah.meaning} · $verses", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
-            SurahTitle(surah, 32.sp, colors.primary)
         }
     }
 }
@@ -601,8 +608,8 @@ fun SurahPicker(onPick: (Int) -> Unit, onDismiss: () -> Unit) {
                 items(SURAHS) { surah ->
                     Row(Modifier.fillMaxWidth().clickable { onPick(surah.number) }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("${surah.number}", Modifier.width(40.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(surah.latin, Modifier.weight(1f))
-                        Text(surah.arabic)
+                        Text(surah.arabic, Modifier.weight(1f))
+                        Text(surah.latin)
                     }
                 }
             }

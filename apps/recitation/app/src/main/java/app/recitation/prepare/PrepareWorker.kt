@@ -6,8 +6,11 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.PowerManager
+import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -23,7 +26,10 @@ import app.recitation.core.Heard
 import app.recitation.core.Hearing
 import app.recitation.core.LiveAlignment
 import app.recitation.core.Recital
+import app.recitation.core.Repeat
 import app.recitation.core.Sketch
+import app.recitation.core.Stretch
+import app.recitation.speech.Arriving
 import app.recitation.speech.AudioDecoder
 import app.recitation.core.Timings
 import app.recitation.data.Library
@@ -35,8 +41,13 @@ import app.recitation.speech.EngineStore
 import app.recitation.speech.ModelStore
 import app.recitation.yt.YouTube
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,9 +57,10 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
+import kotlin.math.abs
 
 /** What is being done to a recording right now. */
-enum class Step { MODEL_CHECK, MODEL_DOWNLOAD, ENGINE, DOWNLOAD, VERSES, SCAN, LISTEN, ALIGN, RETRY }
+enum class Step { MODEL_CHECK, MODEL_DOWNLOAD, ENGINE, DOWNLOAD, VERSES, LISTEN, ALIGN, RETRY }
 
 /** A recording's word timings while, and just after, it is listened to. */
 class Live(val trackId: String, val surah: Int, val timings: Timings)
@@ -68,6 +80,9 @@ data class Progress(val trackId: String?, val step: Step, val fraction: Float, v
  * with what was heard. It runs as a foreground task with its progress in a notification,
  * so it carries on when the app is closed or the screen is off, and each step picks up
  * where it stopped if it is paused, the phone restarts or the connection drops.
+ *
+ * Only the fetching needs a connection. Without one, the recordings that have everything
+ * they need on the phone are still listened to; the rest wait for the connection to come back.
  */
 class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
@@ -103,9 +118,15 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: IOException) {
+                        if (isStopped) return Result.retry()
+                        // No connection at all: nothing is wrong with the recording. It waits,
+                        // and one that needs nothing fetched gets its turn meanwhile.
+                        if (!online() && needsConnection(track)) {
+                            delay(2_000)
+                            break
+                        }
                         // The connection dropped, or a server hiccuped. Try again shortly, in
                         // plain sight; after a few goes, say what went wrong and move on.
-                        if (isStopped) return Result.retry()
                         if (++attempt >= ATTEMPTS) {
                             fail(track, applicationContext.getString(R.string.error_network, detail(e)))
                             break
@@ -134,6 +155,8 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                     }
                 }
             }
+            // What is left needs something fetched: it is taken up when there is a connection again.
+            if (library.playlists.value.any { p -> p.tracks.any(::waits) }) whenOnline(applicationContext)
             return Result.success()
         } finally {
             _progress.value = null
@@ -145,19 +168,47 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
     /** The system's own words for what went wrong: the only clue there is from a phone. */
     private fun detail(e: Exception): String = e.message?.takeIf { it.isNotBlank() }?.let { "${e.javaClass.simpleName}: $it" } ?: e.javaClass.simpleName
 
-    /** The recording to work on next: the one the reader has open, if it is waiting; otherwise the first in line. */
+    /**
+     * The recording to work on next: the one the reader has open, if it is waiting; otherwise
+     * the first in line. With no connection, only those that need nothing fetched.
+     */
     private fun next(): Track? {
-        val waiting = library.playlists.value.flatMap { it.tracks }.filter(::waits)
+        val online = online()
+        val waiting = library.playlists.value.flatMap { it.tracks }.filter { waits(it) && (online || !needsConnection(it)) }
         return waiting.firstOrNull { it.id == preferred } ?: waiting.firstOrNull()
     }
 
     private fun waits(track: Track) = track.wanted && (!track.ready || track.againFrom >= 0) && track.error == null && track.surah > 0
 
-    /** Whether the recording the reader has open is waiting behind [id], in which case [id] steps aside. */
+    /** Whether the phone has a connection to fetch over. */
+    private fun online(): Boolean {
+        val manager = applicationContext.getSystemService(ConnectivityManager::class.java)
+        val network = manager.activeNetwork ?: return false
+        return manager.getNetworkCapabilities(network)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+    }
+
+    /** Whether something [track] needs is still to be fetched: its sound, its surah's words, the speech model or the engine. */
+    private fun needsConnection(track: Track) =
+        library.audio(track.id) == null || !quran.onPhone(track.surah) || !engine.isReady || model.needsDownload
+
+    /** Whether the recording the reader has open is waiting behind [id] and can be worked on, in which case [id] steps aside. */
     private fun outranked(id: String): Boolean {
         val open = preferred ?: return false
-        return open != id && library.track(open)?.let(::waits) == true
+        if (open == id) return false
+        val track = library.track(open)?.takeIf(::waits) ?: return false
+        // Asked between every block of sound, so the answer is kept for a moment.
+        val now = SystemClock.elapsedRealtime()
+        if (open != askedFor || now - askedAt > 2_000) {
+            canGoFirst = online() || !needsConnection(track)
+            askedFor = open
+            askedAt = now
+        }
+        return canGoFirst
     }
+
+    private var askedFor: String? = null
+    private var askedAt = 0L
+    private var canGoFirst = false
 
     private fun fail(track: Track, message: String) = library.update(track.id) { it.copy(wanted = false, error = message, againFrom = -1, againTo = -1) }
 
@@ -165,7 +216,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
 
     private class TooShort : Exception()
 
-    private suspend fun prepare(track: Track) {
+    private suspend fun prepare(track: Track): Unit = coroutineScope {
         val id = track.id
         fun wanted() = !isStopped && library.track(id)?.wanted == true && !outranked(id)
         var speed = 0f // how many times faster than it plays the recording is being listened to
@@ -174,50 +225,94 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             show(track, step, fraction)
         }
 
-        val audio = library.audio(id) ?: run {
+        val timingsFile = library.timings(id, track.surah)
+        // Roughly where each verse begins (see lookOver below) is added to the timings that are
+        // shown and kept, whenever it turns up.
+        val starts = object {
+            private var sketch: IntArray? = null
+            private var shown: Timings? = null
+            private var kept: Timings? = null
+            private var settled = false
+
+            /** Shows [timings] to the reader, and keeps [keep] on the phone. */
+            @Synchronized fun show(timings: Timings, keep: Timings? = null) {
+                shown = timings
+                _live.value = Live(id, track.surah, timings.sketched(sketch))
+                if (keep != null) {
+                    kept = keep
+                    timingsFile.writeText(keep.sketched(sketch).encode())
+                }
+            }
+
+            @Synchronized fun found(sketch: IntArray) {
+                if (settled) return
+                this.sketch = sketch
+                shown?.let { _live.value = Live(id, track.surah, it.sketched(sketch)) }
+                kept?.let { timingsFile.writeText(it.sketched(sketch).encode()) }
+            }
+
+            /** Every word has its place now: nothing more is added. */
+            @Synchronized fun settle() {
+                settled = true
+            }
+        }
+
+        // A quick look over the sound for where the reciter pauses says roughly where each verse
+        // begins, before anything has been listened to and without the speech model: enough to
+        // go to a verse, and to show which one is playing. It goes on by the side, waiting for
+        // nothing and holding nothing up: over the sound as it arrives, while that is still
+        // being downloaded. The pauses are kept; which surah the recording is doesn't change them.
+        val arrived = CompletableDeferred<File>()
+        val text = CompletableDeferred<Recital>()
+        fun lookOver(arriving: Arriving?): Job = launch(Dispatchers.Default) {
+            fun still() = isActive && wanted()
+            try {
+                val kept = library.pauses(id)
+                val (pauses, total) = readPauses(kept) ?: run {
+                    var levels = arriving?.use { source -> runCatching { AudioDecoder(source).use { Sketch.levels(it, ::still) } }.getOrNull() }
+                    val whole = arrived.await()
+                    // What was read as it arrived counts only if it turned out to be all of it.
+                    if (levels != null && !isAllOf(whole, levels.size * 20, track)) levels = null
+                    if (levels == null) levels = AudioDecoder(whole).use { Sketch.levels(it, ::still) } ?: return@launch
+                    (Sketch.pauses(levels) to levels.size * 20).also { writePauses(kept, it.first, it.second) }
+                }
+                starts.found(text.await().sketch(pauses, total))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // No rough verse starts for this recording, then. Nothing else depends on them.
+            }
+        }
+
+        var looking: Job? = null
+        val audio = library.audio(id)?.also { if (!track.ready) looking = lookOver(null) } ?: run {
             report(Step.DOWNLOAD, 0f)
             val source = YouTube.audio(id)
             val part = library.audioPart(id, source.extension)
+            val whole = File(part.path.removeSuffix(".part"))
+            val arriving = Arriving(part, whole) { wanted() && looking?.isActive != false }
+            if (!track.ready) looking = lookOver(arriving)
             try {
                 YouTube.download(source, part, ::wanted) { report(Step.DOWNLOAD, it) }
             } catch (_: InterruptedException) {
                 throw Stopped()
+            } finally {
+                arriving.over = true
             }
-            File(part.path.removeSuffix(".part")).also { if (!part.renameTo(it)) throw IOException("couldn't keep the download") }
+            whole.also { if (!part.renameTo(it)) throw IOException("couldn't keep the download") }
         }
+        arrived.complete(audio)
 
         report(Step.VERSES, 0f)
         val verses = quran.surah(track.surah)
         val recital = Recital(track.surah, verses.map { verse -> verse.words.map { it.arabic } })
-        val timingsFile = library.timings(id, track.surah)
-
-        // A quick look over the sound for where the reciter pauses says roughly where each verse
-        // begins, before anything has been listened to and without the speech model: enough to
-        // go to a verse, and to show which one is playing. The pauses are kept; which surah the
-        // recording is doesn't change them.
-        val sketch = if (track.ready) null else {
-            val kept = library.pauses(id)
-            val (pauses, total) = readPauses(kept) ?: run {
-                report(Step.SCAN, 0f)
-                val levels = AudioDecoder(audio).use { sound ->
-                    Sketch.levels(sound) {
-                        report(Step.SCAN, if (sound.total > 0) (sound.position.toFloat() / sound.total).coerceIn(0f, 1f) else 0f)
-                        wanted()
-                    }
-                } ?: throw Stopped()
-                (Sketch.pauses(levels) to levels.size * 20).also { writePauses(kept, it.first, it.second) }
-            }
-            recital.sketch(pauses, total)
-        }
+        text.complete(recital)
 
         // With the sound and the words on the phone it can already be played: words light up
         // as far as the listening has got, and the listening carries on meanwhile.
         if (library.track(id)?.ready != true) {
             val soFar = if (timingsFile.exists()) Timings.decode(timingsFile.readText()) else Timings(emptyList(), 1f, heardMs = 0)
-            if (!timingsFile.exists() || (soFar.sketch == null && !soFar.complete)) {
-                timingsFile.writeText(soFar.sketched(sketch).encode())
-                _live.value = Live(id, track.surah, soFar.sketched(sketch))
-            }
+            if (!soFar.complete) starts.show(soFar, keep = soFar)
             library.update(id) { it.copy(playable = true) }
         }
 
@@ -251,7 +346,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             notes.delete()
             _live.value = Live(id, track.surah, timings)
             library.update(id) { it.copy(wanted = false, againFrom = -1, againTo = -1, error = null) }
-            return
+            return@coroutineScope
         }
 
         // What the model heard is kept, so choosing another surah for a recording doesn't mean listening again.
@@ -267,8 +362,8 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             val live = LiveAlignment(recital)
             // The recording is heard in ten-second pieces, in order from the start, except that
             // the listening goes to where the reader is playing it, if that is further on. What
-            // has been heard in order is placed as it comes; a stretch heard out of turn is
-            // found in the surah by its sounds (see Locator) and shown until the rest catches up.
+            // has been heard in order is placed as it comes; every stretch heard out of turn is
+            // found in the surah by its sounds (see Stretch) and shown until the rest catches up.
             val pieces = java.util.TreeMap<Int, Heard>(listener.resume(notes))
             var inOrder = 0 // pieces before this one have been handed on in order
             fun handOn() {
@@ -279,25 +374,26 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                 }
             }
             handOn()
-            var outOfTurn = -1 // the first piece of the stretch heard out of turn, or -1
             var published = 0
-            val length = maxOf(1L, track.seconds * 1000)
+            val stretches = HashMap<Int, Stretch>() // by the piece a stretch heard out of turn begins at
             fun publish() {
                 val soFar = live.advance()
-                var shown = soFar
-                if (outOfTurn >= inOrder) {
-                    val stretch = generateSequence(outOfTurn) { it + 1 }.takeWhile { it in pieces }.map { pieces.getValue(it) }.toList()
-                    if (stretch.isNotEmpty()) {
-                        val heardThere = Hearing.joined(stretch)
-                        val from = outOfTurn * Hearing.PIECE_MS
-                        recital.locate(heardThere.rows, heardThere.frames, from.toFloat() / length)?.let { words ->
-                            shown = Timings(soFar.verses, soFar.clarity, soFar.heardMs, soFar.repeats + words, from until from + stretch.size * Hearing.PIECE_MS)
-                        }
-                    }
+                // Every run of pieces past those heard in order: wherever the reader has been.
+                val words = ArrayList<Repeat>()
+                val ahead = ArrayList<IntRange>()
+                var first = pieces.ceilingKey(inOrder)
+                while (first != null) {
+                    val found = stretches.getOrPut(first) { Stretch(recital, track.seconds * 1000) }.words(pieces, first)
+                    words += found.words
+                    for (run in found.pieces) ahead += run.first * Hearing.PIECE_MS until (run.last + 1) * Hearing.PIECE_MS
+                    var end: Int = first
+                    while (end + 1 in pieces) end++
+                    first = pieces.higherKey(end)
                 }
-                _live.value = Live(id, track.surah, shown.sketched(sketch))
+                stretches.keys.retainAll { it >= inOrder && it in pieces && it - 1 !in pieces }
+                val shown = if (ahead.isEmpty()) soFar else Timings(soFar.verses, soFar.clarity, soFar.heardMs, soFar.repeats + words, ahead)
                 // Kept on the phone too, every half minute of recitation, in case the app is closed meanwhile.
-                if (published++ % 3 == 0) timingsFile.writeText(soFar.sketched(sketch).encode())
+                starts.show(shown, keep = shown.takeIf { published++ % 3 == 0 })
             }
             publish()
             var last = System.nanoTime()
@@ -316,22 +412,18 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                 onProgress = { report(Step.LISTEN, it) },
                 next = { done ->
                     val at = playing?.takeIf { it.trackId == id }?.ms?.div(Hearing.PIECE_MS)
-                    if (at == null || at < inOrder) {
-                        // Nothing is being played, or what is has been heard already: on in order.
-                        outOfTurn = -1
-                        null
-                    } else {
-                        // A new stretch begins where the reader is, unless they are still in the one being heard.
-                        if (outOfTurn < 0 || at < outOfTurn || !(outOfTurn until at).all { it in done }) outOfTurn = at
-                        // On from there, for as long as the reader stays: only with five minutes in hand is there time for the pieces in order.
-                        (at..at + AHEAD_PIECES).firstOrNull { it !in done }
-                    }
+                    // Nothing is being played, or what is has been heard in order already: on in
+                    // order. Otherwise on from where the reader is, for as long as they stay:
+                    // only with five minutes in hand is there time for the pieces in order.
+                    if (at == null || at < inOrder) null else (at..at + AHEAD_PIECES).firstOrNull { it !in done }
                 },
             ) ?: throw Stopped()
             whole.also { done.createNewFile() }
         }
 
         // Now that all of it has been heard, every word is placed again against the whole recording.
+        starts.settle()
+        looking?.cancel()
         report(Step.ALIGN, 0f)
         val timings = recital.place(heard.rows, heard.frames) ?: throw TooShort()
         timingsFile.writeText(timings.encode())
@@ -341,6 +433,13 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             done.delete()
         }
         library.update(id) { it.copy(ready = true, playable = true, wanted = false, clarity = timings.clarity, error = null) }
+    }
+
+    /** Whether [ms] of sound, read from a recording as it arrived, is all of [whole]. */
+    private fun isAllOf(whole: File, ms: Int, track: Track): Boolean {
+        val length = runCatching { AudioDecoder(whole).use { it.total } }.getOrDefault(0L) * 1000 / Hearing.SAMPLE_RATE
+        val expected = if (length > 0) length else track.seconds * 1000
+        return expected > 0 && abs(ms - expected) <= maxOf(2_000L, expected / 500)
     }
 
     /** The pauses kept in [file], and how long the recording is in ms; null if there are none kept. */
@@ -398,7 +497,10 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             .build()
 
     companion object {
-        const val WORK_NAME = "prepare"
+        const val WORK_NAME = "prepare-now"
+
+        /** The run that waits for a connection. It keeps the name the work had when all of it waited for one. */
+        const val WAITING_NAME = "prepare"
         private const val CHANNEL = "prepare"
         private const val NOTIFICATION_ID = 1
         private const val ATTEMPTS = 3
@@ -438,22 +540,31 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             Step.ENGINE -> R.string.step_engine
             Step.DOWNLOAD -> R.string.step_download
             Step.VERSES -> R.string.step_verses
-            Step.SCAN -> R.string.step_scan
             Step.LISTEN -> R.string.step_listen
             Step.ALIGN -> R.string.step_align
             Step.RETRY -> R.string.step_retry
         }
 
-        /** Starts preparing what's wanted, or leaves a run that's already under way to pick the new work up. */
+        /**
+         * Starts preparing what's wanted, or leaves a run that's already under way to pick the
+         * new work up. It runs with or without a connection, and does what it can.
+         */
         fun start(context: Context) {
+            val request = OneTimeWorkRequestBuilder<PrepareWorker>().build()
+            WorkManager.getInstance(context).enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.KEEP, request)
+        }
+
+        /** Has the work start again once the phone has a connection, for what couldn't be fetched without one. */
+        private fun whenOnline(context: Context) {
             val request = OneTimeWorkRequestBuilder<PrepareWorker>()
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .build()
-            WorkManager.getInstance(context).enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.KEEP, request)
+            WorkManager.getInstance(context).enqueueUniqueWork(WAITING_NAME, ExistingWorkPolicy.KEEP, request)
         }
 
         fun stop(context: Context) {
             WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+            WorkManager.getInstance(context).cancelUniqueWork(WAITING_NAME)
         }
 
         private fun createChannel(context: Context) {

@@ -132,7 +132,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     var paused by mutableStateOf(Settings.paused(app))
         private set
 
-    /** The background work is queued but not running: it is waiting for a connection. */
+    /** Something still has to be fetched and the background work is waiting for a connection to do it. */
     var waitingForNetwork by mutableStateOf(false)
         private set
 
@@ -156,7 +156,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
             }
         }
         viewModelScope.launch {
-            WorkManager.getInstance(app).getWorkInfosForUniqueWorkFlow(PrepareWorker.WORK_NAME).collect { infos ->
+            WorkManager.getInstance(app).getWorkInfosForUniqueWorkFlow(PrepareWorker.WAITING_NAME).collect { infos ->
                 waitingForNetwork = infos.any { it.state == WorkInfo.State.ENQUEUED }
             }
         }

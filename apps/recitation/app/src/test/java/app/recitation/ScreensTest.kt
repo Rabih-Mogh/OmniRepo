@@ -251,7 +251,7 @@ class ScreensTest {
         // 7.5 s in: half way through the last word of the second verse.
         show("en-day-reader") { Reader(7_500) }
         compose.onNodeWithTag("surah-title").assertIsDisplayed().assertContentDescriptionEquals("سورة الفاتحة")
-        compose.onNodeWithText("Al-Fatihah · 7 verses").assertIsDisplayed()
+        compose.onNodeWithText("1 · Al-Fatihah · 7 verses").assertIsDisplayed()
         compose.onNodeWithContentDescription("Verse 2").assertIsDisplayed()
         compose.onNodeWithText("of the universe").assertIsDisplayed()
         // A verse's translation stays out of the way until the verse is tapped.
@@ -320,7 +320,7 @@ class ScreensTest {
         // There is nothing above the first word or below the last, yet both sit in the middle.
         show("en-day-reader-first-word") { Reader(200) }
         // The title page fills the room above it: the surah's details, and the basmala even for Al-Fatihah.
-        compose.onNodeWithText("Al-Fatihah · The Opener").assertIsDisplayed()
+        compose.onNodeWithText("1 · Al-Fatihah · The Opener").assertIsDisplayed()
         compose.onNodeWithText("7 verses · Meccan · No. 5 in order of revelation").assertIsDisplayed()
         compose.onNodeWithContentDescription("بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ").assertIsDisplayed()
         assertTrue("first word off by ${offCentre("In (the) name")} px", abs(offCentre("In (the) name")) < 60f)
@@ -384,7 +384,7 @@ class ScreensTest {
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun readingARecordingOfAnotherSurah() {
         show("en-day-reader-mismatch") { Reader(0, clarity = 0.4f) }
-        compose.onNodeWithText("doesn't sound like Surah Al-Fatihah", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("doesn't sound like Surah الفاتحة · Al-Fatihah", substring = true).assertIsDisplayed()
     }
 
     @Test
@@ -447,7 +447,7 @@ class ScreensTest {
                 lastRead = LastRead(app.recitation.core.SURAHS[1], 45), onLastRead = { moved = true },
             )
         }
-        compose.onNodeWithText("Last read: Al-Baqarah, verse 45").assertIsDisplayed()
+        compose.onNodeWithText("Last read: البقرة · Al-Baqarah, verse 45").assertIsDisplayed()
         compose.onNodeWithText("Move to last read").performClick()
         assertTrue(moved)
     }
@@ -548,7 +548,7 @@ class ScreensTest {
         compose.onNodeWithText("2 of 7 ready").assertIsDisplayed()
         compose.onAllNodesWithText("Listening to the recitation… 43%").onFirst().assertIsDisplayed()
         compose.onNodeWithText("Waiting its turn").assertIsDisplayed()
-        compose.onNodeWithText("2 · Al-Baqarah").assertIsDisplayed()
+        compose.onNodeWithText("2 · البقرة · Al-Baqarah").assertIsDisplayed()
         compose.onNodeWithText("Choose surah").assertIsDisplayed()
         compose.onNodeWithText("Pause").assertIsDisplayed()
         // The cross on a queued recording takes just that one out.
@@ -586,6 +586,22 @@ class ScreensTest {
         compose.onNodeWithText("مَـٰلِكِ", useUnmergedTree = true).performClick()
         compose.onNodeWithContentDescription("Next verse").performClick()
         assertTrue(sought == null)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun thePlayLineIsCutIntoVersesAndShowsEveryStretchHeard() {
+        // Heard in order as far as 0:08, and out of turn from 0:40 to 0:55; the verses begin where the quick look put them.
+        val there = app.recitation.core.Repeat(20, listOf(WordTiming(41_000, intArrayOf(3, 41_000))))
+        val soFar = timingsSoFar(words = 8, heardMs = 8_000)
+        val timings = Timings(soFar.verses, soFar.clarity, soFar.heardMs, listOf(there), listOf(40_000 until 55_000), intArrayOf(0, 4_000, 14_000, 24_000, 34_000, 47_000, 60_000))
+        show("en-day-reader-bar-verses") {
+            ReaderContent(
+                reading = Reading(1, fatihah, track.copy(ready = false, playable = true, wanted = true), timings),
+                showMeanings = true, playing = true, position = { 6_500 }, duration = 74_000,
+                onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {}, speed = 1.1f,
+            )
+        }
     }
 
     @Test
@@ -780,7 +796,7 @@ class ScreensTest {
         }
         // The pin on this verse can be taken off; the one elsewhere can be moved here.
         compose.onNodeWithText("On this verse").assertIsDisplayed()
-        compose.onNodeWithText("Al-Baqarah · verse 255").assertIsDisplayed()
+        compose.onNodeWithText("البقرة · Al-Baqarah · verse 255").assertIsDisplayed()
         compose.onNodeWithText("Move here").performClick()
         assertTrue(moved?.id == "p2")
         // A pin left without a name gets one.
@@ -810,7 +826,7 @@ class ScreensTest {
             })
         }
         compose.onNodeWithText("Saved").assertIsDisplayed()
-        compose.onNodeWithText("Al-Fatihah · verse 2").assertIsDisplayed()
+        compose.onNodeWithText("الفاتحة · Al-Fatihah · verse 2").assertIsDisplayed()
         compose.onNodeWithText("Memorising").performClick()
         assertTrue(opened == VerseRef(2, 255))
         compose.onNodeWithText("2 verses").assertIsDisplayed()
@@ -831,7 +847,7 @@ class ScreensTest {
         }
         compose.onNodeWithText("To look into").assertIsDisplayed()
         compose.onNodeWithText("It is You we worship and You we ask for help.").assertIsDisplayed()
-        compose.onNodeWithText("Al-Fatihah · verse 5").performClick()
+        compose.onNodeWithText("الفاتحة · Al-Fatihah · verse 5").performClick()
         assertTrue(opened == VerseRef(1, 5))
         compose.onAllNodesWithContentDescription("Take out").onFirst().performClick()
         assertTrue(removed == VerseRef(1, 2))
@@ -846,10 +862,10 @@ class ScreensTest {
         show("en-day-title-band") {
             HomeContent(0, {}, emptyList(), null, StatusActions(), recited = setOf(1), onSurah = {}, onOpen = {}, onAdd = {}, onQuery = { searching = it })
         }
-        compose.onNodeWithText("Recitation").assertIsDisplayed()
+        compose.onNodeWithText("The Recitation").assertIsDisplayed()
         compose.onNodeWithContentDescription("Menu").assertIsDisplayed()
         // The name is at the left, right beside the menu button.
-        val name = compose.onNodeWithText("Recitation").fetchSemanticsNode().boundsInRoot
+        val name = compose.onNodeWithText("The Recitation").fetchSemanticsNode().boundsInRoot
         val menu = compose.onNodeWithContentDescription("Menu").fetchSemanticsNode().boundsInRoot
         assertTrue(name.left >= menu.right && name.left - menu.right < 60f)
         // No emblem and no second line: the band is the name between its two buttons.
@@ -896,7 +912,7 @@ class ScreensTest {
         show("en-day-search") { Searching("kahf 10", onSurah = { surah = it }, onVerse = { verse = it }) }
         // The tabs step aside while searching.
         compose.onNodeWithText("Playlists").assertDoesNotExist()
-        compose.onNodeWithText("Al-Kahf · verse 10").performClick()
+        compose.onNodeWithText("الكهف · Al-Kahf · verse 10").performClick()
         assertTrue(verse == VerseRef(18, 10))
         compose.onNodeWithText("Al-Kahf").performClick()
         assertTrue(surah == 18)
@@ -912,7 +928,7 @@ class ScreensTest {
         )
         show("en-night-search-words") { Searching("worship", hits, onVerse = { verse = it }) }
         compose.onNodeWithText("In the verses").assertIsDisplayed()
-        compose.onNodeWithText("Al-Fatihah · verse 5").performClick()
+        compose.onNodeWithText("الفاتحة · Al-Fatihah · verse 5").performClick()
         assertTrue(verse == VerseRef(1, 5))
     }
 
@@ -1335,6 +1351,25 @@ class ScreensTest {
         compose.onNodeWithText(ruled[0].words[1].madinah, useUnmergedTree = true).assertIsDisplayed()
     }
 
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aWaveRunsOverTheWordsGoneBackOver() {
+        // As above; the recitation has just gone back from the fourth word to the second.
+        val once = timings(ruled)
+        val again = app.recitation.core.Repeat(1, listOf(WordTiming(3300, intArrayOf(ruled[0].words[1].arabic.length, 3300)), WordTiming(3600, intArrayOf(ruled[0].words[2].arabic.length, 3600))))
+        val reading = Reading(2, ruled, track, Timings(once.verses, once.clarity, repeats = listOf(again)))
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            CompositionLocalProvider(LocalSurahNames provides surahNames) {
+                RecitationTheme { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { Ruled(3320, reading = reading) } }
+            }
+        }
+        // Half way through the wave: it lies on the blocks from the second word to the fourth.
+        compose.mainClock.advanceTimeBy(900)
+        compose.onRoot().captureRoboImage("build/screens/en-day-reader-said-again-wave.png")
+        compose.mainClock.autoAdvance = true
+    }
+
     private val week = LocalDate.of(2026, 11, 20).let { friday ->
         Listening(
             days = mapOf(
@@ -1423,6 +1458,39 @@ class ScreensTest {
         compose.onNodeWithText("القرآن").assertIsDisplayed()
         compose.onNodeWithContentDescription("البقرة").assertIsDisplayed()
         compose.onNodeWithText("٢٨٦ آية").assertIsDisplayed()
+    }
+
+    // The app is for readers whose first language is Arabic and whose second is English: the
+    // Arabic name comes before the Latin one in both languages, each the way its page runs.
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun inEnglishThePageRunsFromTheLeftAndTheArabicNameComesFirst() {
+        compose.setContent { CompositionLocalProvider(LocalSurahNames provides surahNames) { RecitationTheme { Home(tab = 0) } } }
+        compose.waitForIdle()
+        val arabic = compose.onNodeWithContentDescription("البقرة", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val latin = compose.onNodeWithText("Al-Baqarah", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val number = compose.onNodeWithText("2", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertTrue("number $number, Arabic $arabic, Latin $latin", number.right <= arabic.left && arabic.left < latin.left)
+    }
+
+    @Test
+    @Config(qualifiers = "ar-rLB-w411dp-h891dp-night-420dpi")
+    fun inArabicThePageRunsFromTheRightAndTheArabicNameComesFirst() {
+        compose.setContent { CompositionLocalProvider(LocalSurahNames provides surahNames) { RecitationTheme { Home(tab = 0) } } }
+        compose.waitForIdle()
+        val arabic = compose.onNodeWithContentDescription("البقرة", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val latin = compose.onNodeWithText("Al-Baqarah", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val number = compose.onNodeWithText("٢", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertTrue("number $number, Arabic $arabic, Latin $latin", number.left >= arabic.right && arabic.right > latin.right)
+    }
+
+    @Test
+    @Config(qualifiers = "ar-rLB-w891dp-h411dp-land-night-420dpi")
+    fun inArabicOnItsSideTheReaderStillRunsFromTheRight() {
+        show("ar-night-reader-on-its-side") { Reader(7_500, meanings = false) }
+        val back = compose.onNodeWithContentDescription("رجوع").fetchSemanticsNode().boundsInRoot
+        val menu = compose.onNodeWithContentDescription("القائمة").fetchSemanticsNode().boundsInRoot
+        assertTrue("back $back, menu $menu", back.left > menu.right)
     }
 
     @Test

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Recitation</string>
+    <!-- The first screen's title: the name as it is said, as the Arabic one has its article. -->
+    <string name="home_title">The Recitation</string>
     <string name="tagline">Read the Quran word by word, and follow a recitation as you listen.</string>
 
     <!-- Playlists -->
@@ -50,7 +52,6 @@
     <string name="listening_first">Listening to this verse first…</string>
     <string name="listening_at_speed">Listening · %1$s× as fast as it plays</string>
     <string name="listening_speed">%1$s× as fast as it plays</string>
-    <string name="step_scan">Finding where the verses begin… %1$d%%</string>
     <string name="step_listen">Listening to the recitation… %1$d%%</string>
     <string name="step_align">Matching the words to the recitation…</string>
     <string name="step_retry">Connection problem. Trying again…</string>

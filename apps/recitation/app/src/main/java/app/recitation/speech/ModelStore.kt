@@ -44,6 +44,9 @@ class ModelStore(private val context: Context, private val size: Long = MODEL_BY
     /** Whether this app holds a whole copy of its own. */
     private val hasOwn: Boolean get() = ownFile.length() == size
 
+    /** Whether there is no model on the phone to use yet: neither this app's own copy nor one Accent Coach can lend. */
+    val needsDownload: Boolean get() = !hasOwn && !borrowedIsGood && lender().first != Lender.READY
+
     /** The model opened for the speech engine: [bytes] when it is Accent Coach's copy, read where it lies; [file] when it is this app's own. */
     class Opened(val bytes: ByteBuffer?, val file: File?)
 

@@ -11,6 +11,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -26,7 +28,10 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.sin
 import kotlin.math.roundToInt
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.defaultMinSize
@@ -195,14 +200,13 @@ internal class WordIndex(timings: Timings, sizes: List<Int>) {
     }
 
     // While the recording is still being listened to, words are placed only this far, and
-    // in the stretch that was heard out of turn because it is being played.
+    // in the stretches that were heard out of turn because they were being played.
     private val placedUntil = if (timings.complete) Int.MAX_VALUE else timings.heardMs
     private val ahead = timings.ahead
 
     /** Which saying of a word is under way at [ms]: the last to have started; -1 before the first, or past where words have been placed. */
     fun said(ms: Int): Int {
-        val outOfTurn = ms > placedUntil
-        if (outOfTurn && (ahead == null || ms !in ahead)) return -1
+        val stretch = if (ms > placedUntil) ahead.firstOrNull { ms in it } ?: return -1 else null
         var lo = 0
         var hi = saidAt.size - 1
         var found = -1
@@ -210,9 +214,19 @@ internal class WordIndex(timings: Timings, sizes: List<Int>) {
             val mid = (lo + hi) / 2
             if (saidAt[mid] <= ms) { found = mid; lo = mid + 1 } else hi = mid - 1
         }
-        // In the stretch heard out of turn, only its own words count: not the last word placed in order.
-        if (outOfTurn && found >= 0 && saidAt[found] < ahead!!.first) return -1
+        // In a stretch heard out of turn, only its own words count: not the last word placed before it.
+        if (stretch != null && found >= 0 && saidAt[found] < stretch.first) return -1
         return found
+    }
+
+    /**
+     * The words the reciter goes back over when saying [said] begins, if it begins a passage
+     * said again: from the word he goes back to, to the word he had got to.
+     */
+    fun goesBack(said: Int): IntRange? {
+        val to = saidWord.getOrNull(said) ?: return null
+        val from = saidWord.getOrNull(said - 1) ?: return null
+        return if (to < from) to..from else null
     }
 
     /** The word being said at [ms]; -1 as for [said]. */
@@ -293,6 +307,33 @@ fun ReaderContent(
     // Where no word is placed yet, the verse being played is still known, roughly.
     val unheardVerse by remember(index) { derivedStateOf { if (index == null || index.at(position()) >= 0) -1 else index.verseAt(position()) } }
     val currentVerse = if (current >= 0) index?.verse(current) ?: -1 else unheardVerse
+    // When the reciter goes back to say a passage again, a wave of light runs over the
+    // blocks of the words he goes back over, from the first to the last, so the eye is
+    // taken back with him.
+    val wave = remember(index) { Animatable(1f) }
+    var waved by remember(index) { mutableStateOf<IntRange?>(null) }
+    LaunchedEffect(index) {
+        snapshotFlow { said }.collect { now ->
+            val block = index?.goesBack(now) ?: return@collect
+            waved = block
+            launch {
+                wave.snapTo(0f)
+                wave.animateTo(1f, tween(WAVE_MS, easing = LinearEasing))
+            }
+        }
+    }
+    // How strongly the wave lies on a word right now, 0..1: the blocks glow together for
+    // most of the wave's time, each a little after the one before, so it ripples along them.
+    val wash = remember(index) {
+        { word: Int ->
+            val block = waved
+            val gone = wave.value
+            if (block == null || word !in block || gone >= 1f) 0f else {
+                val along = (word - block.first).toFloat() / maxOf(1, block.last - block.first)
+                sin(PI.toFloat() * ((gone - 0.3f * along) / 0.7f).coerceIn(0f, 1f))
+            }
+        }
+    }
     val above = 1 // the surah's title page comes before the first verse in the list
     // Opened at a verse (from a pin or a collection): that verse is at the top of the page.
     val list = rememberLazyListState(initialFirstVisibleItemIndex = startVerse?.let { it + above } ?: 0)
@@ -308,7 +349,8 @@ fun ReaderContent(
     // The word being recited is kept at the middle of the page, always in the same place
     // for a quick glance. The page glides after it like a camera: it speeds up and slows
     // down gently and never restarts when the next word comes. A jump too far to glide
-    // (a seek to another part of the surah) is covered by a short dissolve instead.
+    // (a seek to another part of the surah) is made out of sight instead: the page fades,
+    // is moved, and comes back drifting the last of the way from the side it travelled.
     val place = remember { WordPlace() }
     with(LocalDensity.current) {
         place.margin = 4.dp.toPx()
@@ -316,6 +358,27 @@ fun ReaderContent(
         place.gap = 120.dp.toPx()
     }
     val fade = remember { Animatable(1f) }
+    val drift = remember { Animatable(0f) }
+    val travel = with(LocalDensity.current) { 28.dp.toPx() }
+    val verseHead = with(LocalDensity.current) { 56.dp.toPx() }
+    suspend fun travelTo(onward: Boolean, move: suspend () -> Unit) {
+        try {
+            fade.animateTo(0f, tween(160))
+            move()
+            drift.snapTo(if (onward) travel else -travel)
+            coroutineScope {
+                launch { fade.animateTo(1f, tween(340)) }
+                launch { drift.animateTo(0f, tween(340, easing = LinearOutSlowInEasing)) }
+            }
+        } finally {
+            // Cut short by another jump: never left faded out.
+            withContext(NonCancellable) {
+                fade.snapTo(1f)
+                drift.snapTo(0f)
+            }
+        }
+    }
+    fun onward(item: Int) = item > (list.layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0)
     LaunchedEffect(follow, index) {
         if (!follow || index == null) {
             fade.snapTo(1f)
@@ -334,19 +397,17 @@ fun ReaderContent(
                 if (off == null) {
                     // Its verse isn't on the page yet (it is far away): go there out of sight.
                     if (++waited < 3) continue
-                    fade.animateTo(0f, tween(140))
-                    list.scrollToItem(index.verse(word) + above)
-                    repeat(4) { if (place.offCentre(word) == null) withFrameNanos { } }
-                    place.offCentre(word)?.let { list.scrollBy(it) }
-                    fade.animateTo(1f, tween(260))
+                    travelTo(onward(index.verse(word) + above)) {
+                        list.scrollToItem(index.verse(word) + above)
+                        repeat(4) { if (place.offCentre(word) == null) withFrameNanos { } }
+                        place.offCentre(word)?.let { list.scrollBy(it) }
+                    }
                     speed = 0f
                     break
                 }
                 waited = 0
                 if (abs(off) > place.pageHeight() * 1.5f) {
-                    fade.animateTo(0f, tween(140))
-                    list.scrollBy(off)
-                    fade.animateTo(1f, tween(260))
+                    travelTo(off > 0) { list.scrollBy(off) }
                     speed = 0f
                     break
                 }
@@ -363,9 +424,19 @@ fun ReaderContent(
         }
     }
 
-    // With no word to follow, the page goes to the verse being played.
+    // With no word to follow, the page goes to the verse being played, and puts its start
+    // where the recited word is kept, so the page needn't move again once its words are
+    // placed. On to the next verse it glides; anywhere further it travels out of sight.
     LaunchedEffect(follow, unheardVerse) {
-        if (follow && unheardVerse >= 0) list.animateScrollToItem(unheardVerse + above)
+        if (!follow || unheardVerse < 0) return@LaunchedEffect
+        val item = unheardVerse + above
+        val middle = -(place.pageHeight() / 2 - verseHead).toInt().coerceAtLeast(0)
+        val showing = list.layoutInfo.visibleItemsInfo
+        if (showing.any { it.index == item || it.index == item - 1 }) {
+            list.animateScrollToItem(item, middle)
+        } else {
+            travelTo(onward(item)) { list.scrollToItem(item, middle) }
+        }
     }
 
     // Whether the word being recited is above where the page now is: the way the follow button points.
@@ -437,7 +508,8 @@ fun ReaderContent(
                             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                                 SurahTitle(surah, 24.sp, onBanner, Modifier.testTag("surah-title"), withWord = true)
                                 Text(
-                                    if (arabic) verses else stringResource(R.string.name_and_verses, surah.latin, verses),
+                                    // Under the Arabic name: the surah's number, its Latin spelling, how long it is.
+                                    if (arabic) verses else stringResource(R.string.name_and_verses, stringResource(R.string.surah_chip, surah.number, surah.latin), verses),
                                     style = MaterialTheme.typography.bodySmall, color = LocalBanner.current.quiet,
                                 )
                             }
@@ -454,7 +526,8 @@ fun ReaderContent(
                         } else PlayerBar(
                             // Still being listened to: say how far the words can light up.
                             placedUntil = reading.timings?.takeIf { !it.complete }?.heardMs, listening = listening,
-                    heard = reading.timings?.takeIf { !it.complete }?.let { listOfNotNull(0..it.heardMs, it.ahead) }, speed = speed, waiting = waiting,
+                            heard = reading.timings?.takeIf { !it.complete }?.let { listOf(0..it.heardMs) + it.ahead }, speed = speed, waiting = waiting,
+                            verseStarts = remember(index) { (1 until reading.verses.size).mapNotNull(index::startOfVerse) },
                             range = range, verses = reading.verses.size, onRange = onRange,
                             playing = playing, position = position, duration = duration, onPlayPause = onPlayPause,
                             onSeek = { onSeek(it); follow = true },
@@ -480,7 +553,7 @@ fun ReaderContent(
                             color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodyMedium,
                         )
                     }
-                    Verses(reading, index, list, current, currentVerse, index?.timing(said), index?.ends(said) ?: Int.MAX_VALUE, position, showMeanings, textScale, hand, tajweed, marks, onMark, place, { fade.value }, translated, { translated = it; taps++ }) { ms ->
+                    Verses(reading, index, list, current, currentVerse, index?.timing(said), index?.ends(said) ?: Int.MAX_VALUE, position, showMeanings, textScale, hand, tajweed, marks, onMark, place, { fade.value }, { drift.value }, wash, translated, { translated = it; taps++ }) { ms ->
                         onSeek(ms)
                         follow = true
                     }
@@ -608,6 +681,8 @@ private fun Verses(
     onMark: (Int) -> Unit,
     place: WordPlace,
     fade: () -> Float,
+    drift: () -> Float,
+    wash: (Int) -> Float,
     translated: Int?,
     onTranslate: (Int) -> Unit,
     onSeek: (Int) -> Unit,
@@ -620,7 +695,7 @@ private fun Verses(
         // The basmala is one very wide glyph, 11.5 times as wide as its font size: sized to span the page.
         val basmalaSize = with(LocalDensity.current) { ((maxWidth - 32.dp) / 11.5f).toSp() }
         LazyColumn(
-            Modifier.fillMaxSize().testTag("verses").onGloballyPositioned { place.list = it }.graphicsLayer { alpha = fade() },
+            Modifier.fillMaxSize().testTag("verses").onGloballyPositioned { place.list = it }.graphicsLayer { alpha = fade(); translationY = drift() },
             state = list,
             contentPadding = PaddingValues(bottom = room + 24.dp),
         ) {
@@ -647,6 +722,7 @@ private fun Verses(
                     onMark = { onMark(v) },
                     showTranslation = translated == v,
                     onPlaced = { w, tile -> place.placed(first + w, tile) },
+                    wash = { w -> wash(first + w) },
                     onTap = { onTranslate(v) },
                     // Tapping a word also jumps the recitation to it.
                     onWord = { w ->
@@ -679,6 +755,7 @@ private fun VerseBlock(
     onMark: () -> Unit,
     showTranslation: Boolean,
     onPlaced: (Int, LayoutCoordinates) -> Unit,
+    wash: (Int) -> Float,
     onTap: () -> Unit,
     onWord: (Int) -> Unit,
 ) {
@@ -748,6 +825,7 @@ private fun VerseBlock(
                         reachUp = { if (w <= firstRowEnds) RULE_TO_WORDS - RULE_MARGIN else 0.dp },
                         reachDown = { if (w >= lastRowStarts && !showTranslation) WORDS_TO_NEXT_RULE - RULE_MARGIN else 0.dp },
                         onPlaced = { onPlaced(w, it) },
+                        wash = { wash(w) },
                         onClick = { onWord(w) },
                         onLongClick = onMark,
                     )
@@ -903,10 +981,12 @@ private fun WordTile(
     reachUp: () -> Dp,
     reachDown: () -> Dp,
     onPlaced: (LayoutCoordinates) -> Unit,
+    wash: () -> Float,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val washed = LocalHighlight.current
     val written = word.shownIn(hand.script)
     val isCurrent = state == WordState.CURRENT
     // Nothing switches on or off: the block's fill and the light fade from one word to the
@@ -934,6 +1014,15 @@ private fun WordTile(
                     Modifier
                 },
             )
+            // The wave over a passage being said again: the same block, in the highlight's
+            // colour, read as it is drawn so nothing is laid out again while it passes.
+            .drawBehind {
+                val strength = wash()
+                if (strength > 0f) {
+                    val up = reachUp().toPx()
+                    drawRect(washed.copy(alpha = 0.45f * strength), Offset(0f, -up), Size(size.width, size.height + up + reachDown().toPx()))
+                }
+            }
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = (if (showMeaning) 8.dp else 14.dp) * textScale, vertical = 3.dp * textScale),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1086,6 +1175,7 @@ private fun PlayerBar(
     heard: List<IntRange>?,
     speed: Float,
     waiting: Boolean,
+    verseStarts: List<Int>,
     range: IntRange?,
     verses: Int,
     onRange: (IntRange) -> Unit,
@@ -1145,12 +1235,16 @@ private fun PlayerBar(
                         },
                         modifier = Modifier.weight(1f).height(24.dp),
                         colors = line,
-                        thumb = { Box(Modifier.size(12.dp).background(band.content, CircleShape)) },
+                        // The bead is drawn with the line, round the line's own middle, so it can't sit
+                        // above or below it; the slider only keeps the room for it. (Left to the slider
+                        // to place, it came out a little above the line.)
+                        thumb = { Spacer(Modifier.size(BEAD)) },
                         track = { state ->
                             // Grey where the recording hasn't been heard yet; the band's colour where it
-                            // has, faint ahead of the bead and full behind it.
+                            // has, faint ahead of the bead and full behind it. The line is cut where
+                            // each verse begins, so it reads verse by verse.
                             val ready = band.content.faded(0.5f, band.background)
-                            Canvas(Modifier.fillMaxWidth().height(3.dp)) {
+                            Canvas(Modifier.fillMaxWidth().height(4.dp)) {
                                 val played = state.value.coerceIn(0f, 1f) * size.width
                                 drawRect(UNHEARD, size = size)
                                 val ranges = heard?.takeIf { duration > 0 } ?: listOf(0..maxOf(duration, 1))
@@ -1161,6 +1255,15 @@ private fun PlayerBar(
                                     drawRect(ready, Offset(from, 0f), Size(to - from, size.height))
                                     if (played > from) drawRect(band.content, Offset(from, 0f), Size(minOf(to, played) - from, size.height))
                                 }
+                                // Verses too short to tell apart on the line share a piece of it.
+                                var cut = 0f
+                                for (start in verseStarts) {
+                                    val x = start.toFloat() / maxOf(duration, 1) * size.width
+                                    if (x - cut < NARROWEST.toPx() || size.width - x < NARROWEST.toPx()) continue
+                                    drawRect(band.background, Offset(x - CUT.toPx() / 2, 0f), Size(CUT.toPx(), size.height))
+                                    cut = x
+                                }
+                                drawCircle(band.content, BEAD.toPx() / 2, Offset(played, size.height / 2))
                             }
                         },
                     )
@@ -1240,7 +1343,7 @@ private fun TitlePage(surah: Surah, minHeight: Dp, basmalaSize: TextUnit) {
         DiamondRule(Modifier.fillMaxWidth().padding(horizontal = 8.dp))
         SurahTitle(surah, 54.sp, colors.primary, Modifier.padding(top = 12.dp, bottom = 10.dp), withWord = true)
         if (!arabic) {
-            Text(stringResource(R.string.name_and_meaning, surah.latin, surah.meaning), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+            Text(stringResource(R.string.name_and_meaning, stringResource(R.string.surah_chip, surah.number, surah.latin), surah.meaning), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         }
         Text(
             stringResource(
@@ -1266,6 +1369,16 @@ private fun TitlePage(surah: Surah, minHeight: Dp, basmalaSize: TextUnit) {
 
 /** The play bar's line where the recording hasn't been listened to yet. */
 private val UNHEARD = Color(0xFF8C8C8C).copy(alpha = 0.5f)
+
+/** How long the wave over a passage said again takes to pass. */
+private const val WAVE_MS = 1_800
+
+/** How wide the bead on the play line is. */
+private val BEAD = 12.dp
+
+/** The gap in the play line where a verse begins, and the shortest piece of line left between two gaps. */
+private val CUT = 1.5.dp
+private val NARROWEST = 5.dp
 
 /** The sizes the verses can be drawn at, as multiples of the usual size. */
 val TEXT_SCALES = 0.7f..2.0f

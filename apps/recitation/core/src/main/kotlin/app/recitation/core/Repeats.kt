@@ -22,7 +22,8 @@ class Repeat(val first: Int, val words: List<WordTiming>)
  * that word or an earlier one. Going back costs enough that it is only chosen when it
  * explains a good deal. If a stretch read that way has him say passages again, and those
  * were heard clearly, they are kept as [Repeat]s and the stretch's sounds are placed as
- * that reading has them; otherwise nothing changes.
+ * that reading has them; otherwise nothing changes. The stretches overlap, so a passage
+ * that one stretch's end cuts in two is whole in the next.
  */
 internal object Repeats {
 
@@ -67,8 +68,17 @@ internal object Repeats {
             }
             // None there: the first one further on, however far.
             if (best < 0) best = (a + 1 until anchors.size).firstOrNull { starts[placed[anchors[it]]] - from >= STRETCH / 3 } ?: anchors.size - 1
-            passes += read(phones, ordinal, rows, starts, placed[anchors[a]], placed[anchors[best]])
-            a = best
+            val found = read(phones, ordinal, rows, starts, placed[anchors[a]], placed[anchors[best]])
+            passes += found
+            // A stretch can end in the middle of a passage said again: the places to trust are
+            // found by the first placing, which may well have put one inside the passage. Cut
+            // in two like that, the passage can't be made out in this stretch, nor in the next
+            // if it begins where this one ended. So the next begins a third of the way back,
+            // past anything found here, and reads the end of this one again, whole.
+            val to = starts[placed[anchors[best]]]
+            val touched = found.maxOfOrNull { pass -> pass.maxOf { it.second } } ?: -1
+            val back = maxOf(from + (to - from) * 2 / 3, touched + 1)
+            a = if (best == anchors.size - 1) best else (a + 1 until best).firstOrNull { starts[placed[anchors[it]]] >= back } ?: best
         }
         return passes
     }

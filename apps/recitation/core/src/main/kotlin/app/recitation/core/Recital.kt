@@ -285,10 +285,11 @@ class Timings(
     val heardMs: Int = COMPLETE,
     val repeats: List<Repeat> = emptyList(),
     /**
-     * While the recording is still being listened to: a stretch of it, in ms, that was heard
-     * out of turn because it is being played, beyond [heardMs]. Its words are among [repeats].
+     * While the recording is still being listened to: the stretches of it, in ms, that were
+     * heard out of turn because they were being played, beyond [heardMs]. Their words are
+     * among [repeats].
      */
-    val ahead: IntRange? = null,
+    val ahead: List<IntRange> = emptyList(),
     /**
      * Roughly where each verse begins, in ms, from a quick look over the recording before
      * it was listened to (see [Sketch]): for going to verses whose words aren't placed yet.
@@ -349,7 +350,8 @@ class Timings(
      * One line for the clarity and how far the listening has got (-1 once it is done), then
      * one per verse: words apart by spaces, numbers by commas. Then one line for each
      * passage said again: "R", the number of its first word, and its words the same way.
-     * And, while there is one, a line for the sketch: "S" and each verse's rough start.
+     * And, while there are any, a line for the stretches heard out of turn, "A" and each
+     * one's start and end; and a line for the sketch: "S" and each verse's rough start.
      */
     fun encode(): String = buildString {
         append(clarity).append(' ').append(heardMs).append('\n')
@@ -362,6 +364,7 @@ class Timings(
             repeat.words.joinTo(this, " ") { w -> (listOf(w.startMs) + w.letters.toList()).joinToString(",") }
             append('\n')
         }
+        if (ahead.isNotEmpty()) append("A ").append(ahead.joinToString(",") { "${it.first}-${it.last + 1}" }).append('\n')
         sketch?.let { append("S ").append(it.joinToString(",")).append('\n') }
     }
 
@@ -378,13 +381,18 @@ class Timings(
                 WordTiming(numbers[0], numbers.drop(1).toIntArray())
             }
             val sketch = lines.firstOrNull { it.startsWith("S ") }?.removePrefix("S ")?.split(',')?.mapNotNull(String::toIntOrNull)?.toIntArray()
-            val (again, once) = lines.drop(1).filter { !it.startsWith("S ") }.partition { it.startsWith("R ") }
+            val ahead = lines.firstOrNull { it.startsWith("A ") }?.removePrefix("A ")?.split(',')?.mapNotNull { stretch ->
+                val from = stretch.substringBefore('-').toIntOrNull() ?: return@mapNotNull null
+                val until = stretch.substringAfter('-').toIntOrNull() ?: return@mapNotNull null
+                from until until
+            }.orEmpty()
+            val (again, once) = lines.drop(1).filter { !it.startsWith("S ") && !it.startsWith("A ") }.partition { it.startsWith("R ") }
             val repeats = again.map { line ->
                 val rest = line.removePrefix("R ")
                 Repeat(rest.substringBefore(' ').toInt(), words(rest.substringAfter(' ', "")))
             }
             val head = lines[0].split(' ')
-            return Timings(once.map(::words), head[0].toFloat(), head.getOrNull(1)?.toInt() ?: COMPLETE, repeats, sketch = sketch)
+            return Timings(once.map(::words), head[0].toFloat(), head.getOrNull(1)?.toInt() ?: COMPLETE, repeats, ahead, sketch)
         }
     }
 }

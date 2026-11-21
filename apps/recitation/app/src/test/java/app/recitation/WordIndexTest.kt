@@ -36,6 +36,13 @@ class WordIndexTest {
     }
 
     @Test
+    fun goingBackIsKnownByTheWordsGoneBackOver() {
+        // From the fifth word back to the fourth: those two blocks. Nowhere else.
+        assertEquals(3..4, index.goesBack(index.said(5300)))
+        assertEquals(listOf(null, null, null, null), listOf(500, 4500, 6000, 7200).map { index.goesBack(index.said(it)) })
+    }
+
+    @Test
     fun tappingAWordStillGoesToWhereItWasFirstSaid() {
         assertEquals(4000, index.starts[4])
         assertEquals(3000, index.startOfVerse(1))
@@ -53,7 +60,7 @@ class WordIndexTest {
         // jumped to 60 s, where the last two words were heard out of turn.
         val soFar = listOf(once[0])
         val there = Repeat(4, listOf(WordTiming(61_000, intArrayOf(3, 61_000)), WordTiming(63_000, intArrayOf(3, 63_000))))
-        val index = WordIndex(Timings(soFar, 1f, heardMs = 2_500, repeats = listOf(there), ahead = 60_000 until 70_000), listOf(3, 3))
+        val index = WordIndex(Timings(soFar, 1f, heardMs = 2_500, repeats = listOf(there), ahead = listOf(60_000 until 70_000)), listOf(3, 3))
         assertEquals(listOf(0, 2, -1, -1, 4, 5, -1), listOf(500, 2_400, 30_000, 60_500, 61_500, 64_000, 71_000).map(index::at))
         assertEquals(1, index.verse(index.at(64_000)))
     }

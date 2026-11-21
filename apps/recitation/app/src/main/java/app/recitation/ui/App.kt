@@ -495,7 +495,7 @@ private fun PlayingReader(
             playlist.tracks.filter { it.canPlay }.mapNotNull { queued ->
                 val file = model.library.audio(queued.id) ?: return@mapNotNull null
                 val surah = SURAHS[queued.surah - 1]
-                val metadata = MediaMetadata.Builder().setTitle(if (arabic) surah.arabic else surah.latin).setArtist(playlist.channel)
+                val metadata = MediaMetadata.Builder().setTitle(if (arabic) surah.arabic else arabicThenLatin(surah)).setArtist(playlist.channel)
                     .setArtworkData(Artwork.of(context, surah, dark = dark), MediaMetadata.PICTURE_TYPE_FRONT_COVER)
                 MediaItem.Builder().setMediaId(queued.id).setUri(Uri.fromFile(file)).setMediaMetadata(metadata.build()).build()
             }
@@ -580,7 +580,7 @@ private fun PlayingReader(
     var waitingAt by remember(track.id) { mutableStateOf<Int?>(null) }
     fun heard(ms: Int): Boolean {
         val timings = reading.timings ?: return true
-        return timings.complete || ms <= timings.heardMs || timings.ahead?.contains(ms) == true
+        return timings.complete || ms <= timings.heardMs || timings.ahead.any { ms in it }
     }
     fun goTo(ms: Int) {
         val player = controller ?: return

@@ -93,7 +93,7 @@ fun TitleBand(query: String?, onQuery: (String?) -> Unit, onMenu: () -> Unit) {
                     )
                 } else {
                     Text(
-                        stringResource(R.string.app_name), Modifier.weight(1f).padding(horizontal = 8.dp).semantics { heading() },
+                        stringResource(R.string.home_title), Modifier.weight(1f).padding(horizontal = 8.dp).semantics { heading() },
                         style = MaterialTheme.typography.headlineSmall, color = band.content, maxLines = 1,
                     )
                 }

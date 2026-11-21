@@ -2,6 +2,7 @@ package app.recitation.speech
 
 import android.media.AudioFormat
 import android.media.MediaCodec
+import android.media.MediaDataSource
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import app.recitation.core.Hearing
@@ -15,7 +16,12 @@ private const val SAMPLE_RATE = Hearing.SAMPLE_RATE
  * Reads a downloaded recording as 16 kHz mono samples, the form the speech model takes,
  * a block at a time so a two-hour surah never has to fit in memory.
  */
-class AudioDecoder(file: File) : Samples, AutoCloseable {
+class AudioDecoder private constructor(open: (MediaExtractor) -> Unit) : Samples, AutoCloseable {
+
+    constructor(file: File) : this({ it.setDataSource(file.path) })
+
+    /** A recording read from wherever [source] has it, such as one still arriving (see [Arriving]). */
+    constructor(source: MediaDataSource) : this({ it.setDataSource(source) })
 
     private val extractor = MediaExtractor()
     private val codec: MediaCodec
@@ -37,7 +43,7 @@ class AudioDecoder(file: File) : Samples, AutoCloseable {
     private var positioned = false
 
     init {
-        extractor.setDataSource(file.path)
+        open(extractor)
         val track = (0 until extractor.trackCount).firstOrNull {
             extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME).orEmpty().startsWith("audio/")
         } ?: error("No sound in this file")

@@ -105,4 +105,52 @@ class RepeatsTest {
         for (row in 0 until 60) noise[row * width + 1 + random.nextInt(width - 1)] = -0.05f
         assertEquals(null, recital.locate(noise, IntArray(60) { it * 10 }, around = 0.5f))
     }
+
+    @Test
+    fun `a passage said again is found wherever in a long recording it falls`() {
+        // The five verses forty times over: long enough to be gone through in several stretches.
+        val long = List(40) { verses }.flatten()
+        val recital = Recital(2, long)
+        val sizes = long.flatMap { Phonemizer.verse(it).map { word -> word.size } }
+        var at = recital.phones.size - sizes.sum()
+        val soundsOfWord = sizes.map { size -> (at until at + size).toList().also { at += size } }
+        fun placed(words: List<Int>): Timings {
+            val columns = words.flatMap { word -> soundsOfWord[word].map { recital.phones[it].sound.ordinal + 1 } }
+            val rows = FloatArray(columns.size * width) { -9f }
+            for ((row, column) in columns.withIndex()) rows[row * width + column] = -0.05f
+            return recital.place(rows, IntArray(columns.size) { it * 10 })!!
+        }
+        // Four words said again, begun at each word in turn across where one stretch ends and
+        // the next begins (some 1500 sounds in): the end of a stretch mustn't hide it.
+        var sounds = 0
+        val middle = sizes.indexOfFirst { sounds += it; sounds >= 1500 }
+        for (k in middle - 24..middle + 24) {
+            val said = (0..k + 3) + (k..k + 3) + (k + 4 until sizes.size)
+            assertEquals(said.toList(), order(placed(said.toList())), "going back to word $k")
+        }
+    }
+
+    @Test
+    fun `a long stretch heard out of turn is found a chunk at a time`() {
+        // All five verses, heard in two ten-second pieces; a chunk is one piece here.
+        val (rows, sounds) = heard((0..15).toList())
+        val frames = IntArray(sounds.size) { it * (1000 / sounds.size) }
+        val pieces = frames.indices.groupBy { frames[it] / 500 }.mapValues { (_, at) ->
+            Heard(at.map { frames[it] }.toIntArray(), rows.copyOfRange(at.first() * width, (at.last() + 1) * width))
+        }
+        assertEquals(setOf(0, 1), pieces.keys)
+        val stretch = Stretch(recital, lengthMs = frames.last() * 20L, chunk = 1)
+
+        // With the first piece alone, its words; then both pieces' words, every word once and in order.
+        val early = stretch.words(pieces.filterKeys { it == 0 }, 0)
+        assertEquals(listOf(0 until 1), early.pieces)
+        val all = stretch.words(pieces, 0)
+        assertEquals(listOf(0 until 2), all.pieces)
+        assertEquals(early.words.single().words.map { it.startMs }, all.words.first().words.map { it.startMs })
+        assertEquals((0..15).toList(), all.words.flatMap { chunk -> chunk.words.indices.map { chunk.first + it } })
+        // A chunk whose words can't be told is left out: nothing is claimed for it.
+        val noise = FloatArray(60 * width) { -9f }
+        val lost = mapOf(0 to pieces.getValue(0), 1 to Heard(IntArray(60) { 500 + it * 8 }, noise))
+        assertEquals(listOf(0 until 1), Stretch(recital, frames.last() * 20L, chunk = 1).words(lost, 0).pieces)
+    }
 }

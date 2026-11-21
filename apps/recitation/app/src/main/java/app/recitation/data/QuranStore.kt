@@ -43,6 +43,9 @@ class QuranStore(context: Context) {
 
     fun has(surah: Int): Boolean = file(surah).exists()
 
+    /** Whether [surah] can be read with no connection: [has], or what an earlier version kept. */
+    fun onPhone(surah: Int): Boolean = has(surah) || old(surah).exists()
+
     private fun file(surah: Int) = File(dir, "$surah.v2.json")
 
     /** What earlier versions of the app kept: the Uthmani spelling only. */

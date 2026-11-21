@@ -7,7 +7,13 @@ is recited, and plays along: the block of the word being recited is filled in an
 the middle of the page, and the letter being uttered is lit in gold,
 the light gliding from letter to letter.
 
-The app is in English and Arabic, following the phone's language. In light mode it is green
+The app is in English and Arabic, following the phone's language. It is made for readers
+whose first language is Arabic and whose second is English, so wherever the two stand
+together the Arabic comes first, each the way its page runs: in English a surah's row
+reads number, Arabic name, then its Latin spelling and meaning at the far side, and a
+surah named in a line of text is "الفاتحة · Al-Fatihah"; in Arabic the Arabic name stands
+alone or first. In the reader, in English, the Latin spelling under the Arabic name has
+the surah's number before it ("1 · Al-Fatihah"). In light mode it is green
 on white; in dark mode, gold on black. It follows the phone's dark mode unless light or dark
 is chosen in its menu. The bars at the top and bottom of every screen are
 quiet: they take the page's own colour, with a thin gold rule between them and the page,
@@ -21,8 +27,9 @@ is filled with a tint and has no frame.
 
 ## How it works
 
-The band at the top of the first screen has the menu button, the app's name beside it, and
-the search button at the far end:
+The band at the top of the first screen has the menu button, the app's name beside it
+("The Recitation" in English, as the Arabic name has its article), and the search button
+at the far end:
 
 - **Menu** (the three lines) slides in a panel with a switch between light and dark (or
   **Auto**, which follows the phone, as the app does until one is chosen), whether each
@@ -84,6 +91,10 @@ phone and nowhere else.
      paused, waiting for a connection, or what went wrong. After a connection problem the
      app tries again a few times, then shows the error, in the system's own words, on the
      recording.
+   - Only fetching needs a connection. The listening runs on the phone, so with no
+     connection the recordings that have their sound, their surah's words, the speech
+     model and its engine on the phone are still listened to; the others wait for the
+     connection to come back and are taken up by themselves when it does.
 3. **Read along.** Open a recording that is ready, or its surah from the Quran tab.
    - A surah opens on its title page. Two gold rules, each with a small diamond at its
      middle, run nearly from edge to edge, and between them stand its name in
@@ -101,7 +112,8 @@ phone and nowhere else.
    - Nothing is drawn under the camera's hole or notch: when the phone is on its side the
      page stops short of it, in the page's own colour. The page glides after
      the word rather than jumping, the block's fill and the light fade from one word to the next, and
-     a jump to a far part of the surah is covered by a short dissolve. Scrolling by hand
+     a jump to a far part of the surah is made out of sight: the page fades, is moved, and
+     comes back drifting the last of the way from the side it travelled. Scrolling by hand
      stops the following until the follow button is tapped: a gold star, like the verse
      numbers', with an arrow pointing up or down the page to the word being recited.
    - The recitation doesn't start by itself: it is loaded and waits for **play**.
@@ -291,6 +303,22 @@ all five were found in two clear recordings and three exactly in the third (the 
 began a word late). On a muffled recording (clarity 0.74) the spliced ones were mostly
 missed: there the words stand still as before.
 
+The stretches overlap by a third. They used to follow one another end to end, and an end
+could fall in the middle of a passage said again, since the places trusted as ends come
+from the first placing, which has no idea a passage was said twice. Cut in two like that,
+the passage was seen in neither stretch. That is how a real one was missed: in a
+recording of Ya-Sin its reciter says three words of 36:47 again, the published timings
+show it, and it was found only when a passage spliced in earlier happened to move the
+stretch's end. With the overlap it is found in the recording as it is.
+
+Passages said again are found only once the whole recording has been listened to. While
+it is still being listened to, in order or where it is being played, the words are placed
+once through, so over a passage said again they stand still until it has passed.
+
+When the recitation goes back, a wave of light in the highlight's colour runs over the
+blocks of the words gone back over, from the word gone back to as far as the word that
+had been reached, so the eye is taken back with the reciter.
+
 It runs when a recording has been heard to the end, not while it is still being listened
 to. Recordings prepared before version 1.45 don't have it: **Listen again**, in a
 recording's menu, has the phone hear it once more (the sound is kept, so nothing is
@@ -308,13 +336,19 @@ the verse next to it too.
 ### A quick look over the recording, for where the verses begin
 
 Placing the words needs the recording to be listened to, which takes as long as it
-takes. Going to a verse shouldn't have to wait for that. So as soon as a recording's
-sound is on the phone, and before the speech model is even fetched, `core/Sketch.kt`
-takes a quick look over it that needs no model: how loud the recording is every 20 ms
+takes. Going to a verse shouldn't have to wait for that. So `core/Sketch.kt` takes a
+quick look over the recording that needs no model: how loud the recording is every 20 ms
 shows where the reciter pauses, and each verse is taken to end on the pause that leaves
 every verse closest to its share of the surah's sounds, longer pauses being the likelier
 ends. That gives a rough start for every verse (the "sketch"), kept with the timings
 until the real ones replace it.
+
+The look goes on by the side and holds nothing up. It begins with the download, reading
+the sound as it arrives (`speech/Arriving.kt`), so it is done about when the download is;
+the recording can be played, the model fetched and the listening begun without waiting
+for it, and the verse starts are added to what the reader shows when they turn up. What
+was read as it arrived is only used if it comes to the whole recording's length;
+otherwise the finished file is looked over again.
 
 With it, before a verse has been heard: the next and previous verse buttons and the
 "which verses to recite" chooser go to it; the page follows the verse being played and
@@ -325,8 +359,13 @@ the reader, up to five minutes ahead, before it goes back to the pieces in order
 recitation waits ("Listening to this verse first…") until the listening has been there,
 so the words light up from the verse's first. Pressing play doesn't wait, and after a
 minute and a half the recitation plays regardless. A recording whose listening had been
-left off is taken up again, unless everything was paused. The play bar's line is grey where the recording hasn't been
-heard yet and takes the bar's colour where it has.
+left off is taken up again, unless everything was paused.
+
+The play bar's line is cut where each verse begins, so it reads verse by verse; verses
+too short to tell apart on the line share a piece of it. It is grey where the recording
+hasn't been heard yet and takes the bar's colour where it has: as far as it has been
+heard in order, and every stretch heard out of turn, wherever the reader has been. Those
+stretches are kept with the timings, so they show again when the app is reopened.
 
 Against the published verse timings of four real recordings: within 2 seconds for all 30
 verses of one, 29 of 30 of another, and 71 of 83 of a muffled one (worst 13 s). In a
@@ -341,7 +380,7 @@ placed as far as that has got. If the reader plays the recording further on than
 the listening used to carry on from where it was, and nothing lit up until it arrived.
 
 Now it goes to where the recording is being played: the piece the reader is in, then on
-from there, keeping up to a minute ahead of them; with that in hand it goes back to the
+from there, keeping up to five minutes ahead of them; with that in hand it goes back to the
 pieces in order. What was heard out of turn has nothing placed before it to say where in
 the surah it is, so `core/Locator.kt` finds it by its sounds: how far through the
 recording it begins gives the neighbourhood (a fifth of the surah either way), and the
@@ -355,6 +394,16 @@ Tried on stretches of 10, 20 and 60 seconds cut at nine places from each of four
 recordings: in the three clear ones every stretch but three was found, in the right
 place each time; in the muffled one (clarity 0.74) 19 of 27 were left unshown and none
 was put in the wrong place.
+
+A stretch can grow to many minutes, when the recitation is paused and the listening
+carries on ahead of it. So it is found in chunks of eighty seconds (`core/Stretch.kt`): a
+chunk heard whole is found once and kept, and only the unfinished one is gone over again
+as each piece arrives. Before, the whole stretch was found afresh on every piece, which
+took longer the longer it grew, and past five or six minutes only its first half minute
+was found. In chunks, on the three clear recordings, a stretch begun at any of four
+places was found to the recording's end, with at most 17 ms of work a piece on a laptop.
+About one word in fourteen of a stretch found this way lights up half a second to a
+second off, mostly early, until the pieces in order reach it and place it properly.
 
 ### The speech model
 
@@ -530,6 +579,7 @@ at the bottom of the menu on the first screen.
 | Permission | Why |
 |---|---|
 | `INTERNET` | Reading playlists, downloading sound, the verses, the speech model, and the app's own updates. |
+| `ACCESS_NETWORK_STATE` | Knowing whether there is a connection: without one, only recordings with everything on the phone are worked on. |
 | `REQUEST_INSTALL_PACKAGES`, `UPDATE_PACKAGES_WITHOUT_USER_ACTION` | Installing those updates. |
 | `POST_NOTIFICATIONS` | Showing progress while recordings are prepared and while an update downloads. The work runs without it too. |
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC`, `WAKE_LOCK` | Keeping that work going in the background. |

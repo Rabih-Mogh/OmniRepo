@@ -1,7 +1,7 @@
 {
-  "versionCode": 51,
-  "versionName": "1.51",
+  "versionCode": 53,
+  "versionName": "1.53",
   "apk": "recitation-release.apk",
-  "size": 4306336,
-  "sha256": "ae26e76e8fe1b546c0ffb767176ff8e8a4183aa60b712bf72cf3a97066f47110"
+  "size": 4306256,
+  "sha256": "a99c418e35a6fe05024f6938459d10da0b51dd3791905aab33ad748089d2d253"
 }

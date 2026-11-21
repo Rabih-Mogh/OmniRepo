@@ -104,4 +104,14 @@ class SpanTest {
         assertEquals(listOf(300, 12_000, 30_000, null), (0..3).map(back::startOfVerse))
         assertEquals(5_000, back.heardMs)
     }
+
+    @Test
+    fun `the stretches heard out of turn are kept with the timings`() {
+        val there = Repeat(4, listOf(WordTiming(61_000, intArrayOf(3, 61_000))))
+        val soFar = Timings(listOf(listOf(WordTiming(300, intArrayOf(3, 300)))), 1f, heardMs = 5_000, repeats = listOf(there), ahead = listOf(60_000 until 140_000, 300_000 until 310_000))
+        val back = Timings.decode(soFar.encode())
+        assertEquals(listOf(60_000 until 140_000, 300_000 until 310_000), back.ahead)
+        assertEquals(4, back.repeats.single().first)
+        assertEquals(1, back.verses.size)
+    }
 }
