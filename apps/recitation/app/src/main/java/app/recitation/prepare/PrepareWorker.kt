@@ -19,6 +19,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import app.recitation.MainActivity
 import app.recitation.R
+import app.recitation.core.Heard
 import app.recitation.core.Hearing
 import app.recitation.core.LiveAlignment
 import app.recitation.core.Recital
@@ -50,11 +51,14 @@ enum class Step { MODEL_CHECK, MODEL_DOWNLOAD, ENGINE, DOWNLOAD, VERSES, LISTEN,
 /** A recording's word timings while, and just after, it is listened to. */
 class Live(val trackId: String, val surah: Int, val timings: Timings)
 
+/** Where a recording is being played, in ms. */
+class Playing(val trackId: String, val ms: Int)
+
 /** Why the speech model couldn't be copied from Accent Coach. */
 data class ModelProblem(val reason: ModelStore.Lender, val detail: String?)
 
 /** [trackId] is null while the speech model, which every recording needs, is being fetched. */
-data class Progress(val trackId: String?, val step: Step, val fraction: Float)
+data class Progress(val trackId: String?, val step: Step, val fraction: Float, val speed: Float = 0f)
 
 /**
  * Gets every recording the user asked for ready to read along with: downloads its sound,
@@ -162,8 +166,9 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
     private suspend fun prepare(track: Track) {
         val id = track.id
         fun wanted() = !isStopped && library.track(id)?.wanted == true && !outranked(id)
+        var speed = 0f // how many times faster than it plays the recording is being listened to
         fun report(step: Step, fraction: Float, forModel: Boolean = false) {
-            _progress.value = Progress(if (forModel) null else id, step, fraction)
+            _progress.value = Progress(if (forModel) null else id, step, fraction, if (step == Step.LISTEN) speed else 0f)
             show(track, step, fraction)
         }
 
@@ -203,7 +208,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             val listener = listener ?: Listener(model.open(), vocab()).also { listener = it }
             val notes = File(library.heard(id).path + ".$first-$last")
             val heard = listener.listen(
-                audio, notes, ::wanted, onPiece = { _, _ -> }, onProgress = { report(Step.LISTEN, it) },
+                audio, notes, ::wanted, onPiece = { _, _, _ -> }, onProgress = { report(Step.LISTEN, it) },
                 fromMs = span.first, untilMs = span.last,
             ) ?: throw Stopped()
             report(Step.ALIGN, 0f)
@@ -235,22 +240,68 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             val listener = listener ?: Listener(model.open(), vocab()).also { listener = it }
             // The words are placed as the listening goes, a few seconds behind it, for the reader to follow meanwhile.
             val live = LiveAlignment(recital)
-            listener.resume(notes).let { live.add(it.frames, it.rows) }
-            var pieces = 0
+            // The recording is heard in ten-second pieces, in order from the start, except that
+            // the listening goes to where the reader is playing it, if that is further on. What
+            // has been heard in order is placed as it comes; a stretch heard out of turn is
+            // found in the surah by its sounds (see Locator) and shown until the rest catches up.
+            val pieces = java.util.TreeMap<Int, Heard>(listener.resume(notes))
+            var inOrder = 0 // pieces before this one have been handed on in order
+            fun handOn() {
+                while (true) {
+                    val piece = pieces[inOrder] ?: break
+                    live.add(piece.frames, piece.rows)
+                    inOrder++
+                }
+            }
+            handOn()
+            var outOfTurn = -1 // the first piece of the stretch heard out of turn, or -1
+            var published = 0
+            val length = maxOf(1L, track.seconds * 1000)
             fun publish() {
                 val soFar = live.advance()
-                _live.value = Live(id, track.surah, soFar)
+                var shown = soFar
+                if (outOfTurn >= inOrder) {
+                    val stretch = generateSequence(outOfTurn) { it + 1 }.takeWhile { it in pieces }.map { pieces.getValue(it) }.toList()
+                    if (stretch.isNotEmpty()) {
+                        val heardThere = Hearing.joined(stretch)
+                        val from = outOfTurn * Hearing.PIECE_MS
+                        recital.locate(heardThere.rows, heardThere.frames, from.toFloat() / length)?.let { words ->
+                            shown = Timings(soFar.verses, soFar.clarity, soFar.heardMs, soFar.repeats + words, from until from + stretch.size * Hearing.PIECE_MS)
+                        }
+                    }
+                }
+                _live.value = Live(id, track.surah, shown)
                 // Kept on the phone too, every half minute of recitation, in case the app is closed meanwhile.
-                if (pieces++ % 3 == 0) timingsFile.writeText(soFar.encode())
+                if (published++ % 3 == 0) timingsFile.writeText(soFar.encode())
             }
             publish()
+            var last = System.nanoTime()
             val whole = listener.listen(
                 audio, notes, ::wanted,
-                onPiece = { frames, rows ->
-                    live.add(frames, rows)
+                onPiece = { piece, frames, rows ->
+                    pieces[piece] = Heard(frames, rows)
+                    handOn()
+                    // Ten seconds of recitation in however long that took, evened out over the last few pieces.
+                    val now = System.nanoTime()
+                    val took = (now - last) / 1e9f
+                    last = now
+                    if (took > 0.05f) speed = if (speed == 0f) Hearing.PIECE_MS / 1000f / took else speed * 0.7f + 0.3f * Hearing.PIECE_MS / 1000f / took
                     publish()
                 },
                 onProgress = { report(Step.LISTEN, it) },
+                next = { done ->
+                    val at = playing?.takeIf { it.trackId == id }?.ms?.div(Hearing.PIECE_MS)
+                    if (at == null || at < inOrder) {
+                        // Nothing is being played, or what is has been heard already: on in order.
+                        outOfTurn = -1
+                        null
+                    } else {
+                        // A new stretch begins where the reader is, unless they are still in the one being heard.
+                        if (outOfTurn < 0 || at < outOfTurn || !(outOfTurn until at).all { it in done }) outOfTurn = at
+                        // On from there, keeping up to a minute ahead of the reader; with that in hand, back to the pieces in order.
+                        (at..at + AHEAD_PIECES).firstOrNull { it !in done }
+                    }
+                },
             ) ?: throw Stopped()
             whole.also { done.createNewFile() }
         }
@@ -325,6 +376,12 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
          * ahead of whatever is being worked on.
          */
         @Volatile var preferred: String? = null
+
+        /** Where a recording is being played: the listening goes there when it hasn't got that far. */
+        @Volatile var playing: Playing? = null
+
+        /** How many ten-second pieces ahead of where it is being played a recording is listened to before the rest gets its turn. */
+        private const val AHEAD_PIECES = 6
 
         private val _modelProblem = MutableStateFlow<ModelProblem?>(null)
 

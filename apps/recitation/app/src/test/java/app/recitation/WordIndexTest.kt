@@ -46,4 +46,15 @@ class WordIndexTest {
         val plain = WordIndex(Timings(once, 0.9f), listOf(3, 3))
         assertEquals(listOf(-1, 0, 4, 4, 5), listOf(-5, 10, 4500, 6000, 9000).map(plain::at))
     }
+
+    @Test
+    fun wordsHeardOutOfTurnLightUpWhereTheyArePlayed() {
+        // Still being listened to: the first verse is placed (as far as 2.5 s), and the reader has
+        // jumped to 60 s, where the last two words were heard out of turn.
+        val soFar = listOf(once[0])
+        val there = Repeat(4, listOf(WordTiming(61_000, intArrayOf(3, 61_000)), WordTiming(63_000, intArrayOf(3, 63_000))))
+        val index = WordIndex(Timings(soFar, 1f, heardMs = 2_500, repeats = listOf(there), ahead = 60_000 until 70_000), listOf(3, 3))
+        assertEquals(listOf(0, 2, -1, -1, 4, 5, -1), listOf(500, 2_400, 30_000, 60_500, 61_500, 64_000, 71_000).map(index::at))
+        assertEquals(1, index.verse(index.at(64_000)))
+    }
 }

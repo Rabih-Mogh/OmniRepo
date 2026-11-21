@@ -65,6 +65,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.recitation.R
+import java.util.Locale
 import app.recitation.core.SURAHS
 import app.recitation.core.Surah
 import androidx.activity.compose.BackHandler
@@ -354,6 +355,13 @@ fun StatusCard(status: Status, actions: StatusActions) {
                         stringResource(PrepareWorker.stepLabel(status.progress.step), (status.progress.fraction * 100).toInt()),
                         style = MaterialTheme.typography.bodyMedium,
                     )
+                    // How the listening compares with playing the recording: under 1 and it can't keep up with a reader.
+                    if (status.progress.speed > 0f) {
+                        Text(
+                            stringResource(R.string.listening_speed, String.format(Locale.getDefault(), "%.1f", status.progress.speed)),
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     LinearProgressIndicator(progress = { status.progress.fraction }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 8.dp))
                 }
                 Status.Paused -> Text(stringResource(R.string.status_paused), style = MaterialTheme.typography.bodyMedium)

@@ -91,4 +91,18 @@ class RepeatsTest {
         assertEquals(timings.repeats.map { it.first }, back.repeats.map { it.first })
         assertEquals(timings.repeats.map { it.words.map { w -> w.letters.toList() } }, back.repeats.map { it.words.map { w -> w.letters.toList() } })
     }
+
+    @Test
+    fun `a stretch heard out of turn is found in the surah by its sounds`() {
+        // The fourth and fifth verses alone, as heard by a listener that went straight to them.
+        val (rows, frames) = heard((9..15).toList())
+        val found = recital.locate(rows, frames, around = 0.55f)!!
+        assertEquals(9, found.first)
+        assertEquals(7, found.words.size)
+        // Sounds that aren't the surah's are not taken for it.
+        val random = Random(3)
+        val noise = FloatArray(60 * width) { -9f }
+        for (row in 0 until 60) noise[row * width + 1 + random.nextInt(width - 1)] = -0.05f
+        assertEquals(null, recital.locate(noise, IntArray(60) { it * 10 }, around = 0.5f))
+    }
 }

@@ -43,18 +43,19 @@ class Listener(model: ModelStore.Opened, vocab: List<String>) : SpeechModel, Aut
         audio: File,
         notes: File,
         stillWanted: () -> Boolean,
-        onPiece: (frames: IntArray, rows: FloatArray) -> Unit,
+        onPiece: (piece: Int, frames: IntArray, rows: FloatArray) -> Unit,
         onProgress: (Float) -> Unit,
         fromMs: Int = 0,
         untilMs: Int = Int.MAX_VALUE,
+        next: (done: Set<Int>) -> Int? = { null },
     ): Heard? = AudioDecoder(audio).use { whole ->
         // Only a stretch of it, when some verses are being listened to again by themselves.
         val source = if (fromMs == 0 && untilMs == Int.MAX_VALUE) whole else Span(whole, fromMs.toLong() * hearing.samplesPerMs, untilMs.toLong() * hearing.samplesPerMs)
-        hearing.listen(source, notes, stillWanted, onPiece, onProgress)
+        hearing.listen(source, notes, stillWanted, onPiece, onProgress, next)
     }
 
     /** What an earlier, unfinished listening left in [notes]; see [Hearing.resume]. */
-    fun resume(notes: File): Heard = hearing.resume(notes)
+    fun resume(notes: File): Map<Int, Heard> = hearing.resume(notes)
 
     override fun close() {
         session.close()

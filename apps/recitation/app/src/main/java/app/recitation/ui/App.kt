@@ -61,6 +61,7 @@ import app.recitation.data.VerseCollection
 import app.recitation.data.VerseRef
 import app.recitation.player.Artwork
 import app.recitation.player.PlaybackService
+import app.recitation.prepare.Playing
 import app.recitation.prepare.PrepareWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -546,6 +547,16 @@ private fun PlayingReader(
         }
     }
     DisposableEffect(track.id) { onDispose { keepPlace() } }
+    // While the recording is open, the listening is told where it is being played, and goes
+    // there if it hasn't got that far (see PrepareWorker).
+    LaunchedEffect(controller, track.id) {
+        while (true) {
+            val player = controller
+            if (player != null && player.currentMediaItem?.mediaId == track.id) PrepareWorker.playing = Playing(track.id, player.currentPosition.toInt())
+            delay(1_500)
+        }
+    }
+    DisposableEffect(track.id) { onDispose { PrepareWorker.playing = null } }
     LaunchedEffect(offer) {
         if (offer != null) {
             delay(20_000)

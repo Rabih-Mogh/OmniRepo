@@ -51,6 +51,7 @@
     <string name="step_model_download">جارٍ تنزيل نموذج الصوت (318 ميغابايت)… %1$d%%</string>
     <string name="step_download">جارٍ تنزيل الصوت… %1$d%%</string>
     <string name="step_verses">جارٍ جلب الآيات…</string>
+    <string name="listening_speed">%1$s× من سرعة التشغيل</string>
     <string name="step_listen">جارٍ الاستماع إلى التلاوة… %1$d%%</string>
     <string name="step_align">جارٍ مطابقة الكلمات مع التلاوة…</string>
     <string name="step_retry">مشكلة في الاتصال. جارٍ المحاولة مجدداً…</string>

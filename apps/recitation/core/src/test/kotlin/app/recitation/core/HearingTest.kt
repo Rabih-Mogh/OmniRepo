@@ -84,7 +84,7 @@ class HearingTest {
         // The app was killed half way through writing the next piece.
         notes.appendBytes(ByteArray(37) { 1 })
         val progress = ArrayList<Float>()
-        val heard = Hearing(model, vocab).listen(Recording(length, 3), notes) { progress += it }
+        val heard = Hearing(model, vocab).listen(Recording(length, 3), notes, onProgress = { progress += it })
         check(assertNotNull(heard), length)
         assertEquals(true, notes.length() > sizeWhenStopped)
         assertEquals(true, progress.first() > 0.3f, "it didn't start from the beginning again")
@@ -92,5 +92,33 @@ class HearingTest {
 
         // Asked again when everything has been heard, it only reads its notes back.
         check(assertNotNull(Hearing(SpeechModel { error("nothing left to listen to") }, vocab).listen(Recording(length, 4), notes)), length)
+    }
+
+    @Test
+    fun `goes to where it is asked to listen first, and still hears everything once`() {
+        val length = 757_123 // five pieces
+        val notes = notes()
+        val order = ArrayList<Int>()
+        // The recording is being played from its fourth piece on: that one first, then on from there, then the rest.
+        val heard = Hearing(model, vocab).listen(
+            Recording(length, 5), notes, onPiece = { piece, _, _ -> order += piece },
+            next = { done -> (3..9).firstOrNull { it !in done } },
+        )
+        assertEquals(listOf(3, 4, 0, 1, 2), order)
+        check(assertNotNull(heard), length)
+    }
+
+    @Test
+    fun `what was heard out of turn is kept when the listening stops and carries on`() {
+        val length = 757_123
+        val notes = notes()
+        var pieces = 0
+        assertNull(Hearing(model, vocab).listen(Recording(length, 6), notes, stillWanted = { ++pieces < 2 }, next = { done -> if (2 !in done) 2 else null }))
+        // The third piece and the first were heard; they are handed back by their numbers.
+        assertEquals(listOf(0, 2), Hearing(model, vocab).resume(notes).keys.sorted())
+        val later = ArrayList<Int>()
+        val heard = Hearing(model, vocab).listen(Recording(length, 7), notes, onPiece = { piece, _, _ -> later += piece })
+        assertEquals(listOf(1, 3, 4), later)
+        check(assertNotNull(heard), length)
     }
 }

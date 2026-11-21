@@ -304,6 +304,28 @@ takes about as long as the stretch itself, not the whole recording. The stretch 
 from the timings there are, so if those were off right at a verse's start or end, take in
 the verse next to it too.
 
+### Listening where the recording is being played
+
+A recording is heard in ten-second pieces, in order from its start, and the words are
+placed as far as that has got. If the reader plays the recording further on than that,
+the listening used to carry on from where it was, and nothing lit up until it arrived.
+
+Now it goes to where the recording is being played: the piece the reader is in, then on
+from there, keeping up to a minute ahead of them; with that in hand it goes back to the
+pieces in order. What was heard out of turn has nothing placed before it to say where in
+the surah it is, so `core/Locator.kt` finds it by its sounds: how far through the
+recording it begins gives the neighbourhood (a fifth of the surah either way), and the
+run of words its sounds fit best there, beginning at the start of a word, is taken. If
+that fits poorly (under three sounds in five heard clearly) nothing is shown. Its words
+light up where they are played until the pieces in order reach them; every piece is
+heard once only, whatever the order, and the final placing of the whole recording is as
+before.
+
+Tried on stretches of 10, 20 and 60 seconds cut at nine places from each of four real
+recordings: in the three clear ones every stretch but three was found, in the right
+place each time; in the muffled one (clarity 0.74) 19 of 27 were left unshown and none
+was put in the wrong place.
+
 ### The speech model
 
 The model is 318 MB, too big to ship in the APK.
@@ -380,6 +402,10 @@ it against its published timings.
 - **Old or echoing recordings** are heard less clearly and line up less tightly.
 - **Speed on a phone is unknown.** On the Mac the model runs 25 times faster than the
   recording plays. A phone is much slower; "about as long as the recording" is a guess.
+  While a recording is being listened to, the card on the first screen now says how the
+  listening compares with playing it ("1.3× as fast as it plays"), so the figure can be
+  read off a phone. Under 1×, the listening can't keep up with someone playing the
+  recording, wherever it starts.
   If a phone listens slower than the recitation plays, playing from the start will
   overtake the listening, and the words stop lighting up until it catches up.
 - **YouTube changes.** Reading YouTube without its app depends on NewPipe Extractor

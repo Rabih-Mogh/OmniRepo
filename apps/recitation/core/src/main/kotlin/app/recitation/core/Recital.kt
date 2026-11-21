@@ -55,13 +55,22 @@ class Recital(surah: Int, verses: List<List<String>>, withOpening: Boolean = tru
         val aligner = Aligner(rows, phones)
         val path = aligner.path() ?: return null
         val starts = aligner.starts(path)
-        // Words numbered in order, the opening formulas included, for telling where one ends.
-        val ordinal = IntArray(wordOf.size)
-        for (i in 1 until wordOf.size) ordinal[i] = ordinal[i - 1] + if (wordOf[i] != wordOf[i - 1]) 1 else 0
         val repeats = Repeats.find(phones, ordinal, rows, path, starts).mapNotNull { pass -> repeat(pass, frameOfRow) }
         val once = build(starts, frameOfRow, aligner, phones.size, Timings.COMPLETE)
         return Timings(once.verses, once.clarity, once.heardMs, repeats)
     }
+
+    /** Words numbered in order, the opening formulas included, for telling where one ends. */
+    private val ordinal: IntArray by lazy {
+        IntArray(wordOf.size).also { for (i in 1 until wordOf.size) it[i] = it[i - 1] + if (wordOf[i] != wordOf[i - 1]) 1 else 0 }
+    }
+
+    /**
+     * The words in a stretch of the recording that was heard out of turn (see [Locator]):
+     * [around] is how far through the recording it begins, 0..1. Null if they can't be told.
+     */
+    fun locate(rows: FloatArray, frameOfRow: IntArray, around: Float): Repeat? =
+        Locator.find(phones, ordinal, rows, around)?.let { repeat(it, frameOfRow) }
 
     /** The words of one more pass over a passage, from the row each of its sounds began at. */
     private fun repeat(pass: List<Pair<Int, Int>>, frameOfRow: IntArray): Repeat? {
@@ -243,7 +252,17 @@ data class Uttered(val from: Int, val to: Int, val fraction: Float, val before: 
  * recording that stops half way, scores under 0.6. [repeats]: passages the reciter said
  * once more, each with its own timings; [verses] has every word once.
  */
-class Timings(val verses: List<List<WordTiming>>, val clarity: Float, val heardMs: Int = COMPLETE, val repeats: List<Repeat> = emptyList()) {
+class Timings(
+    val verses: List<List<WordTiming>>,
+    val clarity: Float,
+    val heardMs: Int = COMPLETE,
+    val repeats: List<Repeat> = emptyList(),
+    /**
+     * While the recording is still being listened to: a stretch of it, in ms, that was heard
+     * out of turn because it is being played, beyond [heardMs]. Its words are among [repeats].
+     */
+    val ahead: IntRange? = null,
+) {
 
     /** False while the recording is still being listened to: [verses] then stops at the last word placed. */
     val complete: Boolean get() = heardMs == COMPLETE

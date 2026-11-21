@@ -194,12 +194,15 @@ internal class WordIndex(timings: Timings, sizes: List<Int>) {
         saidTiming = said.map { it.third }
     }
 
-    // While the recording is still being listened to, words are placed only this far.
+    // While the recording is still being listened to, words are placed only this far, and
+    // in the stretch that was heard out of turn because it is being played.
     private val placedUntil = if (timings.complete) Int.MAX_VALUE else timings.heardMs
+    private val ahead = timings.ahead
 
     /** Which saying of a word is under way at [ms]: the last to have started; -1 before the first, or past where words have been placed. */
     fun said(ms: Int): Int {
-        if (ms > placedUntil) return -1
+        val outOfTurn = ms > placedUntil
+        if (outOfTurn && (ahead == null || ms !in ahead)) return -1
         var lo = 0
         var hi = saidAt.size - 1
         var found = -1
@@ -207,6 +210,8 @@ internal class WordIndex(timings: Timings, sizes: List<Int>) {
             val mid = (lo + hi) / 2
             if (saidAt[mid] <= ms) { found = mid; lo = mid + 1 } else hi = mid - 1
         }
+        // In the stretch heard out of turn, only its own words count: not the last word placed in order.
+        if (outOfTurn && found >= 0 && saidAt[found] < ahead!!.first) return -1
         return found
     }
 
