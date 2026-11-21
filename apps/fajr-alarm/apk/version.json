@@ -1,7 +1,7 @@
 {
-  "versionCode": 32,
-  "versionName": "1.32",
+  "versionCode": 50,
+  "versionName": "1.50",
   "apk": "fajr-alarm-release.apk",
-  "size": 10388835,
-  "sha256": "b174d87a380762995762a050ec3aa9ab8deec03cd97c52e6aa2dc09460acb09b"
+  "size": 10388807,
+  "sha256": "95967de7e556b21b88ef5bc05bdc8de710cfc7646575f3acc890bc96f1c94166"
 }

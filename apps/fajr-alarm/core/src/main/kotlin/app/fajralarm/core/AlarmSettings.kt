@@ -41,6 +41,10 @@ data class AlarmSettings(
 ) {
     val hasLocation: Boolean get() = latitude != null && longitude != null
 
+    /** The sink mission has no snooze: the alarm rings until the camera sees a sink. */
+    val snoozeAllowed: Boolean
+        get() = snoozeMinutes > 0 && dismissMission != DismissMission.SINK_PHOTO
+
     val fajrAngle: Double
         get() = if (method == CalculationMethod.CUSTOM) customFajrAngle else method.fajrAngle
 

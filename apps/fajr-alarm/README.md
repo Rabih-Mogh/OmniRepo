@@ -17,14 +17,14 @@ alarm follows the prayer time as it moves through the year.
   - full-screen alarm over the lock screen
   - plays on the alarm stream with any alarm sound or ringtone on the phone (pick your own adhan file if you have one)
   - optional fade-in and vibration
-- **Snooze** with a configurable length and a cap on how many times you can snooze.
+- **Snooze** with a configurable length and a cap on how many times you can snooze. There is no snooze with the sink mission.
 - **Dismiss missions**: choose what it takes to turn the alarm off.
-  - **Find a sink**: the alarm only stops once the live camera recognises a real sink. See below.
+  - **Find a sink**: the alarm only stops once the live camera recognises a real sink, and it can't be snoozed. See below.
   - **Solve a sum**.
   - **None**: a normal dismiss button.
 
   With a mission on, the notification has no dismiss button, so the alarm screen is the only way to turn it off.
-- **Auto-stop**: after 10 minutes normally, or 60 minutes with the sink mission, so a phone left at home doesn't ring all day. When it auto-stops it snoozes if snoozes are left, otherwise it stops.
+- **Auto-stop**: after 10 minutes with nobody answering, it snoozes if snoozes are left, otherwise it stops. With the sink mission it rings for 60 minutes, rests for 5 and rings again, and only gives up after four such rounds, so a phone left at home doesn't ring all day.
 - **Last alarm**: the main screen shows when the alarm last rang and how it stopped (sink, sum, snooze, ringing out, or Android closing the app). On Android 11 and later it also says whether the app crashed, froze or was force-stopped.
 - **"Test the alarm now"** button.
 - **English and Arabic**: the app follows the phone's language. See [Languages](#languages).
@@ -41,8 +41,9 @@ How it works and its limits:
 - **Cheating checks**: nothing counts until the phone has been picked up (tilted at least 25° from where it lay, measured with the accelerometer; the alarm's vibration doesn't count). A sink that sits inside a detected phone, TV or laptop screen doesn't count. The sink must stay in view for 2 seconds while the camera moves by at least 5% of the frame, as it does in a hand. Dark frames reset the check.
 - **Accuracy**: works best with the light on and most of the basin in view. A close-up of just the tap, or a very dark room, may not be recognised. The thresholds haven't been tuned on many real sinks yet.
 - **Fallback**: if the camera permission is off or the detector can't start, the alarm falls back to the sum, so you're never stuck with an alarm you can't stop.
-- **No way round it from bed**: with a mission set, neither the ringing notification nor the "Snoozed until" notification can turn the alarm off. A snoozed alarm always rings again, and only the mission stops it.
-- **Not tamper-proof**: a determined person can still snooze (set Snooze to Off), show the camera a printed photo of a sink, or force-stop the app from system settings.
+- **No way round it from bed**: there is no snooze with this mission. The button is gone from the alarm screen and the notification, and the snooze settings are hidden while it is picked. With any mission set, neither the ringing notification nor the "Snoozed until" notification can turn the alarm off.
+- **If nobody answers**: it rings for 60 minutes, rests for 5 minutes and rings again. After four rounds (about four hours) it gives up.
+- **Not tamper-proof**: a determined person can still show the camera a printed photo of a sink, turn the camera permission off to get the sum, or force-stop the app from system settings.
 
 ## Project layout
 
@@ -63,7 +64,7 @@ Requirements: Android Studio (Ladybug or newer) or the Android SDK with platform
 ```bash
 cd apps/fajr-alarm
 ./gradlew :core:test          # prayer-time unit tests (no Android SDK needed)
-./gradlew :app:testDebugUnitTest  # opens the screens in Arabic and English, pictures in app/build/screens; also the update's background service
+./gradlew :app:testDebugUnitTest  # opens the screens in Arabic and English, pictures in app/build/screens; also the sink mission and the update's background service
 ./gradlew :app:assembleDebug  # → app/build/outputs/apk/debug/app-debug.apk
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```

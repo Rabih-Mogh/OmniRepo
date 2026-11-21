@@ -162,19 +162,20 @@ class AlarmService : Service() {
     }
 
     private fun snooze(reason: StopReason) {
-        val store = SettingsStore(this)
-        val settings = store.load()
         if (!canSnooze(this)) {
-            // Out of snoozes: a snooze tap mustn't become a way round the mission.
-            if (reason == StopReason.SNOOZED && missionRequired()) {
-                ignoreCommand()
-                return
-            }
-            dismiss(if (reason == StopReason.TIMED_OUT_SNOOZED) StopReason.TIMED_OUT else reason)
+            // Out of snoozes, or a mission without any: a snooze tap mustn't become a way round it.
+            if (missionRequired()) ignoreCommand() else dismiss(reason)
             return
         }
+        pause(reason, SettingsStore(this).load().snoozeMinutes)
+    }
+
+    /** Goes quiet for [minutes] and rings again after them. */
+    private fun pause(reason: StopReason, minutes: Int) {
+        val store = SettingsStore(this)
+        val settings = store.load()
         if (_ringing.value) store.recordStop(reason, System.currentTimeMillis())
-        AlarmScheduler.scheduleSnooze(this, settings.snoozeMinutes)
+        AlarmScheduler.scheduleSnooze(this, minutes)
         stopRinging()
         val until = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(store.snoozeUntil))
         val b = NotificationCompat.Builder(this, FajrAlarmApp.CHANNEL_INFO)
@@ -211,8 +212,17 @@ class AlarmService : Service() {
 
     private fun timeout() {
         if (!_ringing.value) return
-        // Nobody responded: snooze once if allowed, otherwise give up quietly.
-        if (canSnooze(this)) snooze(StopReason.TIMED_OUT_SNOOZED) else dismiss(StopReason.TIMED_OUT)
+        val store = SettingsStore(this)
+        val settings = store.load()
+        when {
+            // Nobody responded: snooze once if allowed, otherwise give up quietly.
+            canSnooze(this) -> pause(StopReason.TIMED_OUT_SNOOZED, settings.snoozeMinutes)
+            // The sink mission can't be snoozed, but it doesn't give up after one round:
+            // it rests for a few minutes and rings again.
+            settings.dismissMission == DismissMission.SINK_PHOTO && store.snoozeCount < SINK_EXTRA_ROUNDS ->
+                pause(StopReason.TIMED_OUT_SNOOZED, SINK_REST_MINUTES)
+            else -> dismiss(StopReason.TIMED_OUT)
+        }
     }
 
     private fun stopRinging() {
@@ -279,6 +289,10 @@ class AlarmService : Service() {
         private const val AUTO_STOP_MS = 10 * 60 * 1000L
         private const val PHOTO_AUTO_STOP_MS = 60 * 60 * 1000L
 
+        /** How often an unanswered sink-mission alarm rings again, and the rest before each. */
+        private const val SINK_EXTRA_ROUNDS = 3
+        private const val SINK_REST_MINUTES = 5
+
         const val ACTION_START = "app.fajralarm.action.START"
         const val ACTION_SNOOZE = "app.fajralarm.action.SNOOZE"
         const val ACTION_DISMISS = "app.fajralarm.action.DISMISS"
@@ -300,7 +314,7 @@ class AlarmService : Service() {
         fun canSnooze(context: Context): Boolean {
             val store = SettingsStore(context)
             val s = store.load()
-            return s.snoozeMinutes > 0 && store.snoozeCount < s.maxSnoozes
+            return s.snoozeAllowed && store.snoozeCount < s.maxSnoozes
         }
 
         /** The ways the alarm screen turns the alarm off once a mission is done. */

@@ -365,14 +365,17 @@ private fun SettingsScreen() {
             SwitchRow(stringResource(R.string.vibrate), settings.vibrate) { update(settings.copy(vibrate = it)) }
             SwitchRow(stringResource(R.string.gentle_start), settings.gradualVolume) { update(settings.copy(gradualVolume = it)) }
 
-            ChoiceRow(
-                title = stringResource(R.string.snooze),
-                current = settings.snoozeMinutes,
-                options = listOf(0, 3, 5, 10, 15),
-                label = { if (it == 0) stringResource(R.string.snooze_off) else pluralStringResource(R.plurals.minutes, it, it) },
-            ) { update(settings.copy(snoozeMinutes = it)) }
-            if (settings.snoozeMinutes > 0) {
-                Stepper(stringResource(R.string.max_snoozes), settings.maxSnoozes, "", 1..10) { update(settings.copy(maxSnoozes = it)) }
+            // The sink mission has no snooze, so its settings would only mislead.
+            if (settings.dismissMission != DismissMission.SINK_PHOTO) {
+                ChoiceRow(
+                    title = stringResource(R.string.snooze),
+                    current = settings.snoozeMinutes,
+                    options = listOf(0, 3, 5, 10, 15),
+                    label = { if (it == 0) stringResource(R.string.snooze_off) else pluralStringResource(R.plurals.minutes, it, it) },
+                ) { update(settings.copy(snoozeMinutes = it)) }
+                if (settings.snoozeMinutes > 0) {
+                    Stepper(stringResource(R.string.max_snoozes), settings.maxSnoozes, "", 1..10) { update(settings.copy(maxSnoozes = it)) }
+                }
             }
 
         }
@@ -415,13 +418,11 @@ private fun SettingsScreen() {
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                if (settings.snoozeMinutes > 0) {
-                    Text(
-                        stringResource(R.string.snooze_off_tip),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                Text(
+                    stringResource(R.string.sink_no_snooze),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
 

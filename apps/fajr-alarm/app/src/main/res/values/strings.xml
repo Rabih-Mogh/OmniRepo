@@ -143,7 +143,7 @@
     <string name="sink_no_photos">Any real sink works, no photos needed</string>
     <string name="test_it">Test it</string>
     <string name="camera_off_falls_back">Camera permission is off. Until it\'s on, the alarm falls back to a sum.</string>
-    <string name="snooze_off_tip">Tip: set Snooze to Off so finding a sink is the only way to stop the alarm.</string>
+    <string name="sink_no_snooze">No snooze with this mission: the alarm keeps ringing until the camera sees a sink.</string>
     <string name="test_alarm_now">Test the alarm now</string>
     <string name="close">Close</string>
 
