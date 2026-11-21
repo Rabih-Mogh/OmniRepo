@@ -358,6 +358,12 @@ class Choices(private val context: Context, arabic: Boolean) {
     }
 }
 
+/** A verse gone to counts as heard when the listening has got this far past its start. */
+private const val HEARD_AHEAD_MS = 2_000
+
+/** How long the recitation waits for a verse to be heard before playing regardless. */
+private const val WAIT_AT_MOST_MS = 90_000L
+
 /** How often, while a recitation plays, its place is kept and the listening noted. */
 private const val NOTE_EVERY_MS = 4_000
 
@@ -564,14 +570,60 @@ private fun PlayingReader(
         }
     }
 
+    val working by PrepareWorker.progress.collectAsStateWithLifecycle()
+    // Whether the rest of it is still being listened to, or is waiting its turn for that.
+    val listening = !model.paused && playlists.any { p -> p.tracks.any { it.id == track.id && it.wanted } }
+
+    // Going to a verse that hasn't been heard yet: the listening is sent there at once, with
+    // nothing else in its way, and the recitation waits until it has been there, so the words
+    // light up from the verse's first. Pressing play doesn't wait.
+    var waitingAt by remember(track.id) { mutableStateOf<Int?>(null) }
+    fun heard(ms: Int): Boolean {
+        val timings = reading.timings ?: return true
+        return timings.complete || ms <= timings.heardMs || timings.ahead?.contains(ms) == true
+    }
+    fun goTo(ms: Int) {
+        val player = controller ?: return
+        player.seekTo(ms.toLong())
+        position.intValue = ms
+        if (!mine) return
+        PrepareWorker.playing = Playing(track.id, ms)
+        if (heard(ms + HEARD_AHEAD_MS)) {
+            waitingAt = null
+            return
+        }
+        // A recording whose listening was left off is taken up again, unless everything was paused.
+        if (!listening && !model.paused && !track.ready) model.want(listOf(track))
+        if (listening || (!model.paused && !track.ready)) {
+            player.pause()
+            waitingAt = ms
+        }
+    }
+    LaunchedEffect(waitingAt, reading.timings) {
+        val at = waitingAt ?: return@LaunchedEffect
+        if (heard(at + HEARD_AHEAD_MS)) {
+            waitingAt = null
+            controller?.play()
+        }
+    }
+    LaunchedEffect(waitingAt) {
+        val at = waitingAt ?: return@LaunchedEffect
+        // The model may be busy starting up, or not there at all: after long enough, play regardless.
+        delay(WAIT_AT_MOST_MS)
+        if (waitingAt == at) {
+            waitingAt = null
+            controller?.play()
+        }
+    }
     // Which verses to recite: the whole surah unless the reader chooses a first and a last verse.
     // While the recording is still being listened to, only the first verses have a place yet.
     val verses = reading.timings?.verses.orEmpty()
     var range by remember(track.id) { mutableStateOf(0..reading.verses.lastIndex.coerceAtLeast(0)) }
     // The first verse starts at the very beginning, so the opening formulas are heard with it.
-    fun startOf(r: IntRange): Int = if (r.first == 0) 0 else verses.getOrNull(r.first)?.firstOrNull()?.startMs ?: 0
+    // A verse whose words aren't placed yet is gone to by the rough start the quick look gave it.
+    fun startOf(r: IntRange): Int = if (r.first == 0) 0 else reading.timings?.startOfVerse(r.first) ?: 0
     // The stretch ends where the verse after its last one begins; the last verse runs to the end.
-    fun endOf(r: IntRange): Int = verses.getOrNull(r.last + 1)?.firstOrNull()?.startMs ?: Int.MAX_VALUE
+    fun endOf(r: IntRange): Int = reading.timings?.startOfVerse(r.last + 1) ?: Int.MAX_VALUE
 
     // Follow the player closely while it plays, so words light up on time; loosely when it's paused.
     LaunchedEffect(controller, playing, mine) {
@@ -596,6 +648,7 @@ private fun PlayingReader(
             onBack = { model.back() },
             onMeanings = page.onMeanings,
             onPlayPause = {
+                waitingAt = null
                 if (controller.isPlaying) {
                     controller.pause()
                 } else {
@@ -608,23 +661,21 @@ private fun PlayingReader(
                     controller.play()
                 }
             },
-            onSeek = { ms -> controller.seekTo(ms.toLong()); position.intValue = ms },
+            onSeek = ::goTo,
             textScale = page.textScale,
             onTextScale = page.onTextScale,
             script = page.script, onScript = page.onScript, indopak = page.indopak,
             startVerse = page.startVerse, marks = page.marks, onMark = page.onMark,
             appearance = page.appearance, onAppearance = page.onAppearance,
             tajweed = page.tajweed, onTajweed = page.onTajweed,
-            // Whether the rest of it is still being listened to, or is waiting its turn for that.
-            listening = !model.paused && playlists.any { p -> p.tracks.any { it.id == track.id && it.wanted } },
+            listening = listening,
+            speed = working?.takeIf { it.trackId == track.id }?.speed ?: 0f,
+            waiting = waitingAt != null,
             range = range,
             onRange = { chosen ->
                 range = chosen
                 val at = controller.currentPosition.toInt()
-                if (mine && (at < startOf(chosen) || at >= endOf(chosen))) {
-                    controller.seekTo(startOf(chosen).toLong())
-                    position.intValue = startOf(chosen)
-                }
+                if (mine && (at < startOf(chosen) || at >= endOf(chosen))) goTo(startOf(chosen))
             },
             suggestion = {
                 offer?.let { place ->

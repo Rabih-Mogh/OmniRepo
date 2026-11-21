@@ -13,7 +13,8 @@ is chosen in its menu. The bars at the top and bottom of every screen are
 quiet: they take the page's own colour, with a thin gold rule between them and the page,
 and the player sits on the bottom one. Surah names are written in
 calligraphy. In the list of surahs each number is plain gold with a small gold diamond
-under it, and a fine gold line parts the rows; verse numbers sit in an eight-point
+under it, the rows are tall, and a gold line with the same margin at either end parts
+them; verse numbers sit in an eight-point
 star. A verse's words are laid out as blocks that share the verse's whole width between
 them, touching one another and stopping a small margin short of the screen's edges; the block of the word being recited, its meaning included,
 is filled with a tint and has no frame.
@@ -303,6 +304,35 @@ again in it are looked for, and the result is put in place of those verses' timi
 takes about as long as the stretch itself, not the whole recording. The stretch is found
 from the timings there are, so if those were off right at a verse's start or end, take in
 the verse next to it too.
+
+### A quick look over the recording, for where the verses begin
+
+Placing the words needs the recording to be listened to, which takes as long as it
+takes. Going to a verse shouldn't have to wait for that. So as soon as a recording's
+sound is on the phone, and before the speech model is even fetched, `core/Sketch.kt`
+takes a quick look over it that needs no model: how loud the recording is every 20 ms
+shows where the reciter pauses, and each verse is taken to end on the pause that leaves
+every verse closest to its share of the surah's sounds, longer pauses being the likelier
+ends. That gives a rough start for every verse (the "sketch"), kept with the timings
+until the real ones replace it.
+
+With it, before a verse has been heard: the next and previous verse buttons and the
+"which verses to recite" chooser go to it; the page follows the verse being played and
+lights its number; and the listening, which goes to where the recording is being played,
+gets there straight away. Going to such a verse (by those buttons, the chooser, or the
+play bar) puts everything else aside: the listening is sent there at once and stays with
+the reader, up to five minutes ahead, before it goes back to the pieces in order; and the
+recitation waits ("Listening to this verse first…") until the listening has been there,
+so the words light up from the verse's first. Pressing play doesn't wait, and after a
+minute and a half the recitation plays regardless. A recording whose listening had been
+left off is taken up again, unless everything was paused. The play bar's line is grey where the recording hasn't been
+heard yet and takes the bar's colour where it has.
+
+Against the published verse timings of four real recordings: within 2 seconds for all 30
+verses of one, 29 of 30 of another, and 71 of 83 of a muffled one (worst 13 s). In a
+recording made in a mosque, with the hall never silent and verses run together, there
+are few pauses to find and the starts were about 10 seconds off: there the sketch only
+gets one near the verse.
 
 ### Listening where the recording is being played
 

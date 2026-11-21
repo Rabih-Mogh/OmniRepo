@@ -23,6 +23,8 @@ import app.recitation.core.Heard
 import app.recitation.core.Hearing
 import app.recitation.core.LiveAlignment
 import app.recitation.core.Recital
+import app.recitation.core.Sketch
+import app.recitation.speech.AudioDecoder
 import app.recitation.core.Timings
 import app.recitation.data.Library
 import app.recitation.data.QuranStore
@@ -46,7 +48,7 @@ import java.io.File
 import java.io.IOException
 
 /** What is being done to a recording right now. */
-enum class Step { MODEL_CHECK, MODEL_DOWNLOAD, ENGINE, DOWNLOAD, VERSES, LISTEN, ALIGN, RETRY }
+enum class Step { MODEL_CHECK, MODEL_DOWNLOAD, ENGINE, DOWNLOAD, VERSES, SCAN, LISTEN, ALIGN, RETRY }
 
 /** A recording's word timings while, and just after, it is listened to. */
 class Live(val trackId: String, val surah: Int, val timings: Timings)
@@ -172,13 +174,6 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             show(track, step, fraction)
         }
 
-        // The speech model: Accent Coach's copy, read where it is, or this app's own.
-        model.obtain(download = Settings.downloadModel(applicationContext)) { checking, p ->
-            report(if (checking) Step.MODEL_CHECK else Step.MODEL_DOWNLOAD, p, forModel = true)
-        }
-        // The engine that runs it isn't shipped inside the app: it is put on the phone once.
-        if (!engine.isReady) engine.obtain { report(Step.ENGINE, it, forModel = true) }
-
         val audio = library.audio(id) ?: run {
             report(Step.DOWNLOAD, 0f)
             val source = YouTube.audio(id)
@@ -195,6 +190,43 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         val verses = quran.surah(track.surah)
         val recital = Recital(track.surah, verses.map { verse -> verse.words.map { it.arabic } })
         val timingsFile = library.timings(id, track.surah)
+
+        // A quick look over the sound for where the reciter pauses says roughly where each verse
+        // begins, before anything has been listened to and without the speech model: enough to
+        // go to a verse, and to show which one is playing. The pauses are kept; which surah the
+        // recording is doesn't change them.
+        val sketch = if (track.ready) null else {
+            val kept = library.pauses(id)
+            val (pauses, total) = readPauses(kept) ?: run {
+                report(Step.SCAN, 0f)
+                val levels = AudioDecoder(audio).use { sound ->
+                    Sketch.levels(sound) {
+                        report(Step.SCAN, if (sound.total > 0) (sound.position.toFloat() / sound.total).coerceIn(0f, 1f) else 0f)
+                        wanted()
+                    }
+                } ?: throw Stopped()
+                (Sketch.pauses(levels) to levels.size * 20).also { writePauses(kept, it.first, it.second) }
+            }
+            recital.sketch(pauses, total)
+        }
+
+        // With the sound and the words on the phone it can already be played: words light up
+        // as far as the listening has got, and the listening carries on meanwhile.
+        if (library.track(id)?.ready != true) {
+            val soFar = if (timingsFile.exists()) Timings.decode(timingsFile.readText()) else Timings(emptyList(), 1f, heardMs = 0)
+            if (!timingsFile.exists() || (soFar.sketch == null && !soFar.complete)) {
+                timingsFile.writeText(soFar.sketched(sketch).encode())
+                _live.value = Live(id, track.surah, soFar.sketched(sketch))
+            }
+            library.update(id) { it.copy(playable = true) }
+        }
+
+        // The speech model: Accent Coach's copy, read where it is, or this app's own.
+        model.obtain(download = Settings.downloadModel(applicationContext)) { checking, p ->
+            report(if (checking) Step.MODEL_CHECK else Step.MODEL_DOWNLOAD, p, forModel = true)
+        }
+        // The engine that runs it isn't shipped inside the app: it is put on the phone once.
+        if (!engine.isReady) engine.obtain { report(Step.ENGINE, it, forModel = true) }
 
         // Only some verses are to be heard again: that stretch of the sound is listened to, its
         // words placed afresh, and put into the timings the recording already has.
@@ -220,13 +252,6 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             _live.value = Live(id, track.surah, timings)
             library.update(id) { it.copy(wanted = false, againFrom = -1, againTo = -1, error = null) }
             return
-        }
-
-        // With the sound and the words on the phone it can already be played: words light up
-        // as far as the listening has got, and the listening carries on meanwhile.
-        if (library.track(id)?.ready != true) {
-            if (!timingsFile.exists()) timingsFile.writeText(Timings(emptyList(), 1f, heardMs = 0).encode())
-            library.update(id) { it.copy(playable = true) }
         }
 
         // What the model heard is kept, so choosing another surah for a recording doesn't mean listening again.
@@ -270,9 +295,9 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                         }
                     }
                 }
-                _live.value = Live(id, track.surah, shown)
+                _live.value = Live(id, track.surah, shown.sketched(sketch))
                 // Kept on the phone too, every half minute of recitation, in case the app is closed meanwhile.
-                if (published++ % 3 == 0) timingsFile.writeText(soFar.encode())
+                if (published++ % 3 == 0) timingsFile.writeText(soFar.sketched(sketch).encode())
             }
             publish()
             var last = System.nanoTime()
@@ -298,7 +323,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                     } else {
                         // A new stretch begins where the reader is, unless they are still in the one being heard.
                         if (outOfTurn < 0 || at < outOfTurn || !(outOfTurn until at).all { it in done }) outOfTurn = at
-                        // On from there, keeping up to a minute ahead of the reader; with that in hand, back to the pieces in order.
+                        // On from there, for as long as the reader stays: only with five minutes in hand is there time for the pieces in order.
                         (at..at + AHEAD_PIECES).firstOrNull { it !in done }
                     }
                 },
@@ -316,6 +341,25 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             done.delete()
         }
         library.update(id) { it.copy(ready = true, playable = true, wanted = false, clarity = timings.clarity, error = null) }
+    }
+
+    /** The pauses kept in [file], and how long the recording is in ms; null if there are none kept. */
+    private fun readPauses(file: File): Pair<List<IntRange>, Int>? {
+        if (!file.exists()) return null
+        val lines = file.readLines()
+        val total = lines.firstOrNull()?.toIntOrNull() ?: return null
+        return lines.drop(1).mapNotNull { line ->
+            val from = line.substringBefore('-').toIntOrNull() ?: return@mapNotNull null
+            val until = line.substringAfter('-').toIntOrNull() ?: return@mapNotNull null
+            from until until
+        } to total
+    }
+
+    private fun writePauses(file: File, pauses: List<IntRange>, total: Int) {
+        file.writeText(buildString {
+            append(total).append('\n')
+            for (pause in pauses) append(pause.first).append('-').append(pause.last + 1).append('\n')
+        })
     }
 
     private fun vocab(): List<String> {
@@ -380,8 +424,8 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         /** Where a recording is being played: the listening goes there when it hasn't got that far. */
         @Volatile var playing: Playing? = null
 
-        /** How many ten-second pieces ahead of where it is being played a recording is listened to before the rest gets its turn. */
-        private const val AHEAD_PIECES = 6
+        /** How many ten-second pieces ahead of where it is being played a recording is listened to before the rest gets its turn: the reader comes first. */
+        private const val AHEAD_PIECES = 30
 
         private val _modelProblem = MutableStateFlow<ModelProblem?>(null)
 
@@ -394,6 +438,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             Step.ENGINE -> R.string.step_engine
             Step.DOWNLOAD -> R.string.step_download
             Step.VERSES -> R.string.step_verses
+            Step.SCAN -> R.string.step_scan
             Step.LISTEN -> R.string.step_listen
             Step.ALIGN -> R.string.step_align
             Step.RETRY -> R.string.step_retry

@@ -94,7 +94,7 @@ object Pointer {
 
         var w = 0
         val grouped = timings.verses.map { verse -> List(verse.size) { refined[w++] } }
-        return Refined(Timings(grouped, timings.clarity, timings.heardMs, timings.repeats, timings.ahead), stops)
+        return Refined(Timings(grouped, timings.clarity, timings.heardMs, timings.repeats, timings.ahead, timings.sketch), stops)
     }
 
     /** A wait this long after a word's last sound is a stop, when that sound is a short one. */

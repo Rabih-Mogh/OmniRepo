@@ -58,6 +58,9 @@ class Library private constructor(context: Context) {
     /** What the model heard in a recording, kept until its timings are settled. */
     fun heard(id: String): File = File(heardDir.apply { mkdirs() }, "$id.rows")
 
+    /** Where the reciter pauses in a recording, found by a quick look over its sound. */
+    fun pauses(id: String): File = File(heardDir.apply { mkdirs() }, "$id.pauses")
+
     fun track(id: String): Track? = _playlists.value.firstNotNullOfOrNull { p -> p.tracks.firstOrNull { it.id == id } }
 
     @Synchronized

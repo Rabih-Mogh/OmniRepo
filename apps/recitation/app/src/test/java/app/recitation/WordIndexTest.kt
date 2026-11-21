@@ -57,4 +57,16 @@ class WordIndexTest {
         assertEquals(listOf(0, 2, -1, -1, 4, 5, -1), listOf(500, 2_400, 30_000, 60_500, 61_500, 64_000, 71_000).map(index::at))
         assertEquals(1, index.verse(index.at(64_000)))
     }
+
+    @Test
+    fun aVerseNotHeardYetCanStillBeGoneToAndFollowed() {
+        // Only the first verse is placed; a quick look over the recording says roughly where the second begins.
+        val index = WordIndex(Timings(listOf(once[0]), 1f, heardMs = 2_500, sketch = intArrayOf(0, 40_000)), listOf(3, 3))
+        assertEquals(0, index.startOfVerse(0))
+        assertEquals(40_000, index.startOfVerse(1))
+        // No word lights up there, but the verse being played is known.
+        assertEquals(-1, index.at(45_000))
+        assertEquals(1, index.verseAt(45_000))
+        assertEquals(0, index.verseAt(20_000))
+    }
 }

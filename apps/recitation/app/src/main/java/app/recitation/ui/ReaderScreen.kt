@@ -224,8 +224,24 @@ internal class WordIndex(timings: Timings, sizes: List<Int>) {
 
     fun verse(word: Int): Int = verseOf.getOrElse(word) { -1 }
 
-    /** When [verse] starts, or null if the listening hasn't reached it yet. */
-    fun startOfVerse(verse: Int): Int? = firstOfVerse.getOrNull(verse)?.let(starts::getOrNull)
+    // When each verse starts: by its first word where that is placed, in order or out of
+    // turn; otherwise roughly, by the quick look taken over the recording; -1 if not at all.
+    private val verseStarts = IntArray(firstOfVerse.size) { v ->
+        val word = firstOfVerse[v]
+        starts.getOrNull(word)
+            ?: timings.repeats.firstNotNullOfOrNull { again -> again.words.getOrNull(word - again.first)?.startMs?.takeIf { word >= starts.size } }
+            ?: timings.sketch?.getOrNull(v) ?: -1
+    }
+
+    /** When [verse] starts, exactly or roughly; null if nothing says. */
+    fun startOfVerse(verse: Int): Int? = verseStarts.getOrNull(verse)?.takeIf { it >= 0 }
+
+    /** The verse being recited at [ms], going by when the verses start: for where no word is placed. -1 if nothing says. */
+    fun verseAt(ms: Int): Int {
+        var found = -1
+        for (v in verseStarts.indices) if (verseStarts[v] in 0..ms) found = v
+        return found
+    }
 }
 
 /**
@@ -262,6 +278,8 @@ fun ReaderContent(
     onAppearance: (Appearance) -> Unit = {},
     tajweed: Boolean = true,
     onTajweed: (Boolean) -> Unit = {},
+    speed: Float = 0f,
+    waiting: Boolean = false,
 ) {
     val surah = SURAHS[reading.surah - 1]
     val arabic = LocalConfiguration.current.locales[0].language == "ar"
@@ -272,7 +290,9 @@ fun ReaderContent(
     val current by remember(index) { derivedStateOf { index?.at(position()) ?: -1 } }
     // A passage said again has timings of its own: which saying of the word this is.
     val said by remember(index) { derivedStateOf { index?.said(position()) ?: -1 } }
-    val currentVerse = index?.verse(current) ?: -1
+    // Where no word is placed yet, the verse being played is still known, roughly.
+    val unheardVerse by remember(index) { derivedStateOf { if (index == null || index.at(position()) >= 0) -1 else index.verseAt(position()) } }
+    val currentVerse = if (current >= 0) index?.verse(current) ?: -1 else unheardVerse
     val above = 1 // the surah's title page comes before the first verse in the list
     // Opened at a verse (from a pin or a collection): that verse is at the top of the page.
     val list = rememberLazyListState(initialFirstVisibleItemIndex = startVerse?.let { it + above } ?: 0)
@@ -341,6 +361,11 @@ fun ReaderContent(
                 }
             }
         }
+    }
+
+    // With no word to follow, the page goes to the verse being played.
+    LaunchedEffect(follow, unheardVerse) {
+        if (follow && unheardVerse >= 0) list.animateScrollToItem(unheardVerse + above)
     }
 
     // Whether the word being recited is above where the page now is: the way the follow button points.
@@ -429,6 +454,7 @@ fun ReaderContent(
                         } else PlayerBar(
                             // Still being listened to: say how far the words can light up.
                             placedUntil = reading.timings?.takeIf { !it.complete }?.heardMs, listening = listening,
+                    heard = reading.timings?.takeIf { !it.complete }?.let { listOfNotNull(0..it.heardMs, it.ahead) }, speed = speed, waiting = waiting,
                             range = range, verses = reading.verses.size, onRange = onRange,
                             playing = playing, position = position, duration = duration, onPlayPause = onPlayPause,
                             onSeek = { onSeek(it); follow = true },
@@ -609,6 +635,7 @@ private fun Verses(
                     current = if (currentVerse == v) current - first else -1,
                     now = if (currentVerse == v) now else null,
                     nowEnds = nowEnds,
+                    playingUnheard = current < 0 && currentVerse == v,
                     position = position,
                     showMeanings = showMeanings,
                     textScale = textScale,
@@ -641,6 +668,7 @@ private fun VerseBlock(
     current: Int,
     now: WordTiming?,
     nowEnds: Int,
+    playingUnheard: Boolean,
     position: () -> Int,
     showMeanings: Boolean,
     textScale: Float,
@@ -670,6 +698,8 @@ private fun VerseBlock(
                 StarNumber(
                     number,
                     size = STAR,
+                    // The verse being played where no word is placed yet: its star is lit.
+                    ground = if (playingUnheard) LocalHighlight.current.faded(0.45f, MaterialTheme.colorScheme.background) else MaterialTheme.colorScheme.background,
                     modifier = Modifier.padding(horizontal = 4.dp).clip(CircleShape).clickable(onClickLabel = stringResource(R.string.marks_open), onClick = onMark)
                         .semantics { contentDescription = label },
                 )
@@ -1053,6 +1083,9 @@ private fun WordTile(
 private fun PlayerBar(
     placedUntil: Int?,
     listening: Boolean,
+    heard: List<IntRange>?,
+    speed: Float,
+    waiting: Boolean,
     range: IntRange?,
     verses: Int,
     onRange: (IntRange) -> Unit,
@@ -1075,17 +1108,24 @@ private fun PlayerBar(
     }
     BottomBand {
         Column(Modifier.padding(horizontal = 12.dp).padding(top = 2.dp, bottom = 2.dp)) {
-            if (placedUntil != null) {
-                Text(
-                    when {
-                        listening && placedUntil > 0 -> stringResource(R.string.listening_ahead, clock(placedUntil))
-                        listening -> stringResource(R.string.listening_not_yet)
-                        placedUntil > 0 -> stringResource(R.string.listening_stopped, clock(placedUntil))
-                        else -> stringResource(R.string.listening_stopped_none)
-                    },
-                    Modifier.fillMaxWidth().padding(top = 4.dp), textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodySmall, color = band.quiet,
-                )
+            if (placedUntil != null || waiting) {
+                // The line below is grey where the recording hasn't been heard yet. Above it: how
+                // fast the listening is going, or that it has stopped.
+                val note = when {
+                    // A verse that hasn't been heard was asked for: the recitation waits for the listening to get there.
+                    waiting -> stringResource(R.string.listening_first)
+                    listening && speed > 0f -> stringResource(R.string.listening_at_speed, String.format(java.util.Locale.getDefault(), "%.1f", speed))
+                    listening -> null
+                    placedUntil == null -> null
+                    placedUntil > 0 -> stringResource(R.string.listening_stopped, clock(placedUntil))
+                    else -> stringResource(R.string.listening_stopped_none)
+                }
+                if (note != null) {
+                    Text(
+                        note, Modifier.fillMaxWidth().padding(top = 4.dp), textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodySmall, color = band.quiet,
+                    )
+                }
             }
             // The time line runs left to right in every language, as on other players: a thin
             // line with a small bead on it.
@@ -1107,10 +1147,21 @@ private fun PlayerBar(
                         colors = line,
                         thumb = { Box(Modifier.size(12.dp).background(band.content, CircleShape)) },
                         track = { state ->
-                            SliderDefaults.Track(
-                                state, Modifier.height(3.dp), colors = line,
-                                drawStopIndicator = null, thumbTrackGapSize = 0.dp, trackInsideCornerSize = 0.dp,
-                            )
+                            // Grey where the recording hasn't been heard yet; the band's colour where it
+                            // has, faint ahead of the bead and full behind it.
+                            val ready = band.content.faded(0.5f, band.background)
+                            Canvas(Modifier.fillMaxWidth().height(3.dp)) {
+                                val played = state.value.coerceIn(0f, 1f) * size.width
+                                drawRect(UNHEARD, size = size)
+                                val ranges = heard?.takeIf { duration > 0 } ?: listOf(0..maxOf(duration, 1))
+                                for (range in ranges) {
+                                    val from = (range.first.toFloat() / maxOf(duration, 1)).coerceIn(0f, 1f) * size.width
+                                    val to = (range.last.toFloat() / maxOf(duration, 1)).coerceIn(0f, 1f) * size.width
+                                    if (to <= from) continue
+                                    drawRect(ready, Offset(from, 0f), Size(to - from, size.height))
+                                    if (played > from) drawRect(band.content, Offset(from, 0f), Size(minOf(to, played) - from, size.height))
+                                }
+                            }
                         },
                     )
                     Text(clock(duration), style = MaterialTheme.typography.labelMedium, color = band.quiet)
@@ -1212,6 +1263,9 @@ private fun TitlePage(surah: Surah, minHeight: Dp, basmalaSize: TextUnit) {
         }
     }
 }
+
+/** The play bar's line where the recording hasn't been listened to yet. */
+private val UNHEARD = Color(0xFF8C8C8C).copy(alpha = 0.5f)
 
 /** The sizes the verses can be drawn at, as multiples of the usual size. */
 val TEXT_SCALES = 0.7f..2.0f

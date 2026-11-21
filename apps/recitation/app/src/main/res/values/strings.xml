@@ -47,7 +47,10 @@
     <string name="step_model_download">Downloading the speech model (318 MB)… %1$d%%</string>
     <string name="step_download">Downloading the sound… %1$d%%</string>
     <string name="step_verses">Fetching the verses…</string>
+    <string name="listening_first">Listening to this verse first…</string>
+    <string name="listening_at_speed">Listening · %1$s× as fast as it plays</string>
     <string name="listening_speed">%1$s× as fast as it plays</string>
+    <string name="step_scan">Finding where the verses begin… %1$d%%</string>
     <string name="step_listen">Listening to the recitation… %1$d%%</string>
     <string name="step_align">Matching the words to the recitation…</string>
     <string name="step_retry">Connection problem. Trying again…</string>

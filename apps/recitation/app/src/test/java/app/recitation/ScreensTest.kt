@@ -564,10 +564,10 @@ class ScreensTest {
     }
 
     @Composable
-    private fun HalfHeardReader(positionMs: Int, listening: Boolean = true, onSeek: (Int) -> Unit = {}) = ReaderContent(
-        reading = Reading(1, fatihah, track.copy(ready = false, playable = true, wanted = listening), timingsSoFar(words = 8, heardMs = 8_000)),
+    private fun HalfHeardReader(positionMs: Int, listening: Boolean = true, speed: Float = 0f, sketch: IntArray? = null, onSeek: (Int) -> Unit = {}) = ReaderContent(
+        reading = Reading(1, fatihah, track.copy(ready = false, playable = true, wanted = listening), timingsSoFar(words = 8, heardMs = 8_000).sketched(sketch)),
         showMeanings = true, playing = true, position = { positionMs }, duration = 74_000,
-        onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = onSeek, listening = listening,
+        onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = onSeek, listening = listening, speed = speed,
     )
 
     @Test
@@ -575,8 +575,10 @@ class ScreensTest {
     fun aRecordingPlaysWhileItIsStillListenedTo() {
         // The first two verses have been placed; the recitation is in the second.
         var sought: Int? = null
-        show("en-day-reader-listening") { HalfHeardReader(6_500, onSeek = { sought = it }) }
-        compose.onNodeWithText("Still listening to this recording: words light up as far as 0:08.").assertIsDisplayed()
+        show("en-day-reader-listening") { HalfHeardReader(6_500, speed = 1.34f, onSeek = { sought = it }) }
+        // How fast the listening is going; how far it has got is the line's colour, not a sentence.
+        compose.onNodeWithText("Listening · 1.3× as fast as it plays").assertIsDisplayed()
+        compose.onNodeWithText("Still listening to this recording: words light up as far as 0:08.").assertDoesNotExist()
         // A word that has a place can be jumped to; one the listening hasn't reached can't yet.
         compose.onNodeWithText("ٱلْحَمْدُ", useUnmergedTree = true).performClick()
         assertTrue(sought == 4_000)
@@ -591,7 +593,21 @@ class ScreensTest {
     fun pastWhatHasBeenHeardNoWordIsLit() {
         // The recitation has run ahead of the listening: the words are there to read, none framed.
         show("en-night-reader-ahead-of-listening") { HalfHeardReader(20_000) }
-        compose.onNodeWithText("Still listening to this recording: words light up as far as 0:08.").assertIsDisplayed()
+        compose.onNodeWithText("Still listening to this recording: words light up as far as 0:08.").assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
+    fun aVerseNotHeardYetCanBeGoneToByTheQuickLookOverTheRecording() {
+        // Two verses placed, as far as 8 s; a quick look over the recording says roughly where all five begin.
+        var sought: Int? = null
+        val sketch = intArrayOf(0, 4_000, 9_000, 14_000, 21_000)
+        show("en-night-reader-unheard-verse") { HalfHeardReader(10_000, sketch = sketch, onSeek = { sought = it }) }
+        // The recitation is in the third verse, which hasn't been heard: the verses either side are still within reach.
+        compose.onNodeWithContentDescription("Next verse").performClick()
+        assertTrue("went to $sought", sought == 14_000)
+        compose.onNodeWithContentDescription("Previous verse").performClick()
+        assertTrue("went to $sought", sought == 4_000)
     }
 
     @Test

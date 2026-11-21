@@ -60,6 +60,33 @@ class Recital(surah: Int, verses: List<List<String>>, withOpening: Boolean = tru
         return Timings(once.verses, once.clarity, once.heardMs, repeats)
     }
 
+    /**
+     * Roughly where each verse begins in a recording, in ms, before any of it has been
+     * listened to: from where the reciter pauses and how long the recording is (see [Sketch]).
+     */
+    fun sketch(pauses: List<IntRange>, totalMs: Int): IntArray {
+        val sounds = IntArray(verseSizes.size)
+        var verse = 0
+        var left = verseSizes.getOrElse(0) { 0 }
+        var word = -1
+        for (w in wordOf) {
+            if (w < 0) continue
+            if (w != word) {
+                word = w
+                while (left == 0 && verse < verseSizes.size - 1) left = verseSizes[++verse]
+                left--
+            }
+            sounds[verse]++
+        }
+        // The basmala a surah opens with is taken with its first verse, which so begins the
+        // recording. Whether the reciter also says the isti'adha can't be told without listening.
+        if (sounds.isNotEmpty() && wordOf.any { it < 0 }) sounds[0] += basmalaSounds
+        return Sketch.starts(sounds, pauses, totalMs)
+    }
+
+    private val basmalaSounds: Int by lazy { if (wordOf.count { it < 0 } > istiadhaSounds) wordOf.count { it < 0 } - istiadhaSounds else 0 }
+    private val istiadhaSounds: Int by lazy { Phonemizer.verse(ISTIADHA.split(' ')).sumOf { it.size } }
+
     /** Words numbered in order, the opening formulas included, for telling where one ends. */
     private val ordinal: IntArray by lazy {
         IntArray(wordOf.size).also { for (i in 1 until wordOf.size) it[i] = it[i - 1] + if (wordOf[i] != wordOf[i - 1]) 1 else 0 }
@@ -262,6 +289,11 @@ class Timings(
      * out of turn because it is being played, beyond [heardMs]. Its words are among [repeats].
      */
     val ahead: IntRange? = null,
+    /**
+     * Roughly where each verse begins, in ms, from a quick look over the recording before
+     * it was listened to (see [Sketch]): for going to verses whose words aren't placed yet.
+     */
+    val sketch: IntArray? = null,
 ) {
 
     /** False while the recording is still being listened to: [verses] then stops at the last word placed. */
@@ -269,6 +301,12 @@ class Timings(
 
     /** Whether the recording is this surah. Not judged until all of it has been heard. */
     val matches: Boolean get() = !complete || clarity >= GOOD_ENOUGH
+
+    /** When verse [verse] (counting from 0) begins: by its first word if that is placed, or else roughly, by the sketch. */
+    fun startOfVerse(verse: Int): Int? = verses.getOrNull(verse)?.firstOrNull()?.startMs ?: sketch?.getOrNull(verse)
+
+    /** These timings with [sketch] to go by where words aren't placed. */
+    fun sketched(sketch: IntArray?): Timings = if (sketch == null) this else Timings(verses, clarity, heardMs, repeats, ahead, sketch)
 
     /**
      * When verses [first] to [last] (counting from 0) are recited, with [margin] ms to spare
@@ -294,7 +332,7 @@ class Timings(
         val replaced = verses.subList(first, first + count).sumOf { it.size }
         val kept = repeats.filter { it.first + it.words.size <= before || it.first >= before + replaced }
         val again = part.repeats.map { Repeat(it.first + before, it.words.map(::moved)) }
-        return Timings(verses.take(first) + part.verses.take(count).map { it.map(::moved) } + verses.drop(first + count), clarity, heardMs, kept + again)
+        return Timings(verses.take(first) + part.verses.take(count).map { it.map(::moved) } + verses.drop(first + count), clarity, heardMs, kept + again, ahead, sketch)
     }
 
     /** The verse (counting from 0) being recited at [ms]: the last one whose first word has started. */
@@ -311,6 +349,7 @@ class Timings(
      * One line for the clarity and how far the listening has got (-1 once it is done), then
      * one per verse: words apart by spaces, numbers by commas. Then one line for each
      * passage said again: "R", the number of its first word, and its words the same way.
+     * And, while there is one, a line for the sketch: "S" and each verse's rough start.
      */
     fun encode(): String = buildString {
         append(clarity).append(' ').append(heardMs).append('\n')
@@ -323,6 +362,7 @@ class Timings(
             repeat.words.joinTo(this, " ") { w -> (listOf(w.startMs) + w.letters.toList()).joinToString(",") }
             append('\n')
         }
+        sketch?.let { append("S ").append(it.joinToString(",")).append('\n') }
     }
 
     companion object {
@@ -337,13 +377,14 @@ class Timings(
                 val numbers = word.split(',').map(String::toInt)
                 WordTiming(numbers[0], numbers.drop(1).toIntArray())
             }
-            val (again, once) = lines.drop(1).partition { it.startsWith("R ") }
+            val sketch = lines.firstOrNull { it.startsWith("S ") }?.removePrefix("S ")?.split(',')?.mapNotNull(String::toIntOrNull)?.toIntArray()
+            val (again, once) = lines.drop(1).filter { !it.startsWith("S ") }.partition { it.startsWith("R ") }
             val repeats = again.map { line ->
                 val rest = line.removePrefix("R ")
                 Repeat(rest.substringBefore(' ').toInt(), words(rest.substringAfter(' ', "")))
             }
             val head = lines[0].split(' ')
-            return Timings(once.map(::words), head[0].toFloat(), head.getOrNull(1)?.toInt() ?: COMPLETE, repeats)
+            return Timings(once.map(::words), head[0].toFloat(), head.getOrNull(1)?.toInt() ?: COMPLETE, repeats, sketch = sketch)
         }
     }
 }

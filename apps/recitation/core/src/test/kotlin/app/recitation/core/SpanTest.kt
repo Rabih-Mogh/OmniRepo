@@ -68,4 +68,40 @@ class SpanTest {
         assertTrue(Recital(112, words, withOpening = false).phones.size < Recital(112, words).phones.size)
         assertTrue(Recital(112, words, withOpening = false).phones.none { it.optional && it == Recital(112, words).phones.first() })
     }
+
+    // ---- a quick look over a recording, for where the verses begin
+
+    /** Loud for [speech] ms, then quiet for [pause] ms, over and over: one entry of loudness every 20 ms. */
+    private fun levels(vararg spans: Pair<Int, Int>): FloatArray =
+        spans.flatMap { (speech, pause) -> List(speech / 20) { 0.2f } + List(pause / 20) { 0.001f } }.toFloatArray()
+
+    @Test
+    fun `pauses are found from how loud the recording is, short dips left out`() {
+        val pauses = Sketch.pauses(levels(4000 to 800, 3000 to 120, 2000 to 1000))
+        assertEquals(listOf(4000 until 4800, 9920 until 10920), pauses)
+    }
+
+    @Test
+    fun `each verse begins after the pause that suits its length`() {
+        // Three verses of 4 s, 8 s and 4 s, a pause after each, and a breath in the middle of the long one.
+        val heard = levels(4000 to 900, 4000 to 400, 4000 to 900, 4000 to 500)
+        val starts = Sketch.starts(intArrayOf(40, 80, 40), Sketch.pauses(heard), heard.size * 20)
+        assertEquals(listOf(0, 4900, 14200), starts.toList())
+    }
+
+    @Test
+    fun `where the reciter never pauses the verses are placed by their lengths`() {
+        val starts = Sketch.starts(intArrayOf(10, 30, 10), emptyList(), 50_000)
+        assertEquals(listOf(0, 10_000, 40_000), starts.toList())
+    }
+
+    @Test
+    fun `a verse not placed yet is gone to by the sketch, and the sketch is kept with the timings`() {
+        val soFar = Timings(listOf(listOf(WordTiming(300, intArrayOf(3, 300)))), 1f, heardMs = 5_000, sketch = intArrayOf(0, 12_000, 30_000))
+        val back = Timings.decode(soFar.encode())
+        assertEquals(listOf(0, 12_000, 30_000), back.sketch!!.toList())
+        // The first verse by its word, the others by the sketch.
+        assertEquals(listOf(300, 12_000, 30_000, null), (0..3).map(back::startOfVerse))
+        assertEquals(5_000, back.heardMs)
+    }
 }

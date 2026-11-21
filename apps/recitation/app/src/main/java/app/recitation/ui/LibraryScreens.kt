@@ -159,8 +159,9 @@ fun HomeContent(
                 if (lastRead != null) item { Box(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) { LastReadCard(lastRead, onLastRead) } }
                 items(SURAHS, key = { it.number }) { surah ->
                     SurahRow(surah, recited = surah.number in recited, onClick = { onSurah(surah.number) })
-                    // A fine gold line from under the names to the far edge; the numbers stand clear of it.
-                    HorizontalDivider(Modifier.padding(start = 68.dp, end = 16.dp), thickness = 0.6.dp, color = LocalHighlight.current.copy(alpha = 0.6f))
+                    // A gold line between surahs, the same margin at either end. A whole dp thick: a
+                    // thinner one lands on the screen's pixels unevenly, and the lines come out unlike.
+                    HorizontalDivider(Modifier.padding(horizontal = 20.dp), thickness = 1.dp, color = LocalHighlight.current.copy(alpha = 0.45f))
                 }
             }
         } else if (tab == 2) {
@@ -289,7 +290,8 @@ private fun SurahRow(surah: Surah, recited: Boolean, onClick: () -> Unit) {
     val arabic = LocalConfiguration.current.locales[0].language == "ar"
     val verses = pluralStringResource(R.plurals.verses, surah.verses, surah.verses)
     val colors = MaterialTheme.colorScheme
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+    // Room to breathe: the rows are the page, so each gets a comfortable height.
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 15.dp), verticalAlignment = Alignment.CenterVertically) {
         RuledNumber(surah.number, Modifier.width(44.dp))
         Spacer(Modifier.width(12.dp))
         if (arabic) {
@@ -298,15 +300,13 @@ private fun SurahRow(surah: Surah, recited: Boolean, onClick: () -> Unit) {
                 SurahTitle(surah, 30.sp, colors.primary)
                 Text(verses, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
-            if (recited) Icon(AppIcons.Play, stringResource(R.string.recitation_ready), Modifier.padding(horizontal = 8.dp).size(20.dp), tint = colors.primary)
             Text(surah.latin, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
         } else {
             Column(Modifier.weight(1f)) {
                 Text(surah.latin, style = MaterialTheme.typography.titleMedium)
                 Text("${surah.meaning} · $verses", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
-            if (recited) Icon(AppIcons.Play, stringResource(R.string.recitation_ready), Modifier.padding(horizontal = 8.dp).size(20.dp), tint = colors.primary)
-            SurahTitle(surah, 30.sp, colors.primary)
+            SurahTitle(surah, 32.sp, colors.primary)
         }
     }
 }
@@ -542,7 +542,8 @@ private fun RecordingRow(
             val mismatch = track.ready && track.clarity < app.recitation.core.Timings.GOOD_ENOUGH
             val note = when {
                 track.error != null -> track.error
-                progress != null -> stringResource(PrepareWorker.stepLabel(progress.step), (progress.fraction * 100).toInt())
+                progress != null -> stringResource(PrepareWorker.stepLabel(progress.step), (progress.fraction * 100).toInt()) +
+                    if (progress.speed > 0f) " · " + stringResource(R.string.listening_speed, String.format(Locale.getDefault(), "%.1f", progress.speed)) else ""
                 // Say what the queue is really waiting for, so it never looks stuck.
                 track.wanted -> when {
                     status == Status.Paused -> stringResource(R.string.paused)
