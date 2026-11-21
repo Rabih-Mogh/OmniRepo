@@ -200,7 +200,7 @@ class ScreensTest {
 
     @Composable
     private fun Home(tab: Int, playlists: List<Playlist> = emptyList(), status: Status? = null) =
-        HomeContent(tab, {}, playlists, status, StatusActions(), recited = setOf(1), onSurah = {}, onOpen = {}, onAdd = {})
+        HomeContent(tab, {}, playlists, status, StatusActions(), recited = setOf(1, 3, 4, 8), onSurah = {}, onOpen = {}, onAdd = {})
 
     private fun startsFromTheRight(text: String): Boolean {
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
@@ -743,6 +743,67 @@ class ScreensTest {
         VerseCollection(Marks.LATER, "", listOf(VerseRef(1, 5), VerseRef(2, 255))),
         VerseCollection("c1", "Verses of mercy", listOf(VerseRef(1, 3))),
     )
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun eachVerseHasItsButtonsBesideItsNumber() {
+        var sought: Int? = null
+        var started = 0
+        var marking: Int? = null
+        var chosen: IntRange? = null
+        show("en-day-reader-verse-buttons") {
+            ReaderContent(
+                reading = Reading(1, fatihah, track, timings(fatihah)), showMeanings = true, playing = false,
+                position = { 500 }, duration = 74_000, onBack = {}, onMeanings = {}, onPlayPause = { started++ }, onSeek = { sought = it },
+                marks = VerseMarks(mapOf(1 to listOf("Reading")), setOf(2)), onMark = { marking = it },
+                range = 0..6, onRange = { chosen = it },
+            )
+        }
+        // Recite from the third verse: the recitation goes to its first word (the ninth, a second a word) and starts.
+        compose.onAllNodesWithContentDescription("Recite from this verse")[2].performClick()
+        assertTrue("sought $sought, started $started", sought == 8_000 && started == 1)
+        // The bookmark opens the verse's pins and collections; it says so when the verse is already kept.
+        compose.onAllNodesWithContentDescription("Pins and collections")[0].performClick()
+        assertTrue(marking == 0)
+        compose.onNodeWithContentDescription("Kept in a collection").assertIsDisplayed()
+        // The rest is under the third button.
+        compose.onNodeWithContentDescription("More for verse 2").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Copy verse").assertIsDisplayed()
+        compose.onNodeWithText("Share verse").assertIsDisplayed()
+        compose.onNodeWithText("Show translation").assertIsDisplayed()
+        compose.onNodeWithText("Recite this verse only").performClick()
+        assertTrue("chosen $chosen, sought $sought", chosen == 1..1 && sought == 4_000 && started == 2)
+    }
+
+    @Test
+    @Config(qualifiers = "ar-rLB-w411dp-h891dp-night-420dpi")
+    fun theVerseButtonsInArabic() {
+        show("ar-night-reader-verse-buttons") {
+            ReaderContent(
+                reading = Reading(1, fatihah, track, timings(fatihah)), showMeanings = false, playing = false,
+                position = { 500 }, duration = 74_000, onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {}, range = 0..6,
+            )
+        }
+        compose.onNodeWithContentDescription("المزيد للآية ٢").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("نسخ الآية").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun withNoRecordingAVerseHasNoReciteButton() {
+        compose.setContent {
+            RecitationTheme {
+                ReaderContent(
+                    reading = Reading(1, fatihah), showMeanings = true, playing = false, position = { 0 }, duration = 0,
+                    onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
+                )
+            }
+        }
+        compose.onAllNodesWithContentDescription("Recite from this verse").assertCountEquals(0)
+        compose.onAllNodesWithContentDescription("Pins and collections")[0].assertIsDisplayed()
+    }
 
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
@@ -1471,6 +1532,18 @@ class ScreensTest {
         val latin = compose.onNodeWithText("Al-Baqarah", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         val number = compose.onNodeWithText("2", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         assertTrue("number $number, Arabic $arabic, Latin $latin", number.right <= arabic.left && arabic.left < latin.left)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun surahsWithARecitationDownloadedAreToldApart() {
+        // Four of the first eight have one; the bars of sound are under their numbers.
+        compose.setContent { CompositionLocalProvider(LocalSurahNames provides surahNames) { RecitationTheme { Home(tab = 0) } } }
+        compose.waitForIdle()
+        compose.onAllNodesWithContentDescription("Has a recitation on the phone", useUnmergedTree = true).assertCountEquals(4)
+        // The number is still there to read, and the others keep theirs plain.
+        compose.onNodeWithText("3", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithText("2", useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test

@@ -144,6 +144,14 @@
     <string name="script_indopak">إندوباك (شبه القارة الهندية)</string>
     <string name="script_everyday">الرسم الإملائي</string>
     <string name="marks_open">الدبابيس والمجموعات</string>
+    <string name="has_recitation">لها تلاوة على الهاتف</string>
+    <string name="verse_play_from">التلاوة من هذه الآية</string>
+    <string name="verse_more">المزيد للآية %1$d</string>
+    <string name="verse_only">تلاوة هذه الآية فقط</string>
+    <string name="verse_translation_show">إظهار الترجمة</string>
+    <string name="verse_translation_hide">إخفاء الترجمة</string>
+    <string name="verse_copy">نسخ الآية</string>
+    <string name="verse_share">مشاركة الآية</string>
     <string name="saved_mark">محفوظة في مجموعة</string>
     <string name="verse_of">%1$s · الآية %2$d</string>
     <string name="pins_title">الدبابيس</string>

@@ -20,7 +20,9 @@ quiet: they take the page's own colour, with a thin gold rule between them and t
 and the player sits on the bottom one. Surah names are written in
 calligraphy. In the list of surahs each number is plain gold with a small gold diamond
 under it, the rows are tall, and a gold line with the same margin at either end parts
-them; verse numbers sit in an eight-point
+them. A surah that has a recitation downloaded (at least one recording whose sound is on
+the phone) is told apart under its number: small gold bars of sound, where the others
+have the diamond. Verse numbers sit in an eight-point
 star. A verse's words are laid out as blocks that share the verse's whole width between
 them, touching one another and stopping a small margin short of the screen's edges; the block of the word being recited, its meaning included,
 is filled with a tint and has no frame.
@@ -226,6 +228,15 @@ the heavy letters that are always heavy (خ ص ض غ ط ق ظ), and the few one-
 ### Pins and collections
 
 Hold a verse, or tap its number, to open its pins and collections.
+
+Beside each verse's number, on its rule, are three small buttons. The triangle recites
+from that verse: the recitation goes to its start and plays (it is there only when the
+surah has a recording and the verse's start is known, exactly or by the quick look; if
+the verse lies outside the verses chosen to be recited, the whole surah is chosen again).
+The bookmark opens the verse's pins and collections, and is filled once the verse is kept
+in a collection. The three dots open the rest: recite this verse only, show or hide its
+translation, copy the verse, and share it. Copied or shared, a verse is its Arabic text,
+its translation under it, and where it is from.
 
 - **A pin** marks a place reached. It has a name ("Reading", "Memorising"; left empty it
   is called "Pin 1", "Pin 2", …) and sits on exactly one verse: putting it on another

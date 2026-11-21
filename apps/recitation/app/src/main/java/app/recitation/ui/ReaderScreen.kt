@@ -66,8 +66,15 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.content.Intent
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import app.recitation.data.VerseRef
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -553,7 +560,19 @@ fun ReaderContent(
                             color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodyMedium,
                         )
                     }
-                    Verses(reading, index, list, current, currentVerse, index?.timing(said), index?.ends(said) ?: Int.MAX_VALUE, position, showMeanings, textScale, hand, tajweed, marks, onMark, place, { fade.value }, { drift.value }, wash, translated, { translated = it; taps++ }) { ms ->
+                    Verses(reading, index, list, current, currentVerse, index?.timing(said), index?.ends(said) ?: Int.MAX_VALUE, position, showMeanings, textScale, hand, tajweed, marks, onMark, place, { fade.value }, { drift.value }, wash, translated, { translated = it; taps++ },
+                        // Reciting from a verse outside the verses chosen to be recited takes the whole surah again.
+                        onPlayFrom = { verse ->
+                            if (range != null && verse !in range) onRange(0..reading.verses.lastIndex)
+                            seekToVerse(verse)
+                            if (!playing) onPlayPause()
+                        },
+                        onOnly = if (range == null) null else { verse: Int ->
+                            onRange(verse..verse)
+                            seekToVerse(verse)
+                            if (!playing) onPlayPause()
+                        },
+                    ) { ms ->
                         onSeek(ms)
                         follow = true
                     }
@@ -685,6 +704,8 @@ private fun Verses(
     wash: (Int) -> Float,
     translated: Int?,
     onTranslate: (Int) -> Unit,
+    onPlayFrom: (Int) -> Unit,
+    onOnly: ((Int) -> Unit)?,
     onSeek: (Int) -> Unit,
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -723,6 +744,10 @@ private fun Verses(
                     showTranslation = translated == v,
                     onPlaced = { w, tile -> place.placed(first + w, tile) },
                     wash = { w -> wash(first + w) },
+                    reference = verseName(VerseRef(reading.surah, v + 1)),
+                    // Only where the recording can be moved to: a verse whose start is known, exactly or roughly.
+                    onPlayFrom = if (index?.startOfVerse(v) != null) ({ onPlayFrom(v) }) else null,
+                    onOnly = if (onOnly != null && index?.startOfVerse(v) != null) ({ onOnly(v) }) else null,
                     onTap = { onTranslate(v) },
                     // Tapping a word also jumps the recitation to it.
                     onWord = { w ->
@@ -732,6 +757,17 @@ private fun Verses(
                 )
             }
         }
+    }
+}
+
+/** A small round button on a verse's rule, no taller than the verse's number. */
+@Composable
+private fun VerseButton(icon: ImageVector, label: String, tint: Color = MaterialTheme.colorScheme.onSurfaceVariant, onClick: () -> Unit) {
+    Box(
+        Modifier.size(VERSE_BUTTON).clip(CircleShape).background(MaterialTheme.colorScheme.background).clickable(role = Role.Button, onClickLabel = label, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, label, Modifier.size(18.dp), tint = tint)
     }
 }
 
@@ -756,6 +792,9 @@ private fun VerseBlock(
     showTranslation: Boolean,
     onPlaced: (Int, LayoutCoordinates) -> Unit,
     wash: (Int) -> Float,
+    reference: String,
+    onPlayFrom: (() -> Unit)?,
+    onOnly: (() -> Unit)?,
     onTap: () -> Unit,
     onWord: (Int) -> Unit,
 ) {
@@ -767,6 +806,7 @@ private fun VerseBlock(
     ) {
         // The verse's number sits on the rule above it, at the left in every language.
         val label = stringResource(R.string.verse, number)
+        val direction = LocalLayoutDirection.current
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             // Drawn over the words' blocks, not under them: a filled block reaches up to the rule,
             // and the star, which is solid, covers the corner of it.
@@ -780,7 +820,48 @@ private fun VerseBlock(
                     modifier = Modifier.padding(horizontal = 4.dp).clip(CircleShape).clickable(onClickLabel = stringResource(R.string.marks_open), onClick = onMark)
                         .semantics { contentDescription = label },
                 )
-                // What marks the verse: each pin left on it, by name, and a bookmark if it is in a collection.
+                // What can be done with the verse, right beside its number: recite from it, keep it
+                // (pins and collections; the bookmark is filled once it is in a collection), and more.
+                if (onPlayFrom != null) VerseButton(AppIcons.Play, stringResource(R.string.verse_play_from), onClick = onPlayFrom)
+                VerseButton(
+                    if (saved) AppIcons.Bookmark else AppIcons.BookmarkOutline,
+                    stringResource(if (saved) R.string.saved_mark else R.string.marks_open),
+                    tint = if (saved || pins.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    onClick = onMark,
+                )
+                Box {
+                    var more by remember { mutableStateOf(false) }
+                    VerseButton(Icons.Filled.MoreVert, stringResource(R.string.verse_more, number)) { more = true }
+                    // The menu reads the way the page does, not left to right like the rule it hangs from.
+                    CompositionLocalProvider(LocalLayoutDirection provides direction) {
+                        val context = LocalContext.current
+                        val clipboard = LocalClipboardManager.current
+                        // The verse as it is written, its translation, and where it is from.
+                        val text = listOf(verse.words.joinToString(" ") { it.arabic }, verse.translation, reference).filter { it.isNotEmpty() }.joinToString("\n")
+                        DropdownMenu(expanded = more, onDismissRequest = { more = false }) {
+                            if (onOnly != null) {
+                                DropdownMenuItem(text = { Text(stringResource(R.string.verse_only)) }, onClick = { more = false; onOnly() })
+                            }
+                            if (verse.translation.isNotEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(if (showTranslation) R.string.verse_translation_hide else R.string.verse_translation_show)) },
+                                    onClick = { more = false; onTap() },
+                                )
+                            }
+                            DropdownMenuItem(text = { Text(stringResource(R.string.verse_copy)) }, onClick = { more = false; clipboard.setText(AnnotatedString(text)) })
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.verse_share)) },
+                                onClick = {
+                                    more = false
+                                    val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
+                                    runCatching { context.startActivity(Intent.createChooser(send, null)) }
+                                },
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.width(4.dp))
+                // What marks the verse: each pin left on it, by name.
                 for (pin in pins) {
                     Row(
                         Modifier.padding(end = 6.dp).clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.primary).padding(horizontal = 8.dp, vertical = 2.dp),
@@ -791,7 +872,6 @@ private fun VerseBlock(
                         Text(pin, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary, maxLines = 1)
                     }
                 }
-                if (saved) Icon(AppIcons.Bookmark, stringResource(R.string.saved_mark), Modifier.padding(end = 6.dp).size(18.dp), tint = MaterialTheme.colorScheme.primary)
                 HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
@@ -903,6 +983,9 @@ private fun WordBlocks(modifier: Modifier = Modifier, onRows: (firstRowEnds: Int
 
 /** The star a verse's number sits in, on the rule above the verse; the rule runs through its middle. */
 private val STAR = 38.dp
+
+/** The buttons beside a verse's number: as big as fits on the rule without moving the verses apart. */
+private val VERSE_BUTTON = 36.dp
 
 /** The room above a verse's rule. */
 private val ABOVE_RULE = 6.dp

@@ -119,13 +119,22 @@ private fun DrawScope.diamond(color: Color, center: Offset, radius: Float) {
     )
 }
 
-/** A surah's number in the list of surahs: the number in gold, and a small gold diamond under it. */
+/**
+ * A surah's number in the list of surahs: the number in gold, and under it a small gold
+ * diamond, or, when the surah has a recitation on the phone ([recitation]), the bars of
+ * sound.
+ */
 @Composable
-fun RuledNumber(number: Int, modifier: Modifier = Modifier) {
+fun RuledNumber(number: Int, modifier: Modifier = Modifier, recitation: Boolean = false) {
     val gold = ornamentGold()
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+    val label = stringResource(R.string.has_recitation)
+    Column(if (recitation) modifier.semantics { contentDescription = label } else modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(stringResource(R.string.number, number), style = MaterialTheme.typography.titleSmall, color = gold)
-        Canvas(Modifier.padding(top = 3.dp).size(5.dp)) { diamond(gold, center, size.minDimension / 2) }
+        if (recitation) {
+            Icon(AppIcons.Sound, null, Modifier.padding(top = 1.dp).size(14.dp), tint = gold)
+        } else {
+            Canvas(Modifier.padding(top = 3.dp).size(5.dp)) { diamond(gold, center, size.minDimension / 2) }
+        }
     }
 }
 

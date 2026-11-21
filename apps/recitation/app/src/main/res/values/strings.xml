@@ -137,6 +137,15 @@
     <string name="script_indopak">IndoPak</string>
     <string name="script_everyday">Everyday spelling</string>
     <string name="marks_open">Pins and collections</string>
+    <string name="has_recitation">Has a recitation on the phone</string>
+    <!-- The buttons beside a verse's number -->
+    <string name="verse_play_from">Recite from this verse</string>
+    <string name="verse_more">More for verse %1$d</string>
+    <string name="verse_only">Recite this verse only</string>
+    <string name="verse_translation_show">Show translation</string>
+    <string name="verse_translation_hide">Hide translation</string>
+    <string name="verse_copy">Copy verse</string>
+    <string name="verse_share">Share verse</string>
     <string name="saved_mark">Kept in a collection</string>
     <string name="verse_of">%1$s · verse %2$d</string>
     <string name="pins_title">Pins</string>

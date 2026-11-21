@@ -119,7 +119,7 @@ class StatusActions(
  * pins and collections; and [stats], what has been listened to. The band at the top has the app's name between the button
  * that opens [menu] and the search button; while searching ([query] isn't null) the
  * screen shows what was found instead of the tabs.
- * [recited] holds the surahs that have a recording ready to play.
+ * [recited] holds the surahs that have a recitation downloaded: at least one recording whose sound is on the phone.
  */
 @Composable
 fun HomeContent(
@@ -298,7 +298,8 @@ private fun SurahRow(surah: Surah, recited: Boolean, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     // Room to breathe: the rows are the page, so each gets a comfortable height.
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 15.dp), verticalAlignment = Alignment.CenterVertically) {
-        RuledNumber(surah.number, Modifier.width(44.dp))
+        // A surah with a recitation downloaded is told apart under its number: the bars of sound, where the others have a diamond.
+        RuledNumber(surah.number, Modifier.width(44.dp), recitation = recited)
         Spacer(Modifier.width(12.dp))
         if (arabic) {
             // In Arabic the calligraphy is the name; the Latin spelling steps back to the far side.
