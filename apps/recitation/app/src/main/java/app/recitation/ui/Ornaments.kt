@@ -7,10 +7,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -24,10 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -99,65 +94,30 @@ fun StarNumber(
     }
 }
 
-/** The gold the ornaments are drawn in: deeper on a light page, where it has to carry a number. */
-@Composable
-private fun ornamentGold(): Color {
-    val gold = LocalHighlight.current
-    return if (MaterialTheme.colorScheme.background.luminance() > 0.5f) gold.faded(0.86f, Color.Black) else gold
-}
-
-private fun DrawScope.diamond(color: Color, center: Offset, radius: Float) {
-    drawPath(
-        Path().apply {
-            moveTo(center.x, center.y - radius)
-            lineTo(center.x + radius, center.y)
-            lineTo(center.x, center.y + radius)
-            lineTo(center.x - radius, center.y)
-            close()
-        },
-        color,
-    )
-}
-
 /**
- * A surah's number in the list of surahs: the number in gold, and under it a small gold
- * diamond, or, when the surah has a recitation on the phone ([recitation]), the bars of
- * sound.
+ * A surah's number in the list of surahs: large and plain. Where the surah has a
+ * recitation on the phone ([recitation]) it is in the app's colour with the bars of sound
+ * under it; where it hasn't, it is grey.
  */
 @Composable
-fun RuledNumber(number: Int, modifier: Modifier = Modifier, recitation: Boolean = false) {
-    val gold = ornamentGold()
+fun SurahNumber(number: Int, modifier: Modifier = Modifier, recitation: Boolean = false) {
     val label = stringResource(R.string.has_recitation)
+    val colors = MaterialTheme.colorScheme
     Column(if (recitation) modifier.semantics { contentDescription = label } else modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(stringResource(R.string.number, number), style = MaterialTheme.typography.titleSmall, color = gold)
-        if (recitation) {
-            Icon(AppIcons.Sound, null, Modifier.padding(top = 1.dp).size(14.dp), tint = gold)
-        } else {
-            Canvas(Modifier.padding(top = 3.dp).size(5.dp)) { diamond(gold, center, size.minDimension / 2) }
-        }
+        Text(stringResource(R.string.number, number), style = MaterialTheme.typography.titleLarge, color = if (recitation) colors.primary else colors.outline)
+        if (recitation) Icon(AppIcons.Sound, null, Modifier.size(14.dp), tint = colors.primary)
     }
 }
 
-/**
- * A gold rule with a small diamond at its middle, as wide as it is given room. One stands
- * above a surah's heading on its title page and one below it, and that is all the ornament
- * the page has.
- */
+/** A hairline as wide as it is given room: one stands above a surah's heading on its title page and one below it. */
 @Composable
-fun DiamondRule(modifier: Modifier = Modifier) {
-    val gold = LocalHighlight.current
-    Canvas(modifier.height(8.dp)) {
-        val middle = size.width / 2
-        val y = size.height / 2
-        val gap = 9.dp.toPx()
-        drawLine(gold, Offset(0f, y), Offset(middle - gap, y), strokeWidth = 1.dp.toPx())
-        drawLine(gold, Offset(middle + gap, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
-        diamond(gold, Offset(middle, y), 3.4.dp.toPx())
-    }
+fun HeadingRule(modifier: Modifier = Modifier) {
+    val line = MaterialTheme.colorScheme.outlineVariant
+    Canvas(modifier.height(8.dp)) { drawLine(line, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), strokeWidth = 1.dp.toPx()) }
 }
 
 /**
- * The app's button: an icon and a word in a softly squared frame, in the theme's colour.
+ * The app's button: an icon and a word in a frame with round ends, in the theme's colour.
  * [filled] is for the one main action on a screen. [onBand] is for buttons sitting on the
  * coloured band, which are drawn in the band's own colours.
  */
@@ -172,8 +132,8 @@ fun ThemeButton(
     enabled: Boolean = true,
 ) {
     val band = LocalBanner.current
-    val accent = if (onBand) band.rule else MaterialTheme.colorScheme.primary
-    val shape = RoundedCornerShape(12.dp)
+    val accent = if (onBand) band.accent else MaterialTheme.colorScheme.primary
+    val shape = CircleShape
     val padding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
     val content: @Composable () -> Unit = {
         if (icon != null) {
@@ -187,7 +147,7 @@ fun ThemeButton(
             onClick, modifier, enabled = enabled, shape = shape, contentPadding = padding,
             colors = ButtonDefaults.buttonColors(
                 containerColor = accent,
-                contentColor = if (onBand) band.onRule else MaterialTheme.colorScheme.onPrimary,
+                contentColor = if (onBand) band.onAccent else MaterialTheme.colorScheme.onPrimary,
             ),
         ) { content() }
     } else {

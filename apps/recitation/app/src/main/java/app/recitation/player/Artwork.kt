@@ -16,8 +16,8 @@ import java.io.File
 /**
  * The picture that goes with a surah in Android's own media player (the notification and
  * the lock screen). Android takes that player's colours from the picture, so this is how
- * it comes to wear the app's theme: the surah's name under the arch, gold on near-black
- * in dark mode and cream on green by day.
+ * it comes to wear the app's theme: the surah's name under the arch, on the colour of the
+ * app's own bars, teal by day and a dark teal in dark mode.
  */
 object Artwork {
 
@@ -37,9 +37,9 @@ object Artwork {
         val key = "${surah.number}-$dark-${calligraphy != null}"
         made.get(key)?.let { return it }
 
-        val background = if (dark) 0xFF0B0B0B.toInt() else 0xFF1B6B4A.toInt()
-        val gold = 0xFFF2C14E.toInt()
-        val ink = if (dark) gold else 0xFFFFF7E0.toInt()
+        val background = if (dark) 0xFF0F2B31.toInt() else 0xFF0E5E6F.toInt()
+        val line = if (dark) 0xFF5EDCCB.toInt() else 0xFFB8F5EC.toInt()
+        val ink = if (dark) 0xFFF5F5F5.toInt() else 0xFFFFFFFF.toInt()
         val bitmap = Bitmap.createBitmap(SIZE, SIZE, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.drawColor(background)
@@ -58,7 +58,7 @@ object Artwork {
             strokeWidth = s * 0.02f
             strokeJoin = Paint.Join.ROUND
             strokeCap = Paint.Cap.ROUND
-            color = gold
+            color = line
         })
 
         // The surah's name inside it: in the fetched calligraphy when it is on the phone.

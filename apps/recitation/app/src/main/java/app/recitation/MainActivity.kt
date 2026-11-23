@@ -20,6 +20,7 @@ import app.recitation.data.Appearance
 import app.recitation.player.PlaybackService
 import app.recitation.ui.App
 import app.recitation.ui.Choices
+import app.recitation.ui.BandsBelow
 import app.recitation.ui.ClearOfTheSides
 import app.recitation.ui.RecitationTheme
 
@@ -29,8 +30,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // The bars at the top and bottom take the page's colour, white by day and black by
-        // night, so the phone's own icons over them are dark by day and light by night.
+        // The app draws its own bars behind the phone's status bar and navigation buttons.
         val clear = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
         enableEdgeToEdge(statusBarStyle = clear, navigationBarStyle = clear)
         if (savedInstanceState == null) shared(intent)
@@ -43,10 +43,15 @@ class MainActivity : ComponentActivity() {
                 Appearance.LIGHT -> false
                 Appearance.DARK -> true
             }
-            // The phone's own icons over the app's bars have to show against them.
-            DisposableEffect(dark) {
-                val bars = if (dark) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
-                enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+            // The phone's own icons have to show against what is under them. At the top that
+            // is always one of the app's bars, which are dark by day as well as by night, so
+            // the icons there are light. At the bottom it is a bar on some screens and the
+            // page on others.
+            val barBelow = BandsBelow.count > 0
+            DisposableEffect(dark, barBelow) {
+                val onBar = SystemBarStyle.dark(Color.TRANSPARENT)
+                val onPage = if (dark) onBar else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+                enableEdgeToEdge(statusBarStyle = onBar, navigationBarStyle = if (barBelow) onBar else onPage)
                 onDispose {}
             }
             RecitationTheme(dark) {

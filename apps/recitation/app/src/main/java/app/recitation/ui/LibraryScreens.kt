@@ -1,6 +1,7 @@
 package app.recitation.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
@@ -39,7 +40,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.rememberDrawerState
@@ -154,7 +154,7 @@ fun HomeContent(
         drawerState = drawer,
         // Only the button opens it: a swipe from the edge is the phone's own Back.
         gesturesEnabled = drawer.isOpen,
-        drawerContent = { ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.surface) { menu() } },
+        drawerContent = { MenuSheet { menu() } },
     ) {
     Column(Modifier.fillMaxSize()) {
         TitleBand(query, onQuery, onMenu = { scope.launch { drawer.open() } })
@@ -168,9 +168,9 @@ fun HomeContent(
                 if (lastRead != null) item { Box(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) { LastReadCard(lastRead, onLastRead) } }
                 items(SURAHS, key = { it.number }) { surah ->
                     SurahRow(surah, recited = surah.number in recited, onClick = { onSurah(surah.number) })
-                    // A gold line between surahs, the same margin at either end. A whole dp thick: a
+                    // A faint line between surahs, the same margin at either end. A whole dp thick: a
                     // thinner one lands on the screen's pixels unevenly, and the lines come out unlike.
-                    HorizontalDivider(Modifier.padding(horizontal = 20.dp), thickness = 1.dp, color = LocalHighlight.current.copy(alpha = 0.45f))
+                    HorizontalDivider(Modifier.padding(horizontal = 20.dp), thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
                 }
             }
         } else if (tab == 2) {
@@ -228,19 +228,20 @@ fun HomeContent(
     }
 }
 
-/** One of the tabs at the bottom of the first screen: gold, with a short gold bar over it, when it is the one showing. */
+/** One of the tabs at the bottom of the first screen. The icon of the one showing sits on a pill of the bar's accent; the others are faint. */
 @Composable
 private fun BottomTab(label: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val band = LocalBanner.current
-    // On a bar the colour of the page, the tab showing is in full colour and the others are faint.
-    val ink = if (selected) band.content else band.content.faded(0.55f, band.background)
+    val ink = if (selected) band.content else band.content.faded(0.7f, band.background)
     Column(
-        modifier.selectable(selected = selected, onClick = onClick, role = Role.Tab).padding(bottom = 6.dp),
+        modifier.selectable(selected = selected, onClick = onClick, role = Role.Tab).padding(top = 8.dp, bottom = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.width(48.dp).height(3.dp).background(if (selected) band.rule else Color.Transparent))
-        Spacer(Modifier.height(6.dp))
-        Icon(icon, null, Modifier.size(24.dp), tint = ink)
+        Box(
+            Modifier.width(60.dp).height(30.dp).background(if (selected) band.accent else Color.Transparent, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) { Icon(icon, null, Modifier.size(22.dp), tint = if (selected) band.onAccent else ink) }
+        Spacer(Modifier.height(2.dp))
         Text(label, style = MaterialTheme.typography.labelMedium, color = ink)
     }
 }
@@ -301,8 +302,8 @@ private fun SurahRow(surah: Surah, recited: Boolean, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     // Room to breathe: the rows are the page, so each gets a comfortable height.
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 15.dp), verticalAlignment = Alignment.CenterVertically) {
-        // A surah with a recitation downloaded is told apart under its number: the bars of sound, where the others have a diamond.
-        RuledNumber(surah.number, Modifier.width(44.dp), recitation = recited)
+        // A surah with a recitation downloaded is told apart by its number: in colour, with the bars of sound under it.
+        SurahNumber(surah.number, Modifier.width(44.dp), recitation = recited)
         Spacer(Modifier.width(12.dp))
         if (arabic) {
             // In Arabic the calligraphy is the name; the Latin spelling steps back to the far side.

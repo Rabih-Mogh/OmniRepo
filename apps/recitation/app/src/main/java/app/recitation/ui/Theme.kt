@@ -1,114 +1,134 @@
 package app.recitation.ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DrawerDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.recitation.R
 import app.recitation.core.Family
 
 // Every role is set: anything left out falls back to Material's purple baseline.
 
-/** Daytime: green on white. */
-private val Green = lightColorScheme(
-    primary = Color(0xFF1B6B4A),
+/** Daytime: black on white, with one colour, a deep teal. */
+private val Day = lightColorScheme(
+    primary = Color(0xFF0E5E6F),
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFD3EEDD),
-    onPrimaryContainer = Color(0xFF07301F),
-    inversePrimary = Color(0xFF8AD6AE),
-    secondary = Color(0xFF4E6356),
+    primaryContainer = Color(0xFFD5EEF2),
+    onPrimaryContainer = Color(0xFF05303A),
+    inversePrimary = Color(0xFF5EDCCB),
+    secondary = Color(0xFF5B6470),
     onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFD6EADF),
-    onSecondaryContainer = Color(0xFF0B1F15),
-    tertiary = Color(0xFF3C6471),
+    secondaryContainer = Color(0xFFEFF3F5),
+    onSecondaryContainer = Color(0xFF0B0F14),
+    tertiary = Color(0xFF0E5E6F),
     onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFC0E9F8),
-    onTertiaryContainer = Color(0xFF001F28),
+    tertiaryContainer = Color(0xFFD5EEF2),
+    onTertiaryContainer = Color(0xFF05303A),
     background = Color(0xFFFFFFFF),
-    onBackground = Color(0xFF14201B),
+    onBackground = Color(0xFF0B0F14),
     surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF14201B),
-    surfaceVariant = Color(0xFFDDE6E0),
-    onSurfaceVariant = Color(0xFF56615A),
-    surfaceTint = Color(0xFF1B6B4A),
-    inverseSurface = Color(0xFF2E312F),
-    inverseOnSurface = Color(0xFFEFF1ED),
+    onSurface = Color(0xFF0B0F14),
+    surfaceVariant = Color(0xFFE7EBEF),
+    onSurfaceVariant = Color(0xFF5B6470),
+    surfaceTint = Color(0xFF0E5E6F),
+    inverseSurface = Color(0xFF0B0F14),
+    inverseOnSurface = Color(0xFFFFFFFF),
     error = Color(0xFFB3261E),
     onError = Color(0xFFFFFFFF),
     errorContainer = Color(0xFFF9DEDC),
     onErrorContainer = Color(0xFF410E0B),
-    outline = Color(0xFF8A958C),
-    outlineVariant = Color(0xFFC9D6CE),
+    outline = Color(0xFF8A939E),
+    outlineVariant = Color(0xFFE1E5EA),
     scrim = Color(0xFF000000),
     surfaceBright = Color(0xFFFFFFFF),
-    surfaceDim = Color(0xFFDBDEDA),
+    surfaceDim = Color(0xFFE7EBEF),
     surfaceContainerLowest = Color(0xFFFFFFFF),
-    surfaceContainerLow = Color(0xFFF4F8F5),
-    surfaceContainer = Color(0xFFEEF4F0),
-    surfaceContainerHigh = Color(0xFFE7EFEA),
-    surfaceContainerHighest = Color(0xFFE0EAE4),
+    surfaceContainerLow = Color(0xFFF4F6F8),
+    surfaceContainer = Color(0xFFEEF1F4),
+    surfaceContainerHigh = Color(0xFFE7EBEF),
+    surfaceContainerHighest = Color(0xFFE0E5EA),
 )
 
-/** Night: gold on black, with neutral greys and no tint of any colour in them. */
-private val Gold = darkColorScheme(
-    primary = Color(0xFFF2C14E),
-    onPrimary = Color(0xFF3A2A00),
-    primaryContainer = Color(0xFF3A3214),
-    onPrimaryContainer = Color(0xFFFFE08A),
-    inversePrimary = Color(0xFF7A5A12),
-    secondary = Color(0xFFD8C7A0),
-    onSecondary = Color(0xFF3A2F12),
-    secondaryContainer = Color(0xFF1A1A1A),
-    onSecondaryContainer = Color(0xFFEDE6D3),
-    tertiary = Color(0xFFE6C27A),
-    onTertiary = Color(0xFF3A2A00),
-    tertiaryContainer = Color(0xFF52401A),
-    onTertiaryContainer = Color(0xFFFFE2A8),
+/** Night: white on black, the one colour a pale mint, and neutral greys. */
+private val Night = darkColorScheme(
+    primary = Color(0xFF5EDCCB),
+    onPrimary = Color(0xFF00201C),
+    primaryContainer = Color(0xFF10332F),
+    onPrimaryContainer = Color(0xFFB8F5EC),
+    inversePrimary = Color(0xFF0E5E6F),
+    secondary = Color(0xFFA7ADB5),
+    onSecondary = Color(0xFF000000),
+    secondaryContainer = Color(0xFF15181B),
+    onSecondaryContainer = Color(0xFFF5F5F5),
+    tertiary = Color(0xFF5EDCCB),
+    onTertiary = Color(0xFF00201C),
+    tertiaryContainer = Color(0xFF10332F),
+    onTertiaryContainer = Color(0xFFB8F5EC),
     background = Color(0xFF000000),
-    onBackground = Color(0xFFEDE6D3),
+    onBackground = Color(0xFFF5F5F5),
     surface = Color(0xFF000000),
-    onSurface = Color(0xFFEDE6D3),
-    surfaceVariant = Color(0xFF1C1C1C),
-    onSurfaceVariant = Color(0xFFB4B0A6),
-    surfaceTint = Color(0xFFF2C14E),
-    inverseSurface = Color(0xFFEDE6D3),
-    inverseOnSurface = Color(0xFF121212),
+    onSurface = Color(0xFFF5F5F5),
+    surfaceVariant = Color(0xFF1B1F23),
+    onSurfaceVariant = Color(0xFFA7ADB5),
+    surfaceTint = Color(0xFF5EDCCB),
+    inverseSurface = Color(0xFFF5F5F5),
+    inverseOnSurface = Color(0xFF000000),
     error = Color(0xFFFFB4AB),
     onError = Color(0xFF690005),
     errorContainer = Color(0xFF5C1A17),
     onErrorContainer = Color(0xFFFFDAD6),
-    outline = Color(0xFF605C52),
-    outlineVariant = Color(0xFF262626),
+    outline = Color(0xFF5B636C),
+    outlineVariant = Color(0xFF22272C),
     scrim = Color(0xFF000000),
-    surfaceBright = Color(0xFF262626),
+    surfaceBright = Color(0xFF22272C),
     surfaceDim = Color(0xFF000000),
     surfaceContainerLowest = Color(0xFF000000),
-    surfaceContainerLow = Color(0xFF080808),
-    surfaceContainer = Color(0xFF0E0E0E),
-    surfaceContainerHigh = Color(0xFF161616),
-    surfaceContainerHighest = Color(0xFF1C1C1C),
+    surfaceContainerLow = Color(0xFF0D0F11),
+    surfaceContainer = Color(0xFF15181B),
+    surfaceContainerHigh = Color(0xFF1B1F23),
+    surfaceContainerHighest = Color(0xFF22272C),
 )
 
 /** Amiri Quran (SIL Open Font License): drawn for the Uthmani script and all its small signs. */
@@ -131,29 +151,29 @@ val CalligraphyFont = FontFamily(Font(R.font.aref_ruqaa_bold))
 fun Color.faded(strength: Float, background: Color): Color = copy(alpha = strength).compositeOver(background)
 
 /**
- * The bars across the top and bottom of every screen. They are quiet: they take the page's
- * own colour and are set off from it by a thin gold rule. [content] is the text and the
- * icons on a bar; [rule] is the gold of the rule, and of the few things on a bar that are
- * solid gold (the play button); [onRule] is what is drawn on that gold.
+ * The bars across the top and bottom of every screen. They are a colour of their own, so
+ * the page with the verses stands apart between them: the app's teal by day, a dark teal
+ * by night. [content] is the text and the icons on a bar; [accent] is the colour of the
+ * few solid things on a bar (the play button, the tab that is showing), and [onAccent]
+ * what is drawn on those.
  */
-class BannerColors(val background: Color, val content: Color, val rule: Color, val onRule: Color) {
+class BannerColors(val background: Color, val content: Color, val accent: Color, val onAccent: Color) {
     /** For the second line on the banner: fainter than [content], and solid. */
     val quiet: Color get() = content.faded(0.8f, background)
 }
 
-private val DayBanner = BannerColors(background = Color(0xFFFFFFFF), content = Color(0xFF1B6B4A), rule = Color(0xFFF2C14E), onRule = Color(0xFF1B6B4A))
-private val NightBanner = BannerColors(background = Color(0xFF000000), content = Color(0xFFF2C14E), rule = Color(0xFFF2C14E), onRule = Color(0xFF000000))
+private val DayBanner = BannerColors(background = Color(0xFF0E5E6F), content = Color(0xFFFFFFFF), accent = Color(0xFFFFFFFF), onAccent = Color(0xFF0E5E6F))
+private val NightBanner = BannerColors(background = Color(0xFF0F2B31), content = Color(0xFFF5F5F5), accent = Color(0xFF5EDCCB), onAccent = Color(0xFF00201C))
 
 val LocalBanner = staticCompositionLocalOf { DayBanner }
 
 /**
  * The colour the letter being uttered turns. It has to stand out from the ink of the word
- * round it at a glance. It is gold in both themes: a deep gold on the white page, where
- * the pale gold of the rules would be lost, and on the black a gold richer than the cream
- * of the ink.
+ * round it at a glance, and from the teal of everything else that is coloured: it is
+ * amber, deep on the white page and bright on the black.
  */
-private val DayHighlight = Color(0xFFC9980B)
-private val NightHighlight = Color(0xFFFFC61A)
+private val DayHighlight = Color(0xFFC25E00)
+private val NightHighlight = Color(0xFFFFB627)
 
 val LocalHighlight = staticCompositionLocalOf { DayHighlight }
 
@@ -163,7 +183,7 @@ val LocalHighlight = staticCompositionLocalOf { DayHighlight }
  * They follow the usual colours of a tajweed mushaf (green for sound held through the
  * nose, reds for long vowels, blue for the echo, grey for what isn't sounded), except that
  * the long vowel that may be drawn out is purple rather than orange, to stay clear of the
- * gold a letter without a rule is lit in.
+ * amber a letter without a rule is lit in.
  */
 class TajweedColors(private val inks: Map<Family, Color>, private val lights: Map<Family, Color>) {
     fun ink(family: Family): Color = inks.getValue(family)
@@ -200,7 +220,20 @@ private val NightTajweed = TajweedColors(
 
 val LocalTajweed = staticCompositionLocalOf { DayTajweed }
 
-/** Green by day and gold by night, following the phone's dark mode. */
+/** Headings are heavier and a little larger than Material's own, so a screen's title is found at a glance. */
+private val Lettering = Typography().run {
+    fun TextStyle.title() = copy(fontWeight = FontWeight.Bold, fontSize = fontSize * 1.08f, lineHeight = lineHeight * 1.08f)
+    copy(
+        displayLarge = displayLarge.title(), displayMedium = displayMedium.title(), displaySmall = displaySmall.title(),
+        headlineLarge = headlineLarge.title(), headlineMedium = headlineMedium.title(), headlineSmall = headlineSmall.title(),
+        titleLarge = titleLarge.title(), titleMedium = titleMedium.title(), titleSmall = titleSmall.title(),
+    )
+}
+
+/** Cards, menus and dialogs have well-rounded corners. */
+private val Corners = Shapes(RoundedCornerShape(10.dp), RoundedCornerShape(14.dp), RoundedCornerShape(20.dp), RoundedCornerShape(24.dp), RoundedCornerShape(28.dp))
+
+/** Teal on white by day and mint on black by night, following the phone's dark mode. */
 @Composable
 fun RecitationTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     CompositionLocalProvider(
@@ -208,7 +241,7 @@ fun RecitationTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable 
         LocalHighlight provides if (dark) NightHighlight else DayHighlight,
         LocalTajweed provides if (dark) NightTajweed else DayTajweed,
     ) {
-        MaterialTheme(colorScheme = if (dark) Gold else Green, content = content)
+        MaterialTheme(colorScheme = if (dark) Night else Day, typography = Lettering, shapes = Corners, content = content)
     }
 }
 
@@ -216,41 +249,103 @@ fun RecitationTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable 
  * Keeps everything clear of whatever cuts into the screen at its sides: the camera's hole
  * or notch when the phone is held on its side, and the phone's own buttons when they sit
  * there. The app draws from edge to edge, so without this a word at the end of a line can
- * lie under the camera. The page's colour carries on underneath.
+ * lie under the camera. Those strips at the sides take the bars' colour, so the bars at
+ * the top and bottom run on round the camera instead of stopping short of it.
  */
 @Composable
 fun ClearOfTheSides(content: @Composable () -> Unit) {
-    Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) { content() }
-}
-
-/**
- * The band at the top of a screen: [content] sits on the banner colour, clear of the
- * status bar, with the gold rule beneath.
- */
-@Composable
-fun Banner(content: @Composable () -> Unit) {
-    val banner = LocalBanner.current
-    Column(Modifier.fillMaxWidth().background(banner.background)) {
-        // Clear of the status bar, and of a camera cut-out if that reaches lower than the bar.
-        Box(Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).fillMaxWidth()) {
-            CompositionLocalProvider(LocalContentColor provides banner.content, content = content)
-        }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(banner.rule))
+    Box(Modifier.fillMaxSize().background(LocalBanner.current.background).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { content() }
     }
 }
 
 /**
- * The same band at the bottom of a screen, rule on top: where the player and other bars sit,
- * so they wear the theme's colours. [clearOfSystemBar] keeps it above the phone's own
- * navigation bar when nothing else already does.
+ * Whether a screen's top bar has slid away to leave its page the room. Only the bar's own
+ * row goes; the strip behind the phone's status bar stays, so the clock and the page never
+ * run into each other.
+ */
+@Stable
+class SlidingBar {
+    /** How tall the whole bar is, and the strip of it behind the status bar that stays, in px. */
+    var height by mutableIntStateOf(0)
+        internal set
+    var strip by mutableIntStateOf(0)
+        internal set
+
+    /** Whether the bar's row is out of sight. */
+    var away by mutableStateOf(false)
+}
+
+/**
+ * The band at the top of a screen: [content] sits on the bars' colour, clear of the status
+ * bar. Given a [sliding], its row slides up out of sight when that says so, and back.
+ */
+@Composable
+fun Banner(sliding: SlidingBar? = null, content: @Composable () -> Unit) {
+    val banner = LocalBanner.current
+    // Clear of the status bar, and of a camera cut-out if that reaches lower than the bar.
+    val top = WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
+    val gone by animateFloatAsState(if (sliding?.away == true) 1f else 0f, tween(220), label = "bar")
+    var row by remember { mutableIntStateOf(0) }
+    Box(Modifier.fillMaxWidth().onSizeChanged { sliding?.height = it.height }) {
+        // Moved as it is drawn, so nothing is laid out again while it slides.
+        Box(Modifier.fillMaxWidth().graphicsLayer { translationY = -gone * row }.background(banner.background).windowInsetsPadding(top)) {
+            Box(Modifier.fillMaxWidth().onSizeChanged { row = it.height }) {
+                CompositionLocalProvider(LocalContentColor provides banner.content, content = content)
+            }
+        }
+        // What stays when the row has gone. It takes the touches that land on it, so a
+        // button that has slid up behind it can't be pressed through the status bar.
+        if (sliding != null) {
+            Box(Modifier.fillMaxWidth().windowInsetsTopHeight(top).background(banner.background).onSizeChanged { sliding.strip = it.height }.pointerInput(Unit) {})
+        }
+    }
+}
+
+/**
+ * The sheet a menu slides in on from the side. It covers the screen's own top bar, so the
+ * bars' colour carries on across its top, behind the phone's status bar, where the phone's
+ * icons are drawn light.
+ */
+@Composable
+fun MenuSheet(content: @Composable ColumnScope.() -> Unit) {
+    ModalDrawerSheet(
+        drawerContainerColor = MaterialTheme.colorScheme.surface,
+        windowInsets = DrawerDefaults.windowInsets.only(WindowInsetsSides.Bottom + WindowInsetsSides.Start),
+    ) {
+        Box(Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars).background(LocalBanner.current.background))
+        content()
+    }
+}
+
+/**
+ * How many bars now reach down under the phone's own navigation buttons. While there is
+ * one, those buttons are drawn light, to show on the bar; with none they sit on the page
+ * and are drawn to show on that (see MainActivity).
+ */
+object BandsBelow {
+    var count by mutableIntStateOf(0)
+        private set
+
+    @Composable
+    fun One() {
+        DisposableEffect(Unit) {
+            count++
+            onDispose { count-- }
+        }
+    }
+}
+
+/**
+ * The same band at the bottom of a screen: where the player and other bars sit, so they
+ * wear the bars' colours. [clearOfSystemBar] keeps it above the phone's own navigation bar
+ * when nothing else already does.
  */
 @Composable
 fun BottomBand(clearOfSystemBar: Boolean = true, content: @Composable () -> Unit) {
     val banner = LocalBanner.current
-    Column(Modifier.fillMaxWidth().background(banner.background)) {
-        Box(Modifier.fillMaxWidth().height(1.dp).background(banner.rule))
-        Box((if (clearOfSystemBar) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier).fillMaxWidth()) {
-            CompositionLocalProvider(LocalContentColor provides banner.content, content = content)
-        }
+    if (clearOfSystemBar) BandsBelow.One()
+    Box((if (clearOfSystemBar) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier).fillMaxWidth().background(banner.background)) {
+        CompositionLocalProvider(LocalContentColor provides banner.content, content = content)
     }
 }

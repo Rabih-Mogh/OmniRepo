@@ -3,6 +3,7 @@ package app.recitation
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,6 +33,7 @@ import androidx.compose.ui.text.font.FontFamily
 import java.io.File
 import java.time.LocalDate
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import android.view.View
 import androidx.core.graphics.Insets
@@ -51,6 +53,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.swipeUp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.recitation.core.Phonemizer
@@ -190,8 +195,8 @@ class ScreensTest {
     }
 
     @Composable
-    private fun Reader(positionMs: Int, meanings: Boolean = true, clarity: Float = 0.9f, verses: List<Verse> = fatihah) = ReaderContent(
-        reading = Reading(1, verses, track, timings(verses, clarity)), showMeanings = meanings, playing = true,
+    private fun Reader(positionMs: Int, meanings: Boolean = true, clarity: Float = 0.9f, verses: List<Verse> = fatihah, playing: Boolean = true) = ReaderContent(
+        reading = Reading(1, verses, track, timings(verses, clarity)), showMeanings = meanings, playing = playing,
         position = { positionMs }, duration = 74_000, onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
     )
 
@@ -229,17 +234,31 @@ class ScreensTest {
         assertTrue(png.size > 2_000)
     }
 
-    /** The launcher icon as phones show it: cut to a rounded square, and to a circle. */
+    /**
+     * The launcher icon as phones show it: cut to a rounded square, and to a circle. Under
+     * them, in one colour as Android's themed icons draw it, and the small one for the
+     * status bar, enlarged.
+     */
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun theAppIcon() {
         show("icon") {
-            Row(Modifier.padding(24.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                for (shape in listOf(RoundedCornerShape(22.dp), CircleShape)) {
-                    // Launchers show the middle 72 of the icon's 108 units.
-                    Box(Modifier.size(144.dp).clip(shape), contentAlignment = Alignment.Center) {
-                        Image(painterResource(R.drawable.ic_launcher_background), null, Modifier.requiredSize(216.dp))
-                        Image(painterResource(R.drawable.ic_launcher_foreground), null, Modifier.requiredSize(216.dp))
+            Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                    for (shape in listOf(RoundedCornerShape(22.dp), CircleShape)) {
+                        // Launchers show the middle 72 of the icon's 108 units.
+                        Box(Modifier.size(144.dp).clip(shape), contentAlignment = Alignment.Center) {
+                            Image(painterResource(R.drawable.ic_launcher_background), null, Modifier.requiredSize(216.dp))
+                            Image(painterResource(R.drawable.ic_launcher_foreground), null, Modifier.requiredSize(216.dp))
+                        }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                    Box(Modifier.size(144.dp).clip(CircleShape).background(Color(0xFF2B3033)), contentAlignment = Alignment.Center) {
+                        Image(painterResource(R.drawable.ic_launcher_monochrome), null, Modifier.requiredSize(216.dp))
+                    }
+                    Box(Modifier.size(144.dp).clip(RoundedCornerShape(22.dp)).background(Color(0xFF2B3033)), contentAlignment = Alignment.Center) {
+                        Image(painterResource(R.drawable.ic_notification), null, Modifier.size(96.dp))
                     }
                 }
             }
@@ -251,8 +270,9 @@ class ScreensTest {
     fun readingInEnglishByDay() {
         // 7.5 s in: half way through the last word of the second verse.
         show("en-day-reader") { Reader(7_500) }
-        compose.onNodeWithTag("surah-title").assertIsDisplayed().assertContentDescriptionEquals("سورة الفاتحة")
-        compose.onNodeWithText("1 · Al-Fatihah · 7 verses").assertIsDisplayed()
+        // It is reciting, and the page has gone on with it: the top bar has slid out of the way.
+        compose.onNodeWithTag("surah-title").assertIsNotDisplayed().assertContentDescriptionEquals("سورة الفاتحة")
+        compose.onNodeWithText("1 · Al-Fatihah · 7 verses").assertIsNotDisplayed()
         compose.onNodeWithContentDescription("Verse 2").assertIsDisplayed()
         compose.onNodeWithText("of the universe").assertIsDisplayed()
         // A verse's translation stays out of the way until the verse is tapped.
@@ -284,7 +304,7 @@ class ScreensTest {
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun wordMeaningsCanBeHidden() {
-        show("en-day-reader-no-meanings") { Reader(7_500, meanings = false) }
+        show("en-day-reader-no-meanings") { Reader(7_500, meanings = false, playing = false) }
         compose.onNodeWithText("of the universe").assertDoesNotExist()
         // Showing them again is in the surah's menu, with the text size and the script.
         compose.onNodeWithContentDescription("Menu").assertIsDisplayed()
@@ -325,6 +345,52 @@ class ScreensTest {
         compose.onNodeWithText("7 verses · Meccan · No. 5 in order of revelation").assertIsDisplayed()
         compose.onNodeWithContentDescription("بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ").assertIsDisplayed()
         assertTrue("first word off by ${offCentre("In (the) name")} px", abs(offCentre("In (the) name")) < 60f)
+        // At the surah's start the top bar is in its place.
+        compose.onNodeWithContentDescription("Back").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theTopBarIsOutOfTheWayWhileItRecitesAndBackWhenPaused() {
+        var playing by mutableStateOf(true)
+        show("en-day-reader-reciting") {
+            ReaderContent(
+                reading = Reading(1, fatihah, track, timings(fatihah)), showMeanings = true, playing = playing,
+                position = { 17_500 }, duration = 74_000, onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
+            )
+        }
+        compose.onNodeWithContentDescription("Back").assertIsNotDisplayed()
+        compose.onNodeWithContentDescription("Menu").assertIsNotDisplayed()
+        playing = false
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/en-day-reader-paused.png")
+        compose.onNodeWithContentDescription("Back").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Menu").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theTopBarSlidesAwayAsThePageIsScrolledOnAndIsBackWhenItIsPulledBack() {
+        // A surah read by hand, with nothing reciting: forty verses, several screens of them.
+        val many = List(40) { fatihah[it % fatihah.size] }
+        show("en-day-reader-top") {
+            ReaderContent(
+                reading = Reading(2, many), showMeanings = true, playing = false, position = { 0 }, duration = 0,
+                onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
+            )
+        }
+        compose.onNodeWithContentDescription("Back").assertIsDisplayed()
+        compose.onNodeWithTag("verses").performTouchInput { swipeUp(startY = bottom - 200f, endY = top + 200f) }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/en-day-reader-scrolled-on.png")
+        compose.onNodeWithContentDescription("Back").assertIsNotDisplayed()
+        compose.onNodeWithTag("surah-title").assertIsNotDisplayed()
+        // A short pull back is enough, wherever in the surah the page is.
+        compose.onNodeWithTag("verses").performTouchInput { swipeDown(startY = centerY, endY = centerY + 300f) }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/en-day-reader-pulled-back.png")
+        compose.onNodeWithContentDescription("Back").assertIsDisplayed()
+        compose.onNodeWithTag("surah-title").assertIsDisplayed()
     }
 
     @Test
@@ -345,7 +411,7 @@ class ScreensTest {
     @Config(qualifiers = "ar-rLB-w411dp-h891dp-night-420dpi")
     fun readingInArabicByNight() {
         // Meanings are English, so they're off when the phone is in Arabic.
-        show("ar-night-reader") { Reader(12_400, meanings = false) }
+        show("ar-night-reader") { Reader(12_400, meanings = false, playing = false) }
         compose.onNodeWithTag("surah-title").assertIsDisplayed().assertContentDescriptionEquals("سورة الفاتحة")
         // Numbers follow the phone's language too.
         compose.onNodeWithText("٧ آيات").assertIsDisplayed()
@@ -512,7 +578,7 @@ class ScreensTest {
             RecitationTheme {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     ReaderContent(
-                        reading = Reading(1, fatihah, track, timings(fatihah)), showMeanings = true, playing = true,
+                        reading = Reading(1, fatihah, track, timings(fatihah)), showMeanings = true, playing = false,
                         position = { 7_500 }, duration = 74_000, onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {},
                         textScale = scale,
                     )
@@ -1079,7 +1145,7 @@ class ScreensTest {
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun theSurahsTitleIsInTheMiddleOfItsBar() {
-        show("en-day-reader-bar") { Reader(7_500) }
+        show("en-day-reader-bar") { Reader(7_500, playing = false) }
         val page = compose.onRoot().fetchSemanticsNode().boundsInRoot
         val title = compose.onNodeWithTag("surah-title").fetchSemanticsNode().boundsInRoot
         assertTrue(abs(title.center.x - page.center.x) < 2f)
@@ -1130,7 +1196,7 @@ class ScreensTest {
         compose.setContent { RecitationTheme(dark = true) { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { Reader(7_500) } } }
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("build/screens/en-dark-chosen-on-a-light-phone.png")
-        compose.onNodeWithTag("surah-title").assertIsDisplayed()
+        compose.onNodeWithText("of the universe").assertIsDisplayed()
     }
 
     @Test
@@ -1183,7 +1249,7 @@ class ScreensTest {
         compose.setContent {
             screen = LocalView.current
             RecitationTheme {
-                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { ClearOfTheSides { Reader(7_500, meanings = false) } }
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { ClearOfTheSides { Reader(7_500, meanings = false, playing = false) } }
             }
         }
         compose.waitForIdle()
@@ -1605,7 +1671,7 @@ class ScreensTest {
     @Test
     @Config(qualifiers = "ar-rLB-w891dp-h411dp-land-night-420dpi")
     fun inArabicOnItsSideTheReaderStillRunsFromTheRight() {
-        show("ar-night-reader-on-its-side") { Reader(7_500, meanings = false) }
+        show("ar-night-reader-on-its-side") { Reader(7_500, meanings = false, playing = false) }
         val back = compose.onNodeWithContentDescription("رجوع").fetchSemanticsNode().boundsInRoot
         val menu = compose.onNodeWithContentDescription("القائمة").fetchSemanticsNode().boundsInRoot
         assertTrue("back $back, menu $menu", back.left > menu.right)

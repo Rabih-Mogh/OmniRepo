@@ -3,8 +3,8 @@
 An Android app for reading the Quran word by word and following a recitation of it.
 Every surah can be opened and read, each word with its meaning underneath. Give the app a
 YouTube playlist of a recitation and it downloads the sound only, works out when each word
-is recited, and plays along: the block of the word being recited is filled in and kept at
-the middle of the page, and the letter being uttered is lit in gold,
+is recited, and plays along: the block of the word being recited has a line round it and
+is kept at the middle of the page, and the letter being uttered is lit in amber,
 the light gliding from letter to letter.
 
 The app is in English and Arabic, following the phone's language. It is made for readers
@@ -13,19 +13,23 @@ together the Arabic comes first, each the way its page runs: in English a surah'
 reads number, Arabic name, then its Latin spelling and meaning at the far side, and a
 surah named in a line of text is "الفاتحة · Al-Fatihah"; in Arabic the Arabic name stands
 alone or first. In the reader, in English, the Latin spelling under the Arabic name has
-the surah's number before it ("1 · Al-Fatihah"). In light mode it is green
-on white; in dark mode, gold on black. It follows the phone's dark mode unless light or dark
-is chosen in its menu. The bars at the top and bottom of every screen are
-quiet: they take the page's own colour, with a thin gold rule between them and the page,
-and the player sits on the bottom one. Surah names are written in
-calligraphy. In the list of surahs each number is plain gold with a small gold diamond
-under it, the rows are tall, and a gold line with the same margin at either end parts
-them. A surah that has a recitation downloaded (at least one recording whose sound is on
-the phone) is told apart under its number: small gold bars of sound, where the others
-have the diamond. Verse numbers sit in an eight-point
+the surah's number before it ("1 · Al-Fatihah").
+
+The look is plain, made to be read at a glance. In light mode it is black on white with
+one colour, a deep teal; in dark mode, white on black with a pale mint. It follows the
+phone's dark mode unless light or dark is chosen in its menu. Headings are bold, corners
+are round and buttons have round ends. The bars at the top and bottom of every screen
+are a colour of their own, teal by day and a dark teal by night, so the page stands apart
+between them; the player sits on the bottom one. The phone's own status icons are drawn
+light on the top bar. Surah names are written in calligraphy. In the list of surahs each
+number is large and plain, the rows are tall, and a faint line with the same margin at
+either end parts them. A surah that has a recitation downloaded (at least one recording
+whose sound is on the phone) is told apart by its number: in teal, with small bars of
+sound under it, where the others are grey. Verse numbers sit in an eight-point
 star. A verse's words are laid out as blocks that share the verse's whole width between
-them, touching one another and stopping a small margin short of the screen's edges; the block of the word being recited, its meaning included,
-is filled with a tint and has no frame.
+them, touching one another and stopping a small margin short of the screen's edges; the
+block of the word being recited, its meaning included, is faintly filled and has a
+rounded line round it.
 
 ## How it works
 
@@ -118,13 +122,19 @@ phone and nowhere else.
      model and its engine on the phone are still listened to; the others wait for the
      connection to come back and are taken up by themselves when it does.
 3. **Read along.** Open a recording that is ready, or its surah from the Quran tab.
-   - A surah opens on its title page. Two gold rules, each with a small diamond at its
-     middle, run nearly from edge to edge, and between them stand its name in
+   - A surah opens on its title page. Two hairlines run nearly from edge to edge, and
+     between them stand its name in
      calligraphy, what the name means, how many verses it has, where it was revealed and
      its place in the order of revelation. Under them comes the basmala drawn as one
      calligraphic piece. (Al-Fatihah has
      the piece too, though the basmala is also its first verse; At-Tawbah has none.) The
      title page fills the top half, so the first verse starts at the middle of the page.
+   - The top bar gets out of the way. Once the page goes on down the surah, whether a
+     finger scrolls it or the recitation carries it, the bar slides up out of sight and
+     the verses have its room; the strip behind the phone's status bar stays. It slides
+     back when the page is pulled back a little, when the recitation is paused, and at
+     the surah's start. While the page follows the recitation, a passage said again
+     (which takes the page back a line or two) doesn't bring it back.
    - The app remembers how far each recitation was listened to. Opened again from the
      start, a bar offers **Move to last read** with the verse it had reached.
    - The page follows the recitation and keeps the word being recited at the middle of
@@ -132,11 +142,11 @@ phone and nowhere else.
      phone held on its side) and that would push the line just read off the top, the word
      sits lower instead, so that line stays in view above it.
    - Nothing is drawn under the camera's hole or notch: when the phone is on its side the
-     page stops short of it, in the page's own colour. The page glides after
+     page stops short of it, and the strip beside it takes the bars' colour. The page glides after
      the word rather than jumping, the block's fill and the light fade from one word to the next, and
      a jump to a far part of the surah is made out of sight: the page fades, is moved, and
      comes back drifting the last of the way from the side it travelled. Scrolling by hand
-     stops the following until the follow button is tapped: a gold star, like the verse
+     stops the following until the follow button is tapped: a solid star, like the verse
      numbers', with an arrow pointing up or down the page to the word being recited.
    - The recitation doesn't start by itself: it is loaded and waits for **play**.
    - While a recitation plays with its surah on show, the screen stays on: it doesn't dim
@@ -172,7 +182,7 @@ phone and nowhere else.
      recited. Play pressed on a headset or in a car while the app is closed takes up the
      recitation listened to last, where it was left. Android colours that player from the picture
      it is given, so each surah comes with one in the theme's colours: its name under the
-     arch, gold on near-black in dark mode and cream on green by day. Inside the app, a bar at the bottom of the
+     arch, on the bars' teal by day and their dark teal in dark mode. Inside the app, a bar at the bottom of the
      lists shows what is reciting, with play or pause, a cross to stop it, and a tap to
      go back to its surah.
 
@@ -198,7 +208,7 @@ Eight colours, as in the mushafs printed with the rules in colour:
 | Dark blue | التفخيم | تفخيم الراء, تفخيم لام لفظ الجلالة | A fuller, rounder light |
 | Grey | الإدغام وما لا يُلفَظ | الإدغام بغير غُنَّة, إدغام المتماثلَين, المتجانسَين and المتقاربَين, اللام الشمسية, همزة الوصل, ما لا يُلفَظ | A grey touch and no pool of light |
 
-A letter under no rule is lit in gold, as before. Letters read plainly (الإظهار), a light
+A letter under no rule is lit in amber. Letters read plainly (الإظهار), a light
 r, and ordinary long vowels written as full letters keep the text's colour. Not marked:
 the heavy letters that are always heavy (خ ص ض غ ط ق ظ), and the few one-off readings
 (saktah, imalah, ishmam, tashil).

@@ -79,7 +79,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
 import androidx.activity.compose.BackHandler
@@ -87,6 +86,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.coroutines.launch
 import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.SliderDefaults
@@ -123,6 +123,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -360,6 +361,50 @@ fun ReaderContent(
     // (a seek to another part of the surah) is made out of sight instead: the page fades,
     // is moved, and comes back drifting the last of the way from the side it travelled.
     val place = remember { WordPlace() }
+    // The top bar slides away once the page goes on down the surah, whether the reader's
+    // finger moves it or the recitation carries it, so the verses have the room. It is
+    // back when the reader pulls the page back, when the recitation is paused, and at the
+    // surah's start. While the page follows the recitation only going on counts: a passage
+    // said again takes the page back a line or two, and the bar isn't to come and go with
+    // that. The page lies under the bar, so nothing is laid out again as it slides. With
+    // the note that the recording isn't this surah, the bar stays.
+    val bar = remember { SlidingBar() }
+    val barStays = reading.timings?.matches == false
+    place.top = if (barStays) 0f else bar.strip.toFloat()
+    val enoughToTell = with(LocalDensity.current) { 24.dp.toPx() }
+    val reciting by rememberUpdatedState(playing)
+    LaunchedEffect(list, barStays) {
+        if (barStays) {
+            bar.away = false
+            return@LaunchedEffect
+        }
+        var before = emptyMap<Int, Int>() // where each item on the page was, by its number
+        var firstBefore = 0
+        var gone = 0f // how far the page has gone the one way since it last turned
+        snapshotFlow { list.layoutInfo.visibleItemsInfo }.collect { showing ->
+            val first = showing.firstOrNull() ?: return@collect
+            // Measured on an item that was on the page before and still is; with none, the page jumped.
+            val same = showing.firstOrNull { it.index in before }
+            val moved = when {
+                same != null -> (before.getValue(same.index) - same.offset).toFloat()
+                before.isEmpty() -> 0f
+                first.index > firstBefore -> enoughToTell
+                else -> -enoughToTell
+            }
+            before = showing.associate { it.index to it.offset }
+            firstBefore = first.index
+            gone = if (moved * gone < 0) moved else gone + moved
+            when {
+                // At the surah's start, where the bar would only uncover the empty room it stood on.
+                first.index == 0 && -first.offset < bar.height - bar.strip -> bar.away = false
+                // Not for the page settling on its word while nothing is being recited.
+                gone >= enoughToTell -> if (reciting || list.isScrollInProgress) bar.away = true
+                gone <= -enoughToTell && !follow -> bar.away = false
+            }
+        }
+    }
+    // Paused, the bar is back: that is when the way out and the menu are wanted.
+    LaunchedEffect(playing) { if (!playing) bar.away = false }
     with(LocalDensity.current) {
         place.margin = 4.dp.toPx()
         // Between a verse's last line and the next verse's first there is the rule with its star, and perhaps a translation.
@@ -441,7 +486,8 @@ fun ReaderContent(
     LaunchedEffect(follow, unheardVerse) {
         if (!follow || unheardVerse < 0) return@LaunchedEffect
         val item = unheardVerse + above
-        val middle = -(place.pageHeight() / 2 - verseHead).toInt().coerceAtLeast(0)
+        // The page starts under the top bar: a verse is placed from the bar's foot.
+        val middle = -(place.middle() - verseHead - if (barStays) 0 else bar.height).toInt().coerceAtLeast(0)
         val showing = list.layoutInfo.visibleItemsInfo
         if (showing.any { it.index == item || it.index == item - 1 }) {
             list.animateScrollToItem(item, middle)
@@ -495,7 +541,7 @@ fun ReaderContent(
             // Only the button opens it: a swipe from the edge is the phone's own Back.
             gesturesEnabled = menu.isOpen,
             drawerContent = {
-                ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.surface) {
+                MenuSheet {
                     CompositionLocalProvider(LocalLayoutDirection provides direction) {
                         Column(Modifier.fillMaxHeight().verticalScroll(rememberScrollState()).padding(vertical = 16.dp).testTag("reader-menu")) {
                             Text(
@@ -512,7 +558,7 @@ fun ReaderContent(
             CompositionLocalProvider(LocalLayoutDirection provides direction) {
             Scaffold(
                 topBar = {
-                    Banner {
+                    Banner(bar) {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
                             val onBanner = LocalBanner.current.content
@@ -555,16 +601,18 @@ fun ReaderContent(
                     if (!follow && index != null) FollowButton(up = recitedAbove, onClick = { follow = true })
                 },
             ) { padding ->
-                Column(Modifier.fillMaxSize().padding(padding)) {
-                    if (reading.timings?.matches == false) {
+                // The verses run up under the top bar, which slides off them; only the note stands below it.
+                val top = padding.calculateTopPadding()
+                Column(Modifier.fillMaxSize().padding(bottom = padding.calculateBottomPadding())) {
+                    if (barStays) {
                         Text(
                             stringResource(R.string.mismatch, surahName(surah)),
-                            Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                            Modifier.padding(top = top).padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp))
                                 .background(MaterialTheme.colorScheme.errorContainer).padding(12.dp),
                             color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodyMedium,
                         )
                     }
-                    Verses(reading, index, list, current, currentVerse, index?.timing(said), index?.ends(said) ?: Int.MAX_VALUE, position, showMeanings, textScale, hand, tajweed, marks, onMark, place, { fade.value }, { drift.value }, wash, translated, { translated = it; taps++ },
+                    Verses(if (barStays) 0.dp else top, with(LocalDensity.current) { place.top.toDp() }, reading, index, list, current, currentVerse, index?.timing(said), index?.ends(said) ?: Int.MAX_VALUE, position, showMeanings, textScale, hand, tajweed, marks, onMark, place, { fade.value }, { drift.value }, wash, translated, { translated = it; taps++ },
                         // Reciting from a verse outside the verses chosen to be recited takes the whole surah again.
                         onPlayFrom = { verse ->
                             if (range != null && verse !in range) onRange(0..reading.verses.lastIndex)
@@ -649,6 +697,9 @@ private class WordPlace {
     var margin = 0f
     var gap = 0f
 
+    /** How much of the page's top is always covered: the strip behind the phone's status bar, in px. */
+    var top = 0f
+
     fun placed(word: Int, tile: LayoutCoordinates) {
         val page = list
         val old = this.tile
@@ -666,6 +717,9 @@ private class WordPlace {
 
     fun pageHeight(): Float = list?.size?.height?.toFloat() ?: 0f
 
+    /** How far down the page its middle is: the middle of what is never covered. */
+    fun middle(): Float = (pageHeight() + top) / 2
+
     /**
      * How far the page has to move for [word] to be where it should: at the middle of
      * the page, or lower than that when a short page (a phone on its side) would
@@ -677,17 +731,19 @@ private class WordPlace {
         val page = list?.takeIf { it.isAttached } ?: return null
         val tile = tile?.takeIf { this.word == word && it.isAttached } ?: return null
         val now = page.localBoundingBoxOf(tile, clipBounds = false)
-        val centred = now.center.y - page.size.height / 2f
+        val centred = now.center.y - middle()
         val before = lineBefore?.takeIf { it.isAttached }?.let { page.localBoundingBoxOf(it, clipBounds = false) } ?: return centred
         // Only the line right above counts: after a jump, what was recited before is somewhere else.
         if (before.top >= now.top || now.top - before.bottom > gap) return centred
-        if (before.top - centred >= margin) return centred
-        return maxOf(before.top - margin, now.bottom - (page.size.height - margin))
+        if (before.top - centred >= top + margin) return centred
+        return maxOf(before.top - top - margin, now.bottom - (page.size.height - margin))
     }
 }
 
 @Composable
 private fun Verses(
+    top: Dp,
+    covered: Dp,
     reading: Reading,
     index: WordIndex?,
     list: androidx.compose.foundation.lazy.LazyListState,
@@ -713,16 +769,19 @@ private fun Verses(
     onSeek: (Int) -> Unit,
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        // With a recitation, the title page fills the top half, so the first verse starts at
-        // the middle of the page, where the word being recited is kept; and half a page of
-        // room below the last verse lets its words reach the middle too.
-        val room = if (index != null) (maxHeight / 2 - 40.dp).coerceAtLeast(0.dp) else 0.dp
+        // The page lies under the top bar, [top] tall, of which [covered] never slides away.
+        // With a recitation, the title page fills the page down to its middle, so the first
+        // verse starts there, where the word being recited is kept; and half a page of room
+        // below the last verse lets its words reach the middle too.
+        val middle = (maxHeight + covered) / 2
+        val room = if (index != null) (middle - top - 40.dp).coerceAtLeast(0.dp) else 0.dp
+        val below = if (index != null) (maxHeight - middle - 40.dp).coerceAtLeast(0.dp) else 0.dp
         // The basmala is one very wide glyph, 11.5 times as wide as its font size: sized to span the page.
         val basmalaSize = with(LocalDensity.current) { ((maxWidth - 32.dp) / 11.5f).toSp() }
         LazyColumn(
             Modifier.fillMaxSize().testTag("verses").onGloballyPositioned { place.list = it }.graphicsLayer { alpha = fade(); translationY = drift() },
             state = list,
-            contentPadding = PaddingValues(bottom = room + 24.dp),
+            contentPadding = PaddingValues(top = top, bottom = below + 24.dp),
         ) {
             item { TitlePage(SURAHS[reading.surah - 1], minHeight = room, basmalaSize = basmalaSize) }
             itemsIndexed(reading.verses, contentType = { _, _ -> "verse" }) { v, verse ->
@@ -1092,24 +1151,27 @@ private fun WordTile(
     )
     Column(
         // The word's block is as large as the verse gives it (see WordBlocks). The block of the
-        // word being recited is filled, its meaning included, with no frame round it, and
-        // tells the page where it is so the page can keep it in the middle. The space inside
-        // the block is the word's own: it is what keeps neighbouring words apart.
+        // word being recited has a line round it, its meaning included, and tells the page
+        // where it is so the page can keep it in the middle. The space inside the block is
+        // the word's own: it is what keeps neighbouring words apart.
         (if (isCurrent) Modifier.onGloballyPositioned(onPlaced) else Modifier)
-            // On the verse's first and last rows the fill carries on past the block, to the
-            // rules above and below the verse, so the block stands the full height between them.
             .then(
                 if (lit > 0f) {
                     Modifier.drawBehind {
-                        val up = reachUp().toPx()
-                        drawRect(colors.primary.copy(alpha = 0.2f * lit), Offset(0f, -up), Size(size.width, size.height + up + reachDown().toPx()))
+                        // A rounded block round the word alone, faintly filled, with a line round it.
+                        val inset = 2.dp.toPx()
+                        val corner = CornerRadius(14.dp.toPx())
+                        val within = Size(size.width - 2 * inset, size.height - 2 * inset)
+                        drawRoundRect(colors.primary.copy(alpha = 0.14f * lit), Offset(inset, inset), within, corner)
+                        drawRoundRect(colors.primary.copy(alpha = lit), Offset(inset, inset), within, corner, style = Stroke(1.6.dp.toPx()))
                     }
                 } else {
                     Modifier
                 },
             )
-            // The wave over a passage being said again: the same block, in the highlight's
-            // colour, read as it is drawn so nothing is laid out again while it passes.
+            // The wave over a passage being said again: the word's whole block in the
+            // highlight's colour, up to the rules above and below the verse on its first and
+            // last rows; read as it is drawn so nothing is laid out again while it passes.
             .drawBehind {
                 val strength = wash()
                 if (strength > 0f) {
@@ -1129,7 +1191,7 @@ private fun WordTile(
         // them instead: the rules of recitation once, and the letter being uttered afresh every
         // frame, with nothing laid out again.
         var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
-        val gold = LocalHighlight.current
+        val amber = LocalHighlight.current
         val tajweed = LocalTajweed.current
         val context = LocalContext.current
         val letterSize = with(LocalDensity.current) { (hand.size * textScale).toPx() }
@@ -1193,7 +1255,7 @@ private fun WordTile(
                 val signs = repaint != null && repaint.signsApart && to > from && (from until to).all { written[it].isMark() }
                 // The rule the stretch falls under gives the light its colour and its motion.
                 val family = coloured.firstOrNull { it.from < uttered.to && uttered.from < it.to }?.rule?.family
-                val glow = family?.let(tajweed::light) ?: gold
+                val glow = family?.let(tajweed::light) ?: amber
                 val now = letters(from, to)
                 val was = if (uttered.before == uttered.from) now else letters(shown(uttered.before), from)
                 val moved = (uttered.sinceMs / GLIDE_MS).coerceIn(0f, 1f).let { it * it * (3 - 2 * it) }
@@ -1396,7 +1458,7 @@ private fun PlayerBar(
 }
 
 /**
- * The play button: a gold disc inside a thin gold ring, like a seal. The ring and the disc
+ * The play button: a disc of the bar's accent inside a thin ring of it. The ring and the disc
  * are drawn together, round one centre, so they can't sit askew of each other. (As a ring
  * drawn round a separate button they came out a pixel or two off on some screens, because
  * each was rounded to whole pixels on its own.)
@@ -1408,22 +1470,22 @@ private fun PlayButton(playing: Boolean, onClick: () -> Unit) {
         Modifier.padding(horizontal = 10.dp).size(46.dp).clip(CircleShape)
             .drawBehind {
                 val ring = 1.2.dp.toPx()
-                drawCircle(band.rule, radius = size.minDimension / 2 - ring / 2, style = Stroke(ring))
-                drawCircle(band.rule, radius = size.minDimension / 2 - 4.dp.toPx())
+                drawCircle(band.accent, radius = size.minDimension / 2 - ring / 2, style = Stroke(ring))
+                drawCircle(band.accent, radius = size.minDimension / 2 - 4.dp.toPx())
             }
             .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         if (playing) {
-            Icon(AppIcons.Pause, stringResource(R.string.pause), tint = band.onRule)
+            Icon(AppIcons.Pause, stringResource(R.string.pause), tint = band.onAccent)
         } else {
-            Icon(AppIcons.Play, stringResource(R.string.play), tint = band.onRule)
+            Icon(AppIcons.Play, stringResource(R.string.play), tint = band.onAccent)
         }
     }
 }
 
 /**
- * The surah's title page, above its first verse: between two gold rules that run nearly
+ * The surah's title page, above its first verse: between two hairlines that run nearly
  * from edge to edge, its name in calligraphy, what the name means, how long it is and
  * where it was revealed; and then the basmala drawn as one piece. It is at least
  * [minHeight] tall.
@@ -1437,7 +1499,7 @@ private fun TitlePage(surah: Surah, minHeight: Dp, basmalaSize: TextUnit) {
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
     ) {
         // The rules are as wide as the rules between the verses below, so the page lines up.
-        DiamondRule(Modifier.fillMaxWidth().padding(horizontal = 8.dp))
+        HeadingRule(Modifier.fillMaxWidth().padding(horizontal = 8.dp))
         SurahTitle(surah, 54.sp, colors.primary, Modifier.padding(top = 12.dp, bottom = 10.dp), withWord = true)
         if (!arabic) {
             Text(stringResource(R.string.name_and_meaning, stringResource(R.string.surah_chip, surah.number, surah.latin), surah.meaning), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
@@ -1452,7 +1514,7 @@ private fun TitlePage(surah: Surah, minHeight: Dp, basmalaSize: TextUnit) {
             Modifier.padding(top = 4.dp, bottom = 16.dp),
             style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
         )
-        DiamondRule(Modifier.fillMaxWidth().padding(horizontal = 8.dp))
+        HeadingRule(Modifier.fillMaxWidth().padding(horizontal = 8.dp))
         // Every surah but At-Tawbah opens with the basmala. In Al-Fatihah it is also the first verse.
         if (surah.number != 9) {
             Text(
