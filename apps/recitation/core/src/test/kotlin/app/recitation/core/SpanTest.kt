@@ -31,6 +31,29 @@ class SpanTest {
         assertNull(span.read())
     }
 
+    /** As [Counting], but like a real decoder it only says where it is once the block after a jump has been read. */
+    private class SaysLate(total: Long) : Samples {
+        private val inner = Counting(total)
+        private var said = 0L
+        override val total get() = inner.total
+        override val position get() = said
+        override fun seekTo(sample: Long) = inner.seekTo(sample)
+        override fun read(): FloatArray? = inner.read().also { said = inner.position }
+    }
+
+    @Test
+    fun `a stretch can be gone back into after it was read to its end`() {
+        val span = Span(SaysLate(20_000), from = 4_500, until = 7_250)
+        while (span.read() != null) Unit
+        span.seekTo(1_000)
+        // A jump lands a block early: at 4,000 of the whole, half a second before the stretch.
+        assertEquals(4_000f, span.read()!!.first())
+        assertEquals(500, span.position)
+        // And one to past its end reads nothing.
+        span.seekTo(5_000)
+        assertNull(span.read())
+    }
+
     private val timings = Timings(
         listOf(
             listOf(WordTiming(0, intArrayOf(3, 0)), WordTiming(1000, intArrayOf(3, 1000))),

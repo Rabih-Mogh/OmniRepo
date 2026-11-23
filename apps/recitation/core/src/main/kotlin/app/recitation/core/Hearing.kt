@@ -30,6 +30,7 @@ interface Samples {
 class Span(private val whole: Samples, private val from: Long, until: Long) : Samples {
     private val until = if (whole.total > 0) minOf(until, whole.total) else until
     private var started = false
+    private var jumped = false // the whole recording's position is that of before a jump until it is next read
 
     override val total: Long get() = (until - from).coerceAtLeast(0)
     override val position: Long get() = whole.position - from
@@ -37,17 +38,23 @@ class Span(private val whole: Samples, private val from: Long, until: Long) : Sa
     override fun seekTo(sample: Long) {
         whole.seekTo(from + sample)
         started = true
+        jumped = true
     }
 
     override fun read(): FloatArray? {
         if (!started) {
-            if (from > 0) whole.seekTo(from)
+            if (from > 0) {
+                whole.seekTo(from)
+                jumped = true
+            }
             started = true
         }
-        if (whole.position >= until) return null
+        if (!jumped && whole.position >= until) return null
+        jumped = false
         val block = whole.read() ?: return null
         val over = whole.position - until
-        return if (over > 0) block.copyOf((block.size - over).toInt().coerceAtLeast(0)) else block
+        if (over >= block.size) return null
+        return if (over > 0) block.copyOf((block.size - over).toInt()) else block
     }
 }
 
@@ -64,7 +71,7 @@ class Heard(val frames: IntArray, val rows: FloatArray)
  * pause, one score per Arabic sound (see [SoundColumns]).
  *
  * The model takes a few seconds of sound at a time, so the recording goes through in
- * 10-second pieces, each with a second of the sound around it for context. Every finished
+ * 10-second pieces, each with half a second of the sound either side of it for context. Every finished
  * piece is appended to a file, so listening that is cut short (the phone restarts, Android
  * stops the app) carries on from the last piece instead of starting the recording again.
  */
@@ -101,7 +108,7 @@ class Hearing(private val model: SpeechModel, vocab: List<String>) {
         // How many pieces there are, if the recording's length is known; the end is found for sure by reaching it.
         val expected = if (source.total > 0) ((source.total + PIECE - 1) / PIECE).toInt() else 0
         var end = Int.MAX_VALUE // the first piece found to lie past the end of the recording
-        // `window` holds the samples from `windowStart` on. A piece needs its own ten seconds and a second either side.
+        // `window` holds the samples from `windowStart` on. A piece needs its own ten seconds and half a second either side.
         var window = FloatArray(PIECE + 2 * CONTEXT + SAMPLE_RATE)
         var held = 0
         var windowStart = 0L
@@ -263,7 +270,15 @@ class Hearing(private val model: SpeechModel, vocab: List<String>) {
         /** The model turns every 320 samples (20 ms) into one frame. */
         private const val HOP = 320
         private const val PIECE = 10 * SAMPLE_RATE
-        private const val CONTEXT = SAMPLE_RATE
+
+        /**
+         * How much sound either side of a piece the model is given with it: half a second, a
+         * whole number of its frames. It was a second; on five real recordings the words came
+         * out as near the published timings with half (the same median in each, and 517 of
+         * 1,943 words more than 300 ms off against 516), and the model has 11 seconds to get
+         * through for every ten instead of 12.
+         */
+        private const val CONTEXT = SAMPLE_RATE / 2
         private const val MIN_SAMPLES = 4_000
 
         /** What was heard of each piece, from the file [listen] keeps, by the pieces' numbers. */

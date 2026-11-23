@@ -43,18 +43,27 @@ class AudioDecoder private constructor(open: (MediaExtractor) -> Unit) : Samples
     private var positioned = false
 
     init {
-        open(extractor)
-        val track = (0 until extractor.trackCount).firstOrNull {
-            extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME).orEmpty().startsWith("audio/")
-        } ?: error("No sound in this file")
-        extractor.selectTrack(track)
-        val format = extractor.getTrackFormat(track)
-        sourceRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-        channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-        total = if (format.containsKey(MediaFormat.KEY_DURATION)) format.getLong(MediaFormat.KEY_DURATION) * SAMPLE_RATE / 1_000_000 else 0
-        codec = MediaCodec.createDecoderByType(format.getString(MediaFormat.KEY_MIME)!!)
-        codec.configure(format, null, null, 0)
-        codec.start()
+        var decoder: MediaCodec? = null
+        try {
+            open(extractor)
+            val track = (0 until extractor.trackCount).firstOrNull {
+                extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME).orEmpty().startsWith("audio/")
+            } ?: error("No sound in this file")
+            extractor.selectTrack(track)
+            val format = extractor.getTrackFormat(track)
+            sourceRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+            channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+            total = if (format.containsKey(MediaFormat.KEY_DURATION)) format.getLong(MediaFormat.KEY_DURATION) * SAMPLE_RATE / 1_000_000 else 0
+            decoder = MediaCodec.createDecoderByType(format.getString(MediaFormat.KEY_MIME)!!)
+            decoder.configure(format, null, null, 0)
+            decoder.start()
+        } catch (e: Throwable) {
+            // It couldn't be opened, so nobody will be closing it: let go of what was taken hold of.
+            decoder?.release()
+            extractor.release()
+            throw e
+        }
+        codec = decoder!!
     }
 
     override fun seekTo(sample: Long) {

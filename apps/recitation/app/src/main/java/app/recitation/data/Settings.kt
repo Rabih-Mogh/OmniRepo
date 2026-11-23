@@ -24,6 +24,11 @@ object Settings {
 
     fun setDownloadModel(context: Context, allowed: Boolean) = store(context).edit().putBoolean("download_model", allowed).apply()
 
+    /** How the speech engine was found to run fastest on this phone, as `Tuning` writes it; null until that has been tried. */
+    fun tuning(context: Context): String? = store(context).getString("tuning", null)
+
+    fun setTuning(context: Context, tuning: String) = store(context).edit().putString("tuning", tuning).apply()
+
     /** Whether each word's meaning shows under it; [byDefault] until the user has chosen. */
     fun wordMeanings(context: Context, byDefault: Boolean): Boolean = store(context).getBoolean("word_meanings", byDefault)
 

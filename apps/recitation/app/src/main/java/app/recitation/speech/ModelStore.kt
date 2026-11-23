@@ -3,7 +3,10 @@ package app.recitation.speech
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.ParcelFileDescriptor
+import android.system.Os
+import app.recitation.data.NoRoom
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -11,6 +14,7 @@ import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
@@ -111,12 +115,15 @@ class ModelStore(private val context: Context, private val size: Long = MODEL_BY
         if (hasOwn) return@withContext
         if (lender != Lender.READY && lender != Lender.NOT_INSTALLED && !download) throw Unavailable(lender, detail)
         dir.mkdirs()
+        // Found out now rather than 318 MB later.
+        if (dir.usableSpace < size - partFile.length() + SPARE_BYTES) throw NoRoom()
         download { onProgress(false, it) }
+        // These are tried again, like any other hiccup on the way: the next download may well be whole.
         if (sha256(FileInputStream(partFile).use { it.channel.map(FileChannel.MapMode.READ_ONLY, 0, partFile.length()) }) { } != checksum) {
             partFile.delete()
-            error("The speech model was damaged on the way. Try again.")
+            throw IOException("The speech model was damaged on the way.")
         }
-        if (!partFile.renameTo(ownFile)) error("Couldn't save the speech model.")
+        if (!partFile.renameTo(ownFile)) throw IOException("Couldn't save the speech model.")
     }
 
     /**
@@ -156,11 +163,20 @@ class ModelStore(private val context: Context, private val size: Long = MODEL_BY
     private suspend fun checkBorrowed(onProgress: (Float) -> Unit): String? {
         if (borrowedIsGood) return null
         return try {
+            // The very file that passed last time needn't be read through again: 318 MB, each time the work starts.
+            val stamp = stamp()
+            if (stamp != null && stamp == passed.getString(PASSED, null)) {
+                borrowedIsGood = true
+                return null
+            }
             val bytes = borrowed()
             when {
                 bytes.remaining().toLong() != size -> "its model file is ${bytes.remaining()} bytes, not $size"
                 sha256(bytes, onProgress) != checksum -> "its model file is damaged"
-                else -> null.also { borrowedIsGood = true }
+                else -> null.also {
+                    borrowedIsGood = true
+                    if (stamp != null) passed.edit().putString(PASSED, stamp).apply()
+                }
             }
         } catch (e: java.io.IOException) {
             "${e.javaClass.simpleName}: ${e.message}"
@@ -168,6 +184,21 @@ class ModelStore(private val context: Context, private val size: Long = MODEL_BY
             "${e.javaClass.simpleName}: ${e.message}"
         }
     }
+
+    private val passed = context.getSharedPreferences("model", Context.MODE_PRIVATE)
+
+    /**
+     * What tells Accent Coach's file from any other without reading it: its size, the moment
+     * it was last written, to the nanosecond, and its place on the storage; with the checksum
+     * it was held against. Null where that can't be had, and the file is then read through.
+     */
+    private fun stamp(): String? = runCatching {
+        if (Build.VERSION.SDK_INT < 27) return null
+        context.contentResolver.openFileDescriptor(ACCENT_COACH_MODEL, "r")?.use {
+            val stat = Os.fstat(it.fileDescriptor)
+            "${stat.st_size}:${stat.st_mtim.tv_sec}.${stat.st_mtim.tv_nsec}:${stat.st_ino}:$checksum"
+        }
+    }.getOrNull()
 
     /** Downloads the model, carrying on from a partial download. */
     private suspend fun download(onProgress: (Float) -> Unit) {
@@ -181,7 +212,7 @@ class ModelStore(private val context: Context, private val size: Long = MODEL_BY
         try {
             val code = conn.responseCode
             if (code == HttpURLConnection.HTTP_OK) have = 0L // server ignored the range: start over
-            else if (code != HttpURLConnection.HTTP_PARTIAL) error("Download failed (HTTP $code)")
+            else if (code != HttpURLConnection.HTTP_PARTIAL) throw IOException("Download failed (HTTP $code)")
             conn.inputStream.use { input ->
                 FileOutputStream(partFile, have > 0).use { out -> copy(input, out, have, onProgress) }
             }
@@ -238,5 +269,10 @@ class ModelStore(private val context: Context, private val size: Long = MODEL_BY
             "c69750f5043e5e1f8a71ab95dd3b98338c280c92/onnx/model_int8.onnx"
         const val MODEL_BYTES = 317_712_780L
         const val MODEL_SHA256 = "74174710e34035bbb7f611601d016c32fc575de7a6f53b1078107dc10a84e7ae"
+
+        private const val PASSED = "accent_coach_passed"
+
+        /** Room left over on the phone after the model is on it. */
+        private const val SPARE_BYTES = 16L shl 20
     }
 }

@@ -31,6 +31,15 @@ class LiveAlignment(private val recital: Recital) {
      */
     val clarity: Float get() = if (required == 0) 1f else clear.toFloat() / required
 
+    // Passages the reciter says again are looked for as the listening goes (see [Repeats]),
+    // so the light goes back with him without waiting for the whole recording.
+    private val again = ArrayList<List<Pair<Int, Int>>>() // those found for good
+    private var pending: List<List<Pair<Int, Int>>> = emptyList() // found near the end of what has been heard: gone over again next time
+    private var readTo = 0 // rows before this have been gone over for good
+    private var view: IntArray? = null // where the sounds start with every find allowed for, as of the last look
+    private var viewSounds = 0 // how many sounds had been placed then
+    private var advances = 0
+
     /** More of what the model heard: the frame each row came from, and the rows. */
     fun add(newFrames: IntArray, newRows: FloatArray) {
         val total = count + newFrames.size
@@ -70,7 +79,41 @@ class LiveAlignment(private val recital: Recital) {
         // A placing that has lost its way would light the wrong words: better to light none
         // until the whole recording has been heard and placed properly.
         if (required >= ENOUGH_TO_JUDGE && clarity < TRUSTED) return Timings(emptyList(), 1f, heardMs = 0)
-        return recital.timingsSoFar(starts, frames, sounds, heardMs)
+        // Only on a placing that is holding well: one that is drifting sees him go back where he didn't.
+        if (clarity >= SURE) {
+            if (advances++ % AGAIN_EVERY == 0) lookForRepeats(sounds)
+        } else {
+            pending = emptyList()
+            view = null
+        }
+        val seen = view
+        val shown = if (seen == null) starts else IntArray(starts.size) { if (it < viewSounds) seen[it] else starts[it] }
+        return recital.timingsSoFar(shown, frames, sounds, heardMs, again + pending)
+    }
+
+    /**
+     * Goes over what has been placed since the last look for passages said again. A stretch
+     * well behind the listening is gone over once and for all, and what was found there is
+     * kept. Nearer the end the reciter may be in the middle of going back, so those
+     * stretches are gone over again next time, from the placing as it stood before.
+     */
+    private fun lookForRepeats(sounds: Int) {
+        class Read(val u: Int, val v: Int, val toRow: Int, val found: List<List<Pair<Int, Int>>>)
+        val trial = starts.copyOf()
+        val reads = ArrayList<Read>()
+        recital.again(rows, trial, readTo) { u, v, toRow, found -> reads += Read(u, v, toRow, found) }
+        var forGood = 0
+        while (forGood < reads.size && settled - reads[forGood].toRow >= FOR_GOOD_AFTER) forGood++
+        if (forGood > 0) {
+            // Up to where the first stretch still open begins.
+            val until = if (forGood < reads.size) reads[forGood].u else reads[forGood - 1].v
+            for (read in reads.subList(0, forGood)) again += read.found
+            System.arraycopy(trial, 0, starts, 0, until)
+            readTo = trial[until]
+        }
+        pending = reads.drop(forGood).flatMap { it.found }
+        view = trial
+        viewSounds = sounds
     }
 
     private companion object {
@@ -89,7 +132,16 @@ class LiveAlignment(private val recital: Recital) {
          */
         const val TRUSTED = 0.72f
 
+        /** From this share of clearly heard sounds the placing is sure enough to look for passages said again in. */
+        const val SURE = 0.8f
+
         /** How many sounds must be settled before the placing is judged. */
         const val ENOUGH_TO_JUDGE = 150
+
+        /** Passages said again are looked for once in this many calls: every half minute of recitation. */
+        const val AGAIN_EVERY = 3
+
+        /** How many rows the listening must be past a stretch before what was found in it stands: some twenty seconds. */
+        const val FOR_GOOD_AFTER = 1_000
     }
 }

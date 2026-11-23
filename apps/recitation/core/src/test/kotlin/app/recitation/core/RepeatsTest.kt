@@ -131,6 +131,64 @@ class RepeatsTest {
     }
 
     @Test
+    fun `a passage said again is found while the recording is still being listened to`() {
+        val long = List(40) { verses }.flatten()
+        val recital = Recital(2, long)
+        val sizes = long.flatMap { Phonemizer.verse(it).map { word -> word.size } }
+        var at = recital.phones.size - sizes.sum()
+        val soundsOfWord = sizes.map { size -> (at until at + size).toList().also { at += size } }
+        // Four words said again a third of the way in, and three more two thirds of the way in.
+        val k = sizes.size / 3
+        val m = 2 * sizes.size / 3
+        val said = ((0..k + 3) + (k..m + 2) + (m until sizes.size)).toList()
+        val columns = said.flatMap { word -> soundsOfWord[word].map { recital.phones[it].sound.ordinal + 1 } }
+        val rows = FloatArray(columns.size * width) { -9f }
+        for ((row, column) in columns.withIndex()) rows[row * width + column] = -0.05f
+        val frames = IntArray(columns.size) { it * 10 }
+        val whole = recital.place(rows, frames)!!
+        assertEquals(listOf(k to 4, m to 3), whole.repeats.map { it.first to it.words.size })
+
+        // Heard in pieces of some ten seconds, as the listening hands them on.
+        val live = LiveAlignment(recital)
+        val seenAt = HashMap<Int, Int>() // for each passage, how many rows had been heard when it first showed
+        val shown = ArrayList<List<Pair<Int, Int>>>()
+        var soFar = Timings(emptyList(), 1f, heardMs = 0)
+        for (from in columns.indices step 140) {
+            val until = minOf(columns.size, from + 140)
+            live.add(frames.copyOfRange(from, until), rows.copyOfRange(from * width, until * width))
+            soFar = live.advance()
+            for (repeat in soFar.repeats) seenAt.putIfAbsent(repeat.first, until)
+            shown += soFar.repeats.map { it.first to it.words.size }
+        }
+        // Each is found within a minute of being said, long before the end, and the same as the whole recording gives.
+        val rowOf = { word: Int -> said.take(said.indexOf(word) + 1).sumOf { soundsOfWord[it].size } }
+        assertTrue(seenAt.getValue(k) - rowOf(k + 3) < 900, "the first showed ${seenAt[k]} rows in, said by row ${rowOf(k + 3)}")
+        assertTrue(seenAt.getValue(m) < columns.size - 1_000, "the second showed ${seenAt[m]} rows in, of ${columns.size}")
+        assertEquals(whole.repeats.map { it.first to it.words.size }, soFar.repeats.map { it.first to it.words.size })
+        assertEquals(whole.repeats.map { it.words.map(WordTiming::startMs) }, soFar.repeats.map { it.words.map(WordTiming::startMs) })
+        // Once shown, a passage stays: nothing found is taken back or changed.
+        for ((earlier, later) in shown.zipWithNext()) assertEquals(earlier, later.take(earlier.size))
+        // The words said once are where the whole recording puts them too, as far as they have been settled.
+        val placed = soFar.verses.flatten()
+        assertEquals(whole.verses.flatten().take(placed.size).map { it.startMs }, placed.map { it.startMs })
+    }
+
+    @Test
+    fun `nothing is found said again in a recitation heard straight through as it is listened to`() {
+        val long = List(40) { verses }.flatten()
+        val recital = Recital(2, long)
+        val columns = recital.phones.map { it.sound.ordinal + 1 }
+        val rows = FloatArray(columns.size * width) { -9f }
+        for ((row, column) in columns.withIndex()) rows[row * width + column] = -0.05f
+        val live = LiveAlignment(recital)
+        for (from in columns.indices step 140) {
+            val until = minOf(columns.size, from + 140)
+            live.add(IntArray(until - from) { (from + it) * 10 }, rows.copyOfRange(from * width, until * width))
+            assertEquals(emptyList(), live.advance().repeats.map { it.first })
+        }
+    }
+
+    @Test
     fun `a long stretch heard out of turn is found a chunk at a time`() {
         // All five verses, heard in two ten-second pieces; a chunk is one piece here.
         val (rows, sounds) = heard((0..15).toList())

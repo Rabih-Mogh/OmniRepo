@@ -97,8 +97,9 @@ class AlignerTest {
             val rows = FloatArray(frames * width) { -random.nextFloat() * 8 }
             val best = bestScore(rows, sounds)
             // A limit of 50 cells forces the split all the way down; the default solves it in one go.
-            for (direct in listOf(50L, 2_000_000L)) {
-                val path = assertNotNull(Aligner(rows, sounds, direct).path())
+            // Split, the halves are worked on one after the other, or side by side on threads of their own.
+            for ((direct, sideBySide) in listOf(50L to Long.MAX_VALUE, 50L to 0L, 2_000_000L to Long.MAX_VALUE)) {
+                val path = assertNotNull(Aligner(rows, sounds, direct, sideBySide = sideBySide).path())
                 val steps = listOf(0) + path.toList() + (2 * count)
                 assertTrue(steps.zipWithNext().all { (a, b) -> a in enters(sounds, b) }, "every step is an allowed one")
                 assertTrue(abs(best - score(rows, sounds, path)) < 1e-2, "best $best, got ${score(rows, sounds, path)}")
@@ -125,6 +126,15 @@ class AlignerTest {
             lines.map { line -> line.split(' ').map { it.substringBefore('|') } },
             lines.flatMap { line -> line.split(' ').map { it.substringAfter('|').toInt() } },
         )
+    }
+
+    @Test
+    fun `a real recitation is placed the same whether its halves are worked on side by side or in turn`() {
+        val real = fatihah()
+        val phones = Recital(1, real.verses).phones
+        val inTurn = Aligner(real.rows, phones, direct = 20_000L, sideBySide = Long.MAX_VALUE).path()
+        val together = Aligner(real.rows, phones, direct = 20_000L, sideBySide = 0L).path()
+        assertEquals(assertNotNull(inTurn).toList(), assertNotNull(together).toList())
     }
 
     @Test

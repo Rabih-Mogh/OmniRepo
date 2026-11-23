@@ -32,8 +32,22 @@ internal object Repeats {
      * starts at; [starts] is put right where a passage said again had thrown it off.
      * [ordinal] numbers the words the sounds belong to, in order. Returns each passage said
      * again as (sound, the row it began at) pairs.
+     *
+     * While a recording is still being listened to, only what has come since last time is
+     * gone through: from the first place to trust at or after row [fromRow]. [read] is told
+     * of each stretch as it is read: the sounds it lies between, the row it ends at, and
+     * what was found in it.
      */
-    fun find(phones: List<Phone>, ordinal: IntArray, rows: FloatArray, path: IntArray, starts: IntArray): List<List<Pair<Int, Int>>> {
+    @Synchronized
+    fun find(
+        phones: List<Phone>,
+        ordinal: IntArray,
+        rows: FloatArray,
+        path: IntArray,
+        starts: IntArray,
+        fromRow: Int = 0,
+        read: (u: Int, v: Int, toRow: Int, found: List<List<Pair<Int, Int>>>) -> Unit = { _, _, _, _ -> },
+    ): List<List<Pair<Int, Int>>> {
         val width = SoundColumns.WIDTH
         val placed = phones.indices.filter { starts[it] >= 0 }
         if (placed.isEmpty()) return emptyList()
@@ -56,7 +70,7 @@ internal object Repeats {
         }
 
         val passes = ArrayList<List<Pair<Int, Int>>>()
-        var a = 0
+        var a = if (fromRow <= 0) 0 else anchors.indices.firstOrNull { starts[placed[anchors[it]]] >= fromRow } ?: return emptyList()
         while (a + 1 < anchors.size) {
             // As long a stretch as is handled at once, ending on the surest place in its later part; the latest of equals.
             val from = starts[placed[anchors[a]]]
@@ -70,6 +84,7 @@ internal object Repeats {
             if (best < 0) best = (a + 1 until anchors.size).firstOrNull { starts[placed[anchors[it]]] - from >= STRETCH / 3 } ?: anchors.size - 1
             val found = read(phones, ordinal, rows, starts, placed[anchors[a]], placed[anchors[best]])
             passes += found
+            read(placed[anchors[a]], placed[anchors[best]], starts[placed[anchors[best]]], found)
             // A stretch can end in the middle of a passage said again: the places to trust are
             // found by the first placing, which may well have put one inside the passage. Cut
             // in two like that, the passage can't be made out in this stretch, nor in the next
@@ -117,7 +132,9 @@ internal object Repeats {
         var prev = FloatArray(size) { NEVER }
         var cur = FloatArray(size)
         prev[2 * u + 1 - lo] = 0f
-        val came = IntArray(n * size)
+        // Tens of megabytes for a long stretch: kept from one stretch to the next rather than made afresh each time.
+        if (scratch.size < n * size) scratch = IntArray(n * size)
+        val came = scratch
         // For each position, the best position at or after it to go back from, and its score.
         val leave = FloatArray(size + 1)
         val leaveAt = IntArray(size + 1)
@@ -202,6 +219,8 @@ internal object Repeats {
         return again
     }
 
+    private var scratch = IntArray(0)
+
     private const val NEVER = -1e30f
     private const val UNREACHABLE = -1e29f
 
@@ -213,7 +232,7 @@ internal object Repeats {
     private const val SURE_RUN = 30
 
     /** About how many rows are placed again at once. */
-    private const val STRETCH = 1500
+    const val STRETCH = 1500
 
     /** How many words he may have gone back before the doubtful stretch, and carried on past it the first time. */
     private const val BACK = 60

@@ -8,8 +8,10 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 import java.io.File
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -37,7 +39,7 @@ class Hit(val at: VerseRef, val arabic: String, val translation: String)
  * first time it is needed and kept on the phone from then on; the app also fetches the
  * rest quietly while it is open, so the whole Quran ends up readable offline.
  */
-class QuranStore(context: Context) {
+class QuranStore(context: Context, private val api: String = API) {
 
     private val dir = File(context.filesDir, "quran")
 
@@ -53,27 +55,30 @@ class QuranStore(context: Context) {
 
     /** The surah's verses, from the phone if they're there, else from Quran.com. */
     suspend fun surah(surah: Int): List<Verse> = withContext(Dispatchers.IO) {
-        var file = file(surah)
-        if (!file.exists()) {
+        val file = file(surah)
+        // The last few surahs read are kept as read: a list of kept verses asks for the same
+        // surah once for every verse it shows of it.
+        synchronized(lately) { lately[file.path]?.takeIf { it.first == file.lastModified() }?.second }?.let { return@withContext it }
+        read(file)?.also { synchronized(lately) { lately[file.path] = file.lastModified() to it } } ?: fetching.withLock {
             // One fetch at a time: the same surah can be asked for by the screen and the background at once.
-            fetching.withLock {
-                if (!file.exists()) {
-                    try {
-                        dir.mkdirs()
-                        val tmp = File(dir, "$surah.v2.json.tmp")
-                        tmp.writeText(fetch(surah).toString())
-                        tmp.renameTo(file)
-                        old(surah).delete()
-                    } catch (e: Exception) {
-                        // No connection: what an earlier version kept will do, in the one script it has.
-                        if (!old(surah).exists()) throw e
-                        file = old(surah)
-                    }
-                }
+            read(file) ?: try {
+                val fetched = fetch(surah).toString()
+                file.writeWhole(fetched)
+                old(surah).delete()
+                verses(fetched)
+            } catch (e: IOException) {
+                // No connection: what an earlier version kept will do, in the one script it has.
+                read(old(surah)) ?: throw e
             }
         }
-        val verses = JSONArray(file.readText())
-        List(verses.length()) { i ->
+    }
+
+    /** The verses kept in [file]; null if it isn't there, or holds something that can't be read, which is then fetched again. */
+    private fun read(file: File): List<Verse>? = if (!file.exists()) null else runCatching { verses(file.readText()) }.getOrNull()
+
+    private fun verses(kept: String): List<Verse> {
+        val verses = JSONArray(kept)
+        return List(verses.length()) { i ->
             val verse = verses.getJSONObject(i)
             val words = verse.getJSONArray("w")
             Verse(
@@ -121,11 +126,18 @@ class QuranStore(context: Context) {
     private class Indexed(val at: VerseRef, val shown: String, val said: String, val arabic: String, val translation: String)
 
     /** All verses, 50 to a page as the service allows, in the compact form kept on the phone. */
-    private fun fetch(surah: Int): JSONArray {
+    private fun fetch(surah: Int): JSONArray = try {
+        fetched(surah)
+    } catch (e: JSONException) {
+        // A page that isn't Quran.com's answer, such as a Wi-Fi sign-in page: no better than no connection.
+        throw IOException("Quran.com's answer couldn't be read", e)
+    }
+
+    private fun fetched(surah: Int): JSONArray {
         val out = JSONArray()
         var page = 1
         while (page > 0) {
-            val json = JSONObject(get("$API/verses/by_chapter/$surah?words=true&word_fields=text_uthmani,text_qpc_hafs,text_indopak,text_imlaei&translations=$SAHEEH_INTERNATIONAL&language=en&per_page=50&page=$page"))
+            val json = JSONObject(get("$api/verses/by_chapter/$surah?words=true&word_fields=text_uthmani,text_qpc_hafs,text_indopak,text_imlaei&translations=$SAHEEH_INTERNATIONAL&language=en&per_page=50&page=$page"))
             val verses = json.getJSONArray("verses")
             for (i in 0 until verses.length()) {
                 val verse = verses.getJSONObject(i)
@@ -145,7 +157,9 @@ class QuranStore(context: Context) {
             }
             page = json.getJSONObject("pagination").optInt("next_page", 0)
         }
-        if (out.length() == 0) error("Quran.com sent no verses for surah $surah")
+        // Kept for good once written, so only all of it will do.
+        val whole = SURAHS[surah - 1].verses
+        if (out.length() != whole) throw IOException("Quran.com sent ${out.length()} of surah $surah's $whole verses")
         return out
     }
 
@@ -156,7 +170,7 @@ class QuranStore(context: Context) {
             setRequestProperty("Accept", "application/json")
         }
         try {
-            if (conn.responseCode != HttpURLConnection.HTTP_OK) error("Quran.com answered HTTP ${conn.responseCode}")
+            if (conn.responseCode != HttpURLConnection.HTTP_OK) throw IOException("Quran.com answered HTTP ${conn.responseCode}")
             return conn.inputStream.bufferedReader().use { it.readText() }
         } finally {
             conn.disconnect()
@@ -165,6 +179,11 @@ class QuranStore(context: Context) {
 
     companion object {
         private val fetching = Mutex()
+
+        /** The surahs read last, by their file and when it was written. */
+        private val lately = object : LinkedHashMap<String, Pair<Long, List<Verse>>>(8, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<Long, List<Verse>>>?) = size > 4
+        }
 
         // One index for the whole app, built the first time something is searched for.
         private val indexing = Mutex()

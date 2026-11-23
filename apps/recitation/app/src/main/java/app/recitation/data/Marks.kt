@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.IOException
 
 /** A verse: [verse] is its number in [surah], counted from 1. */
 data class VerseRef(val surah: Int, val verse: Int) : Comparable<VerseRef> {
@@ -100,7 +101,8 @@ class Marks(private val file: File) {
             }
             _collections.value = listOf(read.firstOrNull { it.builtIn } ?: VerseCollection(LATER, "", emptyList())) + read.filter { !it.builtIn }
         } catch (_: Exception) {
-            // An unreadable file: start afresh rather than refuse to open.
+            // An unreadable file: start afresh rather than refuse to open, but not by writing over it.
+            file.setAside()
         }
     }
 
@@ -116,9 +118,11 @@ class Marks(private val file: File) {
                     },
                 ),
             )
-        val part = File(file.path + ".part")
-        part.writeText(json.toString())
-        part.renameTo(file)
+        // With the storage full they can't be kept; the next change tries again.
+        try {
+            file.writeWhole(json.toString())
+        } catch (_: IOException) {
+        }
     }
 
     companion object {

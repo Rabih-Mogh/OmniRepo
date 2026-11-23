@@ -38,7 +38,7 @@ class LiveCheck {
         val file = whole?.let { File("$it.${audio.extension}") } ?: File.createTempFile("recitation", "." + audio.extension)
         val started = System.currentTimeMillis()
         // About 3 MB is enough to see that pieces arrive and at what speed.
-        runCatching { YouTube.download(audio, file, stillWanted = { whole != null || file.length() < 3_000_000 }) }
+        runCatching { YouTube.download(audio, file, File(file.path + ".size"), stillWanted = { whole != null || file.length() < 3_000_000 }) }
         val seconds = (System.currentTimeMillis() - started) / 1000.0
         println("downloaded ${file.length()} bytes in ${"%.1f".format(seconds)} s to $file")
         assertTrue(file.length() > 100_000)

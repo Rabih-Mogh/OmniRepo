@@ -17,6 +17,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
 import app.recitation.data.Appearance
+import app.recitation.player.PlaybackService
 import app.recitation.ui.App
 import app.recitation.ui.Choices
 import app.recitation.ui.ClearOfTheSides
@@ -61,9 +62,14 @@ class MainActivity : ComponentActivity() {
         shared(intent)
     }
 
-    /** A playlist shared from the YouTube app lands in the "add playlist" box. */
+    /**
+     * A playlist shared from the YouTube app lands in the "add playlist" box; a tap on the
+     * notification of a recitation that is playing shows its surah.
+     */
     private fun shared(intent: Intent?) {
-        if (intent?.action != Intent.ACTION_SEND) return
-        intent.getStringExtra(Intent.EXTRA_TEXT)?.let(model::offer)
+        when (intent?.action) {
+            Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)?.let(model::offer)
+            PlaybackService.OPEN_RECITING -> model.showReciting = true
+        }
     }
 }

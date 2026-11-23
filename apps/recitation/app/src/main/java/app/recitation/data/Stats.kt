@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONObject
 import java.io.File
+import java.io.IOException
 import java.time.LocalDate
 
 /**
@@ -61,7 +62,7 @@ class Stats(private val file: File, private val today: () -> LocalDate = LocalDa
         save()
     }
 
-    private fun load(): Listening = try {
+    private fun load(): Listening = if (!file.exists()) Listening() else try {
         val json = JSONObject(file.readText())
         val days = json.getJSONObject("days")
         val heard = json.getJSONObject("heard")
@@ -70,7 +71,8 @@ class Stats(private val file: File, private val today: () -> LocalDate = LocalDa
             heard.keys().asSequence().associate { it.toInt() to ranges(heard.getString(it)) },
         )
     } catch (_: Exception) {
-        // No file yet, or one that can't be read: start counting afresh.
+        // One that can't be read: start counting afresh, but not by writing over it.
+        file.setAside()
         Listening()
     }
 
@@ -79,9 +81,11 @@ class Stats(private val file: File, private val today: () -> LocalDate = LocalDa
         val json = JSONObject()
             .put("days", JSONObject().apply { for ((day, ms) in now.days) put(day.toString(), ms) })
             .put("heard", JSONObject().apply { for ((surah, verses) in now.heard) put(surah.toString(), written(verses)) })
-        val part = File(file.path + ".part")
-        part.writeText(json.toString())
-        part.renameTo(file)
+        // With the storage full it can't be kept; the next note tries again. The recitation isn't stopped for it.
+        try {
+            file.writeWhole(json.toString())
+        } catch (_: IOException) {
+        }
     }
 
     companion object {

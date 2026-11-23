@@ -50,6 +50,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.recitation.core.Phonemizer
@@ -1477,6 +1478,50 @@ class ScreensTest {
         compose.onAllNodesWithText("Paused").onFirst().assertIsDisplayed()
         compose.onNodeWithText("Resume").performClick()
         assertTrue(resumed)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theMenuOffersAReportToCopy() {
+        androidx.work.testing.WorkManagerTestInitHelper.initializeTestWorkManager(androidx.test.core.app.ApplicationProvider.getApplicationContext())
+        compose.setContent {
+            RecitationTheme {
+                Surface {
+                    MenuContent(Script.MADINAH, {}, withIndoPak = true, textScale = 1f, onTextScale = {}, meanings = true, onMeanings = {}) {
+                        Text("Version 1.55")
+                        app.recitation.ui.CopyReport()
+                    }
+                }
+            }
+        }
+        compose.onNodeWithText("For when something isn't working: the phone, the queue and what the app did lately. It goes nowhere unless you paste it somewhere.").performScrollTo().assertIsDisplayed()
+        compose.onRoot().captureRoboImage("build/screens/en-day-menu-report.png")
+        compose.onNodeWithText("Copy a report").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Copied. Paste it into a message.").fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theFirstListeningSaysItIsFindingTheFastestWay() {
+        show("en-day-tuning") { Recordings(Status.Working(Progress(null, Step.TUNE, 0.5f), null)) }
+        compose.onAllNodesWithText("Finding the fastest way to listen on this phone… 50%").onFirst().assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun whenYouTubeRefusesTheQueueSaysSoAndWaits() {
+        show("en-day-refused") { Recordings(Status.Refused) }
+        compose.onNodeWithText("YouTube isn't letting recitations be downloaded right now. They will be tried again in a while; what is already on the phone carries on.").assertIsDisplayed()
+        // Each recording still in the queue says the same in short, and none is marked as failed.
+        compose.onAllNodesWithText("YouTube is refusing for now. Trying again in a while…").onFirst().assertIsDisplayed()
+        compose.onNodeWithText("Pause").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "ar-rLB-w411dp-h891dp-420dpi")
+    fun whenYouTubeRefusesInArabic() {
+        show("ar-day-refused") { Recordings(Status.Refused) }
+        compose.onNodeWithText("يوتيوب لا يسمح بتنزيل التلاوات حالياً. ستُعاد المحاولة بعد قليل، ويستمر العمل على ما هو موجود في الهاتف.").assertIsDisplayed()
     }
 
     @Test

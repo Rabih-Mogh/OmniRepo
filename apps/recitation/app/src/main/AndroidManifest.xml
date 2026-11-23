@@ -35,10 +35,13 @@
         android:largeHeap="true"
         android:theme="@style/Theme.Recitation">
 
+        <!-- Turning the phone, or setting it in a car's cradle, redraws the page as it is: the
+             place in it, the verses chosen to be recited and the line to the player all stay. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -61,6 +64,15 @@
             </intent-filter>
         </service>
 
+        <!-- Play pressed on a headset or in a car while the app is closed takes up the recitation listened to last. -->
+        <receiver
+            android:name=".player.ResumeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
+
         <!-- WorkManager's foreground service, declared as a download so Android 14+ allows it. -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
@@ -72,6 +84,13 @@
             android:name=".update.UpdateService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- The speech engine's library comes with a part that reports how it is used. This
+             app sends nothing about its use to anyone, so that part is left out. -->
+        <provider
+            android:name="ai.onnxruntime.TelemetryInitializer"
+            android:authorities="${applicationId}.onnxruntime_telemetry_initializer"
+            tools:node="remove" />
 
         <receiver
             android:name=".update.UpdateReceiver"

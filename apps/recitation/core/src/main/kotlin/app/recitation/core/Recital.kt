@@ -137,8 +137,19 @@ class Recital(surah: Int, verses: List<List<String>>, withOpening: Boolean = tru
      * sounds have been placed, and the model has heard as far as [heardMs]. The answer
      * holds the words placed so far and nothing after them.
      */
-    fun timingsSoFar(starts: IntArray, frameOfRow: IntArray, sounds: Int, heardMs: Int): Timings =
-        build(starts, frameOfRow, null, sounds, heardMs)
+    fun timingsSoFar(starts: IntArray, frameOfRow: IntArray, sounds: Int, heardMs: Int, again: List<List<Pair<Int, Int>>> = emptyList()): Timings {
+        val once = build(starts, frameOfRow, null, sounds, heardMs)
+        return if (again.isEmpty()) once else Timings(once.verses, once.clarity, once.heardMs, again.mapNotNull { repeat(it, frameOfRow) })
+    }
+
+    /**
+     * Looks for passages said again in what has been placed so far of a recording still
+     * being listened to: [Repeats.find], from row [fromRow] on, over [starts], which it
+     * puts right.
+     */
+    internal fun again(rows: FloatArray, starts: IntArray, fromRow: Int, read: (u: Int, v: Int, toRow: Int, found: List<List<Pair<Int, Int>>>) -> Unit) {
+        Repeats.find(phones, ordinal, rows, IntArray(0), starts, fromRow, read)
+    }
 
     private fun build(starts: IntArray, frameOfRow: IntArray, aligner: Aligner?, sounds: Int, heardMs: Int): Timings {
         val total = verseSizes.sum()

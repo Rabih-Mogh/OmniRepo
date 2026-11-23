@@ -13,13 +13,15 @@ import java.nio.FloatBuffer
 /**
  * The speech model on the phone: wav2vec2 (CTC over IPA symbols), run with ONNX Runtime.
  * It writes down the sounds actually made rather than guessing words, which is what
- * lining a known text up with a recording needs.
+ * lining a known text up with a recording needs. [tuning] says how the engine is run.
  */
-class Listener(model: ModelStore.Opened, vocab: List<String>) : SpeechModel, AutoCloseable {
+class Listener(model: ModelStore.Opened, vocab: List<String>, tuning: Tuning = Tuning.USUAL) : SpeechModel, AutoCloseable {
 
     private val env = OrtEnvironment.getEnvironment()
     private val options = OrtSession.SessionOptions().apply {
-        setIntraOpNumThreads(4)
+        setIntraOpNumThreads(tuning.threads)
+        // Threads with nothing to do wait rather than spin, when that was found to be no slower.
+        if (!tuning.spin) addConfigEntry("session.intra_op.allow_spinning", "0")
         setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
     }
 
@@ -33,8 +35,8 @@ class Listener(model: ModelStore.Opened, vocab: List<String>) : SpeechModel, Aut
     override fun run(samples: FloatArray): FloatArray =
         OnnxTensor.createTensor(env, FloatBuffer.wrap(samples), longArrayOf(1, samples.size.toLong())).use { tensor ->
             session.run(mapOf(inputName to tensor)).use { result ->
-                val output = result[0] as OnnxTensor // [1, frames, symbols]
-                FloatArray(output.floatBuffer.remaining()).also { output.floatBuffer.get(it) }
+                val scores = (result[0] as OnnxTensor).floatBuffer // [1, frames, symbols]; a copy, so asked for once
+                FloatArray(scores.remaining()).also { scores.get(it) }
             }
         }
 
@@ -59,5 +61,6 @@ class Listener(model: ModelStore.Opened, vocab: List<String>) : SpeechModel, Aut
 
     override fun close() {
         session.close()
+        options.close()
     }
 }

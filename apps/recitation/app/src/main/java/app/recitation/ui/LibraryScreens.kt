@@ -102,6 +102,9 @@ sealed interface Status {
 
     data object WaitingForNetwork : Status
 
+    /** YouTube wouldn't let the sound be fetched; it is asked again after a while. */
+    data object Refused : Status
+
     data object Starting : Status
 }
 
@@ -374,6 +377,7 @@ fun StatusCard(status: Status, actions: StatusActions) {
                 }
                 Status.Paused -> Text(stringResource(R.string.status_paused), style = MaterialTheme.typography.bodyMedium)
                 Status.WaitingForNetwork -> Text(stringResource(R.string.status_waiting), style = MaterialTheme.typography.bodyMedium)
+                Status.Refused -> Text(stringResource(R.string.status_refused), style = MaterialTheme.typography.bodyMedium)
                 else -> Text(stringResource(R.string.status_starting), style = MaterialTheme.typography.bodyMedium)
             }
             Row(Modifier.align(Alignment.End).padding(top = 8.dp, end = 8.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -556,6 +560,7 @@ private fun RecordingRow(
                 track.wanted -> when {
                     status == Status.Paused -> stringResource(R.string.paused)
                     status == Status.WaitingForNetwork -> stringResource(R.string.status_waiting)
+                    status == Status.Refused -> stringResource(R.string.status_refused_short)
                     status is Status.ModelBlocked -> stringResource(R.string.queued_for_model)
                     working != null && working.trackId == null -> stringResource(PrepareWorker.stepLabel(working.step), (working.fraction * 100).toInt())
                     else -> stringResource(R.string.queued)

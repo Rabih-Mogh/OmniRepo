@@ -9,6 +9,7 @@ import org.schabi.newpipe.extractor.downloader.Downloader
 import org.schabi.newpipe.extractor.downloader.Request
 import org.schabi.newpipe.extractor.downloader.Response
 import org.schabi.newpipe.extractor.exceptions.ReCaptchaException
+import org.schabi.newpipe.extractor.exceptions.SignInConfirmNotBotException
 import org.schabi.newpipe.extractor.playlist.PlaylistInfo
 import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.DeliveryMethod
@@ -32,6 +33,20 @@ object YouTube {
     /** Where a video's sound can be fetched from. The address stops working after a few hours. */
     data class Audio(val url: String, val extension: String, val bitrate: Int)
 
+    /**
+     * YouTube won't answer this phone for now: it has been asked too much, or wants proof
+     * that a person is asking. It passes by itself, and sooner the less it is asked meanwhile.
+     */
+    class Refused(cause: Throwable? = null) : IOException("YouTube is refusing for now", cause)
+
+    private fun <T> asked(ask: () -> T): T = try {
+        ask()
+    } catch (e: ReCaptchaException) {
+        throw Refused(e)
+    } catch (e: SignInConfirmNotBotException) {
+        throw Refused(e)
+    }
+
     private const val USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0"
 
@@ -43,10 +58,10 @@ object YouTube {
     private val ready by lazy { NewPipe.init(Http) }
 
     /** The videos behind [url]: a playlist's, or the one video a plain video link points at. */
-    fun playlist(url: String): Playlist {
+    fun playlist(url: String): Playlist = asked {
         ready
         val service = ServiceList.YouTube
-        return when (service.getLinkTypeByUrl(url)) {
+        when (service.getLinkTypeByUrl(url)) {
             LinkType.PLAYLIST -> {
                 val info = PlaylistInfo.getInfo(service, url)
                 val items = info.relatedItems.toMutableList()
@@ -74,14 +89,14 @@ object YouTube {
     )
 
     /** The best plain-download sound of a video. AAC is preferred: every phone decodes it. */
-    fun audio(videoId: String): Audio {
+    fun audio(videoId: String): Audio = asked {
         ready
         val info = StreamInfo.getInfo(ServiceList.YouTube, "https://www.youtube.com/watch?v=$videoId")
         val plain = info.audioStreams.filter { it.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP && it.isUrl }
         val best = plain.filter { extension(it) == "m4a" }.maxByOrNull { it.averageBitrate }
             ?: plain.maxByOrNull { it.averageBitrate }
             ?: throw IOException("this video has no sound that can be downloaded")
-        return Audio(best.content, extension(best), best.averageBitrate)
+        Audio(best.content, extension(best), best.averageBitrate)
     }
 
     private fun extension(stream: AudioStream): String = stream.format?.suffix ?: "audio"
@@ -89,8 +104,15 @@ object YouTube {
     /**
      * Saves [audio] to [file], carrying on from the bytes already there. YouTube slows down
      * one long request, so the file is asked for a piece at a time.
+     *
+     * YouTube can offer a different sound for the same video from one asking to the next
+     * (another quality, say), and the start of one with the rest of another is noise. So how
+     * big the sound is, is kept in [sizeNote] when a download begins, and the bytes already
+     * there are carried on from only if what is on offer now is that big too. Otherwise the
+     * download starts over.
      */
-    fun download(audio: Audio, file: File, stillWanted: () -> Boolean = { true }, onProgress: (Float) -> Unit = {}) {
+    fun download(audio: Audio, file: File, sizeNote: File, stillWanted: () -> Boolean = { true }, onProgress: (Float) -> Unit = {}) {
+        val begun = if (sizeNote.exists()) sizeNote.readText().trim().toLongOrNull() else null
         var have = file.length()
         var total = -1L
         while (total < 0 || have < total) {
@@ -100,11 +122,22 @@ object YouTube {
                 .header("Range", "bytes=$have-${have + PIECE - 1}")
                 .build()
             client.newCall(request).execute().use { response ->
-                if (response.code == 416 && have > 0) return // nothing after what's here: it was already whole
-                if (response.code != 206) throw IOException("HTTP ${response.code}")
-                // "bytes 0-999/5000": the last number is the whole file's size.
-                total = response.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
-                    ?: throw IOException("the server didn't say how big the file is")
+                if (response.code == 429) throw Refused()
+                if (response.code != 206 && response.code != 416) throw IOException("HTTP ${response.code}")
+                // "bytes 0-999/5000", or "bytes */5000" when there is nothing that far in: the last number is the whole file's size.
+                val size = response.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
+                if (total < 0 && have > 0 && (begun == null || size != begun)) {
+                    // Not known to be more of the same sound: from the beginning, then.
+                    file.delete()
+                    have = 0
+                    return@use
+                }
+                if (response.code == 416) {
+                    if (have > 0) return // nothing after what's here: it was already whole
+                    throw IOException("HTTP 416")
+                }
+                total = size ?: throw IOException("the server didn't say how big the file is")
+                if (have == 0L) sizeNote.writeText(total.toString())
                 FileOutputStream(file, true).use { out ->
                     response.body!!.byteStream().use { input ->
                         val buffer = ByteArray(1 shl 16)

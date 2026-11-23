@@ -128,12 +128,19 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     /** The verse (counted from 0) the surah about to open should open at, when coming from a pin or a collection. */
     private var startVerse: Int? = null
 
+    /** The notification of the recitation that is playing was tapped: its surah is to be shown, once the player says which it is. */
+    var showReciting by mutableStateOf(false)
+
     /** Downloads were paused by the user and stay so until resumed. */
     var paused by mutableStateOf(Settings.paused(app))
         private set
 
     /** Something still has to be fetched and the background work is waiting for a connection to do it. */
     var waitingForNetwork by mutableStateOf(false)
+        private set
+
+    /** YouTube wouldn't let the sound be fetched, and the background work is giving it a while before it asks again. */
+    var refusedForNow by mutableStateOf(false)
         private set
 
     init {
@@ -158,6 +165,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             WorkManager.getInstance(app).getWorkInfosForUniqueWorkFlow(PrepareWorker.WAITING_NAME).collect { infos ->
                 waitingForNetwork = infos.any { it.state == WorkInfo.State.ENQUEUED }
+                refusedForNow = infos.any { it.state == WorkInfo.State.ENQUEUED && PrepareWorker.REFUSED_TAG in it.tags }
             }
         }
     }
@@ -359,10 +367,17 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 
     /** Asks for recordings to be downloaded and prepared. Ones without a known surah are left for the user to set. */
     fun want(tracks: List<Track>) {
-        for (track in tracks) {
-            if (!track.ready && track.surah in 1..SURAHS.size) library.update(track.id) { it.copy(wanted = true, error = null) }
-            // A recording that is ready and shows that some verses couldn't be heard again: that is put away.
-            else if (track.ready && track.error != null) library.update(track.id) { it.copy(error = null) }
+        val asked = tracks.associateBy { it.id }
+        // All of them in one go: a whole playlist is one change to keep, not one for each recording.
+        library.updateAll {
+            val track = asked[it.id]
+            when {
+                track == null -> it
+                !track.ready && track.surah in 1..SURAHS.size -> it.copy(wanted = true, error = null)
+                // A recording that is ready and shows that some verses couldn't be heard again: that is put away.
+                track.ready && track.error != null -> it.copy(error = null)
+                else -> it
+            }
         }
         resume()
     }
@@ -382,9 +397,9 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 
     /** Takes everything out of the queue. Half-downloaded sound is deleted; finished downloads stay. */
     fun cancel() {
-        for (track in library.playlists.value.flatMap { it.tracks }) {
-            if (track.wanted) cancel(track)
-        }
+        val queued = library.playlists.value.flatMap { it.tracks }.filter { it.wanted }
+        library.updateAll { if (it.wanted) it.copy(wanted = false) else it }
+        for (track in queued) library.dropPartial(track.id)
         paused = false
         Settings.setPaused(getApplication(), false)
         PrepareWorker.stop(getApplication())

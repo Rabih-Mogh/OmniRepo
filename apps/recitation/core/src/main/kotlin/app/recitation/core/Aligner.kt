@@ -14,13 +14,17 @@ package app.recitation.core
  * on unclear recordings it fell behind and never caught up. To fit a two-hour surah in a
  * phone's memory the search is split in halves (Hirschberg's method): the best position
  * at the middle row is found from a forward and a backward pass that keep one row of
- * scores each, and the two halves are solved the same way.
+ * scores each, and the two halves are solved the same way. The forward and the backward
+ * pass don't depend on each other, nor do the two halves, so where there is much to do
+ * they are worked on side by side, on up to four threads: a long surah's words are placed
+ * in about half the time.
  */
 class Aligner(
     private val rows: FloatArray,
     sounds: List<Phone>,
     private val direct: Long = DIRECT,
     private val frames: Int = rows.size / SoundColumns.WIDTH,
+    private val sideBySide: Long = SIDE_BY_SIDE,
 ) {
 
     private val width = SoundColumns.WIDTH
@@ -83,7 +87,19 @@ class Aligner(
     internal fun path(): IntArray? {
         if (count == 0 || frames == 0) return null
         val path = IntArray(frames)
-        return if (solve(0, frames, 0, states - 1, path)) path else null
+        return if (solve(0, frames, 0, states - 1, path, 0)) path else null
+    }
+
+    /** Does [one] here and [other] on a thread of its own, and waits for both. */
+    private fun <A, B> both(one: () -> A, other: () -> B): Pair<A, B> {
+        val second = java.util.concurrent.FutureTask(other)
+        Thread(second, "aligner").start()
+        val first = one()
+        return try {
+            first to second.get()
+        } catch (e: java.util.concurrent.ExecutionException) {
+            throw e.cause ?: e
+        }
     }
 
     /**
@@ -118,13 +134,18 @@ class Aligner(
      * Fills [path] for rows [from] until [until]. The path stood at [before] just ahead of
      * them and must be able to step to [after] just past them.
      */
-    private fun solve(from: Int, until: Int, before: Int, after: Int, path: IntArray): Boolean {
+    private fun solve(from: Int, until: Int, before: Int, after: Int, path: IntArray, depth: Int): Boolean {
         val n = until - from
         if (n == 0) return true
         if (n.toLong() * (after - before + 1) <= direct) return direct(from, until, before, after, path)
         val mid = from + n / 2
-        val ahead = forward(from, mid + 1, before, after)
-        val behind = backward(mid + 1, until, before, after)
+        // Two levels of splitting in two: four threads at the most.
+        val together = depth < 2 && n.toLong() * (after - before + 1) > sideBySide
+        val (ahead, behind) = if (together) {
+            both({ forward(from, mid + 1, before, after) }, { backward(mid + 1, until, before, after) })
+        } else {
+            forward(from, mid + 1, before, after) to backward(mid + 1, until, before, after)
+        }
         var best = -1
         var bestScore = UNREACHABLE
         for (i in ahead.indices) {
@@ -137,7 +158,12 @@ class Aligner(
         if (best < 0) return false
         val at = before + best
         path[mid] = at
-        return solve(from, mid, before, at, path) && solve(mid + 1, until, at, after, path)
+        // The halves fill different parts of the path.
+        return if (together) {
+            both({ solve(from, mid, before, at, path, depth + 1) }, { solve(mid + 1, until, at, after, path, depth + 1) }).let { it.first && it.second }
+        } else {
+            solve(from, mid, before, at, path, depth + 1) && solve(mid + 1, until, at, after, path, depth + 1)
+        }
     }
 
     /** Best score of reaching each state in [lo]..[hi] at row `until - 1`, starting from [lo] before row [from]. */
@@ -304,5 +330,8 @@ class Aligner(
 
         /** Problems up to this many (row, state) cells are solved in one go. */
         const val DIRECT = 2_000_000L
+
+        /** From this many (rows × positions) on, the two halves of a search are worked on side by side: less isn't worth a thread. */
+        const val SIDE_BY_SIDE = 20_000_000L
     }
 }

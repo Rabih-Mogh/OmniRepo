@@ -45,6 +45,7 @@
     <string name="preparing">Getting recitations ready</string>
     <string name="step_model_check">Checking Accent Coach\'s speech model… %1$d%%</string>
     <string name="step_engine">Getting the speech engine… %1$d%%</string>
+    <string name="step_tune">Finding the fastest way to listen on this phone… %1$d%%</string>
     <string name="error_engine">The speech engine couldn\'t be started on this phone. (%1$s)</string>
     <string name="step_model_download">Downloading the speech model (318 MB)… %1$d%%</string>
     <string name="step_download">Downloading the sound… %1$d%%</string>
@@ -58,6 +59,7 @@
     <string name="error_network">Couldn\'t download it. Check the connection and try again. (%1$s)</string>
     <string name="error_other">Something went wrong: %1$s</string>
     <string name="error_too_short">The recording is too short for this surah. Check the surah.</string>
+    <string name="error_storage">The phone\'s storage is full. Free some space, then try again.</string>
 
     <!-- The speech model, when Accent Coach is installed but can't lend it -->
     <string name="model_problem_title">Couldn\'t use Accent Coach\'s speech model</string>
@@ -81,6 +83,8 @@
     <string name="paused">Paused</string>
     <string name="status_paused">Downloads are paused. What was fetched so far is kept.</string>
     <string name="status_waiting">Waiting for an internet connection…</string>
+    <string name="status_refused">YouTube isn\'t letting recitations be downloaded right now. They will be tried again in a while; what is already on the phone carries on.</string>
+    <string name="status_refused_short">YouTube is refusing for now. Trying again in a while…</string>
     <string name="status_starting">Starting…</string>
     <string name="queued_for_model">Waiting for the speech model</string>
 
@@ -123,8 +127,6 @@
     <string name="now_reciting">Reciting now</string>
     <string name="recitation_paused">Recitation paused</string>
     <string name="stop_reciting">Stop the recitation</string>
-    <string name="listening_ahead">Still listening to this recording: words light up as far as %1$s.</string>
-    <string name="listening_not_yet">Still listening to this recording. Words will light up once more of it has been heard.</string>
     <string name="listening_stopped">Not listened to the end yet: words light up as far as %1$s.</string>
     <string name="listening_stopped_none">Not listened to yet, so no words light up.</string>
     <string name="heard_in_part">Plays, but not listened to the end yet</string>
@@ -140,6 +142,7 @@
     <string name="has_recitation">Has a recitation on the phone</string>
     <!-- The buttons beside a verse's number -->
     <string name="verse_play_from">Recite from this verse</string>
+    <string name="word_tap">Recite from this word</string>
     <string name="verse_more">More for verse %1$d</string>
     <string name="verse_only">Recite this verse only</string>
     <string name="verse_translation_show">Show translation</string>
@@ -258,6 +261,9 @@
     <string name="try_again">Try again</string>
     <string name="version">Version %1$s</string>
     <string name="check_for_updates">Check for updates</string>
+    <string name="report_copy">Copy a report</string>
+    <string name="report_about">For when something isn\'t working: the phone, the queue and what the app did lately. It goes nowhere unless you paste it somewhere.</string>
+    <string name="report_copied">Copied. Paste it into a message.</string>
     <string name="update_checking">Checking…</string>
     <string name="update_latest">You have the latest version.</string>
     <string name="update_check_failed">Couldn\'t check for updates. Is the phone online?</string>

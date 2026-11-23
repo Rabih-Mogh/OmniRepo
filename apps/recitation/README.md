@@ -36,7 +36,13 @@ at the far end:
 - **Menu** (the three lines) slides in a panel with a switch between light and dark (or
   **Auto**, which follows the phone, as the app does until one is chosen), whether each
   word's meaning shows, the verses' size, the script they are written in, and the app's
-  version with **Check for updates**.
+  version with **Check for updates**. Under that, **Copy a report** copies what the app
+  knows about how it is running on this phone: the phone's model and Android version,
+  the room left on it, the speech model and engine, how many recordings are ready, queued
+  or failed and why, the state of the background work, and the last lines of a small
+  journal the background work keeps (when it started and stopped, what went wrong, how
+  fast each ten minutes of recitation was listened to). It is for pasting to whoever is
+  looking into a problem, and goes nowhere unless it is pasted somewhere.
 - **Search** turns the band into a search box. It finds a surah by its number or part of
   its name (Arabic or Latin letters, or what the name means), a verse by its numbers
   ("2:255", "kahf 10", "البقرة ٢٥٥"), and verses by their words: Arabic letters are
@@ -90,9 +96,23 @@ phone and nowhere else.
      on from there, also after the app was closed.
    - **Cancel** empties the queue. The cross on a recording takes just that one out.
    - A card at the top always says what is happening: the step and how far it is,
-     paused, waiting for a connection, or what went wrong. After a connection problem the
-     app tries again a few times, then shows the error, in the system's own words, on the
-     recording.
+     paused, waiting for a connection, or what went wrong. After a connection problem, or
+     a server that answers with an error or with half an answer, the app tries again a
+     few times, then shows the error, in the system's own words, on the recording.
+   - When YouTube refuses the phone for a while (it was asked too much, or wants proof
+     that a person is asking), no recording is marked as failed. The card says so, the
+     recordings whose sound is already on the phone are still listened to, and the
+     downloads are tried again a quarter of an hour later.
+   - A phone whose storage is full is told apart from a bad connection: the recording
+     says the storage is full, at once, and before a download that wouldn't fit is begun.
+   - What is kept on the phone (the playlists, the pins and collections, the listening
+     figures, each recording's word timings, each surah's words) is written whole or not
+     at all, so closing the app or losing power in the middle of a save leaves the last
+     good copy. A half-finished download is carried on only with more of the same sound:
+     if YouTube offers another for the video, it starts over.
+   - Changing a recording's surah, forgetting it or removing its playlist while it is
+     being worked on stops that work; a new surah's words are then placed from what was
+     already heard.
    - Only fetching needs a connection. The listening runs on the phone, so with no
      connection the recordings that have their sound, their surah's words, the speech
      model and its engine on the phone are still listened to; the others wait for the
@@ -123,8 +143,12 @@ phone and nowhere else.
      or turn off, so the word can be glanced at without touching the phone. Paused, or
      with the surah left, the phone sleeps as usual.
    - **Verses 1 – 7** above the time line chooses which verses to recite: a first and a
-     last verse. Play starts at the first and stops after the last. Left at the whole
-     surah, the playlist's next recording follows as before.
+     last verse. Play starts at the first and stops after the last. The player itself is
+     told where to stop, so it does with the screen off or the app left, too. Left at the
+     whole surah, the playlist's next recording follows as before.
+   - Turning the phone on its side, or setting it in a car's cradle, keeps everything as
+     it was: the place in the page, the verses chosen, a recitation waiting for a verse
+     to be heard.
    - Tap a word to jump to it. The previous-verse and next-verse buttons are either side
      of the play button. The player is a slim band: a thin time line, then the verse range,
      the three buttons and nothing else. Its buttons, and the round one that takes up
@@ -141,7 +165,12 @@ phone and nowhere else.
    - When a recording ends, the playlist's next prepared one follows.
    - The recitation carries on when the surah, or the app, is left: with the screen off,
      in another app, or after the app is swiped away. Play and pause are in the
-     notification and on the lock screen. Android colours that player from the picture
+     notification and on the lock screen. Next and previous there, on a headset and on a
+     car's wheel go by verse, not by recording: next to the following verse (past the
+     last, to the next recording), previous to the start of the verse being recited, or
+     from there to the verse before. Tapping the notification opens the surah being
+     recited. Play pressed on a headset or in a car while the app is closed takes up the
+     recitation listened to last, where it was left. Android colours that player from the picture
      it is given, so each surah comes with one in the theme's colours: its name under the
      arch, gold on near-black in dark mode and cream on green by day. Inside the app, a bar at the bottom of the
      lists shows what is reciting, with play or pause, a cross to stop it, and a tap to
@@ -322,16 +351,25 @@ recording of Ya-Sin its reciter says three words of 36:47 again, the published t
 show it, and it was found only when a passage spliced in earlier happened to move the
 stretch's end. With the overlap it is found in the recording as it is.
 
-Passages said again are found only once the whole recording has been listened to. While
-it is still being listened to, in order or where it is being played, the words are placed
-once through, so over a passage said again they stand still until it has passed.
+Passages said again are also looked for while a recording is still being listened to, in
+the part heard in order: every half minute of recitation, what has been placed since the
+last look is gone through the same way. A stretch some twenty seconds behind the listening
+is gone through once and what was found in it stands; nearer the end the reciter may be
+in the middle of going back, so those stretches are gone through again next time. It is
+only done while the placing is holding well (clarity of 0.8 or more): a placing that is
+drifting sees him go back where he didn't. On six real recordings fed in ten-second
+pieces, every passage the whole recording gives was found on the way, the same words at
+the same times, 16 to 25 seconds after it was said, with none shown and then taken back;
+one that falls in a recording's last half minute was left to the final placing, and the
+muffled recording, whose placing drifts, was shown none. Where the recording is heard
+out of turn, because it is being played there, the words are still placed once through,
+so over a passage said again they stand still until it has passed.
 
 When the recitation goes back, a wave of light in the highlight's colour runs over the
 blocks of the words gone back over, from the word gone back to as far as the word that
 had been reached, so the eye is taken back with the reciter.
 
-It runs when a recording has been heard to the end, not while it is still being listened
-to. Recordings prepared before version 1.45 don't have it: **Listen again**, in a
+Recordings prepared before version 1.45 don't have it: **Listen again**, in a
 recording's menu, has the phone hear it once more (the sound is kept, so nothing is
 downloaded) and places its words afresh.
 
@@ -438,8 +476,14 @@ The model is 318 MB, too big to ship in the APK.
   prepared downloads it, as on a phone that never had Accent Coach. Recordings already
   prepared don't need the model and keep working.
 
-Either way the file is checked against its SHA-256 before it is used. Everything after
-that runs on the phone with ONNX Runtime.
+Either way the file is checked against its SHA-256 before it is used. Accent Coach's file
+is read through for that once: after it has passed, the same file (by its size, the moment
+it was written and its place on the storage) isn't read through again each time the work
+starts. Everything after that runs on the phone with ONNX Runtime.
+
+ONNX Runtime's Android library comes with a part that reports on its use. The app leaves
+that part out (`tools:node="remove"` in the manifest); it could not start in this app in
+any case, since it looks for the engine inside the package, where it no longer is.
 
 ### The speech engine
 
@@ -461,6 +505,16 @@ could not start the engine on a phone ("The speech engine couldn't be started"),
 recording could be prepared with them. Reading and searching the Quran, and playing recordings that are
 already prepared, don't need the engine.
 
+How fast the engine listens depends on how many threads it is run on and on whether
+those spin while they wait for work, and which is fastest differs from phone to phone.
+So before the first recording is listened to, the app tries: four seconds of sound on 4
+threads spinning and not, then on 2 and on 6 threads ("Finding the fastest way to listen
+on this phone…", under a minute, once). Not spinning is taken unless it is more than a
+tenth slower, since it keeps the phone cooler and a hot phone slows itself down; then
+the fastest number of threads. What was found is kept for that version of the engine and
+written in the journal, so the report shows it. Where the engine can't be tried, it is
+run as before, on 4 threads.
+
 ## How accurate it is
 
 Measured on this project's Mac, with the same model file and the same code as the app,
@@ -478,6 +532,17 @@ table such a start was moved to where the sound resumes.
 
 `core`'s tests line up a real recitation of Al-Fatihah (as the model heard it) and check
 it against its published timings.
+
+The model is given each ten-second piece with half a second of the sound either side of
+it, for context. It used to be a second. On five real recordings heard both ways, the
+words came out as near the published timings with half a second: the same median in
+each, and 517 of 1,943 words more than 0.3 s off against 516. That is 11 seconds for the
+model to get through for every ten, instead of 12.
+
+Once all of a recording has been heard, every word is placed again against the whole of
+it. For a long surah that is a large search; its two halves, and the two passes that find
+where to halve it, don't depend on each other, so they are worked on side by side, on up
+to four threads, with the same result.
 
 ## Limits
 
@@ -550,7 +615,8 @@ Needs JDK 17 and the Android SDK (platform 35).
 ```bash
 cd apps/recitation
 ./gradlew :core:test              # unit tests for the logic
-./gradlew :app:testDebugUnitTest  # draws each screen, in both languages and themes, to app/build/screens; also the update's background service
+./gradlew :yt:test                # downloading, from a stand-in server on this machine
+./gradlew :app:testDebugUnitTest  # draws each screen, in both languages and themes, to app/build/screens; also the files kept on the phone, fetching a surah, the player's stop at a verse, and the update's background service
 ./gradlew :app:assembleRelease    # → app/build/outputs/apk/release/app-release.apk
 ```
 

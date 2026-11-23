@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * One recording of a playlist.
@@ -44,6 +46,7 @@ class Library private constructor(context: Context) {
     private val audioDir = File(dir, "audio")
     private val timingsDir = File(dir, "timings")
     private val heardDir = File(dir, "heard")
+    private val forgotten = ConcurrentHashMap<String, Int>()
 
     private val _playlists = MutableStateFlow(load())
     val playlists: StateFlow<List<Playlist>> = _playlists.asStateFlow()
@@ -52,6 +55,9 @@ class Library private constructor(context: Context) {
     fun audio(id: String): File? = audioDir.listFiles { f -> f.name.startsWith("$id.") && !f.name.endsWith(".part") }?.firstOrNull()
 
     fun audioPart(id: String, extension: String): File = File(audioDir.apply { mkdirs() }, "$id.$extension.part")
+
+    /** Kept beside a half-finished download: how big the sound it is the start of is, so that it is only ever carried on with more of the same. */
+    fun sizeNote(part: File): File = File(part.path.removeSuffix(".part") + ".size.part")
 
     fun timings(id: String, surah: Int): File = File(timingsDir.apply { mkdirs() }, "$id-$surah.txt")
 
@@ -76,24 +82,43 @@ class Library private constructor(context: Context) {
         val gone = _playlists.value.firstOrNull { it.url == url } ?: return
         save(_playlists.value - gone)
         val kept = _playlists.value.flatMap { it.tracks }.map { it.id }.toSet()
-        for (track in gone.tracks) if (track.id !in kept) deleteFiles(track.id)
+        for (track in gone.tracks) if (track.id !in kept) {
+            forgotten.merge(track.id, 1, Int::plus)
+            deleteFiles(track.id)
+        }
     }
 
     @Synchronized
-    fun update(id: String, change: (Track) -> Track) {
-        save(_playlists.value.map { p -> p.copy(tracks = p.tracks.map { if (it.id == id) change(it) else it }) })
+    fun update(id: String, change: (Track) -> Track) = updateAll { if (it.id == id) change(it) else it }
+
+    /** Changes every recording that [change] has something to change in, and keeps the lot once. */
+    @Synchronized
+    fun updateAll(change: (Track) -> Track) {
+        save(_playlists.value.map { p -> p.copy(tracks = p.tracks.map(change)) })
     }
 
     /** Frees a recording's storage and forgets its timings; it stays in the playlist. */
     @Synchronized
     fun forget(id: String) {
-        deleteFiles(id)
+        forgotten.merge(id, 1, Int::plus)
         update(id) { it.copy(wanted = false, ready = false, playable = false, error = null, clarity = 0f) }
+        deleteFiles(id)
     }
 
-    /** Deletes a recording's half-finished download. */
-    fun dropPartial(id: String) {
-        audioDir.listFiles { f -> f.name.startsWith("$id.") && f.name.endsWith(".part") }?.forEach { it.delete() }
+    /**
+     * How many times a recording's files have been deleted, by [forget] or with its playlist.
+     * The background work may be in the middle of that recording at the time: it asks before
+     * and after, and if the number has changed it stops and clears away what it wrote meanwhile.
+     */
+    fun timesForgotten(id: String): Int = forgotten[id] ?: 0
+
+    /** Deletes whatever files a recording has: for the background work, after the recording was forgotten under it. */
+    fun clear(id: String) = deleteFiles(id)
+
+    /** Deletes a recording's half-finished download, except [keep] and its [sizeNote]. */
+    fun dropPartial(id: String, keep: File? = null) {
+        val kept = setOfNotNull(keep, keep?.let(::sizeNote))
+        audioDir.listFiles { f -> f.name.startsWith("$id.") && f.name.endsWith(".part") && f !in kept }?.forEach { it.delete() }
     }
 
     private fun deleteFiles(id: String) {
@@ -116,12 +141,15 @@ class Library private constructor(context: Context) {
             }
             json.put(JSONObject().put("url", p.url).put("title", p.title).put("channel", p.channel).put("tracks", tracks))
         }
-        val tmp = File(dir, "library.json.tmp")
-        tmp.writeText(json.toString())
-        tmp.renameTo(file)
+        // With the storage full the list can't be kept. It is still right for as long as the
+        // app stays open, and the next change tries again.
+        try {
+            file.writeWhole(json.toString())
+        } catch (_: IOException) {
+        }
     }
 
-    private fun load(): List<Playlist> = try {
+    private fun load(): List<Playlist> = if (!file.exists()) emptyList() else try {
         val json = JSONArray(file.readText())
         List(json.length()) { i ->
             val p = json.getJSONObject(i)
@@ -140,7 +168,9 @@ class Library private constructor(context: Context) {
             )
         }
     } catch (_: Exception) {
-        emptyList() // nothing saved yet
+        // It can't be read. Start afresh, but not by writing over it.
+        file.setAside()
+        emptyList()
     }
 
     companion object {

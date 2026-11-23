@@ -112,6 +112,11 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("androidx.test.ext:junit:1.2.1")
     testImplementation("androidx.work:work-testing:2.10.0")
+    // A player that runs on the test's own clock, for what the playback service asks of it.
+    testImplementation("androidx.media3:media3-test-utils:1.5.1")
+    testImplementation("androidx.media3:media3-test-utils-robolectric:1.5.1")
+    // A server on this machine standing in for Quran.com.
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation("androidx.compose.ui:ui-test-junit4")
     testImplementation("io.github.takahirom.roborazzi:roborazzi:1.32.2")
     testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.32.2")

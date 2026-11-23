@@ -56,10 +56,12 @@ class PrepareOfflineTest {
             ),
         )
         // The second recording has its sound, its surah's words, the model and the engine on the
-        // phone. They are stand-ins, so working on it fails; that it was tried is the point.
+        // phone. All but the words are stand-ins, so working on it fails; that it was tried is the point.
         standIn(File(library.audioPart("offline-here", "m4a").path.removeSuffix(".part")), 1_000)
         File(context.filesDir, "quran").mkdirs()
-        File(context.filesDir, "quran/1.v2.json").writeText("not the words")
+        File(context.filesDir, "quran/1.v2.json").writeText(List(7) { """{"w":[["قُلْ","Say"]],"t":"Say"}""" }.joinToString(",", "[", "]"))
+        // Its timings were cut off half written, as by an app closed in the middle of keeping them.
+        library.timings("offline-here", 1).writeText("0.9 12000\n0,3,0 1000,3,")
         standIn(File(context.filesDir, "model/phonemes_int8.onnx"), ModelStore.MODEL_BYTES)
         for (part in EngineStore.PARTS) standIn(File(context.filesDir, "engine/${EngineStore.VERSION}/${part.name}"), part.bytes)
 
@@ -69,7 +71,9 @@ class PrepareOfflineTest {
         val needs = library.track("offline-needs")!!
         assertTrue("it stays in the queue", needs.wanted)
         assertNull("and isn't marked as failed", needs.error)
-        assertNotNull("the one that was all here was taken up", library.track("offline-here")!!.error)
+        val here = library.track("offline-here")!!
+        assertNotNull("the one that was all here was taken up", here.error)
+        assertTrue("and got past timings that couldn't be read, as far as being playable", here.playable)
 
         val waiting = WorkManager.getInstance(context).getWorkInfosForUniqueWork(PrepareWorker.WAITING_NAME).get()
         assertEquals("a run is left waiting for the connection", listOf(WorkInfo.State.ENQUEUED), waiting.map { it.state })

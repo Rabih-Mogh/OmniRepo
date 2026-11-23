@@ -345,7 +345,8 @@ fun ReaderContent(
     // Opened at a verse (from a pin or a collection): that verse is at the top of the page.
     val list = rememberLazyListState(initialFirstVisibleItemIndex = startVerse?.let { it + above } ?: 0)
     // The IndoPak script needs its own font, which is fetched; until it is here, the Madinah mushaf's.
-    val hand = hand(if (script == Script.INDOPAK && indopak == null) Script.MADINAH else script, indopak)
+    // Kept from one drawing to the next: every word is handed it, and a new one would have them all drawn again.
+    val hand = remember(script, indopak) { hand(if (script == Script.INDOPAK && indopak == null) Script.MADINAH else script, indopak) }
 
     // The page follows the recitation until the reader scrolls it themselves. Opened at a
     // verse the recitation can't be moved to, it stays on that verse instead.
@@ -386,12 +387,15 @@ fun ReaderContent(
         }
     }
     fun onward(item: Int) = item > (list.layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0)
+    // How fast the page is gliding, in px per second: kept from one word to the next, and
+    // through the timings changing under it while the recording is still being listened to.
+    val gliding = remember { floatArrayOf(0f) }
     LaunchedEffect(follow, index) {
         if (!follow || index == null) {
             fade.snapTo(1f)
+            gliding[0] = 0f
             return@LaunchedEffect
         }
-        var speed = 0f // px per second, kept from one word to the next
         snapshotFlow { current }.collectLatest { word ->
             if (word < 0) return@collectLatest
             var last = 0L
@@ -409,22 +413,22 @@ fun ReaderContent(
                         repeat(4) { if (place.offCentre(word) == null) withFrameNanos { } }
                         place.offCentre(word)?.let { list.scrollBy(it) }
                     }
-                    speed = 0f
+                    gliding[0] = 0f
                     break
                 }
                 waited = 0
                 if (abs(off) > place.pageHeight() * 1.5f) {
                     travelTo(off > 0) { list.scrollBy(off) }
-                    speed = 0f
+                    gliding[0] = 0f
                     break
                 }
                 if (fade.value < 1f) fade.snapTo(1f)
-                if (abs(off) < 1f && abs(speed) < 8f) break // there
+                if (abs(off) < 1f && abs(gliding[0]) < 8f) break // there
                 // A critically damped spring: pulled toward the word, never overshooting.
-                speed += (STIFFNESS * STIFFNESS * off - 2 * STIFFNESS * speed) * dt
-                val step = speed * dt
+                gliding[0] += (STIFFNESS * STIFFNESS * off - 2 * STIFFNESS * gliding[0]) * dt
+                val step = gliding[0] * dt
                 if (abs(list.dispatchRawDelta(step)) < abs(step) * 0.5f) {
-                    speed = 0f // the page can't scroll any further that way
+                    gliding[0] = 0f // the page can't scroll any further that way
                     break
                 }
             }
@@ -721,7 +725,7 @@ private fun Verses(
             contentPadding = PaddingValues(bottom = room + 24.dp),
         ) {
             item { TitlePage(SURAHS[reading.surah - 1], minHeight = room, basmalaSize = basmalaSize) }
-            itemsIndexed(reading.verses) { v, verse ->
+            itemsIndexed(reading.verses, contentType = { _, _ -> "verse" }) { v, verse ->
                 val first = index?.firstOfVerse?.getOrElse(v) { 0 } ?: 0
                 VerseBlock(
                     number = v + 1,
@@ -730,7 +734,8 @@ private fun Verses(
                     // The word of this verse being recited; -1 when the recitation is elsewhere.
                     current = if (currentVerse == v) current - first else -1,
                     now = if (currentVerse == v) now else null,
-                    nowEnds = nowEnds,
+                    // Only the verse being recited is told when its word ends, so only it is drawn again as the words go by.
+                    nowEnds = if (currentVerse == v) nowEnds else Int.MAX_VALUE,
                     playingUnheard = current < 0 && currentVerse == v,
                     position = position,
                     showMeanings = showMeanings,
@@ -802,7 +807,13 @@ private fun VerseBlock(
     // press, like a tap on its number, opens its pins and collections.
     Column(
         Modifier.fillMaxWidth()
-            .combinedClickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onTap, onLongClick = onMark),
+            .combinedClickable(
+                interactionSource = remember { MutableInteractionSource() }, indication = null,
+                // Said by a screen reader, which otherwise only says that the verse can be tapped.
+                onClickLabel = stringResource(if (showTranslation) R.string.verse_translation_hide else R.string.verse_translation_show),
+                onLongClickLabel = stringResource(R.string.marks_open),
+                onClick = onTap, onLongClick = onMark,
+            ),
     ) {
         // The verse's number sits on the rule above it, at the left in every language.
         val label = stringResource(R.string.verse, number)
@@ -1106,7 +1117,10 @@ private fun WordTile(
                     drawRect(washed.copy(alpha = 0.45f * strength), Offset(0f, -up), Size(size.width, size.height + up + reachDown().toPx()))
                 }
             }
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .combinedClickable(
+                onClickLabel = stringResource(R.string.word_tap), onLongClickLabel = stringResource(R.string.marks_open),
+                onClick = onClick, onLongClick = onLongClick,
+            )
             .padding(horizontal = (if (showMeaning) 8.dp else 14.dp) * textScale, vertical = 3.dp * textScale),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
