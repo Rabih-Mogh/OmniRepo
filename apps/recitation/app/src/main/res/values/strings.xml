@@ -12,11 +12,11 @@
     <string name="add_hint">Paste a YouTube playlist link, or use Share in YouTube and pick Recitation.</string>
     <string name="add_link">Playlist link</string>
     <string name="add">Add</string>
-    <string name="add_looking">Looking…</string>
     <string name="add_not_a_link">That isn\'t a YouTube playlist or video link.</string>
     <string name="add_failed">Couldn\'t read the playlist. Check the link and that the phone is online. (%1$s)</string>
     <string name="cancel">Cancel</string>
     <string name="ready_of">%1$d of %2$d ready</string>
+    <string name="count_of">%1$d / %2$d</string>
 
     <!-- Recordings of a playlist -->
     <string name="back">Back</string>
@@ -52,7 +52,6 @@
     <string name="step_verses">Fetching the verses…</string>
     <string name="listening_first">Listening to this verse first…</string>
     <string name="listening_at_speed">Listening · %1$s× as fast as it plays</string>
-    <string name="listening_speed">%1$s× as fast as it plays</string>
     <string name="step_listen">Listening to the recitation… %1$d%%</string>
     <string name="step_align">Matching the words to the recitation…</string>
     <string name="step_retry">Connection problem. Trying again…</string>
@@ -140,6 +139,7 @@
     <string name="script_everyday">Everyday spelling</string>
     <string name="marks_open">Pins and collections</string>
     <string name="has_recitation">Has a recitation on the phone</string>
+    <string name="has_recitation_unheard">Has a recitation on the phone, not listened to the end yet</string>
     <!-- The buttons beside a verse's number -->
     <string name="verse_play_from">Recite from this verse</string>
     <string name="word_tap">Recite from this word</string>
@@ -177,6 +177,8 @@
     <string name="search_words_note">Words are looked for in the surahs already on the phone.</string>
     <string name="search_clear">Clear</string>
     <string name="search_in_verses">In the verses</string>
+    <string name="appearance">Appearance</string>
+    <string name="reading">Reading</string>
     <string name="appearance_auto">Auto</string>
     <string name="appearance_light">Light</string>
     <string name="appearance_dark">Dark</string>

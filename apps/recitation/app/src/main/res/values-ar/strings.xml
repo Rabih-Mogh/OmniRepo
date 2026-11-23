@@ -11,11 +11,11 @@
     <string name="add_hint">الصق رابط قائمة تشغيل من يوتيوب، أو استخدم «مشاركة» في يوتيوب واختر التلاوة.</string>
     <string name="add_link">رابط القائمة</string>
     <string name="add">إضافة</string>
-    <string name="add_looking">جارٍ البحث…</string>
     <string name="add_not_a_link">هذا ليس رابط قائمة تشغيل أو مقطع على يوتيوب.</string>
     <string name="add_failed">تعذّرت قراءة القائمة. تحقّق من الرابط ومن اتصال الهاتف بالإنترنت. (%1$s)</string>
     <string name="cancel">إلغاء</string>
     <string name="ready_of">%1$d من %2$d جاهزة</string>
+    <string name="count_of">%1$d / %2$d</string>
 
     <!-- Recordings of a playlist -->
     <string name="back">رجوع</string>
@@ -55,7 +55,6 @@
     <string name="step_verses">جارٍ جلب الآيات…</string>
     <string name="listening_first">جارٍ الاستماع إلى هذه الآية أولًا…</string>
     <string name="listening_at_speed">جارٍ الاستماع · %1$s× من سرعة التشغيل</string>
-    <string name="listening_speed">%1$s× من سرعة التشغيل</string>
     <string name="step_listen">جارٍ الاستماع إلى التلاوة… %1$d%%</string>
     <string name="step_align">جارٍ مطابقة الكلمات مع التلاوة…</string>
     <string name="step_retry">مشكلة في الاتصال. جارٍ المحاولة مجدداً…</string>
@@ -147,6 +146,7 @@
     <string name="script_everyday">الرسم الإملائي</string>
     <string name="marks_open">الدبابيس والمجموعات</string>
     <string name="has_recitation">لها تلاوة على الهاتف</string>
+    <string name="has_recitation_unheard">لها تلاوة على الهاتف لم يُستمع إليها حتى آخرها بعد</string>
     <string name="verse_play_from">التلاوة من هذه الآية</string>
     <string name="word_tap">التلاوة من هذه الكلمة</string>
     <string name="verse_more">المزيد للآية %1$d</string>
@@ -183,6 +183,8 @@
     <string name="search_words_note">يُبحث عن الكلمات في السور الموجودة على الهاتف.</string>
     <string name="search_clear">مسح</string>
     <string name="search_in_verses">في الآيات</string>
+    <string name="appearance">المظهر</string>
+    <string name="reading">القراءة</string>
     <string name="appearance_auto">تلقائي</string>
     <string name="appearance_light">فاتح</string>
     <string name="appearance_dark">داكن</string>

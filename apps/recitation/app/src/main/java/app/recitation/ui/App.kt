@@ -14,18 +14,18 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -66,6 +66,7 @@ import app.recitation.player.Artwork
 import app.recitation.player.PlaybackService
 import app.recitation.prepare.Playing
 import app.recitation.prepare.PrepareWorker
+import app.recitation.prepare.Step
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
@@ -128,7 +129,7 @@ private fun Screens(model: AppModel, choices: Choices) {
     val working = progress
     val problem = modelProblem
     val status: Status? = when {
-        working != null -> Status.Working(working, working.trackId?.let { id -> tracks.firstOrNull { it.id == id }?.title })
+        working != null -> tracks.firstOrNull { it.id == working.trackId }.let { Status.Working(working, it?.title, it?.surah ?: 0) }
         tracks.none { it.wanted && !it.ready } -> null
         model.paused -> Status.Paused
         problem != null -> Status.ModelBlocked(problem)
@@ -162,6 +163,8 @@ private fun Screens(model: AppModel, choices: Choices) {
         }
     }
 
+    // What the app is at goes down to every screen, each of which shows it in one of its bars.
+    CompositionLocalProvider(LocalDoing provides status?.let { Doing(it, actions) }) {
     when (val screen = model.screen) {
         Screen.Home -> HomeContent(
             tab = model.tab,
@@ -170,6 +173,8 @@ private fun Screens(model: AppModel, choices: Choices) {
             status = status,
             actions = actions,
             recited = tracks.filter { it.canPlay }.map { it.surah }.toSet(),
+            unheard = tracks.filter { it.canPlay }.map { it.surah }.toSet() - tracks.filter { it.ready }.map { it.surah }.toSet(),
+            queued = tracks.filter { it.wanted && !it.ready }.map { it.surah }.toSet(),
             onSurah = { model.openSurah(it) },
             onOpen = model::open,
             onAdd = { model.link = "" },
@@ -199,11 +204,7 @@ private fun Screens(model: AppModel, choices: Choices) {
             onVerse = model::openVerse,
             menu = {
                 MenuContent(
-                    choices.script, choices::write, withIndoPak = indopak != null,
-                    textScale = choices.textScale, onTextScale = choices::size,
-                    meanings = choices.meanings, onMeanings = choices::show,
                     appearance = choices.appearance, onAppearance = choices::look,
-                    tajweed = choices.tajweed, onTajweed = choices::colour,
                     footer = {
                         VersionFooter()
                         CopyReport()
@@ -246,6 +247,7 @@ private fun Screens(model: AppModel, choices: Choices) {
             }
         }
         is Screen.Surah -> SurahScreen(model, screen, playlists, status, playback, get, pins, collections, choices, indopak)
+    }
     }
 
     model.link?.let { link ->
@@ -326,8 +328,8 @@ private fun SurahScreen(
                 when {
                     recording == null -> NoRecitationBar(stringResource(R.string.no_recitation))
                     recording.canPlay -> NoRecitationBar(stringResource(R.string.recitation_ready), stringResource(R.string.play), AppIcons.Play) { model.openSurah(screen.number, recording) }
-                    working != null -> NoRecitationBar(stringResource(PrepareWorker.stepLabel(working.step), (working.fraction * 100).toInt()))
-                    recording.wanted -> NoRecitationBar(stringResource(if (status == Status.Paused) R.string.paused else R.string.queued))
+                    working != null -> RecitationComingBar(status, here = true)
+                    recording.wanted -> RecitationComingBar(status, here = false)
                     recording.error != null -> NoRecitationBar(recording.error, stringResource(R.string.try_again), AppIcons.Retry) { get(listOf(recording)) }
                     else -> NoRecitationBar(stringResource(R.string.recitation_not_ready), stringResource(R.string.get), AppIcons.Download) { get(listOf(recording)) }
                 }
@@ -750,6 +752,7 @@ private fun PlayingReader(
             tajweed = page.tajweed, onTajweed = page.onTajweed,
             listening = listening,
             speed = working?.takeIf { it.trackId == track.id }?.speed ?: 0f,
+            listeningAt = working?.takeIf { it.trackId == track.id && it.step == Step.LISTEN }?.atMs ?: -1,
             waiting = waitingAt != null,
             range = range,
             onRange = { chosen ->

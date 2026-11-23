@@ -3,7 +3,7 @@
 An Android app for reading the Quran word by word and following a recitation of it.
 Every surah can be opened and read, each word with its meaning underneath. Give the app a
 YouTube playlist of a recitation and it downloads the sound only, works out when each word
-is recited, and plays along: the block of the word being recited has a line round it and
+is recited, and plays along: the block of the word being recited is filled and
 is kept at the middle of the page, and the letter being uttered is lit in amber,
 the light gliding from letter to letter.
 
@@ -25,11 +25,17 @@ light on the top bar. Surah names are written in calligraphy. In the list of sur
 number is large and plain, the rows are tall, and a faint line with the same margin at
 either end parts them. A surah that has a recitation downloaded (at least one recording
 whose sound is on the phone) is told apart by its number: in teal, with small bars of
-sound under it, where the others are grey. Verse numbers sit in an eight-point
+sound under it, where the others are grey. Until one of its recordings has been listened
+to the end, another mark stands in place of the bars: the picture of the work in its ring
+while the surah is being worked on, an hourglass while it waits its turn, and the first
+bars followed by dots when the listening was left off part-way. The tab showing, at the
+bottom of the first screen, has a short line at the top edge of the bar, and is bright where the others are faint.
+Verse numbers sit in an eight-point
 star. A verse's words are laid out as blocks that share the verse's whole width between
 them, touching one another and stopping a small margin short of the screen's edges; the
-block of the word being recited, its meaning included, is faintly filled and has a
-rounded line round it.
+block of the word being recited, its meaning included, is filled in the app's colour,
+with no line round it; on a verse's first and last rows the fill reaches the rules above
+and below the verse.
 
 ## How it works
 
@@ -37,10 +43,13 @@ The band at the top of the first screen has the menu button, the app's name besi
 ("The Recitation" in English, as the Arabic name has its article), and the search button
 at the far end:
 
-- **Menu** (the three lines) slides in a panel with a switch between light and dark (or
-  **Auto**, which follows the phone, as the app does until one is chosen), whether each
-  word's meaning shows, the verses' size, the script they are written in, and the app's
-  version with **Check for updates**. Under that, **Copy a report** copies what the app
+- **Menu** (the three lines) opens a panel beside the page: the whole page slides aside
+  by the panel's width and the panel comes in behind it, so nothing lies over anything.
+  A cross at its head closes it, as do a tap on what is left of the page and Back. It
+  holds what belongs to the whole app: a switch between light and dark (or **Auto**,
+  which follows the phone, as the app does until one is chosen), and the app's version
+  with **Check for updates**. How the verses read is in a surah's own menu, and only
+  there. Under the version, **Copy a report** copies what the app
   knows about how it is running on this phone: the phone's model and Android version,
   the room left on it, the speech model and engine, how many recordings are ready, queued
   or failed and why, the state of the background work, and the last lines of a small
@@ -99,8 +108,23 @@ phone and nowhere else.
    - **Pause** stops the work where it is and keeps what was fetched; **Resume** carries
      on from there, also after the app was closed.
    - **Cancel** empties the queue. The cross on a recording takes just that one out.
-   - A card at the top always says what is happening: the step and how far it is,
-     paused, waiting for a connection, or what went wrong. After a connection problem, or
+   - What the app is at is shown in pictures, not told in words. Each kind of work has
+     its own icon (an arrow for the sound being downloaded, a book for the verses, a chip
+     for the speech model, a cog for the engine, sliders for the trial of the fastest way
+     to run it, an ear for the listening, bars over words for the matching), and so has
+     each way of waiting (an hourglass for a turn, a pause mark, a struck-through cloud
+     for no connection, a struck-through circle for YouTube refusing). A ring round the
+     icon fills as the work goes; work that can't say how far it is has a ring that turns.
+     Only what went wrong is put in words.
+   - It is in sight on every screen for as long as anything is being done or waited for:
+     the icon in its ring, with the number of the surah it is for, stands in the top bar
+     of the lists and at the end of the player's bar in a surah. Tapping it opens the
+     whole of it, with the words for the picture and the buttons to pause or call it off.
+   - A card at the top of the playlists, and of a playlist's recordings, shows the same larger: the icon, the surah's number
+     and name, the row of all six steps with the one being done marked, the listening's
+     speed as a figure, and the pause and cancel buttons. In the list of surahs the surah
+     being worked on has the icon under its number, and in a surah the player's line has
+     a small mark standing on it at the place being listened to. After a connection problem, or
      a server that answers with an error or with half an answer, the app tries again a
      few times, then shows the error, in the system's own words, on the recording.
    - When YouTube refuses the phone for a while (it was asked too much, or wants proof
@@ -126,8 +150,8 @@ phone and nowhere else.
      between them stand its name in
      calligraphy, what the name means, how many verses it has, where it was revealed and
      its place in the order of revelation. Under them comes the basmala drawn as one
-     calligraphic piece. (Al-Fatihah has
-     the piece too, though the basmala is also its first verse; At-Tawbah has none.) The
+     calligraphic piece. (Not for Al-Fatihah, whose first verse is the basmala, nor for
+     At-Tawbah, which has none.) The
      title page fills the top half, so the first verse starts at the middle of the page.
    - The top bar gets out of the way. Once the page goes on down the surah, whether a
      finger scrolls it or the recitation carries it, the bar slides up out of sight and
@@ -146,30 +170,34 @@ phone and nowhere else.
      the word rather than jumping, the block's fill and the light fade from one word to the next, and
      a jump to a far part of the surah is made out of sight: the page fades, is moved, and
      comes back drifting the last of the way from the side it travelled. Scrolling by hand
-     stops the following until the follow button is tapped: a solid star, like the verse
-     numbers', with an arrow pointing up or down the page to the word being recited.
+     stops the following until the follow button is tapped: a disc in the app's colour
+     with lines of text on it and, beside them, an arrow up or down for the way along the
+     page to the word being recited.
    - The recitation doesn't start by itself: it is loaded and waits for **play**.
    - While a recitation plays with its surah on show, the screen stays on: it doesn't dim
      or turn off, so the word can be glanced at without touching the phone. Paused, or
      with the surah left, the phone sleeps as usual.
-   - **Verses 1 – 7** above the time line chooses which verses to recite: a first and a
-     last verse. Play starts at the first and stops after the last. The player itself is
+   - **Which verses to recite**, in the surah's menu, chooses a first and a
+     last verse. When that isn't the whole surah, the verses chosen are also written
+     small under the time line, where a tap opens the chooser again. Play starts at the first and stops after the last. The player itself is
      told where to stop, so it does with the screen off or the app left, too. Left at the
      whole surah, the playlist's next recording follows as before.
    - Turning the phone on its side, or setting it in a car's cradle, keeps everything as
      it was: the place in the page, the verses chosen, a recitation waiting for a verse
      to be heard.
    - Tap a word to jump to it. The previous-verse and next-verse buttons are either side
-     of the play button. The player is a slim band: a thin time line, then the verse range,
-     the three buttons and nothing else. Its buttons, and the round one that takes up
-     following the recitation again, carry icons only.
+     of the play button. The player is one slim row: the three buttons, then a thin time
+     line with the time gone and the whole time under it, and between those two, in
+     pictures, what is being done to the recording. Its buttons, and the round one that
+     takes up following the recitation again, carry icons only.
    - A surah's bar has the way back at one end, the surah's name in the middle, and a
-     **menu** button at the other. The menu is a panel that slides in from the side its
-     button is on (the right in English, the left in Arabic), like the first screen's. It
-     switches between light and dark, shows or hides the meaning under each word,
-     makes the verses, meanings and translation smaller or larger (70% to 200%), and
-     chooses the script the verses are written in (see [Scripts](#scripts)). All of
-     these are remembered, and are in the first screen's menu too.
+     **menu** button at the other. The menu is a panel that comes in from the side its
+     button is on (the right in English, the left in Arabic), pushing the page aside as
+     the first screen's does, with a cross to close it. It holds what belongs to reading
+     a surah: which verses to recite, whether the meaning shows under each word, the
+     size of the verses, meanings and translation (70% to 200%), the tajweed colours,
+     and the script the verses are written in (see [Scripts](#scripts)). All of these
+     are remembered. Light or dark is the whole app's, and is in the first screen's menu.
    - Tap a verse to see its translation. It closes by itself after long enough to read
      it (6 to 25 seconds, by its length).
    - When a recording ends, the playlist's next prepared one follows.
@@ -190,7 +218,7 @@ phone and nowhere else.
 
 The letters are coloured by the rule of recitation they fall under, and the light that
 follows the recitation takes the rule's colour and moves as the rule sounds. **Tajweed
-colours** in either menu turns the colours on or off and names each colour's family in
+colours** in a surah's menu turns the colours on or off and names each colour's family in
 Arabic; **All the rules** under it opens a page that sets out every rule: its Arabic
 name (with the same in Latin letters where the app is in English), what it is, and words
 from the Quran that show it.
@@ -375,9 +403,13 @@ muffled recording, whose placing drifts, was shown none. Where the recording is 
 out of turn, because it is being played there, the words are still placed once through,
 so over a passage said again they stand still until it has passed.
 
-When the recitation goes back, a wave of light in the highlight's colour runs over the
-blocks of the words gone back over, from the word gone back to as far as the word that
-had been reached, so the eye is taken back with the reciter.
+When the recitation goes back, a wave in the app's colour runs over the blocks of the
+words gone back over. It sets out from the word gone back to and passes a word at a
+time as far as the word that had been reached: each block is faintly filled for its
+turn, with three broad arrowheads on it that point the way the words are read and light
+one after the other, so the eye is taken back and then on with the reciter. A word's
+turn lasts 0.7 s and the next word's starts 0.16 s after it, sooner over a long passage,
+so the last word's turn has always started within 1.4 s.
 
 Recordings prepared before version 1.45 don't have it: **Listen again**, in a
 recording's menu, has the phone hear it once more (the sound is kept, so nothing is
@@ -567,8 +599,8 @@ to four threads, with the same result.
 - **Old or echoing recordings** are heard less clearly and line up less tightly.
 - **Speed on a phone is unknown.** On the Mac the model runs 25 times faster than the
   recording plays. A phone is much slower; "about as long as the recording" is a guess.
-  While a recording is being listened to, the card on the first screen now says how the
-  listening compares with playing it ("1.3× as fast as it plays"), so the figure can be
+  While a recording is being listened to, the card on the first screen shows how the
+  listening compares with playing it as a figure ("1.3×"), so it can be
   read off a phone. Under 1×, the listening can't keep up with someone playing the
   recording, wherever it starts.
   If a phone listens slower than the recitation plays, playing from the start will

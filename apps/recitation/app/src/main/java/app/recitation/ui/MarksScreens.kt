@@ -231,6 +231,7 @@ fun CollectionContent(
                         style = MaterialTheme.typography.bodySmall, color = LocalBanner.current.quiet,
                     )
                 }
+                DoingChip()
                 // The built-in collection stays; the others can be deleted.
                 if (!collection.builtIn) IconButton(onClick = { deleting = true }) { Icon(AppIcons.Close, stringResource(R.string.collection_delete)) }
             }

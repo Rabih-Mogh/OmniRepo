@@ -1,11 +1,15 @@
 package app.recitation
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
@@ -19,6 +23,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -41,12 +49,14 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -80,6 +90,8 @@ import app.recitation.prepare.Progress
 import app.recitation.prepare.Step
 import app.recitation.speech.ModelStore
 import app.recitation.ui.Choices
+import app.recitation.ui.Doing
+import app.recitation.ui.LocalDoing
 import app.recitation.ui.ClearOfTheSides
 import app.recitation.ui.CollectionContent
 import app.recitation.ui.FollowButton
@@ -107,10 +119,15 @@ import app.recitation.ui.ScriptChooser
 import app.recitation.ui.Status
 import app.recitation.ui.StatusActions
 import app.recitation.ui.TextSizeControls
+import app.recitation.ui.AppIcons
+import app.recitation.ui.says
+import app.recitation.ui.picture
+import app.recitation.ui.WorkIcon
 import app.recitation.ui.VerseMarks
 import app.recitation.ui.VerseMarksContent
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlin.math.abs
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -206,7 +223,74 @@ class ScreensTest {
 
     @Composable
     private fun Home(tab: Int, playlists: List<Playlist> = emptyList(), status: Status? = null) =
-        HomeContent(tab, {}, playlists, status, StatusActions(), recited = setOf(1, 3, 4, 8), onSurah = {}, onOpen = {}, onAdd = {})
+        HomeContent(tab, {}, playlists, status, StatusActions(), recited = setOf(1, 3, 4, 8), onSurah = {}, onOpen = {}, onAdd = {}, unheard = setOf(4), queued = setOf(5))
+
+    /** What the app is at is shown in pictures: every step and every state of waiting has one of its own. */
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun everyKindOfWorkHasItsOwnPicture() {
+        val steps = Step.entries.map { Status.Working(Progress("b", it, 0.6f), null, surah = 2) }
+        val states = listOf(Status.Starting, Status.Paused, Status.WaitingForNetwork, Status.Refused, Status.ModelBlocked(ModelProblem(ModelStore.Lender.TOO_OLD, null)))
+        val all: List<Status> = steps + states
+        // No two look alike: the icon and the small one at its corner together tell them apart.
+        assertEquals(all.size, all.map { it.picture().let { p -> p.icon.name to p.badge?.name } }.toSet().size)
+        compose.setContent {
+            RecitationTheme {
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (status in all) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                                WorkIcon(status.picture(), null, size = 40.dp)
+                                Text(status.says(), style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                        // The marks under a surah's number, and beside a recording.
+                        for ((icon, says) in listOf(AppIcons.Sound to "Listened to the end", AppIcons.SoundPart to "Listening left off part-way", AppIcons.Hourglass to "Waiting its turn")) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                                Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) { Icon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary) }
+                                Text(says, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/doing-legend.png")
+    }
+
+    /** Every icon the app draws, each with a number and its name, on one sheet to look them over. */
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun everyIconInTheApp() {
+        val own = AppIcons::class.java.declaredFields.filter { it.type == androidx.compose.ui.graphics.vector.ImageVector::class.java }
+            .map { it.isAccessible = true; it.name to it.get(AppIcons) as androidx.compose.ui.graphics.vector.ImageVector }
+        val stock = listOf("Back" to Icons.AutoMirrored.Filled.ArrowBack, "More" to Icons.Filled.MoreVert)
+        val all = own + stock
+        assertTrue("found ${all.size}", all.size > 30)
+        compose.setContent {
+            RecitationTheme {
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    Column(Modifier.padding(horizontal = 8.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        for (row in all.withIndex().chunked(5)) {
+                            Row(Modifier.fillMaxWidth()) {
+                                for ((i, icon) in row) {
+                                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(icon.second, null, Modifier.size(34.dp), tint = MaterialTheme.colorScheme.primary)
+                                        Text("${i + 1}", style = MaterialTheme.typography.labelLarge)
+                                        Text(icon.first, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                                    }
+                                }
+                                repeat(5 - row.size) { Spacer(Modifier.weight(1f)) }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/every-icon.png")
+    }
 
     private fun startsFromTheRight(text: String): Boolean {
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
@@ -340,10 +424,11 @@ class ScreensTest {
     fun theFirstAndLastWordsAreCentredToo() {
         // There is nothing above the first word or below the last, yet both sit in the middle.
         show("en-day-reader-first-word") { Reader(200) }
-        // The title page fills the room above it: the surah's details, and the basmala even for Al-Fatihah.
+        // The title page fills the room above it with the surah's details. The basmala isn't
+        // drawn on it for Al-Fatihah: it is the surah's first verse, and would be there twice.
         compose.onNodeWithText("1 · Al-Fatihah · The Opener").assertIsDisplayed()
         compose.onNodeWithText("7 verses · Meccan · No. 5 in order of revelation").assertIsDisplayed()
-        compose.onNodeWithContentDescription("بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ").assertIsDisplayed()
+        compose.onNodeWithContentDescription("بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ").assertDoesNotExist()
         assertTrue("first word off by ${offCentre("In (the) name")} px", abs(offCentre("In (the) name")) < 60f)
         // At the surah's start the top bar is in its place.
         compose.onNodeWithContentDescription("Back").assertIsDisplayed()
@@ -476,13 +561,19 @@ class ScreensTest {
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun theQuranTabListsEverySurah() {
-        show("en-day-quran") { Home(tab = 0, playlists = listOf(playlist), status = Status.Working(Progress("b", Step.DOWNLOAD, 0.2f), "Surah Al-Baqarah")) }
+        val status = Status.Working(Progress("b", Step.DOWNLOAD, 0.2f), "Surah Al-Baqarah", surah = 2)
+        show("en-day-quran") { CompositionLocalProvider(LocalDoing provides Doing(status, StatusActions())) { Home(tab = 0, playlists = listOf(playlist), status = status) } }
         compose.onNodeWithText("Quran").assertIsDisplayed()
         compose.onNodeWithText("Al-Fatihah").assertIsDisplayed()
         compose.onNodeWithText("The Opener · 7 verses").assertIsDisplayed()
         compose.onNodeWithText("Al-Baqarah").assertIsDisplayed()
-        // The surahs can be read while a download is under way.
-        compose.onNodeWithText("Downloading the sound… 20%").assertIsDisplayed()
+        // The surahs can be read while a download is under way. What is being done is shown as a
+        // picture in two places: in the top bar, and under the number of the surah it is for.
+        // The list itself is the surahs': the card with the buttons opens from the top bar.
+        compose.onAllNodesWithContentDescription("Downloading the sound… 20%", useUnmergedTree = true).assertCountEquals(2)
+        compose.onAllNodesWithText("Downloading the sound… 20%").assertCountEquals(0)
+        // A surah waiting its turn has an hourglass under its number.
+        compose.onNodeWithContentDescription("Waiting its turn", useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test
@@ -496,11 +587,13 @@ class ScreensTest {
                 nowPlaying = { NowPlayingBar("Al-Fatihah", playing = true, onPlayPause = { toggled = true }, onOpen = { opened = true }, onStop = {}) },
             )
         }
-        compose.onNodeWithText("Reciting now").assertIsDisplayed()
+        // That it is reciting is a picture, the bars of sound; the words are for a screen reader.
+        compose.onNodeWithContentDescription("Reciting now").assertIsDisplayed()
+        compose.onNodeWithText("Reciting now").assertDoesNotExist()
         compose.onNodeWithContentDescription("Pause").performClick()
         assertTrue(toggled)
         // Tapping the bar goes back to the surah being recited.
-        compose.onNodeWithText("Reciting now").performClick()
+        compose.onNodeWithContentDescription("Reciting now").performClick()
         assertTrue(opened)
     }
 
@@ -548,7 +641,13 @@ class ScreensTest {
         // Not playing: the recitation waits for the reader. The bar says which verses it will recite.
         compose.onNodeWithContentDescription("Play").assertIsDisplayed()
         compose.onNodeWithContentDescription("Verses 2 – 4").assertIsDisplayed()
+        // Choosing them is in the surah's menu, which says which are chosen; from there the chooser opens.
+        compose.onNodeWithContentDescription("Menu").performClick()
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/en-day-reader-menu-range.png")
         compose.onNodeWithText("2 – 4").assertIsDisplayed()
+        // (The chooser itself isn't opened here: its slider, inside a dialog, never comes to rest under these tests.)
+        compose.onNodeWithText("Which verses to recite").assertHasClickAction()
     }
 
     @Test
@@ -611,15 +710,21 @@ class ScreensTest {
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun recordingsInEnglishByDay() {
         var cancelled: Track? = null
-        show("en-day-recordings") { Recordings(Status.Working(Progress("b", Step.LISTEN, 0.43f), "Surah Al-Baqarah"), onCancel = { cancelled = it }) }
-        compose.onNodeWithText("2 of 7 ready").assertIsDisplayed()
-        compose.onAllNodesWithText("Listening to the recitation… 43%").onFirst().assertIsDisplayed()
-        compose.onNodeWithText("Waiting its turn").assertIsDisplayed()
+        show("en-day-recordings") { Recordings(Status.Working(Progress("b", Step.LISTEN, 0.43f, speed = 1.1f), "Surah Al-Baqarah", surah = 2), onCancel = { cancelled = it }) }
+        // What is being done is shown in pictures: the words are there for a screen reader, not on the page.
+        compose.onNodeWithContentDescription("2 of 7 ready").assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("Listening to the recitation… 43%").assertCountEquals(2)
+        compose.onAllNodesWithText("Listening to the recitation… 43%").assertCountEquals(0)
+        compose.onAllNodesWithText("1.1×").assertCountEquals(2)
+        compose.onNodeWithContentDescription("Waiting its turn").assertIsDisplayed()
         compose.onNodeWithText("2 · البقرة · Al-Baqarah").assertIsDisplayed()
         compose.onNodeWithText("Choose surah").assertIsDisplayed()
-        compose.onNodeWithText("Pause").assertIsDisplayed()
-        // The cross on a queued recording takes just that one out.
-        compose.onAllNodesWithContentDescription("Cancel").onFirst().performClick()
+        compose.onNodeWithContentDescription("Pause").assertIsDisplayed()
+        // Tapping the picture says what it means.
+        compose.onAllNodesWithContentDescription("Listening to the recitation… 43%").onFirst().performClick()
+        compose.onNodeWithText("Listening to the recitation… 43%").assertIsDisplayed()
+        // The cross on a queued recording takes just that one out. (The first cross is the card's, which calls everything off.)
+        compose.onAllNodesWithContentDescription("Cancel")[1].performClick()
         assertTrue(cancelled?.id == "b")
     }
 
@@ -631,11 +736,42 @@ class ScreensTest {
     }
 
     @Composable
-    private fun HalfHeardReader(positionMs: Int, listening: Boolean = true, speed: Float = 0f, sketch: IntArray? = null, onSeek: (Int) -> Unit = {}) = ReaderContent(
+    private fun HalfHeardReader(positionMs: Int, listening: Boolean = true, speed: Float = 0f, sketch: IntArray? = null, listeningAt: Int = -1, onSeek: (Int) -> Unit = {}) = ReaderContent(
         reading = Reading(1, fatihah, track.copy(ready = false, playable = true, wanted = listening), timingsSoFar(words = 8, heardMs = 8_000).sketched(sketch)),
         showMeanings = true, playing = true, position = { positionMs }, duration = 74_000,
-        onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = onSeek, listening = listening, speed = speed,
+        onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = onSeek, listening = listening, speed = speed, listeningAt = listeningAt,
     )
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theReaderShowsWhatIsBeingDoneToItsRecordingAndWhere() {
+        // It is being listened to, at 0:20 of it: the ear in its ring and the speed are over the line, and a mark stands on the line there.
+        val here = Status.Working(Progress("a", Step.LISTEN, 0.27f, speed = 1.2f, atMs = 20_000), "Al-Fatihah", surah = 1)
+        show("en-day-reader-doing-here") {
+            CompositionLocalProvider(LocalDoing provides Doing(here, StatusActions())) { HalfHeardReader(6_500, speed = 1.2f, listeningAt = 20_000) }
+        }
+        compose.onNodeWithContentDescription("Listening to the recitation… 27%").assertIsDisplayed()
+        compose.onNodeWithText("1.2×").assertIsDisplayed()
+        compose.onNodeWithText("Listening to the recitation… 27%").assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun whileAnotherSurahIsWorkedOnTheReaderShowsWhich() {
+        // This recording waits its turn: an hourglass over the line. What is being done meanwhile, and for which surah, is at the bar's end.
+        val there = Status.Working(Progress("b", Step.DOWNLOAD, 0.4f), "Al-Baqarah", surah = 2)
+        var paused = false
+        show("en-day-reader-doing-elsewhere") {
+            CompositionLocalProvider(LocalDoing provides Doing(there, StatusActions(pause = { paused = true }))) { HalfHeardReader(6_500) }
+        }
+        compose.onNodeWithContentDescription("Waiting its turn").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Downloading the sound… 40%").assertIsDisplayed()
+        // Tapping it opens the whole of it: the words for the picture, and the buttons.
+        compose.onNodeWithContentDescription("Downloading the sound… 40%").performClick()
+        compose.onNodeWithText("Downloading the sound… 40%").assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("Pause").onLast().performClick()
+        assertTrue(paused)
+    }
 
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
@@ -644,7 +780,8 @@ class ScreensTest {
         var sought: Int? = null
         show("en-day-reader-listening") { HalfHeardReader(6_500, speed = 1.34f, onSeek = { sought = it }) }
         // How fast the listening is going; how far it has got is the line's colour, not a sentence.
-        compose.onNodeWithText("Listening · 1.3× as fast as it plays").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Listening · 1.3× as fast as it plays").assertIsDisplayed()
+        compose.onNodeWithText("1.3×").assertIsDisplayed()
         compose.onNodeWithText("Still listening to this recording: words light up as far as 0:08.").assertDoesNotExist()
         // A word that has a place can be jumped to; one the listening hasn't reached can't yet.
         compose.onNodeWithText("ٱلْحَمْدُ", useUnmergedTree = true).performClick()
@@ -697,7 +834,7 @@ class ScreensTest {
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun aRecordingWhoseListeningWasStoppedSaysSo() {
         show("en-day-reader-listening-stopped") { HalfHeardReader(6_500, listening = false) }
-        compose.onNodeWithText("Not listened to the end yet: words light up as far as 0:08.").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Not listened to the end yet: words light up as far as 0:08.").assertIsDisplayed()
     }
 
     @Test
@@ -712,16 +849,16 @@ class ScreensTest {
         var asked: List<Track>? = null
         show("en-day-recordings-listening") {
             RecordingsContent(
-                playlist.copy(tracks = tracks), Status.Working(Progress("b", Step.LISTEN, 0.43f), "Surah Al-Baqarah"), StatusActions(),
+                playlist.copy(tracks = tracks), Status.Working(Progress("b", Step.LISTEN, 0.43f), "Surah Al-Baqarah", surah = 2), StatusActions(),
                 {}, { opened = it }, { asked = it }, {}, { _, _ -> }, {}, {},
             )
         }
         // Its sound is here, so it has a play button while the listening goes on.
-        compose.onAllNodesWithText("Listening to the recitation… 43%").onFirst().assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("Listening to the recitation… 43%").onFirst().assertIsDisplayed()
         compose.onAllNodesWithContentDescription("Play")[1].performClick()
         assertTrue(opened?.id == "b")
         // One whose listening was stopped says so, and its button takes the listening up again.
-        compose.onNodeWithText("Plays, but not listened to the end yet").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Plays, but not listened to the end yet").assertIsDisplayed()
         compose.onNodeWithContentDescription("Get ready").performClick()
         assertTrue(asked?.single()?.id == "c")
     }
@@ -1005,27 +1142,34 @@ class ScreensTest {
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
     fun theMenuButtonOpensTheMenu() {
-        var script: Script? = null
-        var meanings: Boolean? = null
+        var appearance: Appearance? = null
         compose.setContent {
             RecitationTheme {
                 HomeContent(0, {}, emptyList(), null, StatusActions(), recited = setOf(1), onSurah = {}, onOpen = {}, onAdd = {}, menu = {
-                    MenuContent(Script.MADINAH, { script = it }, withIndoPak = true, textScale = 1f, onTextScale = {}, meanings = true, onMeanings = { meanings = it }) {
-                        Text("Version 1.41")
-                    }
+                    MenuContent(Appearance.AUTO, { appearance = it }) { Text("Version 1.41") }
                 })
             }
         }
         compose.onNodeWithContentDescription("Menu").performClick()
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("build/screens/en-night-menu.png")
+        // What belongs to the whole app is here: how it looks, and its version.
         compose.onNodeWithText("Read the Quran word by word, and follow a recitation as you listen.").assertIsDisplayed()
-        compose.onNodeWithText("Everyday spelling").performClick()
-        assertTrue(script == Script.EVERYDAY)
-        compose.onNodeWithText("Word meanings").performClick()
-        assertTrue(meanings == false)
-        compose.onNodeWithText("100%").assertIsDisplayed()
+        compose.onNodeWithText("Dark").performClick()
+        assertTrue(appearance == Appearance.DARK)
         compose.onNodeWithText("Version 1.41").assertIsDisplayed()
+        // How the verses read is in a surah's own menu, not here as well.
+        compose.onNodeWithText("Word meanings").assertDoesNotExist()
+        compose.onNodeWithText("Everyday spelling").assertDoesNotExist()
+        // The panel stands beside the page, which has gone aside by the panel's width: nothing of it lies under the panel.
+        val panel = compose.onNodeWithTag("menu").fetchSemanticsNode().boundsInRoot
+        val button = compose.onNodeWithContentDescription("Menu").fetchSemanticsNode().boundsInRoot
+        assertTrue("panel $panel, the page's menu button $button", panel.left <= 1f && button.left >= panel.right)
+        // Its cross closes it, and the page comes back.
+        compose.onNodeWithContentDescription("Close").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("menu").assertDoesNotExist()
+        assertTrue(compose.onNodeWithContentDescription("Menu").fetchSemanticsNode().boundsInRoot.left < 40f)
     }
 
     @Composable
@@ -1161,16 +1305,13 @@ class ScreensTest {
         var meanings: Boolean? = null
         var scale: Float? = null
         var script: Script? = null
-        var appearance: Appearance? = null
-        show("en-night-reader-menu") {
+        show("en-night-reader-choices") {
             Column(Modifier.padding(24.dp).width(280.dp)) {
-                ReadingChoices(true, { meanings = it }, 1f, { scale = it }, Script.MADINAH, { script = it }, withIndoPak = true, Appearance.AUTO, onAppearance = { appearance = it })
+                ReadingChoices(true, { meanings = it }, 1f, { scale = it }, Script.MADINAH, { script = it }, withIndoPak = true)
             }
         }
-        // Light or dark at a tap, whatever the phone is set to.
-        compose.onNodeWithText("Auto").assertIsDisplayed()
-        compose.onNodeWithText("Light").performClick()
-        assertTrue(appearance == Appearance.LIGHT)
+        // Light or dark belongs to the whole app: it is in the first screen's menu, not here.
+        compose.onNodeWithText("Auto").assertDoesNotExist()
         compose.onNodeWithText("Word meanings").performClick()
         assertTrue(meanings == false)
         compose.onNodeWithContentDescription("Larger").performClick()
@@ -1386,7 +1527,7 @@ class ScreensTest {
         show("en-day-tajweed-legend") {
             CompositionLocalProvider(LocalTajweedRules provides { rules = true }) {
                 Column(Modifier.padding(24.dp).width(300.dp)) {
-                    ReadingChoices(true, {}, 1f, {}, Script.MADINAH, {}, withIndoPak = false, Appearance.AUTO, {}, tajweed = true) { shown = it }
+                    ReadingChoices(true, {}, 1f, {}, Script.MADINAH, {}, withIndoPak = false, tajweed = true) { shown = it }
                 }
             }
         }
@@ -1482,19 +1623,33 @@ class ScreensTest {
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun aWaveRunsOverTheWordsGoneBackOver() {
-        // As above; the recitation has just gone back from the fourth word to the second.
+        theWave("en-day", dark = false)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
+    fun theWaveByNight() {
+        theWave("en-night", dark = true)
+    }
+
+    /** The recitation has just gone back from the sixth word of 2:5 to its second, which begins the verse's second row. */
+    private fun theWave(look: String, dark: Boolean) {
         val once = timings(ruled)
-        val again = app.recitation.core.Repeat(1, listOf(WordTiming(3300, intArrayOf(ruled[0].words[1].arabic.length, 3300)), WordTiming(3600, intArrayOf(ruled[0].words[2].arabic.length, 3600))))
+        val again = app.recitation.core.Repeat(1, (1..5).map { w -> (5050 + 150 * w).let { WordTiming(it, intArrayOf(ruled[0].words[w].arabic.length, it)) } })
         val reading = Reading(2, ruled, track, Timings(once.verses, once.clarity, repeats = listOf(again)))
         compose.mainClock.autoAdvance = false
         compose.setContent {
             CompositionLocalProvider(LocalSurahNames provides surahNames) {
-                RecitationTheme { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { Ruled(3320, reading = reading) } }
+                RecitationTheme(dark) { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { Ruled(5210, reading = reading) } }
             }
         }
-        // Half way through the wave: it lies on the blocks from the second word to the fourth.
-        compose.mainClock.advanceTimeBy(900)
-        compose.onRoot().captureRoboImage("build/screens/en-day-reader-said-again-wave.png")
+        // It sets out from the word gone back to and passes on a word at a time, as far as the word he had got to.
+        var gone = 0L
+        for (ms in listOf(150L, 400L, 650L, 900L)) {
+            compose.mainClock.advanceTimeBy(ms - gone)
+            gone = ms
+            compose.onRoot().captureRoboImage("build/screens/$look-reader-said-again-wave-$ms.png")
+        }
         compose.mainClock.autoAdvance = true
     }
 
@@ -1540,9 +1695,9 @@ class ScreensTest {
     fun pausedDownloads() {
         var resumed = false
         show("en-day-paused") { Recordings(Status.Paused, StatusActions(resume = { resumed = true })) }
-        compose.onNodeWithText("Downloads are paused. What was fetched so far is kept.").assertIsDisplayed()
-        compose.onAllNodesWithText("Paused").onFirst().assertIsDisplayed()
-        compose.onNodeWithText("Resume").performClick()
+        compose.onNodeWithContentDescription("Downloads are paused. What was fetched so far is kept.").assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("Paused").onFirst().assertIsDisplayed()
+        compose.onNodeWithContentDescription("Resume").performClick()
         assertTrue(resumed)
     }
 
@@ -1553,9 +1708,11 @@ class ScreensTest {
         compose.setContent {
             RecitationTheme {
                 Surface {
-                    MenuContent(Script.MADINAH, {}, withIndoPak = true, textScale = 1f, onTextScale = {}, meanings = true, onMeanings = {}) {
-                        Text("Version 1.55")
-                        app.recitation.ui.CopyReport()
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        MenuContent {
+                            Text("Version 1.55")
+                            app.recitation.ui.CopyReport()
+                        }
                     }
                 }
             }
@@ -1570,24 +1727,24 @@ class ScreensTest {
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun theFirstListeningSaysItIsFindingTheFastestWay() {
         show("en-day-tuning") { Recordings(Status.Working(Progress(null, Step.TUNE, 0.5f), null)) }
-        compose.onAllNodesWithText("Finding the fastest way to listen on this phone… 50%").onFirst().assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("Finding the fastest way to listen on this phone… 50%").onFirst().assertIsDisplayed()
     }
 
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun whenYouTubeRefusesTheQueueSaysSoAndWaits() {
         show("en-day-refused") { Recordings(Status.Refused) }
-        compose.onNodeWithText("YouTube isn't letting recitations be downloaded right now. They will be tried again in a while; what is already on the phone carries on.").assertIsDisplayed()
+        compose.onNodeWithContentDescription("YouTube isn't letting recitations be downloaded right now. They will be tried again in a while; what is already on the phone carries on.").assertIsDisplayed()
         // Each recording still in the queue says the same in short, and none is marked as failed.
-        compose.onAllNodesWithText("YouTube is refusing for now. Trying again in a while…").onFirst().assertIsDisplayed()
-        compose.onNodeWithText("Pause").assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("YouTube is refusing for now. Trying again in a while…").onFirst().assertIsDisplayed()
+        compose.onNodeWithContentDescription("Pause").assertIsDisplayed()
     }
 
     @Test
     @Config(qualifiers = "ar-rLB-w411dp-h891dp-420dpi")
     fun whenYouTubeRefusesInArabic() {
         show("ar-day-refused") { Recordings(Status.Refused) }
-        compose.onNodeWithText("يوتيوب لا يسمح بتنزيل التلاوات حالياً. ستُعاد المحاولة بعد قليل، ويستمر العمل على ما هو موجود في الهاتف.").assertIsDisplayed()
+        compose.onNodeWithContentDescription("يوتيوب لا يسمح بتنزيل التلاوات حالياً. ستُعاد المحاولة بعد قليل، ويستمر العمل على ما هو موجود في الهاتف.").assertIsDisplayed()
     }
 
     @Test
@@ -1595,14 +1752,14 @@ class ScreensTest {
     fun queuedRecordingsSayWhatTheyAreWaitingFor() {
         // While the speech model is fetched, a queued recording shows that, not a bare "waiting".
         show("en-day-model-download") { Recordings(Status.Working(Progress(null, Step.MODEL_DOWNLOAD, 0.37f), null)) }
-        compose.onAllNodesWithText("Downloading the speech model (318 MB)… 37%").assertCountEquals(3)
+        compose.onAllNodesWithContentDescription("Downloading the speech model (318 MB)… 37%").assertCountEquals(3)
     }
 
     @Test
     @Config(qualifiers = "ar-rLB-w411dp-h891dp-night-420dpi")
     fun recordingsInArabicByNight() {
         show("ar-night-recordings") { Recordings(null) }
-        compose.onNodeWithText("٢ من ٧ جاهزة").assertIsDisplayed()
+        compose.onNodeWithContentDescription("٢ من ٧ جاهزة").assertIsDisplayed()
         compose.onNodeWithText("٢ · البقرة").assertIsDisplayed()
         assertTrue("titles start from the right", startsFromTheRight("القرآن الكريم كاملاً"))
     }
@@ -1620,7 +1777,7 @@ class ScreensTest {
     fun playlistsInArabicByNight() {
         show("ar-night-playlists") { Home(tab = 1, playlists = listOf(playlist), status = Status.Working(Progress(null, Step.MODEL_CHECK, 0.6f), null)) }
         compose.onNodeWithContentDescription("التلاوة").assertIsDisplayed()
-        compose.onNodeWithText("جارٍ التحقق من نموذج الصوت", substring = true).assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("جارٍ التحقق من نموذج الصوت", substring = true).onFirst().assertIsDisplayed()
     }
 
     @Test
@@ -1648,10 +1805,12 @@ class ScreensTest {
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun surahsWithARecitationDownloadedAreToldApart() {
-        // Four of the first eight have one; the bars of sound are under their numbers.
+        // Four of the first eight have one; the bars of sound are under their numbers, but for
+        // the fourth, whose recitation hasn't been listened to the end: an hourglass is under its.
         compose.setContent { CompositionLocalProvider(LocalSurahNames provides surahNames) { RecitationTheme { Home(tab = 0) } } }
         compose.waitForIdle()
-        compose.onAllNodesWithContentDescription("Has a recitation on the phone", useUnmergedTree = true).assertCountEquals(4)
+        compose.onAllNodesWithContentDescription("Has a recitation on the phone", useUnmergedTree = true).assertCountEquals(3)
+        compose.onAllNodesWithContentDescription("Has a recitation on the phone, not listened to the end yet", useUnmergedTree = true).assertCountEquals(1)
         // The number is still there to read, and the others keep theirs plain.
         compose.onNodeWithText("3", useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithText("2", useUnmergedTree = true).assertIsDisplayed()
@@ -1686,7 +1845,7 @@ class ScreensTest {
         }
         compose.onNodeWithText("Couldn't use Accent Coach's speech model").assertIsDisplayed()
         compose.onNodeWithText("accept its update", substring = true).assertIsDisplayed()
-        compose.onAllNodesWithText("Waiting for the speech model").onFirst().assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("Waiting for the speech model").onFirst().assertIsDisplayed()
         // Nothing is downloaded unless asked for.
         compose.onNodeWithText("Download it instead (318 MB)").performClick()
         assertTrue(download == true)

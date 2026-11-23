@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -96,16 +97,38 @@ fun StarNumber(
 
 /**
  * A surah's number in the list of surahs: large and plain. Where the surah has a
- * recitation on the phone ([recitation]) it is in the app's colour with the bars of sound
- * under it; where it hasn't, it is grey.
+ * recitation on the phone ([recitation]) it is in the app's colour, where it has none it
+ * is grey. Under it is a mark for where its recitation stands: the bars of sound once one
+ * has been listened to the end; the first bars and dots when the listening was left off
+ * ([heard] is false); an hourglass while it waits its turn ([queued]); and the picture of
+ * the work in its ring while it is being worked on ([working], which [workSays] puts in words).
  */
 @Composable
-fun SurahNumber(number: Int, modifier: Modifier = Modifier, recitation: Boolean = false) {
-    val label = stringResource(R.string.has_recitation)
+fun SurahNumber(
+    number: Int,
+    modifier: Modifier = Modifier,
+    recitation: Boolean = false,
+    heard: Boolean = true,
+    queued: Boolean = false,
+    working: Picture? = null,
+    workSays: String? = null,
+) {
     val colors = MaterialTheme.colorScheme
-    Column(if (recitation) modifier.semantics { contentDescription = label } else modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(stringResource(R.string.number, number), style = MaterialTheme.typography.titleLarge, color = if (recitation) colors.primary else colors.outline)
-        if (recitation) Icon(AppIcons.Sound, null, Modifier.size(14.dp), tint = colors.primary)
+    val ink = if (recitation) colors.primary else colors.outline
+    val label = when {
+        working != null -> workSays
+        queued -> stringResource(R.string.queued)
+        recitation && !heard -> stringResource(R.string.has_recitation_unheard)
+        recitation -> stringResource(R.string.has_recitation)
+        else -> null
+    }
+    Column(if (label != null) modifier.semantics { contentDescription = label } else modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(stringResource(R.string.number, number), style = MaterialTheme.typography.titleLarge, color = ink)
+        when {
+            working != null -> WorkIcon(working, null, Modifier.padding(top = 2.dp), size = 20.dp)
+            queued -> Icon(AppIcons.Hourglass, null, Modifier.size(14.dp), tint = ink)
+            recitation -> Icon(if (heard) AppIcons.Sound else AppIcons.SoundPart, null, Modifier.size(14.dp), tint = ink)
+        }
     }
 }
 

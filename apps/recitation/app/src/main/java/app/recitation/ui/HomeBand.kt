@@ -10,17 +10,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.HorizontalDivider
@@ -97,6 +94,7 @@ fun TitleBand(query: String?, onQuery: (String?) -> Unit, onMenu: () -> Unit) {
                         style = MaterialTheme.typography.headlineSmall, color = band.content, maxLines = 1,
                     )
                 }
+                DoingChip()
                 IconButton(onClick = { onQuery("") }) { Icon(AppIcons.Search, stringResource(R.string.search)) }
             }
         } else {
@@ -195,41 +193,57 @@ fun SearchResults(
 }
 
 /**
- * The menu behind the first screen's menu button: how the verses read (see
- * [ReadingChoices]), and [footer], the app's version and its updates.
+ * What is in the first screen's menu: what belongs to the whole app. How it looks, light
+ * or dark or as the phone is set; and [footer], the app's version, its updates and the
+ * report. How the verses read is in a surah's own menu (see [ReadingChoices]).
  */
 @Composable
 fun MenuContent(
-    script: Script,
-    onScript: (Script) -> Unit,
-    withIndoPak: Boolean,
-    textScale: Float,
-    onTextScale: (Float) -> Unit,
-    meanings: Boolean,
-    onMeanings: (Boolean) -> Unit,
     appearance: Appearance = Appearance.AUTO,
     onAppearance: (Appearance) -> Unit = {},
-    tajweed: Boolean = true,
-    onTajweed: (Boolean) -> Unit = {},
     footer: @Composable () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
-    Column(Modifier.fillMaxHeight().verticalScroll(rememberScrollState()).padding(vertical = 16.dp)) {
-        Column(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleLarge, color = colors.primary)
-            Text(stringResource(R.string.tagline), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+    Text(stringResource(R.string.tagline), Modifier.padding(horizontal = 24.dp), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+    HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
+    Text(stringResource(R.string.appearance), Modifier.padding(horizontal = 24.dp).padding(bottom = 8.dp), style = MaterialTheme.typography.titleSmall, color = colors.onSurfaceVariant)
+    AppearanceChoice(appearance, onAppearance)
+    HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
+    footer()
+}
+
+/** Light or dark at a tap, or left to follow the phone. */
+@Composable
+fun AppearanceChoice(appearance: Appearance, onAppearance: (Appearance) -> Unit) {
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 4.dp)) {
+        Appearance.entries.forEachIndexed { i, each ->
+            SegmentedButton(
+                selected = each == appearance, onClick = { onAppearance(each) },
+                shape = SegmentedButtonDefaults.itemShape(i, Appearance.entries.size), icon = {},
+                // The one chosen is filled in the theme's colour, so it can't be mistaken.
+                colors = SegmentedButtonDefaults.colors(
+                    activeContainerColor = MaterialTheme.colorScheme.primary, activeContentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+            ) {
+                Text(
+                    stringResource(
+                        when (each) {
+                            Appearance.AUTO -> R.string.appearance_auto
+                            Appearance.LIGHT -> R.string.appearance_light
+                            Appearance.DARK -> R.string.appearance_dark
+                        },
+                    ),
+                    maxLines = 1,
+                )
+            }
         }
-        HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
-        ReadingChoices(meanings, onMeanings, textScale, onTextScale, script, onScript, withIndoPak, appearance, onAppearance, tajweed, onTajweed)
-        HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
-        footer()
     }
 }
 
 /**
- * How the app looks and the verses read: light or dark (or as the phone is set), whether
- * each word's meaning shows under it, how large the text is, and the script it is written
- * in. The same choices are offered in the first screen's menu and in the menu of a surah.
+ * How the verses read, in a surah's menu: whether each word's meaning shows under it, how
+ * large the text is, whether letters are coloured by their rule of recitation, and the
+ * script the verses are written in.
  */
 @Composable
 fun ReadingChoices(
@@ -240,45 +254,23 @@ fun ReadingChoices(
     script: Script,
     onScript: (Script) -> Unit,
     withIndoPak: Boolean,
-    appearance: Appearance = Appearance.AUTO,
-    onAppearance: (Appearance) -> Unit = {},
     tajweed: Boolean = true,
     onTajweed: (Boolean) -> Unit = {},
 ) {
     Column {
-        // Light or dark at a tap, or left to follow the phone.
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 4.dp)) {
-            Appearance.entries.forEachIndexed { i, each ->
-                SegmentedButton(
-                    selected = each == appearance, onClick = { onAppearance(each) },
-                    shape = SegmentedButtonDefaults.itemShape(i, Appearance.entries.size), icon = {},
-                    // The one chosen is filled in the theme's colour, so it can't be mistaken.
-                    colors = SegmentedButtonDefaults.colors(
-                        activeContainerColor = MaterialTheme.colorScheme.primary, activeContentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                ) {
-                    Text(
-                        stringResource(
-                            when (each) {
-                                Appearance.AUTO -> R.string.appearance_auto
-                                Appearance.LIGHT -> R.string.appearance_light
-                                Appearance.DARK -> R.string.appearance_dark
-                            },
-                        ),
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
         Row(
             Modifier.fillMaxWidth().toggleable(value = meanings, role = Role.Switch, onValueChange = onMeanings).padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Icon(AppIcons.Meanings, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(12.dp))
             Text(stringResource(R.string.meanings), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
             Spacer(Modifier.width(12.dp))
             Switch(checked = meanings, onCheckedChange = null)
         }
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(AppIcons.TextSize, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(12.dp))
             Text(stringResource(R.string.text_size), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
             TextSizeControls(textScale, onTextScale)
         }
@@ -287,6 +279,12 @@ fun ReadingChoices(
             Modifier.fillMaxWidth().toggleable(value = tajweed, role = Role.Switch, onValueChange = onTajweed).padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // In place of an icon: three of the colours themselves.
+            val colours = LocalTajweed.current
+            Row(Modifier.width(20.dp), horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally)) {
+                for (family in listOf(Family.entries[0], Family.entries[1], Family.entries[5])) Box(Modifier.size(5.dp).background(colours.ink(family), CircleShape))
+            }
+            Spacer(Modifier.width(12.dp))
             Text(stringResource(R.string.tajweed_colours), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
             Spacer(Modifier.width(12.dp))
             Switch(checked = tajweed, onCheckedChange = null)

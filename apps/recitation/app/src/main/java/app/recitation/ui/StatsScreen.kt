@@ -114,7 +114,8 @@ fun StatsTab(summary: Summary, recordings: RecordingStats, saved: SavedStats, sp
         item {
             Section(stringResource(R.string.stats_space)) {
                 if (space == null) {
-                    Text(stringResource(R.string.stats_measuring), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                    // Being measured: a turning ring, not words.
+                    WorkIcon(Picture(AppIcons.Hourglass), stringResource(R.string.stats_measuring), size = 28.dp, color = colors.onSurfaceVariant)
                 } else {
                     fun size(bytes: Long) = Formatter.formatShortFileSize(context, bytes)
                     Line(stringResource(R.string.stats_space_recordings), size(space.recordings))

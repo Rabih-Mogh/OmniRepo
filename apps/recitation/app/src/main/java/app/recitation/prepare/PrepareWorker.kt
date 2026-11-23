@@ -78,8 +78,12 @@ class Playing(val trackId: String, val ms: Int)
 /** Why the speech model couldn't be copied from Accent Coach. */
 data class ModelProblem(val reason: ModelStore.Lender, val detail: String?)
 
-/** [trackId] is null while the speech model, which every recording needs, is being fetched. */
-data class Progress(val trackId: String?, val step: Step, val fraction: Float, val speed: Float = 0f)
+/**
+ * [trackId] is null while the speech model, which every recording needs, is being fetched.
+ * While a recording is listened to, [speed] is how many times as fast as it plays that
+ * goes, and [atMs] the place in it being heard right now; -1 when that isn't known.
+ */
+data class Progress(val trackId: String?, val step: Step, val fraction: Float, val speed: Float = 0f, val atMs: Int = -1)
 
 /**
  * Gets every recording the user asked for ready to read along with: downloads its sound,
@@ -279,11 +283,12 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         // Nothing of what follows can be kept on a phone that is full.
         if (applicationContext.filesDir.usableSpace < SPARE_BYTES) throw NoRoom()
         var speed = 0f // how many times faster than it plays the recording is being listened to
+        var hearingAt = -1 // the place in the recording being heard right now, in ms
         fun report(step: Step, fraction: Float, forModel: Boolean = false) {
             // In half-percent steps: a download says how far it is with every few bytes, and
             // every change here redraws the screens that show it.
             val shown = (fraction * 200).toInt() / 200f
-            _progress.value = Progress(if (forModel) null else id, step, shown, if (step == Step.LISTEN) (speed * 10).toInt() / 10f else 0f)
+            _progress.value = Progress(if (forModel) null else id, step, shown, if (step == Step.LISTEN) (speed * 10).toInt() / 10f else 0f, if (step == Step.LISTEN) hearingAt else -1)
             show(track, step, shown)
         }
         // The engine with the model in it, run the way found fastest on this phone: found
@@ -508,6 +513,8 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                 listener.listen(
                     audio, notes, ::wanted,
                     onPiece = { piece, frames, rows ->
+                        // The piece after the one just heard is, as a rule, the one being heard now.
+                        hearingAt = (piece + 1) * Hearing.PIECE_MS
                         pieces[piece] = Heard(frames, rows)
                         handOn()
                         // Ten seconds of recitation in however long that took, evened out over the last few pieces.
