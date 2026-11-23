@@ -198,6 +198,15 @@ private fun Screens(model: AppModel, choices: Choices) {
                     space, modifier,
                 )
             },
+            practice = { modifier ->
+                // Which surah to recite from is chosen first; its verses are stepped through on the next screen.
+                var choosing by remember { mutableStateOf(false) }
+                PracticeTab(
+                    Exercise.entries.associateWith { Settings.voiceBest(context, it.name) },
+                    onRecite = { choosing = true }, onExercise = { model.openExercise(it.ordinal) }, modifier = modifier,
+                )
+                if (choosing) SurahPicker(onPick = { choosing = false; model.openRecite(VerseRef(it, 1)) }, onDismiss = { choosing = false })
+            },
             query = model.query,
             onQuery = model::search,
             hits = model.hits,
@@ -246,7 +255,14 @@ private fun Screens(model: AppModel, choices: Choices) {
                 )
             }
         }
-        is Screen.Surah -> SurahScreen(model, screen, playlists, status, playback, get, pins, collections, choices, indopak)
+        // A verse of the surah on show can be recited to the phone from its own menu.
+        is Screen.Surah -> CompositionLocalProvider(LocalReciteVerse provides { verse -> model.openRecite(VerseRef(screen.number, verse)) }) {
+            SurahScreen(model, screen, playlists, status, playback, get, pins, collections, choices, indopak)
+        }
+        is Screen.Recite -> ReciteScreen(
+            SURAHS[screen.surah - 1], screen.verse, verseOf = { model.verse(VerseRef(screen.surah, it)) }, onBack = { model.back() },
+        )
+        is Screen.Voice -> ExerciseScreen(Exercise.entries[screen.exercise], onBack = { model.back() })
     }
     }
 

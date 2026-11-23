@@ -291,4 +291,144 @@
     <string name="update_channel">تحديثات التطبيق</string>
     <string name="update_notice_installing">جارٍ تثبيت التحديث…</string>
     <string name="update_notice_ready">تم تنزيل التحديث. افتح التطبيق لتثبيته.</string>
+
+    <string name="tab_practice">تدريب</string>
+    <string name="practice_recite_title">اقرأ وصحِّح</string>
+    <string name="practice_recite_body">اقرأ آية على الهاتف، فيستمع ويُعلِّم ما يحتاج إلى مراجعة: حرفًا أو حركة أو مقدار مدّ أو غنّة.</string>
+    <string name="practice_recite_go">اختر آية</string>
+    <string name="voice_title">تدريب الصوت</string>
+    <string name="voice_hadith">«زَيِّنُوا القُرْآنَ بِأَصْوَاتِكُمْ» رواه أبو داود والنسائي</string>
+    <string name="voice_condition">التجويد أولًا: لا يجوز أن يغيّر النغم حرفًا ولا حركة ولا مقدار مدّ.</string>
+    <string name="voice_breath">النَّفَس</string>
+    <string name="voice_breath_line">كم يحمل النَّفَس الواحد من صوت ثابت</string>
+    <string name="voice_breath_how">تنفَّس من الأنف وأنت تعدّ ببطء إلى أربعة حتى يمتلئ البطن، ثم أخرج الهواء بصوت «آآآه» ثابت ما دمت مرتاحًا. لا تستنفد نَفَسك كله.</string>
+    <string name="voice_steady">نغمة ثابتة</string>
+    <string name="voice_steady_line">اثبُت على نغمة واحدة دون اهتزاز</string>
+    <string name="voice_steady_how">اختر نغمة سهلة عليك، لا منخفضة ولا مرتفعة، واثبت عليها بصوت «آآآه» خمس ثوانٍ أو أكثر. راقب الخط وأبقِه مستويًا.</string>
+    <string name="voice_range">مدى الصوت</string>
+    <string name="voice_range_line">من أخفض نغمة مريحة إلى أعلاها</string>
+    <string name="voice_range_how">ابدأ بأخفض نغمة ما زالت سهلة، وارتفع ببطء إلى أعلى نغمة ما زالت سهلة، دون تكلّف. يسمّي القرّاء الطرف المنخفض «القرار» والمرتفع «الجواب».</string>
+    <string name="voice_start">ابدأ</string>
+    <string name="voice_stop">توقّف</string>
+    <string name="voice_listening">جارٍ الاستماع</string>
+    <string name="voice_no_mic">يحتاج هذا إلى الميكروفون. اسمح به لهذا التطبيق من إعدادات الهاتف.</string>
+    <string name="voice_mic_busy">تعذّر فتح الميكروفون.</string>
+    <string name="voice_nothing_heard">لم يُسمع صوت. حاول مرة أخرى بصوت أعلى قليلًا وأقرب إلى الهاتف.</string>
+    <string name="voice_seconds">%1$s ث</string>
+    <string name="voice_longest_breath">أطول نَفَس</string>
+    <string name="voice_even">الصوت مستوٍ</string>
+    <string name="voice_uneven">علا الصوت أو خفت: حافظ على مستوى واحد</string>
+    <string name="voice_cents">± %1$d سنتًا</string>
+    <string name="voice_cents_note">مقدار ابتعاد النغمة. السنت جزء من مئة من نصف الدرجة.</string>
+    <string name="voice_very_steady">ثابت جدًّا</string>
+    <string name="voice_steady_ok">ثابت</string>
+    <string name="voice_wavers">يهتز: اسنده بالنَّفَس أكثر وبالحنجرة أقل</string>
+    <string name="voice_semitones">%1$s نصف درجة</string>
+    <string name="voice_low">القرار</string>
+    <string name="voice_high">الجواب</string>
+    <string name="voice_best">أفضل نتيجة: %1$s</string>
+    <string name="voice_sources">تمرين النَّفَس مما يعلّمه مقرئو القرآن. أما الثبات على نغمة والتنقّل في مدى الصوت فمن تمارين الصوت العامة.</string>
+    <string name="voice_health">توقّف إذا أحسست بإجهاد أو بحّة في الحلق. اشرب الماء، واحمل الصوت على النَّفَس لا على الحنجرة.</string>
+
+    <string name="recite_title">اقرأ وصحِّح</string>
+    <string name="recite_verse">%1$s · الآية %2$d</string>
+    <string name="recite_how">اضغط الميكروفون واقرأ هذه الآية، وقِف على آخرها. نصف دقيقة على الأكثر في المرة.</string>
+    <string name="recite_start">اقرأ</string>
+    <string name="recite_stop">انتهيت</string>
+    <string name="recite_again">اقرأها مرة أخرى</string>
+    <string name="recite_checking">جارٍ الاستماع إلى قراءتك</string>
+    <string name="recite_sound_words">%1$d من %2$d كلمة سليمة</string>
+    <string name="recite_all_sound">لم يُسمع ما يحتاج إلى تصحيح.</string>
+    <string name="recite_tap">اضغط كلمة معلَّمة لترى ما تراجعه.</string>
+    <string name="recite_clear">لحن جليّ</string>
+    <string name="recite_fine">لحن خفيّ</string>
+    <string name="recite_caution">قد يخطئ هذا. هو عون على مراجعة قراءتك وليس معلّمًا: اعرض ما يعلّمه على من يسمعك.</string>
+    <string name="recite_needs_model">تصحيح القراءة يحتاج إلى نموذج تجويد صغير (٢٣ م.ب)، يُنزَّل مرة واحدة ويبقى على الهاتف.</string>
+    <string name="recite_get_model">نزِّله</string>
+    <string name="recite_getting_model">جارٍ تنزيل نموذج التجويد… %1$d%%</string>
+    <string name="recite_getting_engine">جارٍ تنزيل محرّك الصوت… %1$d%%</string>
+    <string name="recite_failed">تعذّر ذلك: %1$s</string>
+    <string name="recite_nothing_heard">لم يُسمع شيء. اقرأ بصوت أعلى قليلًا وأقرب إلى الهاتف.</string>
+    <string name="recite_no_reference">لا يمكن تصحيح هذه الآية بعد.</string>
+    <string name="recite_this_verse">اقرأ هذه الآية بنفسك</string>
+    <string name="recite_stopped_here">وقفتَ هنا</string>
+    <string name="recite_counts">%1$d حركات</string>
+    <string name="recite_heard_as">المسموع: %1$s</string>
+    <string-array name="madd_names">
+        <item>المد الطبيعي</item>
+        <item>المد المنفصل</item>
+        <item>المد المتصل</item>
+        <item>المد المتصل وقفًا</item>
+        <item>المد اللازم</item>
+        <item>المد العارض للسكون</item>
+        <item>مد اللين</item>
+    </string-array>
+    <string name="vowel_fatha">فتحة</string>
+    <string name="vowel_damma">ضمة</string>
+    <string name="vowel_kasra">كسرة</string>
+    <string name="fault_madd_short">%1$s أقصر من مقداره</string>
+    <string name="fault_madd_short_how">مُدَّ %1$d حركات ومقداره %2$d. عُدَّ بسرعة قراءتك أنت: الحركة القصيرة حركة واحدة، والمد الطبيعي حركتان.</string>
+    <string name="fault_madd_long">%1$s أطول من مقداره</string>
+    <string name="fault_madd_long_how">مُدَّ %1$d حركات ومقداره %2$d. العدّ بسرعة قراءتك يحفظ لكل مد مقداره.</string>
+    <string name="fault_madd_missing">%1$s لم يُمدّ</string>
+    <string name="fault_madd_missing_how">نُطقت الحركة قصيرة، وهي هنا تُمدّ %1$d حركات.</string>
+    <string name="fault_madd_added">مدٌّ زائد في غير موضعه</string>
+    <string name="fault_madd_added_how">الحركة القصيرة حركة واحدة، وإطالتها تولّد حرفًا ليس في الكلمة.</string>
+    <string name="fault_madd_uneven">%1$s غير مستوٍ</string>
+    <string name="fault_madd_uneven_how">مُدَّ في هذه القراءة %1$s حركات على التوالي. أيَّ مقدار اخترت له فالزمه في كل مرة: «واللفظ في نظيره كمثله».</string>
+    <string name="fault_ghunnah_short">الغنّة ناقصة</string>
+    <string name="fault_ghunnah_short_how">النون والميم المشدّدتان فيهما غنّة تُمدّ بمقدار حركتين تقريبًا. دعها تخرج من الخيشوم قبل أن تنتقل.</string>
+    <string name="fault_ikhfa_clear">إخفاء: أُظهرت النون</string>
+    <string name="fault_ikhfa_clear_how">النون هنا مخفاة قبل هذا الحرف. لا تُلصق اللسان بمخرجها: أبقه قريبًا منه دون لمس، مع الغنّة.</string>
+    <string name="fault_ikhfa_short">إخفاء: الغنّة قصيرة</string>
+    <string name="fault_ikhfa_short_how">النون المخفاة تبقى غنّتها. أطل الغنّة قبل الانتقال إلى الحرف التالي.</string>
+    <string name="fault_iqlab_missed">الإقلاب لم يتحقق</string>
+    <string name="fault_iqlab_missed_how">تُقلب النون قبل الباء ميمًا مخفاة مع الغنّة. أطبق الشفتين برفق دون كزّ وأطل الغنّة.</string>
+    <string name="fault_idgham_missed">إدغام: أُظهرت النون</string>
+    <string name="fault_idgham_missed_how">النون هنا لا تُنطق: تُدغم في %1$s. انتقل إلى ذلك الحرف مباشرة مشدَّدًا.</string>
+    <string name="fault_idgham_ghunnah_short">إدغام: الغنّة ناقصة</string>
+    <string name="fault_idgham_ghunnah_short_how">تُدغم النون في %1$s وتبقى غنّتها. أطل الغنّة وأنت تشدّد الحرف.</string>
+    <string name="fault_shadda_missing">الشدّة على %1$s لم تظهر</string>
+    <string name="fault_shadda_missing_how">الحرف المشدّد حرفان: اسكن عليه ثم انطلق منه إلى حركته.</string>
+    <string name="fault_qalqalah_missing">القلقلة غير ظاهرة على %1$s</string>
+    <string name="fault_qalqalah_missing_how">حروف «قطب جد» الساكنة تُقلقل: يُفكّ المخرج بصوت خفيف. ليست حركة: لا يُفتح لها الفم ولا تُضمّ الشفتان. وهي أقوى عند الوقف.</string>
+    <string name="fault_letter">نُطق %1$s بدل %2$s</string>
+    <string name="fault_vowel">%1$s بدل %2$s</string>
+    <string name="fault_vowel_how">تغيير الحركة لحن جليّ قد يغيّر معنى الكلمة. انظر إلى حركة الحرف وأعد نطقه بتمهّل.</string>
+    <string name="fault_dropped">سقط حرف: %1$s</string>
+    <string name="fault_dropped_how">كل حروف الكلمة تُسمع. انطق الكلمة بتمهّل حرفًا حرفًا.</string>
+    <string name="fault_added">زيادة: %1$s</string>
+    <string name="fault_added_how">سُمع صوت ليس في الكلمة. انطق الكلمة بتمهّل حرفًا حرفًا.</string>
+    <string name="fault_word_missing">هذه الكلمة لم تُسمع</string>
+    <string name="fault_word_missing_how">تُركت أو قُرئت بصوت لا يُسمع. أعد قراءة الآية وأعطِ الكلمة حقّها.</string>
+    <string-array name="letter_tips">
+        <item>الهمزة من أقصى الحلق، محقَّقة مرقَّقة.</item>
+        <item>الهاء من أقصى الحلق، مرقَّقة مع جريان النَّفَس.</item>
+        <item>العين من وسط الحلق. ليست همزة.</item>
+        <item>الحاء من وسط الحلق مع جريان النَّفَس. ليست هاء.</item>
+        <item>الغين من أدنى الحلق. ليست كالجيم القاهرية.</item>
+        <item>الخاء من أدنى الحلق، لا من مخرج الكاف.</item>
+        <item>القاف من أقصى اللسان مع ما يحاذيه من الحنك الأعلى، مفخَّمة. ليست كافًا.</item>
+        <item>الكاف من أقصى اللسان أسفل من مخرج القاف قليلًا، مرقَّقة مع شيء من النَّفَس.</item>
+        <item>الجيم من وسط اللسان مع ما يحاذيه من الحنك الأعلى، شديدة مجهورة. ليست جيمًا رخوة.</item>
+        <item>الشين من وسط اللسان مع ما يحاذيه من الحنك الأعلى، مع تفشّي الهواء في الفم.</item>
+        <item>الياء من وسط اللسان مع ما يحاذيه من الحنك الأعلى.</item>
+        <item>الضاد من إحدى حافتي اللسان مع ما يليها من الأضراس العليا، مفخَّمة مستطيلة. ليست دالًا ولا ظاءً.</item>
+        <item>اللام من أدنى حافتي اللسان إلى منتهى طرفه مع لثة الأسنان العليا، مرقَّقة.</item>
+        <item>النون من طرف اللسان مع لثة الثنايا العليا.</item>
+        <item>الراء من طرف اللسان مع شيء من ظهره، قريبًا من مخرج النون. لا تكرّرها.</item>
+        <item>الطاء من طرف اللسان مع أصول الثنايا العليا، مطبَقة مفخَّمة. ليست تاء.</item>
+        <item>الدال من طرف اللسان مع أصول الثنايا العليا، مرقَّقة.</item>
+        <item>التاء من طرف اللسان مع أصول الثنايا العليا، مرقَّقة مهموسة.</item>
+        <item>الصاد من طرف اللسان مع فُوَيق الثنايا السفلى، مطبَقة مفخَّمة مع الصفير. ليست سينًا.</item>
+        <item>الزاي من طرف اللسان مع فُوَيق الثنايا السفلى، مجهورة مع الصفير.</item>
+        <item>السين من طرف اللسان مع فُوَيق الثنايا السفلى، مرقَّقة مع الصفير. لا تفخّمها فتصير صادًا.</item>
+        <item>الظاء من طرف اللسان مع أطراف الثنايا العليا، مفخَّمة. ليست زايًا.</item>
+        <item>الذال من طرف اللسان مع أطراف الثنايا العليا، مرقَّقة. ليست زايًا.</item>
+        <item>الثاء من طرف اللسان مع أطراف الثنايا العليا، مهموسة. ليست سينًا.</item>
+        <item>الفاء من بطن الشفة السفلى مع أطراف الثنايا العليا.</item>
+        <item>الباء من الشفتين بانطباقهما، مرقَّقة.</item>
+        <item>الميم من الشفتين بانطباقهما دون كزّ.</item>
+        <item>الواو من الشفتين بانضمامهما.</item>
+    </string-array>
 </resources>

@@ -89,6 +89,17 @@ import app.recitation.prepare.ModelProblem
 import app.recitation.prepare.Progress
 import app.recitation.prepare.Step
 import app.recitation.speech.ModelStore
+import app.recitation.core.Correction
+import app.recitation.core.Fault
+import app.recitation.core.Madd
+import app.recitation.core.MaddHeard
+import app.recitation.core.VoiceTake
+import app.recitation.core.WordRecited
+import app.recitation.ui.Exercise
+import app.recitation.ui.ExerciseContent
+import app.recitation.ui.PracticeTab
+import app.recitation.ui.ReciteContent
+import app.recitation.ui.Reciting
 import app.recitation.ui.Choices
 import app.recitation.ui.Doing
 import app.recitation.ui.LocalDoing
@@ -290,6 +301,157 @@ class ScreensTest {
         }
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("build/screens/every-icon.png")
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun thePractiseTabOffersRecitingAndTheVoiceExercises() {
+        var recite = false
+        var chosen: Exercise? = null
+        show("en-day-practise") {
+            HomeContent(
+                4, {}, emptyList(), null, StatusActions(), recited = setOf(1), onSurah = {}, onOpen = {}, onAdd = {},
+                practice = { modifier ->
+                    PracticeTab(mapOf(Exercise.BREATH to 14.2f, Exercise.STEADY to 18f), onRecite = { recite = true }, onExercise = { chosen = it }, modifier = modifier)
+                },
+            )
+        }
+        compose.onNodeWithText("Practise").assertIsDisplayed()
+        compose.onNodeWithText("Recite and be corrected").assertIsDisplayed()
+        // The voice is trained under its condition, and without any melody being taught.
+        compose.onNodeWithText("Tajweed comes first", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("14.2 s").assertIsDisplayed()
+        compose.onNodeWithText("± 18 cents").assertIsDisplayed()
+        compose.onNodeWithText("Choose a verse").performClick()
+        assertTrue(recite)
+        compose.onNodeWithText("A steady note").performClick()
+        assertTrue(chosen == Exercise.STEADY)
+    }
+
+    /** A voice holding a note about 196 Hz, wavering a little, for some seconds, as the looks at it would read. */
+    private fun heldNote(looks: Int = 320) = FloatArray(looks) { 196f * Math.pow(2.0, 0.012 * kotlin.math.sin(it / 9.0)).toFloat() }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aVoiceExerciseDrawsTheVoiceAndSaysHowSteadyItWas() {
+        val pitches = heldNote()
+        var toggled = false
+        show("en-day-voice-steady") {
+            ExerciseContent(
+                Exercise.STEADY, listening = false, pitches = pitches.toList(), take = VoiceTake(pitches, FloatArray(pitches.size) { 0.1f }),
+                best = 12f, problem = null, onToggle = { toggled = true }, onBack = {},
+            )
+        }
+        compose.onNodeWithText("A steady note").assertIsDisplayed()
+        // The note strayed about a seventh of a semitone: steady, and said so.
+        compose.onNodeWithText("± 10 cents").assertIsDisplayed()
+        compose.onNodeWithText("Very steady").assertIsDisplayed()
+        compose.onNodeWithText("Best so far: ± 12 cents").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Start").performClick()
+        assertTrue(toggled)
+    }
+
+    @Test
+    @Config(qualifiers = "ar-rSA-w411dp-h891dp-night-420dpi")
+    fun theRangeExerciseInArabicByNight() {
+        val slide = FloatArray(300) { 110f * Math.pow(2.0, 17.0 / 12 * it / 300).toFloat() }
+        show("ar-night-voice-range") {
+            ExerciseContent(
+                Exercise.RANGE, listening = true, pitches = slide.toList(), take = VoiceTake(slide, FloatArray(slide.size) { 0.1f }),
+                best = 0f, problem = null, onToggle = {}, onBack = {},
+            )
+        }
+        compose.onNodeWithText("مدى الصوت").assertIsDisplayed()
+        compose.onNodeWithText("القرار").assertIsDisplayed()
+        compose.onNodeWithText("الجواب").assertIsDisplayed()
+        // While it listens the button is the one that stops it.
+        compose.onNodeWithContentDescription("توقّف").assertIsDisplayed()
+    }
+
+    /** 1:2 as recited with two things to go over: ح said as ه in its first word, and the madd of its last word not held. */
+    private val recitedWithMistakes = listOf(
+        WordRecited(0, false, listOf(Correction(Fault.LETTER, clear = true, wanted = "ح", heard = "ه")), emptyList()),
+        WordRecited(1, false, emptyList(), emptyList()),
+        WordRecited(2, false, emptyList(), emptyList()),
+        WordRecited(3, false, listOf(Correction(Fault.MADD_SHORT, clear = false, madd = Madd.MUTTASIL, wantedCounts = 4, heardCounts = 2)), listOf(MaddHeard(Madd.ARID, 4))),
+    )
+
+    @Composable
+    private fun Recite(state: Reciting, needsModel: Boolean = false, onMic: () -> Unit = {}, onFetch: () -> Unit = {}) = ReciteContent(
+        app.recitation.core.SURAHS[0], 2, fatihah[1], state, needsModel, onMic, onFetch, onPrevious = {}, onNext = {}, onBack = {},
+    )
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun recitingAVerseMarksWhatToGoOverAndTeachesIt() {
+        show("en-day-recite-heard") { Recite(Reciting.Heard(recitedWithMistakes)) }
+        compose.onNodeWithText("2 of 4 words sound").assertIsDisplayed()
+        // The first marked word is opened: what was said in place of what, and how the letter is made.
+        compose.onNodeWithText("Clear mistake").assertIsDisplayed()
+        compose.onNodeWithText("ه said in place of ح").assertIsDisplayed()
+        compose.onNodeWithText("middle of the throat", substring = true).assertIsDisplayed()
+        // Tapping the other marked word shows its own: a fine point, with the lengths.
+        compose.onNodeWithText("ٱلْعَـٰلَمِينَ").performClick()
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/en-day-recite-madd.png")
+        compose.onNodeWithText("Fine point").assertIsDisplayed()
+        compose.onNodeWithText("Joined madd (muttasil) held too short").assertIsDisplayed()
+        compose.onNodeWithText("It was held for 2 counts and is due 4.", substring = true).assertIsDisplayed()
+        // It never claims to be a teacher.
+        compose.onNodeWithText("This can be wrong.", substring = true).assertExists()
+        compose.onNodeWithContentDescription("Recite it again").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun beforeItsModelIsFetchedRecitingAsksForIt() {
+        var fetched = false
+        var mic = false
+        show("en-day-recite-model") { Recite(Reciting.Idle, needsModel = true, onMic = { mic = true }, onFetch = { fetched = true }) }
+        compose.onNodeWithText("Checking a recitation needs a small tajweed model (23 MB), fetched once and kept on the phone.").assertIsDisplayed()
+        // The microphone does nothing until the model is there.
+        compose.onNodeWithContentDescription("Start").performClick()
+        assertTrue(!mic)
+        compose.onNodeWithText("Download it").performClick()
+        assertTrue(fetched)
+    }
+
+    @Test
+    @Config(qualifiers = "ar-rSA-w411dp-h891dp-night-420dpi")
+    fun recitingInArabicByNight() {
+        show("ar-night-recite-heard") { Recite(Reciting.Heard(recitedWithMistakes)) }
+        compose.onNodeWithText("لحن جليّ").assertIsDisplayed()
+        compose.onNodeWithText("نُطق ه بدل ح").assertIsDisplayed()
+        compose.onNodeWithText("الحاء من وسط الحلق", substring = true).assertIsDisplayed()
+    }
+
+    /** What every word should sound like is in the app's package, for all 114 surahs, and reads as the checker needs it. */
+    @Test
+    fun theReferenceForEveryVerseIsInThePackage() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        var verses = 0
+        var words = 0
+        for (surah in app.recitation.core.SURAHS) {
+            val forms = context.assets.open("tajweed_reference.bin").use { app.recitation.core.TajweedReference.surah(it, surah.number) }
+            assertEquals("surah ${surah.number}", surah.verses, forms.size)
+            verses += forms.size
+            words += forms.sumOf { it.size }
+            assertTrue(forms.all { verse -> verse.isNotEmpty() && verse.all { it.inside.script.isNotEmpty() || it.first.script.isNotEmpty() } })
+        }
+        assertEquals(6236, verses)
+        assertEquals(77433, words)
+        // Al-Fatihah's second verse, said in one breath: its last word in the form it takes at a stop, its madd four counts long.
+        val verse = context.assets.open("tajweed_reference.bin").use { app.recitation.core.TajweedReference.surah(it, 1) }[1]
+        assertEquals(fatihah[1].words.size, verse.size)
+        assertEquals("ءَلحَمدُلِللَااهِرَببِلعَاالَمِۦۦۦۦن", app.recitation.core.Expected.breath(verse, 0, verse.size).script)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun whileTheModelListensItIsShownAsAPicture() {
+        show("en-day-recite-checking") { Recite(Reciting.Checking) }
+        compose.onNodeWithContentDescription("Listening to what you recited").assertIsDisplayed()
+        compose.onNodeWithText("Listening to what you recited").assertDoesNotExist()
     }
 
     private fun startsFromTheRight(text: String): Boolean {

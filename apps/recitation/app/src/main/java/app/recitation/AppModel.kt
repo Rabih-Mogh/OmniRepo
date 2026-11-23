@@ -53,6 +53,12 @@ sealed interface Screen {
 
     /** A surah's words. [trackId] is the recording to play with it, or null to just read. [from] is where Back goes. */
     data class Surah(val number: Int, val trackId: String?, val from: Screen) : Screen
+
+    /** Reciting a verse to the phone to be corrected: [verse] counted from 1. [from] is where Back goes. */
+    data class Recite(val surah: Int, val verse: Int, val from: Screen) : Screen
+
+    /** One of the voice exercises, by its place in their list. */
+    data class Voice(val exercise: Int) : Screen
 }
 
 /**
@@ -222,6 +228,16 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         screen = Screen.Collection(collection.id)
     }
 
+    /** Opens a verse to be recited to the phone and corrected. */
+    fun openRecite(verse: VerseRef) {
+        screen = Screen.Recite(verse.surah, verse.verse, screen)
+    }
+
+    /** Opens one of the voice exercises. */
+    fun openExercise(exercise: Int) {
+        screen = Screen.Voice(exercise)
+    }
+
     /** One verse's words and translation, for a list of kept verses; null if they can't be had. */
     suspend fun verse(verse: VerseRef): Verse? = withContext(Dispatchers.IO) {
         runCatching { quran.surah(verse.surah).getOrNull(verse.verse - 1) }.getOrNull()
@@ -325,6 +341,8 @@ class AppModel(app: Application) : AndroidViewModel(app) {
             is Screen.Recordings -> Screen.Home
             is Screen.Collection -> Screen.Home
             is Screen.Surah -> s.from
+            is Screen.Recite -> s.from
+            is Screen.Voice -> Screen.Home
         }
         return true
     }

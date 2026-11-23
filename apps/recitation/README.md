@@ -63,7 +63,7 @@ at the far end:
   translation. Words are searched in the surahs already on the phone. Tapping a result
   opens the surah, at the verse found.
 
-Below it are four tabs, at the bottom.
+Below it are five tabs, at the bottom.
 
 **Quran** lists the 114 surahs, under a card that offers to **move to last read**: the
 surah and verse where the last recitation was left. Tap one to read it, whether or not a recitation of it has
@@ -74,6 +74,10 @@ first time a surah is opened, and the app fetches the rest quietly while it is o
 the whole Quran ends up readable without a connection.
 
 **Saved** lists the pins and the collections (see [Pins and collections](#pins-and-collections)).
+
+**Practise** is where the reader's own voice comes in: **Recite and be corrected** (see
+[Reciting to the phone](#reciting-to-the-phone)) and **Train your voice** (see
+[Training the voice](#training-the-voice)).
 
 **Stats** shows what has been listened to: the time today, over the last seven days (as
 bars, a day each) and in all; how many days in a row; how many of the Quran's 6,236
@@ -291,6 +295,77 @@ the heavy letters that are always heavy (خ ص ض غ ط ق ظ), and the few one-
   Painting needs the shown spelling to have the Uthmani spelling's letters, which the two
   Uthmani scripts do. In the IndoPak and everyday spellings, words spelt with other
   letters show no colours, and the light falls on the letter's width as it did before.
+
+### Reciting to the phone
+
+Choose a verse (from the Practise tab, or **Recite this verse yourself** in a verse's own
+menu in a surah), tap the microphone, recite it and tap again. The phone listens, and
+every word that has something to go over is marked: red for a clear mistake (لحن جلي:
+another letter, another vowel, a sound left out or added, a word passed over), amber for a
+fine point of performance (لحن خفي: a madd held too short or too long or unevenly, a
+ghunnah cut short, a hidden nun said clearly, an iqlab or idgham missed, no qalqalah).
+Tapping a marked word says what was heard and how to put it right: for a letter, where in
+the mouth it is made, in the words of the classical books of tajweed.
+
+How it listens:
+
+- **The model.** The model that follows a reciter's recording was trained on ordinary
+  speech in many languages, and cannot judge the letters learners get wrong: measured on
+  expert reciters, it writes something else for ث ذ ظ ض ص ط ع غ even when they are said
+  perfectly. So checking uses another, made for this: **HisnLabs Tajweed v2**, a small
+  model (23 MB) that writes a recitation in the Quran phonetic script, a long vowel once
+  for every count it is held, with signs of their own for a hidden nun, a nun turned to a
+  mim and the echo of a qalqalah. It is fetched once from [models/tajweed-v2](models/tajweed-v2)
+  and runs on the phone, on the engine the app already has. Nothing recited leaves the
+  phone.
+- **What the verse should sound like** is worked out beforehand for every word of the
+  Quran with the phonetizer the model was trained with (quran-transcript), in the four
+  forms a word can take: inside a breath, first in one, last in one (as at a stop), or a
+  breath of its own. That is `app/src/main/assets/tajweed_reference.bin`, written by
+  `tools/make_tajweed_reference.py`. Any stretch of a verse stitched from these forms is
+  exactly what the phonetizer gives for it (4,432 random stretches checked).
+- **Comparing.** Where the reciter stopped and began again is found first, so a word
+  stopped on is judged in the form it takes at a stop, and words gone back over are not
+  taken for mistakes. Then the two scripts are lined up sound by sound and each difference
+  is named. Lengths are allowed one count either way; a long madd is also measured by the
+  clock against the reciter's own natural madd; and a remark about a sound the model was
+  not sure of is left out. This is the method of the rule engine published with the model
+  (`imam.py`), written again in Kotlin (`core/…/Recited.kt`, `Corrections.kt`). On 291
+  cases (54 real verses by four expert reciters, and the same with mistakes written into
+  what was heard) it gives the rule engine's own verdict on every one.
+
+What to expect of it, and what not:
+
+- It can be wrong, and says so on its screen. Its makers measured a remark on 4 to 9 in
+  every 100 words that were recited correctly; on the expert recordings tried here it was
+  7 words in 321. It is an aid for going over a recitation, not a teacher.
+- It hears a verse at a time, up to half a minute. A verse longer than that can't be
+  recited whole yet.
+- It is for the reading of Hafs from ʿAsim. It does not judge the heavy and light of ر
+  and of the ل of the name of Allah, nor stopping and starting in the wrong places.
+- No tool does catch every mistake: the best published systems still pass about three in
+  ten mispronunciations, and the best-known recitation app checks words and vowels but
+  not tajweed.
+
+### Training the voice
+
+"Adorn the Quran with your voices" (Abu Dawud, al-Nasaʾi). The scholars' condition is
+that a melody never changes a letter, a vowel or the length of a madd, so tajweed comes
+first; and since scholars differ on deliberately learning the musical modes (maqamat),
+the app teaches none. What it trains is what every voice needs:
+
+- **Breath**, an exercise recitation teachers give: breathe in to a slow count of four,
+  then let the air out on one steady sound. The app times the longest unbroken sound and
+  says whether its loudness stayed even.
+- **A steady note**: hold one easy note. The app shows how far it strayed, in cents
+  (hundredths of a semitone).
+- **Range**: slide from the lowest easy note to the highest. The app shows the reach in
+  semitones, the low end named qarar and the high end jawab, as reciters name them.
+
+While the microphone listens, the voice draws its own line on the screen, high notes
+high. The pitch is found by the YIN method (de Cheveigné and Kawahara, 2002), on the
+phone. The best result of each exercise is kept. The last two are general voice
+exercises, and are said to be.
 
 ### Pins and collections
 
@@ -619,6 +694,9 @@ to four threads, with the same result.
 |---|---|---|
 | Quran text (Uthmani, IndoPak and everyday spellings), word meanings, verse translation (Saheeh International) | [Quran.com](https://quran.com) API, fetched by the app and kept on the phone; not stored in this repo | Their own terms |
 | Speech model | [wav2vec2-lv-60-espeak-cv-ft](https://huggingface.co/facebook/wav2vec2-lv-60-espeak-cv-ft), ONNX export by onnx-community | Apache-2.0 |
+| Model that listens to the reader reciting | [HisnLabs Tajweed v2](https://huggingface.co/Hisnlabs/tajweed-v2), int8 ONNX, in [models/tajweed-v2](models/tajweed-v2) and fetched by the app. Its base is the encoder of tarteel-ai/whisper-base-ar-quran; its teacher was Quran Muaalem | Apache-2.0 ([text](licenses/Apache-2.0.txt)) |
+| How a recitation is compared with the verse | The rule engine published with that model (`imam.py`), written again in Kotlin | Apache-2.0 ([text](licenses/Apache-2.0.txt)) |
+| What each word should sound like (`tajweed_reference.bin`) | Written with [quran-transcript](https://github.com/obadx/quran-transcript), from the Tanzil Uthmani text it carries (Tanzil Project, tanzil.net) | MIT for quran-transcript; Creative Commons Attribution 3.0 for the Tanzil text ([both](licenses/QuranTranscript-MIT-Tanzil.txt)) |
 | Speech engine | [ONNX Runtime](https://github.com/microsoft/onnxruntime) 1.31.1: its Java classes in the app, its native library in [engine/](engine/) and fetched by the app | MIT ([text](licenses/ONNXRuntime-MIT.txt)) |
 | Reading YouTube | [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor) | GPL-3.0 |
 | Font for the Madinah mushaf script | KFGQPC Uthmanic Script HAFS, King Fahd Glorious Quran Printing Complex | Free to use, copy and distribute; may not be sold or modified ([text](licenses/UthmanicHafs-KFGQPC.txt)) |
@@ -635,18 +713,21 @@ Because it includes NewPipe Extractor, this app's own code is under the
 ```
 recitation/
 ├── core/    Pure Kotlin/JVM, unit-tested: words to sounds, listening in pieces, alignment,
-│            word timings, surah names and reading them from titles
+│            word timings, surah names and reading them from titles; and for the reader's
+│            own voice: the spectrogram, the heard script, breaths and corrections, pitch
 ├── yt/      Pure Kotlin/JVM: playlists and sound from YouTube (NewPipe Extractor)
 ├── app/     Android app (Jetpack Compose)
 │   ├── data/     The playlists added, the verses from Quran.com, pins and collections, fetched fonts
-│   ├── speech/   Where the model and the engine come from, sound decoding, ONNX model
+│   ├── speech/   Where the models and the engine come from, sound decoding, the microphone, ONNX models
 │   ├── prepare/  The background work that gets a recording ready
 │   ├── player/   Playback service
-│   └── ui/       The surah list, playlists, recordings and reading screens
+│   └── ui/       The surah list, playlists, recordings, reading, reciting and voice screens
 ├── engine/  ONNX Runtime's native library, compressed, for the app to fetch once
+├── models/  The tajweed model, for the app to fetch once
 ├── tools/
 │   ├── make_surahs.py            Writes core's list of surah names from Quran.com
-│   └── make_test_recitation.py   Writes the real recitation core's tests align
+│   ├── make_test_recitation.py   Writes the real recitation core's tests align
+│   └── make_tajweed_reference.py Writes what every word of the Quran should sound like
 └── apk/     Ready-to-install builds
 ```
 
@@ -703,3 +784,4 @@ at the bottom of the menu on the first screen.
 | `POST_NOTIFICATIONS` | Showing progress while recordings are prepared and while an update downloads. The work runs without it too. |
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC`, `WAKE_LOCK` | Keeping that work going in the background. |
 | `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | Reciting with the screen off. |
+| `RECORD_AUDIO` | Hearing the reader recite, to check the recitation and for the voice exercises. Asked for the first time the microphone button is pressed. What is heard is worked on in the phone's memory and is neither kept nor sent anywhere. |

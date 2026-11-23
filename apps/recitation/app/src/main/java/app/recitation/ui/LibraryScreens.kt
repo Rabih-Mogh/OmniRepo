@@ -109,9 +109,9 @@ class StatusActions(
 )
 
 /**
- * The first screen, on four tabs: the Quran, every surah open to read whether or not a
+ * The first screen, on five tabs: the Quran, every surah open to read whether or not a
  * recitation of it has been downloaded; the playlists recitations come from; [saved], the
- * pins and collections; and [stats], what has been listened to. The band at the top has the app's name between the button
+ * pins and collections; [stats], what has been listened to; and [practice], reciting to the phone and the voice exercises. The band at the top has the app's name between the button
  * that opens [menu] and the search button; while searching ([query] isn't null) the
  * screen shows what was found instead of the tabs.
  * [recited] holds the surahs that have a recitation downloaded: at least one recording whose sound is on the phone.
@@ -135,6 +135,7 @@ fun HomeContent(
     onLastRead: () -> Unit = {},
     saved: @Composable (Modifier) -> Unit = {},
     stats: @Composable (Modifier) -> Unit = {},
+    practice: @Composable (Modifier) -> Unit = {},
     query: String? = null,
     onQuery: (String?) -> Unit = {},
     hits: List<Hit> = emptyList(),
@@ -174,6 +175,8 @@ fun HomeContent(
             saved(Modifier.weight(1f))
         } else if (tab == 3) {
             stats(Modifier.weight(1f))
+        } else if (tab == 4) {
+            practice(Modifier.weight(1f))
         } else {
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (status != null) item { StatusCard(status, actions) }
@@ -213,6 +216,7 @@ fun HomeContent(
                     BottomTab(stringResource(R.string.tab_playlists), AppIcons.Playlists, selected = tab == 1, onClick = { onTab(1) }, modifier = Modifier.weight(1f))
                     BottomTab(stringResource(R.string.tab_saved), AppIcons.Bookmark, selected = tab == 2, onClick = { onTab(2) }, modifier = Modifier.weight(1f))
                     BottomTab(stringResource(R.string.tab_stats), AppIcons.Stats, selected = tab == 3, onClick = { onTab(3) }, modifier = Modifier.weight(1f))
+                    BottomTab(stringResource(R.string.tab_practice), AppIcons.Mic, selected = tab == 4, onClick = { onTab(4) }, modifier = Modifier.weight(1f))
                 }
             }
         } else {

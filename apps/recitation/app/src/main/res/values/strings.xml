@@ -281,4 +281,147 @@
     <string name="update_channel">App updates</string>
     <string name="update_notice_installing">Installing the update…</string>
     <string name="update_notice_ready">The update is downloaded. Open the app to install it.</string>
+
+    <!-- Practising: reciting to the phone, and the voice exercises -->
+    <string name="tab_practice">Practise</string>
+    <string name="practice_recite_title">Recite and be corrected</string>
+    <string name="practice_recite_body">Recite a verse to the phone. It listens, and marks what to go over again: a letter, a vowel, the length of a madd, a ghunnah.</string>
+    <string name="practice_recite_go">Choose a verse</string>
+    <string name="voice_title">Train your voice</string>
+    <string name="voice_hadith">“Adorn the Quran with your voices.” (Abu Dawud, al-Nasa\'i)</string>
+    <string name="voice_condition">Tajweed comes first: a melody must never change a letter, a vowel or the length of a madd.</string>
+    <string name="voice_breath">Breath</string>
+    <string name="voice_breath_line">How long one breath carries a steady sound</string>
+    <string name="voice_breath_how">Breathe in through the nose to a slow count of four, filling the belly. Then let the air out on one steady “aaah” for as long as is comfortable. Don\'t push to the last of your air.</string>
+    <string name="voice_steady">A steady note</string>
+    <string name="voice_steady_line">Hold one note without letting it waver</string>
+    <string name="voice_steady_how">Pick a note that is easy for you, neither low nor high, and hold it on “aaah” for five seconds or more. Watch the line and keep it level.</string>
+    <string name="voice_range">Range</string>
+    <string name="voice_range_line">From your lowest easy note to your highest</string>
+    <string name="voice_range_how">Start on the lowest note that is still easy and slide slowly up to the highest that is still easy, without forcing. Reciters call the low end the qarar and the high end the jawab.</string>
+    <string name="voice_start">Start</string>
+    <string name="voice_stop">Stop</string>
+    <string name="voice_listening">Listening</string>
+    <string name="voice_no_mic">This needs the microphone. Allow it for this app in the phone\'s settings.</string>
+    <string name="voice_mic_busy">The microphone couldn\'t be opened.</string>
+    <string name="voice_nothing_heard">No voice was heard. Try again a little louder, closer to the phone.</string>
+    <string name="voice_seconds">%1$s s</string>
+    <string name="voice_longest_breath">Longest breath</string>
+    <string name="voice_even">Loudness kept even</string>
+    <string name="voice_uneven">Loudness swelled or faded: aim for one even level</string>
+    <string name="voice_cents">± %1$d cents</string>
+    <string name="voice_cents_note">How far the note strayed. A cent is a hundredth of a semitone.</string>
+    <string name="voice_very_steady">Very steady</string>
+    <string name="voice_steady_ok">Steady</string>
+    <string name="voice_wavers">It wavers: put more breath behind the note and less throat</string>
+    <string name="voice_semitones">%1$s semitones</string>
+    <string name="voice_low">Qarar (low)</string>
+    <string name="voice_high">Jawab (high)</string>
+    <string name="voice_best">Best so far: %1$s</string>
+    <string name="voice_sources">The breath exercise is one recitation teachers give. Holding a note and sliding through the range are general voice exercises.</string>
+    <string name="voice_health">Stop if your throat feels strained or hoarse. Drink water, and carry the sound on your breath, not your throat.</string>
+
+    <!-- Reciting a verse to the phone and being corrected -->
+    <string name="recite_title">Recite and be corrected</string>
+    <string name="recite_verse">%1$s · verse %2$d</string>
+    <string name="recite_how">Tap the microphone and recite this verse, stopping at its end. Up to half a minute at a time.</string>
+    <string name="recite_start">Recite</string>
+    <string name="recite_stop">Done reciting</string>
+    <string name="recite_again">Recite it again</string>
+    <string name="recite_checking">Listening to what you recited</string>
+    <string name="recite_sound_words">%1$d of %2$d words sound</string>
+    <string name="recite_all_sound">Nothing to correct was heard.</string>
+    <string name="recite_tap">Tap a marked word to see what to go over.</string>
+    <string name="recite_clear">Clear mistake</string>
+    <string name="recite_fine">Fine point</string>
+    <string name="recite_caution">This can be wrong. It is an aid for going over your recitation, not a teacher: take what it marks to someone who can listen to you.</string>
+    <string name="recite_needs_model">Checking a recitation needs a small tajweed model (23 MB), fetched once and kept on the phone.</string>
+    <string name="recite_get_model">Download it</string>
+    <string name="recite_getting_model">Fetching the tajweed model… %1$d%%</string>
+    <string name="recite_getting_engine">Fetching the speech engine… %1$d%%</string>
+    <string name="recite_failed">That couldn\'t be done: %1$s</string>
+    <string name="recite_nothing_heard">Nothing was heard. Recite a little louder, closer to the phone.</string>
+    <string name="recite_no_reference">This verse can\'t be checked yet.</string>
+    <string name="recite_this_verse">Recite this verse yourself</string>
+    <string name="recite_stopped_here">You stopped here</string>
+    <string name="recite_counts">%1$d counts</string>
+    <string name="recite_heard_as">Heard: %1$s</string>
+    <string-array name="madd_names">
+        <item>Natural madd</item>
+        <item>Separated madd (munfasil)</item>
+        <item>Joined madd (muttasil)</item>
+        <item>Joined madd at a stop</item>
+        <item>Necessary madd (lazim)</item>
+        <item>Madd before a stop (ʿarid)</item>
+        <item>Soft madd (lin)</item>
+    </string-array>
+    <string name="vowel_fatha">a (fatha)</string>
+    <string name="vowel_damma">u (damma)</string>
+    <string name="vowel_kasra">i (kasra)</string>
+    <string name="fault_madd_short">%1$s held too short</string>
+    <string name="fault_madd_short_how">It was held for %1$d counts and is due %2$d. Count at your own pace: a short vowel is one count, the natural madd two.</string>
+    <string name="fault_madd_long">%1$s held too long</string>
+    <string name="fault_madd_long_how">It was held for %1$d counts and is due %2$d. Counting at your own pace keeps every madd to its measure.</string>
+    <string name="fault_madd_missing">%1$s not lengthened</string>
+    <string name="fault_madd_missing_how">The vowel was said short. Here it is held for %1$d counts.</string>
+    <string name="fault_madd_added">A vowel lengthened where there is no madd</string>
+    <string name="fault_madd_added_how">A short vowel is one count. Stretching it turns it into a letter that isn\'t in the word.</string>
+    <string name="fault_madd_uneven">%1$s held unevenly</string>
+    <string name="fault_madd_uneven_how">In this recitation it was held for %1$s counts in turn. Whatever length you choose for it, keep that length every time.</string>
+    <string name="fault_ghunnah_short">Ghunnah cut short</string>
+    <string name="fault_ghunnah_short_how">A doubled ن or م carries a nasal sound that is held, about two counts. Let it ring through the nose before moving on.</string>
+    <string name="fault_ikhfa_clear">Ikhfaʾ: the nun was said clearly</string>
+    <string name="fault_ikhfa_clear_how">Before this letter the ن is hidden. Don\'t let the tongue touch its place: keep it just clear, and hold the nasal sound.</string>
+    <string name="fault_ikhfa_short">Ikhfaʾ: the nasal sound cut short</string>
+    <string name="fault_ikhfa_short_how">The hidden ن keeps its ghunnah. Hold the nasal sound before going on to the next letter.</string>
+    <string name="fault_iqlab_missed">Iqlab missed</string>
+    <string name="fault_iqlab_missed_how">Before ب the ن turns into a hidden م with ghunnah. Close the lips gently, without pressing, and hold the nasal sound.</string>
+    <string name="fault_idgham_missed">Idgham: the nun was said</string>
+    <string name="fault_idgham_missed_how">Here the ن is not sounded: it merges into %1$s. Go straight to that letter and double it.</string>
+    <string name="fault_idgham_ghunnah_short">Idgham: the ghunnah left out</string>
+    <string name="fault_idgham_ghunnah_short_how">The ن merges into %1$s and its nasal sound stays. Hold that sound as you double the letter.</string>
+    <string name="fault_shadda_missing">The shadda on %1$s not said</string>
+    <string name="fault_shadda_missing_how">A letter with a shadda is said twice: rest on it, then release it into its vowel.</string>
+    <string name="fault_qalqalah_missing">No qalqalah on %1$s</string>
+    <string name="fault_qalqalah_missing_how">ق ط ب ج د without a vowel are let go with a slight echo. It is not a vowel: the mouth doesn\'t open or round for it. It is stronger at a stop.</string>
+    <string name="fault_letter">%1$s said in place of %2$s</string>
+    <string name="fault_vowel">%1$s said in place of %2$s</string>
+    <string name="fault_vowel_how">A vowel changed is a clear mistake: it can change the word\'s meaning. Look at the sign on the letter and say it again slowly.</string>
+    <string name="fault_dropped">A sound left out: %1$s</string>
+    <string name="fault_dropped_how">Every letter of the word is to be heard. Say the word slowly, sound by sound.</string>
+    <string name="fault_added">A sound added: %1$s</string>
+    <string name="fault_added_how">A sound was heard that the word doesn\'t have. Say the word slowly, sound by sound.</string>
+    <string name="fault_word_missing">This word was not heard</string>
+    <string name="fault_word_missing_how">It was passed over, or said too softly to be heard. Recite the verse again and give the word its place.</string>
+    <!-- How each letter is said, in the order ء ه ع ح غ خ ق ك ج ش ي ض ل ن ر ط د ت ص ز س ظ ذ ث ف ب م و -->
+    <string-array name="letter_tips">
+        <item>ء comes from the deepest part of the throat, closed off sharply and kept light.</item>
+        <item>ه comes from the deepest part of the throat, light and breathy.</item>
+        <item>ع comes from the middle of the throat, squeezed. It is not a hamza.</item>
+        <item>ح comes from the middle of the throat, squeezed, with the breath running. It is not a ه.</item>
+        <item>غ comes from the top of the throat, where one gargles. It is not a hard g.</item>
+        <item>خ comes from the top of the throat. The tongue doesn\'t close on the palate as for ك.</item>
+        <item>ق is the deepest part of the tongue against the soft palate above it, heavy. It is not a ك.</item>
+        <item>ك is the back of the tongue, a little forward of ق, on the palate, light, with a little breath.</item>
+        <item>ج is the middle of the tongue against the palate, pressed and held. It is not a soft j.</item>
+        <item>ش is the middle of the tongue against the palate, with the air spreading in the mouth.</item>
+        <item>ي is the middle of the tongue against the palate.</item>
+        <item>ض is the side of the tongue against the upper molars, heavy, the sound running along it. It is not a د or a ظ.</item>
+        <item>ل is the front edges of the tongue up to its tip against the gums of the upper teeth, light.</item>
+        <item>ن is the tip of the tongue against the gum of the upper front teeth.</item>
+        <item>ر is the tip of the tongue, with a little of its top, tapping the gum once. Don\'t roll it on.</item>
+        <item>ط is the tip of the tongue at the roots of the upper front teeth with the tongue pressed up, heavy. It is not a ت.</item>
+        <item>د is the tip of the tongue at the roots of the upper front teeth, light.</item>
+        <item>ت is the tip of the tongue at the roots of the upper front teeth, light, with breath.</item>
+        <item>ص is the tip of the tongue toward the lower front teeth with the back of the tongue raised: heavy, with a whistle. It is not a س.</item>
+        <item>ز is the tip of the tongue toward the lower front teeth, voiced, with a whistle.</item>
+        <item>س is the tip of the tongue toward the lower front teeth, thin, with a whistle. It must not thicken into ص.</item>
+        <item>ظ is the tip of the tongue at the edges of the upper front teeth, heavy. It is not a z.</item>
+        <item>ذ is the tip of the tongue at the edges of the upper front teeth, light. It is not a z.</item>
+        <item>ث is the tip of the tongue at the edges of the upper front teeth, with breath. It is not a س.</item>
+        <item>ف is the inside of the lower lip against the edges of the upper front teeth.</item>
+        <item>ب is the two lips closed firmly, light.</item>
+        <item>م is the two lips closed, without pressing.</item>
+        <item>و is the two lips rounded.</item>
+    </string-array>
 </resources>

@@ -18,6 +18,10 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
 
+    <!-- Hearing the user recite, to check the recitation and to train the voice. Nothing recorded leaves the phone. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
     <!-- Accent Coach, if installed, lends the speech model it has already downloaded. -->
     <uses-permission android:name="app.accentcoach.permission.READ_MODEL" />
     <queries>

@@ -120,6 +120,23 @@ object AppIcons {
     /** Refused: a circle struck through. */
     val Blocked = icon("Blocked", "M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM4,12c0,-4.42 3.58,-8 8,-8 1.85,0 3.55,0.63 4.9,1.69L5.69,16.9C4.63,15.55 4,13.85 4,12zM12,20c-1.85,0 -3.55,-0.63 -4.9,-1.69L18.31,7.1C19.37,8.45 20,10.15 20,12c0,4.42 -3.58,8 -8,8z")
 
+    // Reciting to the phone, and the voice exercises.
+
+    /** The microphone: recite, and be heard. */
+    val Mic = icon("Mic", "M12,14c1.66,0 2.99,-1.34 2.99,-3L15,5c0,-1.66 -1.34,-3 -3,-3S9,3.34 9,5v6c0,1.66 1.34,3 3,3zM17.3,11c0,3 -2.54,5.1 -5.3,5.1S6.7,14 6.7,11H5c0,3.41 2.72,6.23 6,6.72V21h2v-3.28c3.28,-0.48 6,-3.3 6,-6.72h-1.7z")
+
+    /** Stop listening: a square. */
+    val Stop = icon("Stop", "M6,6h12v12H6z")
+
+    /** Breath: air moving. */
+    val Breath = lines("Breath", "M3,9H14a2.5,2.5 0 1,0 -2.5,-2.5" to 1.8f, "M3,13H18a2.5,2.5 0 1,1 -2.5,2.5" to 1.8f, "M3,17H10" to 1.8f)
+
+    /** A note held steady: a level line between two posts. */
+    val Steady = lines("Steady", "M3,12H21" to 2.4f, "M3,8.5V15.5M21,8.5V15.5" to 1.6f)
+
+    /** The reach of a voice, low to high: an arrow with a head at each end. */
+    val Span = lines("Span", "M12,3.5V20.5M8,7.5L12,3.5L16,7.5M8,16.5L12,20.5L16,16.5" to 2f)
+
     /** Something is wrong: a warning triangle. */
     val Warning = icon("Warning", "M1,21h22L12,2 1,21zM13,18h-2v-2h2v2zM13,14h-2v-4h2v4z")
 }

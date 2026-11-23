@@ -881,9 +881,14 @@ private fun VerseBlock(
                         val clipboard = LocalClipboardManager.current
                         // The verse as it is written, its translation, and where it is from.
                         val text = listOf(verse.words.joinToString(" ") { it.arabic }, verse.translation, reference).filter { it.isNotEmpty() }.joinToString("\n")
+                        val recite = LocalReciteVerse.current
                         DropdownMenu(expanded = more, onDismissRequest = { more = false }) {
                             if (onOnly != null) {
                                 DropdownMenuItem(text = { Text(stringResource(R.string.verse_only)) }, onClick = { more = false; onOnly() })
+                            }
+                            // Recite it to the phone and be corrected.
+                            if (recite != null) {
+                                DropdownMenuItem(text = { Text(stringResource(R.string.recite_this_verse)) }, onClick = { more = false; recite(number) })
                             }
                             if (verse.translation.isNotEmpty()) {
                                 DropdownMenuItem(

@@ -50,6 +50,11 @@ object Settings {
     fun setTajweed(context: Context, shown: Boolean) = store(context).edit().putBoolean("tajweed", shown).apply()
 
     /** Light, dark, or following the phone: the phone, until the user chooses. */
+    /** The best a voice exercise has come to so far, by the exercise's name; 0 before the first go. */
+    fun voiceBest(context: Context, exercise: String): Float = store(context).getFloat("voice_best_$exercise", 0f)
+
+    fun setVoiceBest(context: Context, exercise: String, value: Float) = store(context).edit().putFloat("voice_best_$exercise", value).apply()
+
     fun appearance(context: Context): Appearance = Appearance.of(store(context).getString("appearance", null))
 
     fun setAppearance(context: Context, appearance: Appearance) = store(context).edit().putString("appearance", appearance.key).apply()
