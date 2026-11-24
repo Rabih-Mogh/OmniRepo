@@ -48,6 +48,51 @@ class SpeechStoresTest {
 
     private fun sha256(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
+    /** A stand-in for the tajweed model, where the app would fetch it from, and the store that fetches it. */
+    private fun tajweed(bytes: ByteArray, checksum: String = sha256(bytes)): app.recitation.speech.TajweedStore {
+        val served = folder.newFile().apply { writeBytes(bytes) }
+        return app.recitation.speech.TajweedStore(context, source = served.toURI().toString(), bytes = bytes.size.toLong(), checksum = checksum)
+    }
+
+    @Test
+    fun `the tajweed model is fetched once and kept`() = runBlocking {
+        val model = ByteArray(300_000) { (it * 31).toByte() }
+        val store = tajweed(model)
+        assertFalse(store.isReady)
+        val told = ArrayList<Float>()
+        store.obtain { told += it }
+        assertTrue(store.isReady)
+        assertArrayEquals(model, store.file.readBytes())
+        assertEquals(1f, told.last(), 0.001f)
+        // There already: nothing is fetched again.
+        told.clear()
+        store.obtain { told += it }
+        assertTrue(told.isEmpty())
+    }
+
+    @Test
+    fun `a tajweed model damaged on the way is not kept`() = runBlocking {
+        val store = tajweed(ByteArray(50_000) { it.toByte() }, checksum = "0".repeat(64))
+        try {
+            store.obtain { }
+            fail("a damaged model was accepted")
+        } catch (e: IOException) {
+            assertFalse(store.isReady)
+            assertFalse(store.file.exists())
+        }
+    }
+
+    @Test
+    fun `what is left of a download cut short does not spoil the next one`() = runBlocking {
+        val model = ByteArray(120_000) { (it % 251).toByte() }
+        val store = tajweed(model)
+        // Half of an earlier try, and wrong at that: a server that sends the whole file again must win over it.
+        File(store.file.parentFile, store.file.name + ".part").apply { parentFile!!.mkdirs(); writeBytes(ByteArray(60_000) { 1 }) }
+        store.obtain { }
+        assertTrue(store.isReady)
+        assertArrayEquals(model, store.file.readBytes())
+    }
+
     private val first = ByteArray(70_000) { (it * 7).toByte() }
     private val second = ByteArray(9_000) { (it * 13).toByte() }
     private val parts get() = listOf(EngineStore.Part("libone.so", first.size.toLong(), sha256(first)), EngineStore.Part("libtwo.so", second.size.toLong(), sha256(second)))

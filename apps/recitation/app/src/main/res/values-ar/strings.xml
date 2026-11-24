@@ -351,6 +351,7 @@
     <string name="recite_nothing_heard">لم يُسمع شيء. اقرأ بصوت أعلى قليلًا وأقرب إلى الهاتف.</string>
     <string name="recite_no_reference">لا يمكن تصحيح هذه الآية بعد.</string>
     <string name="recite_this_verse">اقرأ هذه الآية بنفسك</string>
+    <string name="recite_forget">أزل هذه التصحيحات عن الصفحة</string>
     <string name="recite_stopped_here">وقفتَ هنا</string>
     <string name="recite_counts">%1$d حركات</string>
     <string name="recite_heard_as">المسموع: %1$s</string>

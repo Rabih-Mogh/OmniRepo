@@ -1,10 +1,5 @@
 package app.recitation.ui
 
-import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -35,15 +31,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -52,28 +49,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import app.recitation.R
 import app.recitation.core.Correction
-import app.recitation.core.Corrections
-import app.recitation.core.Expected
 import app.recitation.core.Fault
-import app.recitation.core.Mel
 import app.recitation.core.Surah
-import app.recitation.core.TajweedReference
 import app.recitation.core.WordRecited
 import app.recitation.data.Verse
 import app.recitation.speech.EngineStore
-import app.recitation.speech.Mic
-import app.recitation.speech.TajweedEar
 import app.recitation.speech.TajweedStore
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-
-/** Opens a verse (counted from 1) of the surah on show to be recited to the phone; null where that isn't offered. */
-val LocalReciteVerse = staticCompositionLocalOf<((Int) -> Unit)?> { null }
 
 /** Where reciting a verse to the phone stands. */
 sealed interface Reciting {
@@ -83,8 +66,12 @@ sealed interface Reciting {
     /** The microphone is open. */
     data object Listening : Reciting
 
-    /** Something is being fetched first: [what] names it (a string that takes a percentage) and [fraction] says how far it is. */
-    class Fetching(val what: Int, val fraction: Float) : Reciting
+    /** Something is being fetched first: [what] names it (a string that takes a percentage) and [fraction] says how far it is, [UNKNOWN] before that is known. */
+    class Fetching(val what: Int, val fraction: Float) : Reciting {
+        companion object {
+            const val UNKNOWN = -1f
+        }
+    }
 
     /** The model is listening to what was recited. */
     data object Checking : Reciting
@@ -99,9 +86,12 @@ sealed interface Reciting {
 /**
  * Reciting one verse and being corrected: the verse in large letters; the microphone
  * button; and, once the phone has listened, every word that has something to go over
- * marked, red for a clear mistake and amber for a fine point. Tapping a marked word shows
- * what was heard and how to put it right. [needsModel] is true until the tajweed model
- * has been fetched, which [onFetch] does.
+ * marked, red for a mistake in the wording and, for a point of tajweed, in the colour its
+ * rule has in a surah. Tapping a marked word shows
+ * what was heard and how to put it right. While the microphone is open the word being
+ * recited is lit, as in a surah: [reached] is that word, counted from 0. [needsModel] is
+ * true until the tajweed model has been fetched, which [onFetch] asks for again when it
+ * isn't being fetched already.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -116,19 +106,14 @@ fun ReciteContent(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onBack: () -> Unit,
+    reached: Int = -1,
 ) {
     val colors = MaterialTheme.colorScheme
-    val amber = LocalHighlight.current
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     // A word said twice (the reciter went back) is judged by the last time it was said.
     val heard = (state as? Reciting.Heard)?.words
     val words = verse?.words.orEmpty()
-    val byWord: Map<Int, WordRecited> = remember(heard, words.size) {
-        val last = heard?.maxOfOrNull { it.index } ?: -1
-        // The reference counts a verse's words as the mushaf does; where the app's count differs, each takes its share.
-        val counted = maxOf(last + 1, 1)
-        heard.orEmpty().associateBy { if (last < words.size) it.index else it.index * words.size / counted }
-    }
+    val byWord: Map<Int, WordRecited> = remember(heard, words.size) { byWord(heard, words.size) }
     var chosen by remember(heard) { mutableIntStateOf(byWord.entries.firstOrNull { !it.value.sound }?.key ?: -1) }
     Column(Modifier.fillMaxSize()) {
         Banner {
@@ -147,12 +132,15 @@ fun ReciteContent(
                 FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     words.forEachIndexed { i, word ->
                         val result = byWord[i]
-                        val clear = result?.corrections?.any { it.clear } == true
-                        val marked = result != null && !result.sound
+                        // Marked in red for a mistake in the wording, or in the colour of the rule of tajweed it is about.
+                        val mark = result?.colour()
+                        val marked = mark != null
+                        // While it listens: the word being recited on the app's own block, the words still to come faint.
+                        val reciting = state == Reciting.Listening
                         val ink = when {
-                            clear -> colors.error
-                            marked -> amber
+                            mark != null -> mark
                             heard != null && result == null -> colors.outline
+                            reciting && i > reached -> colors.outline
                             else -> colors.onSurface
                         }
                         Text(
@@ -160,6 +148,8 @@ fun ReciteContent(
                             (if (marked) {
                                 Modifier.clip(RoundedCornerShape(10.dp)).background(ink.copy(alpha = if (i == chosen) 0.22f else 0.1f))
                                     .clickable(role = Role.Button) { chosen = i }
+                            } else if (reciting && i == reached) {
+                                Modifier.background(colors.primary.copy(alpha = 0.2f)).testTag("reciting-word")
                             } else Modifier).padding(horizontal = 6.dp),
                             fontFamily = QuranFont, fontSize = 30.sp, lineHeight = 62.sp, color = ink,
                         )
@@ -205,9 +195,11 @@ fun ReciteContent(
         BottomBand {
             Row(Modifier.fillMaxWidth().padding(vertical = 10.dp, horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 val band = LocalBanner.current
+                // At the surah's first verse there is none before, and at its last none after: that button is plainly faint.
+                val unavailable = band.content.faded(0.28f, band.background)
                 // The verse before on the side reading starts from, the verse after on the other.
                 IconButton(onClick = onPrevious, enabled = verseNumber > 1) {
-                    Icon(AppIcons.SkipPrevious, stringResource(R.string.previous_verse), Modifier.graphicsLayer { scaleX = if (rtl) -1f else 1f }, tint = if (verseNumber > 1) band.content else band.quiet)
+                    Icon(AppIcons.SkipPrevious, stringResource(R.string.previous_verse), Modifier.graphicsLayer { scaleX = if (rtl) -1f else 1f }, tint = if (verseNumber > 1) band.content else unavailable)
                 }
                 Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     val busy = state is Reciting.Checking || state is Reciting.Fetching
@@ -217,28 +209,71 @@ fun ReciteContent(
                     }
                 }
                 IconButton(onClick = onNext, enabled = verseNumber < surah.verses) {
-                    Icon(AppIcons.SkipNext, stringResource(R.string.next_verse), Modifier.graphicsLayer { scaleX = if (rtl) -1f else 1f }, tint = if (verseNumber < surah.verses) band.content else band.quiet)
+                    Icon(AppIcons.SkipNext, stringResource(R.string.next_verse), Modifier.graphicsLayer { scaleX = if (rtl) -1f else 1f }, tint = if (verseNumber < surah.verses) band.content else unavailable)
                 }
             }
         }
     }
 }
 
-/** What to go over in one word: each correction with its kind, what was heard, and how to put it right; then its madds as they were held. */
+/**
+ * What was heard of a verse, by the verse's words as the app counts them ([words] of
+ * them). A word said twice (the reciter went back) is judged by the last time it was said.
+ */
+internal fun byWord(heard: List<WordRecited>?, words: Int): Map<Int, WordRecited> {
+    val last = heard?.maxOfOrNull { it.index } ?: -1
+    // The reference counts a verse's words as the mushaf does; where the app's count differs, each takes its share.
+    val counted = maxOf(last + 1, 1)
+    return heard.orEmpty().associateBy { if (last < words) it.index else it.index * words / counted }
+}
+
+/**
+ * The colour a word with something to go over is marked in: red for a mistake in the
+ * wording itself; for a point of tajweed, the colour its rule has on the page and in the
+ * legend of the colours, so the mark and the rule read as one.
+ */
 @Composable
-private fun CorrectionsCard(word: WordRecited) {
+internal fun WordRecited.colour(): Color? {
+    val worst = corrections.firstOrNull { it.family == null } ?: corrections.firstOrNull() ?: return null
+    return worst.family?.let { LocalTajweed.current.ink(it) } ?: if (worst.clear) MaterialTheme.colorScheme.error else LocalHighlight.current
+}
+
+/**
+ * What to go over in one word: each correction with its kind, what was heard, and how to
+ * put it right; then its madds as they were held. A point of tajweed is headed by its
+ * family of rules, with the dot of its colour as in the legend: tapping that opens the
+ * page that sets the rules out.
+ */
+@Composable
+internal fun CorrectionsCard(word: WordRecited, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     val amber = LocalHighlight.current
+    val tajweed = LocalTajweed.current
+    val arabic = LocalConfiguration.current.locales[0].language == "ar"
+    val rules = LocalTajweedRules.current
     val madds = stringArrayResource(R.array.madd_names)
-    Card(colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLow)) {
+    Card(modifier, colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLow)) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             for (correction in word.corrections) {
                 val (title, how) = said(correction)
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(
-                        stringResource(if (correction.clear) R.string.recite_clear else R.string.recite_fine),
-                        style = MaterialTheme.typography.labelMedium, color = if (correction.clear) colors.error else amber,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            stringResource(if (correction.clear) R.string.recite_clear else R.string.recite_fine),
+                            style = MaterialTheme.typography.labelMedium, color = if (correction.clear) colors.error else amber,
+                        )
+                        correction.family?.let { family ->
+                            val name = family.named()
+                            Row(
+                                Modifier.clip(RoundedCornerShape(50)).clickable(role = Role.Button, onClickLabel = stringResource(R.string.tajweed_rules), onClick = rules)
+                                    .background(tajweed.ink(family).copy(alpha = 0.14f)).padding(horizontal = 8.dp, vertical = 2.dp).testTag("rule-family"),
+                                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Box(Modifier.size(10.dp).background(tajweed.ink(family), CircleShape))
+                                Text(if (arabic) name.arabic else name.latin, style = MaterialTheme.typography.labelMedium, color = colors.onSurface, maxLines = 1)
+                            }
+                        }
+                    }
                     Text(title, style = MaterialTheme.typography.titleMedium)
                     Text(how, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 }
@@ -295,122 +330,42 @@ private fun said(c: Correction): Pair<String, String> {
     }
 }
 
-/** The tajweed model, opened once and kept for as long as the app runs: opening it takes a moment. */
-private object Ears {
-    private var ear: TajweedEar? = null
-
-    @Synchronized
-    fun get(context: Context): TajweedEar = ear ?: run {
-        EngineStore(context).start()
-        TajweedEar(TajweedStore(context).file).also { ear = it }
-    }
-}
-
-/** The longest a recitation is listened to in one go, in samples: what the model takes at once. */
-private const val LONGEST = TajweedEar.LONGEST_SECONDS * Mel.SAMPLE_RATE
-
 /**
  * Reciting verse [startVerse] of [surah] to the phone, and going on to the verses beside
- * it: opens the microphone, and when the reader is done has the tajweed model listen and
- * the corrections worked out, all on the phone. [verseOf] fetches a verse's words.
+ * it: opens the microphone, lights the word being recited as it goes, and when the reader
+ * is done has the tajweed model listen and the corrections worked out, all on the phone
+ * (see [Reciter]). [verseOf] fetches a verse's words. The model is fetched by the
+ * background work: [fetching] is how far that has got (null when it isn't being fetched
+ * now), and [onWant] asks for it: by itself when the screen opens, or because its button
+ * was pressed.
  */
 @Composable
-fun ReciteScreen(surah: Surah, startVerse: Int, verseOf: suspend (Int) -> Verse?, onBack: () -> Unit) {
+fun ReciteScreen(surah: Surah, startVerse: Int, verseOf: suspend (Int) -> Verse?, fetching: Float?, onWant: (pressed: Boolean) -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current.applicationContext
-    val scope = rememberCoroutineScope()
     var number by remember(surah.number) { mutableIntStateOf(startVerse.coerceIn(1, surah.verses)) }
     var verse by remember { mutableStateOf<Verse?>(null) }
-    var state by remember { mutableStateOf<Reciting>(Reciting.Idle) }
-    var listening by remember { mutableStateOf(false) }
+    val reciter = rememberReciter()
     val store = remember { TajweedStore(context) }
     val engine = remember { EngineStore(context) }
-    var ready by remember { mutableStateOf(store.isReady && engine.isReady) }
-    // The reciter's pace, kept from verse to verse: a short verse may have no natural madd to count by.
-    val tempo = remember(surah.number) { ArrayList<Float>() }
-    val refused = stringResource(R.string.voice_no_mic)
-    val busy = stringResource(R.string.voice_mic_busy)
-    val nothing = stringResource(R.string.recite_nothing_heard)
-    val unknown = stringResource(R.string.recite_no_reference)
-    val failed = stringResource(R.string.recite_failed, "%s")
-    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) listening = true else state = Reciting.Failed(refused)
-    }
+    // Looked at again whenever the fetching moves: it ends with the model on the phone.
+    val ready = remember(fetching) { store.isReady && engine.isReady }
+    LaunchedEffect(Unit) { if (!ready) onWant(false) }
     LaunchedEffect(surah.number, number) {
         verse = null
-        state = Reciting.Idle
+        reciter.rest()
         verse = verseOf(number)
     }
-    LaunchedEffect(listening) {
-        if (!listening) return@LaunchedEffect
-        state = Reciting.Listening
-        val blocks = ArrayList<FloatArray>()
-        var samples = 0
-        var problem: String? = null
-        try {
-            Mic.sound().collect { block ->
-                blocks += block
-                samples += block.size
-                if (samples >= LONGEST) listening = false
-            }
-        } catch (e: CancellationException) {
-            // Stopped by the button: listened to below.
-        } catch (e: Mic.Unavailable) {
-            problem = busy
-        } finally {
-            listening = false
-            if (problem != null) state = Reciting.Failed(problem) else {
-                val sound = FloatArray(samples)
-                var at = 0
-                for (block in blocks) { System.arraycopy(block, 0, sound, at, block.size); at += block.size }
-                val surahNumber = surah.number
-                val verseNumber = number
-                state = Reciting.Checking
-                scope.launch {
-                    state = try {
-                        withContext(Dispatchers.Default) {
-                            val forms = context.assets.open(REFERENCE).use { TajweedReference.surah(it, surahNumber) }.getOrNull(verseNumber - 1)
-                            if (forms == null) Reciting.Failed(unknown) else {
-                                val heard = Ears.get(context).hear(sound)
-                                if (heard.symbols.length < 2) Reciting.Failed(nothing)
-                                else Reciting.Heard(Corrections.of(Expected.recited(forms, heard.symbols), heard, tempo = tempo))
-                            }
-                        }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        Reciting.Failed(failed.format(e.message ?: e.javaClass.simpleName))
-                    }
-                }
-            }
-        }
-    }
+    val state = reciter.state
     ReciteContent(
-        surah, number, verse, state, needsModel = !ready,
-        onMic = {
-            if (listening) listening = false
-            else if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) listening = true
-            else ask.launch(Manifest.permission.RECORD_AUDIO)
-        },
-        onFetch = {
-            scope.launch {
-                state = try {
-                    // The engine first, if a recording has never been prepared on this phone; then the model.
-                    engine.obtain { state = Reciting.Fetching(R.string.recite_getting_engine, it) }
-                    store.obtain { state = Reciting.Fetching(R.string.recite_getting_model, it) }
-                    ready = true
-                    Reciting.Idle
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Reciting.Failed(failed.format(e.message ?: e.javaClass.simpleName))
-                }
-            }
-        },
-        onPrevious = { if (number > 1 && !listening) number-- },
-        onNext = { if (number < surah.verses && !listening) number++ },
+        surah, number, verse,
+        // Until the model is here, the fetching of it is what there is to show.
+        state = if (!ready && fetching != null && state == Reciting.Idle) Reciting.Fetching(R.string.recite_getting_model, fetching) else state,
+        needsModel = !ready,
+        onMic = { reciter.toggle(surah.number, number) },
+        onFetch = { onWant(true) },
+        onPrevious = { if (number > 1 && !reciter.listening) number-- },
+        onNext = { if (number < surah.verses && !reciter.listening) number++ },
         onBack = onBack,
+        reached = reciter.reached,
     )
 }
-
-/** The reference file in the app's package: what a correct recitation of every word sounds like. Gzipped, but not named so: Android's build would unpack it. */
-private const val REFERENCE = "tajweed_reference.bin"

@@ -29,6 +29,8 @@ import app.recitation.data.Stats
 import app.recitation.data.SurahNames
 import app.recitation.data.Track
 import app.recitation.data.Verse
+import app.recitation.speech.TajweedStore
+import app.recitation.speech.EngineStore
 import app.recitation.data.VerseCollection
 import app.recitation.data.VerseRef
 import app.recitation.prepare.PrepareWorker
@@ -151,7 +153,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 
     init {
         // Recordings still waiting from last time (the app was closed, or the model couldn't be had): carry on.
-        if (!paused && library.playlists.value.any { p -> p.tracks.any { it.wanted && (!it.ready || it.againFrom >= 0) } }) PrepareWorker.start(app)
+        if (!paused && (Settings.tajweedWanted(app) || library.playlists.value.any { p -> p.tracks.any { it.wanted && (!it.ready || it.againFrom >= 0) } })) PrepareWorker.start(app)
         fetchTheRest()
         viewModelScope.launch { SurahNames.load(app) }
         viewModelScope.launch { IndoPakFont.load(app) }
@@ -413,8 +415,21 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         PrepareWorker.start(getApplication())
     }
 
+    /**
+     * Has the background work fetch the model that checks the reader's own recitation, if
+     * it isn't on the phone yet: asked for when the Practise tab or a verse to recite is
+     * opened, so it is there by the time it is needed.
+     */
+    fun wantTajweed() {
+        val app = getApplication<Application>()
+        if (TajweedStore(app).isReady && EngineStore(app).isReady) return
+        Settings.setTajweedWanted(app, true)
+        if (!paused) PrepareWorker.start(app)
+    }
+
     /** Takes everything out of the queue. Half-downloaded sound is deleted; finished downloads stay. */
     fun cancel() {
+        Settings.setTajweedWanted(getApplication(), false)
         val queued = library.playlists.value.flatMap { it.tracks }.filter { it.wanted }
         library.updateAll { if (it.wanted) it.copy(wanted = false) else it }
         for (track in queued) library.dropPartial(track.id)

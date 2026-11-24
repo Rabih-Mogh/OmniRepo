@@ -343,6 +343,7 @@
     <string name="recite_nothing_heard">Nothing was heard. Recite a little louder, closer to the phone.</string>
     <string name="recite_no_reference">This verse can\'t be checked yet.</string>
     <string name="recite_this_verse">Recite this verse yourself</string>
+    <string name="recite_forget">Take these corrections off the page</string>
     <string name="recite_stopped_here">You stopped here</string>
     <string name="recite_counts">%1$d counts</string>
     <string name="recite_heard_as">Heard: %1$s</string>

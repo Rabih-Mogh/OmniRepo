@@ -201,6 +201,8 @@ private fun Screens(model: AppModel, choices: Choices) {
             practice = { modifier ->
                 // Which surah to recite from is chosen first; its verses are stepped through on the next screen.
                 var choosing by remember { mutableStateOf(false) }
+                // Opening the tab is reason enough to have the tajweed model fetched, so it is there when a verse is chosen.
+                LaunchedEffect(Unit) { model.wantTajweed() }
                 PracticeTab(
                     Exercise.entries.associateWith { Settings.voiceBest(context, it.name) },
                     onRecite = { choosing = true }, onExercise = { model.openExercise(it.ordinal) }, modifier = modifier,
@@ -214,6 +216,7 @@ private fun Screens(model: AppModel, choices: Choices) {
             menu = {
                 MenuContent(
                     appearance = choices.appearance, onAppearance = choices::look,
+                    script = choices.script, onScript = choices::write, withIndoPak = indopak != null,
                     footer = {
                         VersionFooter()
                         CopyReport()
@@ -255,12 +258,25 @@ private fun Screens(model: AppModel, choices: Choices) {
                 )
             }
         }
-        // A verse of the surah on show can be recited to the phone from its own menu.
-        is Screen.Surah -> CompositionLocalProvider(LocalReciteVerse provides { verse -> model.openRecite(VerseRef(screen.number, verse)) }) {
-            SurahScreen(model, screen, playlists, status, playback, get, pins, collections, choices, indopak)
+        // A verse of the surah on show can be recited to the phone right on its page, from the microphone beside its number.
+        is Screen.Surah -> {
+            val recital = rememberPageRecital(
+                screen.number,
+                // The model it checks with comes by the background work, like everything else that is fetched.
+                fetching = progress?.takeIf { it.trackId == null && (it.step == Step.TAJWEED || it.step == Step.ENGINE) }?.fraction,
+                // A microphone tapped is a wish to fetch it now, even with the downloads paused.
+                onWant = { pressed -> model.wantTajweed(); if (pressed && model.paused) model.resume() },
+            )
+            CompositionLocalProvider(LocalPageRecital provides recital) {
+                SurahScreen(model, screen, playlists, status, playback, get, pins, collections, choices, indopak)
+            }
         }
         is Screen.Recite -> ReciteScreen(
-            SURAHS[screen.surah - 1], screen.verse, verseOf = { model.verse(VerseRef(screen.surah, it)) }, onBack = { model.back() },
+            SURAHS[screen.surah - 1], screen.verse, verseOf = { model.verse(VerseRef(screen.surah, it)) },
+            // The model it checks with comes by the background work, like everything else that is fetched.
+            fetching = progress?.takeIf { it.trackId == null && (it.step == Step.TAJWEED || it.step == Step.ENGINE) }?.fraction,
+            // Pressing its button is a wish to fetch it now, even with the downloads paused.
+            onWant = { pressed -> model.wantTajweed(); if (pressed && model.paused) model.resume() }, onBack = { model.back() },
         )
         is Screen.Voice -> ExerciseScreen(Exercise.entries[screen.exercise], onBack = { model.back() })
     }
@@ -306,7 +322,7 @@ private fun SurahScreen(
     var marking by remember(screen.number) { mutableStateOf<Int?>(null) }
     val page = Page(
         meanings, setMeanings, textScale, setTextScale,
-        choices.script, choices::write, indopak, startVerse, marks, { marking = it }, choices.appearance, choices::look,
+        choices.script, indopak, startVerse, marks, { marking = it }, choices.appearance, choices::look,
         choices.tajweed, choices::colour,
     )
     marking?.let { verse ->
@@ -333,7 +349,7 @@ private fun SurahScreen(
             reading = reading, showMeanings = meanings, playing = false, position = { 0 }, duration = 0,
             onBack = { model.back() }, onMeanings = setMeanings, onPlayPause = {}, onSeek = {},
             textScale = textScale, onTextScale = setTextScale,
-            script = page.script, onScript = page.onScript, indopak = page.indopak,
+            script = page.script, indopak = page.indopak,
             startVerse = page.startVerse, marks = page.marks, onMark = page.onMark,
             appearance = page.appearance, onAppearance = page.onAppearance,
             tajweed = page.tajweed, onTajweed = page.onTajweed,
@@ -416,7 +432,6 @@ private class Page(
     val textScale: Float,
     val onTextScale: (Float) -> Unit,
     val script: Script,
-    val onScript: (Script) -> Unit,
     val indopak: FontFamily?,
     val startVerse: Int?,
     val marks: VerseMarks,
@@ -762,7 +777,7 @@ private fun PlayingReader(
             onSeek = ::goTo,
             textScale = page.textScale,
             onTextScale = page.onTextScale,
-            script = page.script, onScript = page.onScript, indopak = page.indopak,
+            script = page.script, indopak = page.indopak,
             startVerse = page.startVerse, marks = page.marks, onMark = page.onMark,
             appearance = page.appearance, onAppearance = page.onAppearance,
             tajweed = page.tajweed, onTajweed = page.onTajweed,

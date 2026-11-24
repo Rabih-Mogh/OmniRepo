@@ -34,6 +34,35 @@ class CorrectionsTest {
     }
 
     @Test
+    fun `the word reached is known while the verse is still being recited`() {
+        // Al-Fatihah's second verse: four words.
+        val line = cases().first { it.name.contains(" 1:2 as recited") }.reference
+        val whole = Expected.breath(TajweedReference.verse(line), 0, 4)
+        assertEquals(-1, whole.reached(""))
+        assertEquals(0, whole.reached("ءَلحَم"))
+        assertEquals(1, whole.reached("ءَلحَمدُلِللَا"))
+        assertEquals(2, whole.reached("ءَلحَمدُلِللَااهِرَب"))
+        assertEquals(3, whole.reached("ءَلحَمدُلِللَااهِرَببِلعَاالَ"))
+    }
+
+    @Test
+    fun `a correction names the rules it is about, which give it its colour`() {
+        // A madd by its kind; the nasal rules; the echo. A mistake in the wording has no rule.
+        assertEquals(Family.MADD_WAJIB, Correction(Fault.MADD_SHORT, clear = false, madd = Madd.MUTTASIL).family)
+        assertEquals(Family.MADD_JAIZ, Correction(Fault.MADD_LONG, clear = false, madd = Madd.ARID).family)
+        assertEquals(setOf(Rule.MADD_LAZIM), Correction(Fault.MADD_MISSING, clear = true, madd = Madd.LAZIM).rules)
+        assertEquals(Family.MADD_TABII, Correction(Fault.MADD_MISSING, clear = true, madd = Madd.NATURAL).family)
+        assertEquals(setOf(Rule.IKHFA, Rule.IKHFA_SHAFAWI), Correction(Fault.IKHFA_CLEAR, clear = false).rules)
+        assertEquals(Family.NASAL, Correction(Fault.IDGHAM_MISSED, clear = false, wanted = "ي").family)
+        assertEquals(Family.QUIET, Correction(Fault.IDGHAM_MISSED, clear = false, wanted = "ر").family)
+        assertEquals(Family.ECHO, Correction(Fault.QALQALAH_MISSING, clear = false, wanted = "ب").family)
+        assertEquals(null, Correction(Fault.LETTER, clear = true, wanted = "ق", heard = "ك").family)
+        // Every fault is placed, and every family but the heavy letters, which the model doesn't judge, has a fault that leads to it.
+        val reached = Fault.entries.flatMap { fault -> Madd.entries.mapNotNull { Correction(fault, clear = false, madd = it, wanted = "ي").family } + listOfNotNull(Correction(fault, clear = false, wanted = "ل").family) }.toSet()
+        assertEquals(Family.entries.toSet() - Family.HEAVY, reached)
+    }
+
+    @Test
     fun `says what the rule engine it follows says`() {
         val cases = cases()
         assertTrue(cases.size > 200)

@@ -40,6 +40,9 @@ object AppIcons {
     val Add = icon("Add", "M19,13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z")
     val Remove = icon("Remove", "M19,13H5v-2h14v2z")
 
+    /** Light or dark: a disc, half of it filled. */
+    val Appearance = lines("Appearance", "M12,3.5a8.5,8.5 0 1,0 0,17a8.5,8.5 0 1,0 0,-17Z" to 1.9f, "M12,3.5a8.5,8.5 0 0,1 0,17Z" to null)
+
     /** Text size: the letter ain small, and large beside it. */
     val TextSize = icon("TextSize", AIN_SMALL + AIN_LARGE)
 

@@ -50,6 +50,11 @@ object Settings {
     fun setTajweed(context: Context, shown: Boolean) = store(context).edit().putBoolean("tajweed", shown).apply()
 
     /** Light, dark, or following the phone: the phone, until the user chooses. */
+    /** Whether the tajweed model, which checks the reader's own recitation, is to be fetched by the background work. */
+    fun tajweedWanted(context: Context): Boolean = store(context).getBoolean("tajweed_wanted", false)
+
+    fun setTajweedWanted(context: Context, wanted: Boolean) = store(context).edit().putBoolean("tajweed_wanted", wanted).apply()
+
     /** The best a voice exercise has come to so far, by the exercise's name; 0 before the first go. */
     fun voiceBest(context: Context, exercise: String): Float = store(context).getFloat("voice_best_$exercise", 0f)
 

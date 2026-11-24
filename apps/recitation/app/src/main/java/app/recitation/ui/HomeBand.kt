@@ -194,13 +194,18 @@ fun SearchResults(
 
 /**
  * What is in the first screen's menu: what belongs to the whole app. How it looks, light
- * or dark or as the phone is set; and [footer], the app's version, its updates and the
- * report. How the verses read is in a surah's own menu (see [ReadingChoices]).
+ * or dark or as the phone is set; the script every surah's verses are written in (the
+ * IndoPak one only once its font is on the phone, [withIndoPak]); and [footer], the app's
+ * version, its updates and the report. What is turned to while reading is in a surah's
+ * own menu (see [ReadingChoices]), which has the light and dark of it too.
  */
 @Composable
 fun MenuContent(
     appearance: Appearance = Appearance.AUTO,
     onAppearance: (Appearance) -> Unit = {},
+    script: Script = Script.MADINAH,
+    onScript: (Script) -> Unit = {},
+    withIndoPak: Boolean = false,
     footer: @Composable () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
@@ -208,6 +213,9 @@ fun MenuContent(
     HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
     Text(stringResource(R.string.appearance), Modifier.padding(horizontal = 24.dp).padding(bottom = 8.dp), style = MaterialTheme.typography.titleSmall, color = colors.onSurfaceVariant)
     AppearanceChoice(appearance, onAppearance)
+    HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
+    Text(stringResource(R.string.script_title), Modifier.padding(horizontal = 24.dp).padding(bottom = 4.dp), style = MaterialTheme.typography.titleSmall, color = colors.onSurfaceVariant)
+    ScriptChooser(script, withIndoPak, titled = false, onScript = onScript)
     HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
     footer()
 }
@@ -242,8 +250,8 @@ fun AppearanceChoice(appearance: Appearance, onAppearance: (Appearance) -> Unit)
 
 /**
  * How the verses read, in a surah's menu: whether each word's meaning shows under it, how
- * large the text is, whether letters are coloured by their rule of recitation, and the
- * script the verses are written in.
+ * large the text is, light or dark, and whether letters are coloured by their rule of
+ * recitation. The script they are written in is in the first screen's menu (see [MenuContent]).
  */
 @Composable
 fun ReadingChoices(
@@ -251,9 +259,8 @@ fun ReadingChoices(
     onMeanings: (Boolean) -> Unit,
     textScale: Float,
     onTextScale: (Float) -> Unit,
-    script: Script,
-    onScript: (Script) -> Unit,
-    withIndoPak: Boolean,
+    appearance: Appearance = Appearance.AUTO,
+    onAppearance: (Appearance) -> Unit = {},
     tajweed: Boolean = true,
     onTajweed: (Boolean) -> Unit = {},
 ) {
@@ -274,6 +281,13 @@ fun ReadingChoices(
             Text(stringResource(R.string.text_size), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
             TextSizeControls(textScale, onTextScale)
         }
+        // Light or dark without leaving the surah: a page read by day is read by night too.
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(AppIcons.Appearance, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(12.dp))
+            Text(stringResource(R.string.appearance), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        }
+        AppearanceChoice(appearance, onAppearance)
         // Letters coloured by the rule of recitation they fall under, with what each colour means.
         Row(
             Modifier.fillMaxWidth().toggleable(value = tajweed, role = Role.Switch, onValueChange = onTajweed).padding(horizontal = 16.dp, vertical = 8.dp),
@@ -290,8 +304,6 @@ fun ReadingChoices(
             Switch(checked = tajweed, onCheckedChange = null)
         }
         if (tajweed) TajweedLegend(Modifier.padding(horizontal = 16.dp))
-        HorizontalDivider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
-        ScriptChooser(script, withIndoPak, onScript)
     }
 }
 

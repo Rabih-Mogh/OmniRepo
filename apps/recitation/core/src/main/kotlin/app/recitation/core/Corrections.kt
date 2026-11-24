@@ -77,7 +77,36 @@ class Correction(
     val wantedCounts: Int = 0,
     val heardCounts: Int = 0,
     val lengths: List<Int> = emptyList(),
-)
+) {
+    /**
+     * The rules of recitation the correction is about, as the page of a surah marks them
+     * on a word's letters: the letters to point at. Empty for a mistake in the wording
+     * itself (another letter or vowel, a sound left out or added), which no rule covers.
+     */
+    val rules: Set<Rule>
+        get() = when (fault) {
+            Fault.MADD_SHORT, Fault.MADD_LONG, Fault.MADD_MISSING, Fault.MADD_UNEVEN -> when (madd) {
+                Madd.MUNFASIL -> setOf(Rule.MADD_MUNFASIL, Rule.MADD_SILAH_KUBRA)
+                Madd.MUTTASIL, Madd.MUTTASIL_AT_STOP -> setOf(Rule.MADD_MUTTASIL)
+                Madd.LAZIM -> setOf(Rule.MADD_LAZIM)
+                Madd.ARID -> setOf(Rule.MADD_ARID)
+                Madd.LIN -> setOf(Rule.MADD_LIN)
+                Madd.NATURAL, null -> setOf(Rule.MADD_TABII, Rule.MADD_SILAH_SUGHRA, Rule.MADD_IWAD)
+            }
+            Fault.MADD_ADDED -> setOf(Rule.MADD_TABII)
+            Fault.GHUNNAH_SHORT -> setOf(Rule.GHUNNAH)
+            Fault.IKHFA_CLEAR, Fault.IKHFA_SHORT -> setOf(Rule.IKHFA, Rule.IKHFA_SHAFAWI)
+            Fault.IQLAB_MISSED -> setOf(Rule.IQLAB)
+            Fault.IDGHAM_GHUNNAH_SHORT -> setOf(Rule.IDGHAM_GHUNNAH, Rule.IDGHAM_SHAFAWI)
+            // Merged through the nose into ي ن م و, whole into ل ر.
+            Fault.IDGHAM_MISSED -> if (wanted.any { it in "لر" }) setOf(Rule.IDGHAM_BILA_GHUNNAH) else setOf(Rule.IDGHAM_GHUNNAH, Rule.IDGHAM_SHAFAWI)
+            Fault.QALQALAH_MISSING -> setOf(Rule.QALQALAH)
+            Fault.SHADDA_MISSING, Fault.LETTER, Fault.VOWEL, Fault.DROPPED, Fault.ADDED, Fault.WORD_MISSING -> emptySet()
+        }
+
+    /** The family those rules belong to, which gives the correction its colour: the one the rule has on the page and in its legend. */
+    val family: Family? get() = rules.firstOrNull()?.family
+}
 
 /** A madd other than the natural one, as it was heard: for showing its length beside the word. */
 class MaddHeard(val rule: Madd, val counts: Int)

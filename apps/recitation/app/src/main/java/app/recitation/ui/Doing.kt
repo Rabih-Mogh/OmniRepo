@@ -85,6 +85,7 @@ fun Step.picture(fraction: Float? = null): Picture = when (this) {
     Step.LISTEN -> Picture(AppIcons.Ear, fraction = fraction)
     Step.ALIGN -> Picture(AppIcons.Match)
     Step.RETRY -> Picture(AppIcons.CloudOff, AppIcons.Retry)
+    Step.TAJWEED -> Picture(AppIcons.Mic, AppIcons.Download, fraction)
 }
 
 fun Status.picture(): Picture = when (this) {
@@ -165,6 +166,8 @@ private fun Step.stage(): Int = when (this) {
     Step.ENGINE, Step.TUNE -> 3
     Step.LISTEN -> 4
     Step.ALIGN -> 5
+    // Not a step of any recording: the row of steps isn't shown for it.
+    Step.TAJWEED -> -1
 }
 
 /**
@@ -221,7 +224,7 @@ fun StatusCard(status: Status, actions: StatusActions, told: Boolean = false, pl
                     } else if (working?.title != null) {
                         Text(working.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    if (working != null) {
+                    if (working != null && working.progress.step != Step.TAJWEED) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Stages(working.progress.step)
                             // How the listening compares with playing the recording: under 1 and it can't keep up with a reader.

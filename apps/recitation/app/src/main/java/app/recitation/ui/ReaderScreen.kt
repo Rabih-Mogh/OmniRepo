@@ -73,6 +73,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.graphics.StrokeCap
+import app.recitation.core.WordRecited
 import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.coroutines.launch
 import androidx.compose.material3.RangeSlider
@@ -275,7 +277,6 @@ fun ReaderContent(
     listening: Boolean = true,
     onRange: (IntRange) -> Unit = {},
     script: Script = Script.MADINAH,
-    onScript: (Script) -> Unit = {},
     indopak: FontFamily? = null,
     startVerse: Int? = null,
     marks: VerseMarks = VerseMarks(),
@@ -287,6 +288,7 @@ fun ReaderContent(
     speed: Float = 0f,
     waiting: Boolean = false,
     listeningAt: Int = -1,
+    recital: PageRecital? = LocalPageRecital.current,
 ) {
     val surah = SURAHS[reading.surah - 1]
     val arabic = LocalConfiguration.current.locales[0].language == "ar"
@@ -523,7 +525,7 @@ fun ReaderContent(
     }
     // The menu's panel comes in beside the page from the side its button is on, the side
     // reading ends at, pushing the page aside. In it is what belongs to reading a surah:
-    // which verses to recite, and how the verses are shown.
+    // which verses to recite, and how the verses are shown, by day or by night.
     var menu by rememberSaveable { mutableStateOf(false) }
     SidePanel(
         open = menu, onClose = { menu = false }, title = stringResource(R.string.reading), fromEnd = true, tag = "reader-menu",
@@ -544,7 +546,7 @@ fun ReaderContent(
                 }
                 HorizontalDivider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
             }
-            ReadingChoices(showMeanings, onMeanings, textScale, onTextScale, script, onScript, withIndoPak = indopak != null, tajweed, onTajweed)
+            ReadingChoices(showMeanings, onMeanings, textScale, onTextScale, appearance, onAppearance, tajweed, onTajweed)
         },
     ) {
             Scaffold(
@@ -605,6 +607,12 @@ fun ReaderContent(
                         )
                     }
                     Verses(if (barStays) 0.dp else top, with(LocalDensity.current) { place.top.toDp() }, reading, index, list, current, currentVerse, index?.timing(said), index?.ends(said) ?: Int.MAX_VALUE, position, showMeanings, textScale, hand, tajweed, marks, onMark, place, { fade.value }, { drift.value }, wash, translated, { translated = it; taps++ },
+                        recital = recital,
+                        // The reader's own voice is listened to, not the recording's: that is paused first.
+                        onMic = { verse ->
+                            if (playing && recital?.state != Reciting.Listening) onPlayPause()
+                            recital?.onMic(verse)
+                        },
                         // Reciting from a verse outside the verses chosen to be recited takes the whole surah again.
                         onPlayFrom = { verse ->
                             if (range != null && verse !in range) onRange(0..reading.verses.lastIndex)
@@ -737,6 +745,8 @@ private fun Verses(
     wash: (Int) -> Float,
     translated: Int?,
     onTranslate: (Int) -> Unit,
+    recital: PageRecital?,
+    onMic: (Int) -> Unit,
     onPlayFrom: (Int) -> Unit,
     onOnly: ((Int) -> Unit)?,
     onSeek: (Int) -> Unit,
@@ -775,6 +785,14 @@ private fun Verses(
                     hand = hand,
                     // The rules of recitation in each of the verse's words, when their colours are wanted.
                     rules = if (tajweed) reading.rules.getOrNull(v).orEmpty() else emptyList(),
+                    // Reciting it to the phone: where that stands if this is the verse, and what was heard of it.
+                    reciting = recital?.takeIf { it.verse == v + 1 }?.state,
+                    reached = if (recital?.verse == v + 1) recital.reached else -1,
+                    heard = recital?.heard?.get(v + 1),
+                    // The letters a correction points at are found by their rules, whether the colours show or not.
+                    allRules = if (recital?.heard?.containsKey(v + 1) == true) reading.rules.getOrNull(v).orEmpty() else emptyList(),
+                    onMic = if (recital != null) ({ onMic(v + 1) }) else null,
+                    onForget = { recital?.onForget(v + 1) },
                     pins = marks.pins[v].orEmpty(),
                     saved = v in marks.saved,
                     onMark = { onMark(v) },
@@ -808,6 +826,35 @@ private fun VerseButton(icon: ImageVector, label: String, tint: Color = Material
     }
 }
 
+/**
+ * The microphone on a verse's rule, for reciting the verse to the phone: a microphone to
+ * begin; while it listens, a filled disc with the sign for stopping; and, in pictures,
+ * the phone going over what it heard, or fetching the model it checks with first.
+ */
+@Composable
+private fun MicVerseButton(reciting: Reciting?, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    when (reciting) {
+        Reciting.Listening -> {
+            val label = stringResource(R.string.recite_stop)
+            Box(
+                Modifier.size(VERSE_BUTTON).padding(3.dp).clip(CircleShape).background(colors.primary).clickable(role = Role.Button, onClickLabel = label, onClick = onClick).testTag("verse-mic-open"),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(AppIcons.Stop, label, Modifier.size(16.dp), tint = colors.onPrimary)
+            }
+        }
+        Reciting.Checking -> Box(Modifier.size(VERSE_BUTTON), contentAlignment = Alignment.Center) {
+            WorkIcon(Picture(AppIcons.Ear), stringResource(R.string.recite_checking), size = 28.dp)
+        }
+        is Reciting.Fetching -> Box(Modifier.size(VERSE_BUTTON).clip(CircleShape).clickable(role = Role.Button, onClick = onClick), contentAlignment = Alignment.Center) {
+            val known = reciting.fraction.takeIf { it >= 0f }
+            WorkIcon(Picture(AppIcons.Mic, AppIcons.Download, known), stringResource(reciting.what, ((known ?: 0f) * 100).toInt()), size = 28.dp)
+        }
+        else -> VerseButton(AppIcons.Mic, stringResource(R.string.recite_this_verse), onClick = onClick)
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun VerseBlock(
@@ -823,6 +870,12 @@ private fun VerseBlock(
     textScale: Float,
     hand: Hand,
     rules: List<List<Mark>>,
+    reciting: Reciting?,
+    reached: Int,
+    heard: List<WordRecited>?,
+    allRules: List<List<Mark>>,
+    onMic: (() -> Unit)?,
+    onForget: () -> Unit,
     pins: List<String>,
     saved: Boolean,
     onMark: () -> Unit,
@@ -835,6 +888,14 @@ private fun VerseBlock(
     onTap: () -> Unit,
     onWord: (Int) -> Unit,
 ) {
+    // What was heard when the reader recited this verse to the phone, by its words; and the
+    // word whose corrections show under the verse: the first with any, until another is tapped.
+    val byWord = remember(heard, verse.words.size) { byWord(heard, verse.words.size) }
+    var picked by remember(heard) { mutableIntStateOf(byWord.entries.filter { !it.value.sound }.minOfOrNull { it.key } ?: -1) }
+    val listening = reciting == Reciting.Listening
+    val chosen = byWord[picked]?.takeIf { !it.sound && !listening }
+    // What stands right under the verse's words, which their blocks then stop short of.
+    val under = showTranslation || chosen != null || reciting is Reciting.Failed
     // The whole verse answers a tap, quietly: no ripple across a block of scripture. A long
     // press, like a tap on its number, opens its pins and collections.
     Column(
@@ -866,6 +927,8 @@ private fun VerseBlock(
                 // What can be done with the verse, right beside its number: recite from it, keep it
                 // (pins and collections; the bookmark is filled once it is in a collection), and more.
                 if (onPlayFrom != null) VerseButton(AppIcons.Play, stringResource(R.string.verse_play_from), onClick = onPlayFrom)
+                // Recite it to the phone and be corrected, here on the page.
+                if (onMic != null) MicVerseButton(reciting, onMic)
                 VerseButton(
                     if (saved) AppIcons.Bookmark else AppIcons.BookmarkOutline,
                     stringResource(if (saved) R.string.saved_mark else R.string.marks_open),
@@ -881,14 +944,9 @@ private fun VerseBlock(
                         val clipboard = LocalClipboardManager.current
                         // The verse as it is written, its translation, and where it is from.
                         val text = listOf(verse.words.joinToString(" ") { it.arabic }, verse.translation, reference).filter { it.isNotEmpty() }.joinToString("\n")
-                        val recite = LocalReciteVerse.current
                         DropdownMenu(expanded = more, onDismissRequest = { more = false }) {
                             if (onOnly != null) {
                                 DropdownMenuItem(text = { Text(stringResource(R.string.verse_only)) }, onClick = { more = false; onOnly() })
-                            }
-                            // Recite it to the phone and be corrected.
-                            if (recite != null) {
-                                DropdownMenuItem(text = { Text(stringResource(R.string.recite_this_verse)) }, onClick = { more = false; recite(number) })
                             }
                             if (verse.translation.isNotEmpty()) {
                                 DropdownMenuItem(
@@ -906,6 +964,21 @@ private fun VerseBlock(
                                 },
                             )
                         }
+                    }
+                }
+                // How the verse went when it was recited to the phone: how many of its words were sound. A tap takes the corrections off the page.
+                if (heard != null && !listening) {
+                    val sound = byWord.values.count { it.sound }
+                    val says = stringResource(R.string.recite_sound_words, sound, byWord.size)
+                    Row(
+                        Modifier.padding(start = 2.dp).testTag("recited").clip(RoundedCornerShape(50)).clickable(role = Role.Button, onClickLabel = stringResource(R.string.recite_forget), onClick = onForget)
+                            // Solid, like the buttons beside it: a marked word's block may lie under it.
+                            .background(MaterialTheme.colorScheme.primary.faded(0.12f, MaterialTheme.colorScheme.background)).padding(horizontal = 8.dp, vertical = 3.dp)
+                            .semantics(mergeDescendants = true) { contentDescription = says },
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Icon(if (sound == byWord.size) AppIcons.Check else AppIcons.Ear, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                        Text("$sound/${byWord.size}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, maxLines = 1)
                     }
                 }
                 Spacer(Modifier.width(4.dp))
@@ -931,16 +1004,24 @@ private fun VerseBlock(
             var lastRowStarts by remember { mutableIntStateOf(0) }
             WordBlocks(Modifier.fillMaxWidth().padding(horizontal = EDGE_MARGIN), onRows = { firstEnds, lastStarts -> firstRowEnds = firstEnds; lastRowStarts = lastStarts }) {
                 verse.words.forEachIndexed { w, word ->
+                    // While the reader recites this verse to the phone, the word lit is the one they have reached.
+                    val at = if (listening) reached else current
+                    val result = byWord[w]?.takeIf { !listening }
                     WordTile(
                         word = word,
                         // The word being recited goes by this saying of it, which may be a second one.
-                        timing = if (w == current && now != null) now else timings.getOrNull(w),
+                        // The reader's own word has no timing: its block is lit, not its letters.
+                        timing = if (listening) null else if (w == current && now != null) now else timings.getOrNull(w),
                         state = when {
-                            current < 0 -> WordState.RESTING
-                            w < current -> WordState.RECITED
-                            w == current -> WordState.CURRENT
+                            at < 0 -> WordState.RESTING
+                            w < at -> WordState.RECITED
+                            w == at -> WordState.CURRENT
                             else -> WordState.RESTING
                         },
+                        // Something to go over in it: its block takes the colour of the rule, and the rule's letters are pointed at.
+                        mark = result?.colour(),
+                        picked = w == picked,
+                        pointed = result?.corrections?.flatMap { it.rules }?.toSet()?.let { broken -> allRules.getOrNull(w).orEmpty().filter { it.rule in broken } }.orEmpty(),
                         position = position,
                         // The word's last sound runs until the next word begins.
                         endMs = if (w == current && now != null) nowEnds else timings.getOrNull(w + 1)?.startMs ?: Int.MAX_VALUE,
@@ -949,16 +1030,27 @@ private fun VerseBlock(
                         hand = hand,
                         rules = rules.getOrNull(w).orEmpty(),
                         // Up to this verse's rule, and down to the next verse's, each short of it by a
-                        // hair. Not down over the verse's translation while that is showing.
+                        // hair. Not down over what stands under the verse: its translation, or what to go over in it.
                         reachUp = { if (w <= firstRowEnds) RULE_TO_WORDS - RULE_MARGIN else 0.dp },
-                        reachDown = { if (w >= lastRowStarts && !showTranslation) WORDS_TO_NEXT_RULE - RULE_MARGIN else 0.dp },
+                        reachDown = { if (w >= lastRowStarts && !under) WORDS_TO_NEXT_RULE - RULE_MARGIN else 0.dp },
                         onPlaced = { onPlaced(w, it) },
                         wash = { wash(w) },
-                        onClick = { onWord(w) },
+                        // A marked word shows what to go over in it; any other, the verse's translation.
+                        onClick = { if (result != null && !result.sound) picked = w else onWord(w) },
                         onLongClick = onMark,
                     )
                 }
             }
+        }
+        // What reciting it to the phone came to: what to go over in the word picked, or why it couldn't be done.
+        AnimatedVisibility(visible = chosen != null, enter = fadeIn(tween(260)) + expandVertically(tween(260)), exit = fadeOut(tween(260)) + shrinkVertically(tween(260))) {
+            // Kept while it closes, so it doesn't empty first.
+            var last by remember { mutableStateOf(chosen) }
+            if (chosen != null) last = chosen
+            last?.let { CorrectionsCard(it, Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).testTag("corrections")) }
+        }
+        if (reciting is Reciting.Failed) {
+            Text(reciting.message, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
         }
         // The verse's translation opens and closes softly rather than popping in.
         AnimatedVisibility(
@@ -1137,6 +1229,9 @@ private fun WordTile(
     textScale: Float,
     hand: Hand,
     rules: List<Mark>,
+    mark: Color?,
+    picked: Boolean,
+    pointed: List<Mark>,
     reachUp: () -> Dp,
     reachDown: () -> Dp,
     onPlaced: (LayoutCoordinates) -> Unit,
@@ -1169,6 +1264,18 @@ private fun WordTile(
                         val up = reachUp().toPx()
                         drawRect(colors.primary.copy(alpha = 0.2f * lit), Offset(0f, -up), Size(size.width, size.height + up + reachDown().toPx()))
                     }
+                } else {
+                    Modifier
+                },
+            )
+            // Something to go over in it, from reciting the verse to the phone: the block in the
+            // colour of what is to go over, stronger on the word whose corrections are showing.
+            .then(
+                if (mark != null) {
+                    Modifier.drawBehind {
+                        val up = reachUp().toPx()
+                        drawRect(mark.copy(alpha = if (picked) 0.26f else 0.13f), Offset(0f, -up), Size(size.width, size.height + up + reachDown().toPx()))
+                    }.testTag(if (picked) "marked-word-picked" else "marked-word")
                 } else {
                     Modifier
                 },
@@ -1213,10 +1320,10 @@ private fun WordTile(
         Text(
             written, fontFamily = hand.font, fontSize = hand.size * textScale, lineHeight = hand.line * textScale, color = ink,
             onTextLayout = { layout = it },
-            modifier = if (coloured.isEmpty() && (lit == 0f || timing == null)) Modifier else Modifier.drawWithContent {
+            modifier = if (coloured.isEmpty() && pointed.isEmpty() && (lit == 0f || timing == null)) Modifier else Modifier.drawWithContent {
                 val placed = layout
                 val uttered = if (lit > 0f && timing != null) timing.utteredAt(position(), endMs) else null
-                if (placed == null || (repaint == null && uttered == null)) {
+                if (placed == null || (repaint == null && uttered == null && pointed.isEmpty())) {
                     drawContent()
                     return@drawWithContent
                 }
@@ -1248,9 +1355,15 @@ private fun WordTile(
                 if (uttered == null) {
                     drawContent()
                     drawIntoCanvas { canvas ->
-                        for (mark in coloured) {
-                            repaint?.draw(canvas.nativeCanvas, shown(mark.from), shown(mark.to), edge, baseline, box, tajweed.ink(mark.rule.family).faded(strength, colors.background))
+                        for (rule in coloured) {
+                            repaint?.draw(canvas.nativeCanvas, shown(rule.from), shown(rule.to), edge, baseline, box, tajweed.ink(rule.rule.family).faded(strength, colors.background))
                         }
+                    }
+                    // The letters of a rule the reader is to go over: a line under them in the rule's colour.
+                    for (rule in pointed) {
+                        val (left, right) = across(letters(shown(rule.from), shown(rule.to)))
+                        val y = size.height - 2.dp.toPx()
+                        drawLine(tajweed.ink(rule.rule.family), Offset(left, y), Offset(maxOf(right, left + 6.dp.toPx()), y), strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round)
                     }
                     return@drawWithContent
                 }
@@ -1284,8 +1397,8 @@ private fun WordTile(
                 drawContent()
                 drawIntoCanvas { canvas ->
                     val native = canvas.nativeCanvas
-                    for (mark in coloured) {
-                        repaint?.draw(native, shown(mark.from), shown(mark.to), edge, baseline, box, tajweed.ink(mark.rule.family).faded(strength, colors.background))
+                    for (rule in coloured) {
+                        repaint?.draw(native, shown(rule.from), shown(rule.to), edge, baseline, box, tajweed.ink(rule.rule.family).faded(strength, colors.background))
                     }
                     // The letter is painted once more in the light's colour, exactly over itself: it
                     // isn't laid out again and gets no bloom, so it neither moves nor looks any bigger.
@@ -1592,11 +1705,11 @@ private fun hand(script: Script, indopak: FontFamily?): Hand = when (script) {
     Script.EVERYDAY -> Hand(script, QuranFont, 26.sp, 46.sp)
 }
 
-/** The scripts the verses can be written in; the IndoPak one only once its font is on the phone ([withIndoPak]). */
+/** The scripts the verses can be written in; the IndoPak one only once its font is on the phone ([withIndoPak]). Under its own heading unless the menu it is in gives it one ([titled]). */
 @Composable
-fun ScriptChooser(script: Script, withIndoPak: Boolean, onScript: (Script) -> Unit) {
+fun ScriptChooser(script: Script, withIndoPak: Boolean, titled: Boolean = true, onScript: (Script) -> Unit) {
     Column(Modifier.padding(horizontal = 8.dp)) {
-        Text(stringResource(R.string.script_title), Modifier.padding(horizontal = 8.dp, vertical = 4.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        if (titled) Text(stringResource(R.string.script_title), Modifier.padding(horizontal = 8.dp, vertical = 4.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
         for (each in Script.entries) {
             if (each == Script.INDOPAK && !withIndoPak) continue
             Row(

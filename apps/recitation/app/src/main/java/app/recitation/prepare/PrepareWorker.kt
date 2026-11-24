@@ -31,6 +31,7 @@ import app.recitation.core.Sketch
 import app.recitation.core.Stretch
 import app.recitation.speech.Arriving
 import app.recitation.speech.AudioDecoder
+import app.recitation.speech.TajweedStore
 import app.recitation.core.Timings
 import app.recitation.data.Journal
 import app.recitation.data.Library
@@ -67,7 +68,7 @@ import kotlin.math.abs
 import kotlin.math.sin
 
 /** What is being done to a recording right now. */
-enum class Step { MODEL_CHECK, MODEL_DOWNLOAD, ENGINE, TUNE, DOWNLOAD, VERSES, LISTEN, ALIGN, RETRY }
+enum class Step { MODEL_CHECK, MODEL_DOWNLOAD, ENGINE, TUNE, DOWNLOAD, VERSES, LISTEN, ALIGN, RETRY, TAJWEED }
 
 /** A recording's word timings while, and just after, it is listened to. */
 class Live(val trackId: String, val surah: Int, val timings: Timings)
@@ -111,6 +112,9 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
     /** YouTube has refused this phone during this run: no more is asked of it until a later one. */
     private var refused = false
 
+    /** The tajweed model couldn't be had in this run though there was a connection: it is given a while before the next try. */
+    private var tajweedFailed = false
+
     // A paused or cancelled run can still be finishing a step; the next run waits for it
     // rather than writing to the same files.
     override suspend fun doWork(): Result = oneAtATime.withLock { work() }
@@ -126,6 +130,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         awake.acquire(6 * 60 * 60 * 1000L)
         try {
             _modelProblem.value = null
+            fetchTajweed()
             while (true) {
                 val track = next() ?: break
                 val forgotten = library.timesForgotten(track.id)
@@ -201,8 +206,9 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             // What is left needs something fetched: it is taken up when there is a connection
             // again, and, if YouTube was refusing, not before it has had a while to relent.
             val left = library.playlists.value.sumOf { p -> p.tracks.count(::waits) }
-            journal.note("work done" + if (left > 0) ", $left left waiting" + (if (refused) " on YouTube" else " for a connection") else "")
-            if (left > 0) whenOnline(applicationContext, if (refused) REFUSED_WAIT_MINUTES else 0)
+            val tajweedLeft = Settings.tajweedWanted(applicationContext)
+            journal.note("work done" + (if (left > 0) ", $left left waiting" + (if (refused) " on YouTube" else " for a connection") else "") + if (tajweedLeft) ", the tajweed model still to fetch" else "")
+            if (left > 0 || tajweedLeft) whenOnline(applicationContext, if ((left > 0 && refused) || tajweedFailed) REFUSED_WAIT_MINUTES else 0, byYouTube = left > 0 && refused)
             return Result.success()
         } finally {
             _progress.value = null
@@ -592,6 +598,53 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         return vocab.map { it.orEmpty() }
     }
 
+    /**
+     * Fetches the model that checks the reader's own recitation, when it has been asked
+     * for, and the engine it runs on if that isn't here yet: before any recording, as it is
+     * small and is being waited for. Without a connection, or if it can't be had after a
+     * few tries, it is left for the next run.
+     */
+    private suspend fun fetchTajweed() {
+        val context = applicationContext
+        if (!Settings.tajweedWanted(context)) return
+        val store = TajweedStore(context)
+        var attempt = 0
+        while (!(store.isReady && engine.isReady)) {
+            if (!online()) return
+            try {
+                withContext(Dispatchers.IO) {
+                    engine.obtain { tell(Step.ENGINE, it) }
+                    store.obtain { tell(Step.TAJWEED, it) }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                journal.note("tajweed model: ${detail(e)}; try ${attempt + 1}")
+                if (isStopped) return
+                if (++attempt >= ATTEMPTS) {
+                    tajweedFailed = true
+                    _progress.value = null
+                    return
+                }
+                tell(Step.RETRY, 0f)
+                delay(attempt * 5_000L)
+            }
+        }
+        Settings.setTajweedWanted(context, false)
+        journal.note("tajweed model: on the phone")
+        _progress.value = null
+    }
+
+    /** Says how far something that isn't for any one recording has got: on the screens and in the notification. */
+    private fun tell(step: Step, fraction: Float) {
+        val shownAs = (fraction * 200).toInt() / 200f
+        _progress.value = Progress(null, step, shownAs)
+        val line = applicationContext.getString(stepLabel(step), (shownAs * 100).toInt())
+        if (line == shown) return
+        shown = line
+        notifications.notify(NOTIFICATION_ID, notification(line))
+    }
+
     private fun show(track: Track, step: Step, fraction: Float) {
         val text = applicationContext.getString(stepLabel(step), (fraction * 100).toInt())
         val line = if (step == Step.MODEL_CHECK || step == Step.MODEL_DOWNLOAD || step == Step.ENGINE || step == Step.TUNE) text else "${track.title}\n$text"
@@ -687,6 +740,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             Step.LISTEN -> R.string.step_listen
             Step.ALIGN -> R.string.step_align
             Step.RETRY -> R.string.step_retry
+            Step.TAJWEED -> R.string.recite_getting_model
         }
 
         /**
@@ -703,10 +757,11 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
          * fetched without one; and not before [waitMinutes] have passed, when it was YouTube
          * that wouldn't be fetched from.
          */
-        private fun whenOnline(context: Context, waitMinutes: Long = 0) {
+        private fun whenOnline(context: Context, waitMinutes: Long = 0, byYouTube: Boolean = waitMinutes > 0) {
             val request = OneTimeWorkRequestBuilder<PrepareWorker>()
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-                .apply { if (waitMinutes > 0) setInitialDelay(waitMinutes, TimeUnit.MINUTES).addTag(REFUSED_TAG) }
+                .apply { if (waitMinutes > 0) setInitialDelay(waitMinutes, TimeUnit.MINUTES) }
+                .apply { if (byYouTube) addTag(REFUSED_TAG) }
                 .build()
             // In place of a run already waiting, rather than left to it: that run may be the very one asking, about to end.
             WorkManager.getInstance(context).enqueueUniqueWork(WAITING_NAME, ExistingWorkPolicy.REPLACE, request)

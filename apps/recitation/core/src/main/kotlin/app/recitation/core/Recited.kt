@@ -2,6 +2,7 @@ package app.recitation.core
 
 import java.io.InputStream
 import java.util.zip.GZIPInputStream
+import kotlin.math.abs
 
 /*
  * Checking a learner's recitation against what the verse asks for.
@@ -110,9 +111,23 @@ class Expected(
 ) {
     val words: Int get() = index.size
 
+    /**
+     * Which word a reciter has reached who has so far been heard to say [heard]: for
+     * lighting the word up while they recite. -1 before the first sound.
+     */
+    fun reached(heard: String): Int {
+        val at = Edits.reach(script, heard)
+        if (at == 0) return -1
+        for (k in 0 until words) if (at <= spans[2 * k + 1]) return index[k]
+        return index[words - 1]
+    }
+
     companion object {
         private const val LONG = "اۥۦ"
         private const val VOWELS = "َُِ"
+
+        /** How far from a silence, in sounds, the end of a breath may be lined up and still be taken to end there. */
+        private const val NEAR = 2
 
         /** The words [from] until [until] of [verse] said in one breath. */
         fun breath(verse: List<WordForms>, from: Int, until: Int): Expected {
@@ -206,30 +221,53 @@ class Expected(
          * stopped, so the word takes the form it has at a stop, and where they began again,
          * often a few words back. A breath is split wherever that brings the expected
          * script clearly closer to what was heard: by at least [margin] sounds.
+         *
+         * Many stops change less than that: a tanween read as an alif, the echo of a
+         * qalqalah, a last vowel left off. So where the reciter was heard to fall silent
+         * ([silences]: how many sounds had been heard at each, see [Silences.among]) one
+         * sound is enough. Without a silence it is not: a nun not merged into the next
+         * word is a mistake, and would pass for a stop.
          */
-        fun recited(verse: List<WordForms>, heard: String, back: Int = 4, margin: Int = 3): Expected {
+        fun recited(verse: List<WordForms>, heard: String, back: Int = 4, margin: Int = 3, silences: IntArray = IntArray(0)): Expected {
             val cache = HashMap<Long, Expected>()
             fun breathOf(a: Int, b: Int) = cache.getOrPut(a.toLong() shl 32 or b.toLong()) { breath(verse, a, b) }
-            fun cost(breaths: List<IntArray>): Int = Edits.distance(breaths.joinToString("") { breathOf(it[0], it[1]).script }, heard)
+            fun script(breaths: List<IntArray>): String = breaths.joinToString("") { breathOf(it[0], it[1]).script }
+            // Whether breath [i] of [breaths] ends where a silence was heard, give or take a sound or two.
+            fun endsInSilence(breaths: List<IntArray>, i: Int): Boolean {
+                val end = script(breaths.subList(0, i + 1)).length
+                for (c in Edits.between(script(breaths), heard)) {
+                    if (end < c.from || end > c.until) continue
+                    val at = when (c.kind) {
+                        Edits.Kind.SAME, Edits.Kind.REPLACED -> c.toFrom + minOf(end - c.from, c.toUntil - c.toFrom)
+                        Edits.Kind.ADDED -> c.toUntil
+                        Edits.Kind.LEFT_OUT -> c.toFrom
+                    }
+                    return silences.any { abs(it - at) <= NEAR }
+                }
+                return false
+            }
+            class Tried(val cost: Int, val breaths: List<IntArray>, val split: Int)
             var breaths = listOf(intArrayOf(0, verse.size))
-            var best = cost(breaths)
+            var best = Edits.distance(script(breaths), heard)
             while (true) {
-                var lowest = Int.MAX_VALUE
-                var chosen: List<IntArray>? = null
+                val tried = ArrayList<Tried>()
                 for ((i, breath) in breaths.withIndex()) {
                     val a = breath[0]
                     val b = breath[1]
                     for (k in a + 1 until b) {              // stop after word k - 1 ...
                         for (j in maxOf(a + 1, k - back)..k) { // ... and begin again from word j (before k: words said again)
-                            val tried = breaths.subList(0, i) + listOf(intArrayOf(a, k), intArrayOf(j, b)) + breaths.subList(i + 1, breaths.size)
-                            val c = cost(tried)
-                            if (c < lowest) { lowest = c; chosen = tried }
+                            val split = breaths.subList(0, i) + listOf(intArrayOf(a, k), intArrayOf(j, b)) + breaths.subList(i + 1, breaths.size)
+                            val c = Edits.distance(script(split), heard)
+                            if (c < best) tried += Tried(c, split, i)
                         }
                     }
                 }
-                if (chosen == null || lowest > best - margin) break
-                best = lowest
-                breaths = chosen
+                // The closest first; of two as close, the one tried first.
+                val chosen = tried.sortedBy { it.cost }.firstOrNull {
+                    it.cost <= best - margin || (silences.isNotEmpty() && endsInSilence(it.breaths, it.split))
+                } ?: break
+                best = chosen.cost
+                breaths = chosen.breaths
             }
             return joined(breaths.map { breathOf(it[0], it[1]) })
         }

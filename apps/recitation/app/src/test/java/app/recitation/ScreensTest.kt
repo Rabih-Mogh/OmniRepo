@@ -51,9 +51,12 @@ import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onLast
@@ -98,6 +101,7 @@ import app.recitation.core.WordRecited
 import app.recitation.ui.Exercise
 import app.recitation.ui.ExerciseContent
 import app.recitation.ui.PracticeTab
+import app.recitation.ui.PageRecital
 import app.recitation.ui.ReciteContent
 import app.recitation.ui.Reciting
 import app.recitation.ui.Choices
@@ -377,9 +381,38 @@ class ScreensTest {
     )
 
     @Composable
-    private fun Recite(state: Reciting, needsModel: Boolean = false, onMic: () -> Unit = {}, onFetch: () -> Unit = {}) = ReciteContent(
-        app.recitation.core.SURAHS[0], 2, fatihah[1], state, needsModel, onMic, onFetch, onPrevious = {}, onNext = {}, onBack = {},
+    private fun Recite(state: Reciting, needsModel: Boolean = false, verse: Int = 2, reached: Int = -1, onMic: () -> Unit = {}, onFetch: () -> Unit = {}) = ReciteContent(
+        app.recitation.core.SURAHS[0], verse, fatihah[verse - 1], state, needsModel, onMic, onFetch, onPrevious = {}, onNext = {}, onBack = {}, reached = reached,
     )
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theWordBeingRecitedIsLitWhileTheMicrophoneIsOpen() {
+        // The reader has got to the third word of the verse.
+        show("en-day-recite-listening") { Recite(Reciting.Listening, reached = 2) }
+        val lit = compose.onNodeWithTag("reciting-word", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val word = compose.onNodeWithText(fatihah[1].words[2].arabic).fetchSemanticsNode().boundsInRoot
+        assertTrue("lit $lit, the third word $word", lit.overlaps(word))
+        // While it listens the button is the one that ends the recitation.
+        compose.onNodeWithContentDescription("Done reciting").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun atASurahsFirstVerseThereIsNoGoingBack() {
+        show("en-day-recite-first-verse") { Recite(Reciting.Idle, verse = 1) }
+        compose.onNodeWithContentDescription("Previous verse").assertIsNotEnabled()
+        compose.onNodeWithContentDescription("Next verse").assertIsEnabled()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun whileTheModelIsFetchedInTheBackgroundRecitingShowsHowFar() {
+        show("en-day-recite-fetching") { Recite(Reciting.Fetching(R.string.recite_getting_model, 0.4f), needsModel = true) }
+        // A picture with its ring, the words behind it; and no button to press, as it is on its way.
+        compose.onNodeWithContentDescription("Fetching the tajweed model… 40%").assertIsDisplayed()
+        compose.onNodeWithText("Download it").assertDoesNotExist()
+    }
 
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
@@ -400,6 +433,135 @@ class ScreensTest {
         // It never claims to be a teacher.
         compose.onNodeWithText("This can be wrong.", substring = true).assertExists()
         compose.onNodeWithContentDescription("Recite it again").assertIsDisplayed()
+    }
+
+    /**
+     * 2:8 as recited to the phone on its own page, with something to go over in four of its
+     * words: the ghunnah of «ٱلنَّاسِ» cut short, the nun of «مَن» not merged into the ي after
+     * it, ق said as ك in «يَقُولُ», and the madd of the last word, stopped on, held too short.
+     */
+    private val recitedOnThePage = List(11) { w ->
+        WordRecited(
+            w, false,
+            when (w) {
+                1 -> listOf(Correction(Fault.GHUNNAH_SHORT, clear = false, wanted = "ن"))
+                2 -> listOf(Correction(Fault.IDGHAM_MISSED, clear = false, wanted = "ي"))
+                3 -> listOf(Correction(Fault.LETTER, clear = true, wanted = "ق", heard = "ك"))
+                10 -> listOf(Correction(Fault.MADD_SHORT, clear = false, madd = Madd.ARID, wantedCounts = 4, heardCounts = 1))
+                else -> emptyList()
+            },
+            emptyList(),
+        )
+    }
+
+    @Composable
+    private fun PageRecited(
+        recital: PageRecital?, playing: Boolean = false, tajweed: Boolean = true, onPlayPause: () -> Unit = {},
+    ) = ReaderContent(
+        reading = Reading(2, ruled), showMeanings = false, playing = playing, position = { 0 }, duration = 0,
+        onBack = {}, onMeanings = {}, onPlayPause = onPlayPause, onSeek = {}, tajweed = tajweed, recital = recital,
+    )
+
+    private fun recital(verse: Int = 0, state: Reciting = Reciting.Idle, reached: Int = -1, heard: Map<Int, List<WordRecited>> = emptyMap(), onMic: (Int) -> Unit = {}, onForget: (Int) -> Unit = {}) =
+        PageRecital(verse, state, reached, heard, onMic, onForget)
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun everyVerseOfASurahCanBeRecitedToThePhoneOnItsPage() {
+        var asked = 0
+        var paused = false
+        show("en-day-page-mic") { PageRecited(recital(onMic = { asked = it }), playing = true, onPlayPause = { paused = true }) }
+        // A microphone beside each verse's number.
+        val mics = compose.onAllNodesWithContentDescription("Recite this verse yourself")
+        assertTrue(mics.fetchSemanticsNodes().size >= 3)
+        mics[1].performClick()
+        assertEquals(2, asked)
+        // It is the reader's voice that is listened to: the recording stops.
+        assertTrue(paused)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun whereRecitingIsNotOfferedThePageHasNoMicrophones() {
+        compose.setContent { RecitationTheme { PageRecited(null) } }
+        compose.onAllNodesWithContentDescription("Recite this verse yourself").assertCountEquals(0)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theWordBeingRecitedToThePhoneIsLitOnThePage() {
+        var asked = 0
+        // The reader is on the fourth word of 2:8.
+        show("en-day-page-reciting") { PageRecited(recital(verse = 2, state = Reciting.Listening, reached = 3, onMic = { asked = it })) }
+        // That verse's microphone is the button that ends the recitation; the others stay as they were.
+        compose.onNodeWithTag("verse-mic-open").assertIsDisplayed().performClick()
+        assertEquals(2, asked)
+        compose.onNodeWithContentDescription("Done reciting").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun whatToGoOverIsMarkedOnThePageInTheColoursOfTheRules() {
+        var rules = false
+        var forgot = 0
+        compose.setContent {
+            CompositionLocalProvider(LocalSurahNames provides surahNames, LocalTajweedRules provides { rules = true }) {
+                RecitationTheme {
+                    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                        PageRecited(recital(verse = 2, state = Reciting.Heard(recitedOnThePage), heard = mapOf(2 to recitedOnThePage), onForget = { forgot = it }))
+                    }
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/en-day-page-recited.png")
+        // Beside the verse's number: how many of its words were sound.
+        compose.onNodeWithContentDescription("7 of 11 words sound").assertIsDisplayed()
+        // Four words are marked, and the first of them is open under the verse: a point of
+        // tajweed, headed by its family of rules as the legend of the colours names it.
+        assertEquals(4, compose.onAllNodesWithTag("marked-word").fetchSemanticsNodes().size + compose.onAllNodesWithTag("marked-word-picked").fetchSemanticsNodes().size)
+        compose.onNodeWithText("Ghunnah cut short").assertIsDisplayed()
+        compose.onNodeWithText("Ghunnah").assertIsDisplayed()
+        // The family's name leads to the page that sets the rules out.
+        compose.onNodeWithTag("rule-family").performClick()
+        assertTrue(rules)
+        // Another marked word shows its own: a mistake in the wording, with no rule to name.
+        compose.onNodeWithText(ruled[1].words[3].madinah, useUnmergedTree = true).performClick()
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/en-day-page-recited-letter.png")
+        compose.onNodeWithText("ك said in place of ق").assertIsDisplayed()
+        compose.onNodeWithTag("rule-family").assertDoesNotExist()
+        // A tap on the verse's result takes the corrections off the page.
+        compose.onNodeWithTag("recited").performClick()
+        assertEquals(2, forgot)
+    }
+
+    @Test
+    @Config(qualifiers = "ar-w411dp-h891dp-night-420dpi")
+    fun whatToGoOverIsMarkedOnThePageByNightInArabic() {
+        show("ar-night-page-recited") { PageRecited(recital(verse = 2, state = Reciting.Heard(recitedOnThePage), heard = mapOf(2 to recitedOnThePage))) }
+        compose.onNodeWithText("الغُنَّة").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theMarksKeepTheRulesColoursWithTheColoursOfThePageOff() {
+        show("en-day-page-recited-plain") { PageRecited(recital(verse = 2, state = Reciting.Heard(recitedOnThePage), heard = mapOf(2 to recitedOnThePage)), tajweed = false) }
+        compose.onNodeWithText("Ghunnah cut short").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aMicrophoneTappedBeforeTheModelIsHereShowsItBeingFetched() {
+        show("en-day-page-fetching") { PageRecited(recital(verse = 1, state = Reciting.Fetching(R.string.recite_getting_model, 0.4f))) }
+        compose.onNodeWithContentDescription("Fetching the tajweed model… 40%").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aVerseThatCouldNotBeHeardSaysSoUnderIt() {
+        show("en-day-page-not-heard") { PageRecited(recital(verse = 1, state = Reciting.Failed("Nothing was heard. Recite a little louder, closer to the phone."))) }
+        compose.onNodeWithText("Nothing was heard.", substring = true).assertIsDisplayed()
     }
 
     @Test
@@ -1305,10 +1467,11 @@ class ScreensTest {
     @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
     fun theMenuButtonOpensTheMenu() {
         var appearance: Appearance? = null
+        var script: Script? = null
         compose.setContent {
             RecitationTheme {
                 HomeContent(0, {}, emptyList(), null, StatusActions(), recited = setOf(1), onSurah = {}, onOpen = {}, onAdd = {}, menu = {
-                    MenuContent(Appearance.AUTO, { appearance = it }) { Text("Version 1.41") }
+                    MenuContent(Appearance.AUTO, { appearance = it }, Script.MADINAH, { script = it }, withIndoPak = true) { Text("Version 1.41") }
                 })
             }
         }
@@ -1320,9 +1483,13 @@ class ScreensTest {
         compose.onNodeWithText("Dark").performClick()
         assertTrue(appearance == Appearance.DARK)
         compose.onNodeWithText("Version 1.41").assertIsDisplayed()
-        // How the verses read is in a surah's own menu, not here as well.
+        // The script every surah is written in is chosen here, once for the whole app.
+        compose.onNodeWithText("Script").assertIsDisplayed()
+        compose.onNodeWithText("Everyday spelling").performClick()
+        assertTrue(script == Script.EVERYDAY)
+        // What is turned to while reading is in a surah's own menu, not here as well.
         compose.onNodeWithText("Word meanings").assertDoesNotExist()
-        compose.onNodeWithText("Everyday spelling").assertDoesNotExist()
+        compose.onNodeWithText("Text size").assertDoesNotExist()
         // The panel stands beside the page, which has gone aside by the panel's width: nothing of it lies under the panel.
         val panel = compose.onNodeWithTag("menu").fetchSemanticsNode().boundsInRoot
         val button = compose.onNodeWithContentDescription("Menu").fetchSemanticsNode().boundsInRoot
@@ -1463,23 +1630,29 @@ class ScreensTest {
 
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
-    fun aSurahsMenuHoldsTheMeaningsTheSizeAndTheScript() {
+    fun aSurahsMenuHoldsTheMeaningsTheSizeAndLightOrDark() {
         var meanings: Boolean? = null
         var scale: Float? = null
-        var script: Script? = null
+        var appearance: Appearance? = null
         show("en-night-reader-choices") {
             Column(Modifier.padding(24.dp).width(280.dp)) {
-                ReadingChoices(true, { meanings = it }, 1f, { scale = it }, Script.MADINAH, { script = it }, withIndoPak = true)
+                ReadingChoices(true, { meanings = it }, 1f, { scale = it }, Appearance.AUTO, { appearance = it })
             }
         }
-        // Light or dark belongs to the whole app: it is in the first screen's menu, not here.
-        compose.onNodeWithText("Auto").assertDoesNotExist()
         compose.onNodeWithText("Word meanings").performClick()
         assertTrue(meanings == false)
         compose.onNodeWithContentDescription("Larger").performClick()
         assertTrue(scale == 1.1f)
-        compose.onNodeWithText("IndoPak").performClick()
-        assertTrue(script == Script.INDOPAK)
+        // Light or dark is right under the size of the text, above the colours of tajweed.
+        val size = compose.onNodeWithText("Text size").fetchSemanticsNode().boundsInRoot
+        val look = compose.onNodeWithText("Appearance").fetchSemanticsNode().boundsInRoot
+        val colours = compose.onNodeWithText("Tajweed colours").fetchSemanticsNode().boundsInRoot
+        assertTrue("size $size, appearance $look, colours $colours", size.bottom <= look.top && look.bottom < colours.top)
+        compose.onNodeWithText("Dark").performClick()
+        assertTrue(appearance == Appearance.DARK)
+        // The script is the whole app's: it is in the first screen's menu, not here.
+        compose.onNodeWithText("Everyday spelling").assertDoesNotExist()
+        compose.onNodeWithText("Script").assertDoesNotExist()
     }
 
     @Test
@@ -1689,7 +1862,7 @@ class ScreensTest {
         show("en-day-tajweed-legend") {
             CompositionLocalProvider(LocalTajweedRules provides { rules = true }) {
                 Column(Modifier.padding(24.dp).width(300.dp)) {
-                    ReadingChoices(true, {}, 1f, {}, Script.MADINAH, {}, withIndoPak = false, tajweed = true) { shown = it }
+                    ReadingChoices(true, {}, 1f, {}, tajweed = true) { shown = it }
                 }
             }
         }
@@ -1750,6 +1923,27 @@ class ScreensTest {
         assertTrue("panel at $panel on $screen", panel.right >= screen.right - 1f && panel.left > screen.width * 0.1f && panel.height > screen.height * 0.8f)
         compose.onNodeWithText("Word meanings").performClick()
         assertTrue(meanings == true)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theSurahsMenuSwitchesToDarkAndBack() {
+        var chosen: Appearance? = null
+        compose.setContent {
+            RecitationTheme {
+                ReaderContent(
+                    reading = Reading(2, ruled), showMeanings = false, playing = false, position = { 0 }, duration = 0,
+                    onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {}, appearance = Appearance.LIGHT, onAppearance = { chosen = it },
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("Menu").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Appearance").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Dark").performScrollTo().performClick()
+        assertEquals(Appearance.DARK, chosen)
+        compose.onNodeWithText("Auto").performClick()
+        assertEquals(Appearance.AUTO, chosen)
     }
 
     @Test

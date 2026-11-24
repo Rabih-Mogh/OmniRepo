@@ -27,6 +27,28 @@ object Edits {
         return prev[b.length]
     }
 
+    /**
+     * How far into [whole] a reciter has got who has so far said [said]: how many of
+     * [whole]'s symbols the start of it that fits [said] best takes in. Ties go to the
+     * longer start: a sound just begun counts as reached.
+     */
+    fun reach(whole: String, said: String): Int {
+        if (said.isEmpty()) return 0
+        // The fewest changes between every start of [whole] and all of [said]: one column of the table at a time.
+        var prev = IntArray(whole.length + 1) { it }
+        var cur = IntArray(whole.length + 1)
+        for (j in 1..said.length) {
+            cur[0] = j
+            for (i in 1..whole.length) {
+                cur[i] = minOf(prev[i - 1] + if (whole[i - 1] == said[j - 1]) 0 else 1, prev[i] + 1, cur[i - 1] + 1)
+            }
+            val t = prev; prev = cur; cur = t
+        }
+        var best = 0
+        for (i in 1..whole.length) if (prev[i] <= prev[best]) best = i
+        return best
+    }
+
     /** The changes from [a] to [b], in order, covering both runs whole; neighbouring changes of one kind are one change. */
     fun between(a: String, b: String): List<Change> {
         val n = a.length

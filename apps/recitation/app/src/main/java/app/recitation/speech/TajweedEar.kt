@@ -23,8 +23,8 @@ import kotlinx.coroutines.withContext
 /**
  * The model that listens to a learner reciting and writes down how each sound was said:
  * HisnLabs Tajweed v2 (Apache-2.0), a small one made for this, 23 MB. It is fetched once,
- * from the app's own repository, the first time a recitation is to be checked, and kept
- * on the phone. It runs on the same engine as the model that follows a reciter's recording.
+ * from the app's own repository, by the background work that fetches everything else
+ * (see PrepareWorker), and kept on the phone. It runs on the same engine as the model that follows a reciter's recording.
  */
 class TajweedStore(context: Context, private val source: String = SOURCE, private val bytes: Long = BYTES, private val checksum: String = SHA256) {
 
@@ -33,23 +33,32 @@ class TajweedStore(context: Context, private val source: String = SOURCE, privat
 
     val isReady: Boolean get() = file.length() == bytes
 
-    /** Puts the model on the phone if it isn't there yet, reporting progress 0..1. */
+    /**
+     * Puts the model on the phone if it isn't there yet, reporting progress 0..1. A
+     * download that was cut short carries on from where it stopped.
+     */
     suspend fun obtain(onProgress: (Float) -> Unit) = withContext(Dispatchers.IO) {
         if (isReady) return@withContext
         dir.mkdirs()
         val part = File(dir, "$NAME.part")
+        if (part.length() >= bytes) part.delete()
+        val already = part.length()
         val conn = URL(source).openConnection().apply {
             connectTimeout = 20_000
             readTimeout = 30_000
+            if (already > 0) setRequestProperty("Range", "bytes=$already-")
         }
         try {
-            if (conn is HttpURLConnection && conn.responseCode != HttpURLConnection.HTTP_OK) {
-                throw IOException("Couldn't download the tajweed model (HTTP ${conn.responseCode})")
+            val code = (conn as? HttpURLConnection)?.responseCode ?: HttpURLConnection.HTTP_OK
+            if (code != HttpURLConnection.HTTP_OK && code != HttpURLConnection.HTTP_PARTIAL) {
+                throw IOException("Couldn't download the tajweed model (HTTP $code)")
             }
+            // Answered with the whole of it after all: begun afresh.
+            val carriedOn = already > 0 && code == HttpURLConnection.HTTP_PARTIAL
             conn.getInputStream().use { input ->
-                FileOutputStream(part, false).use { out ->
+                FileOutputStream(part, carriedOn).use { out ->
                     val buf = ByteArray(1 shl 16)
-                    var have = 0L
+                    var have = if (carriedOn) already else 0L
                     while (true) {
                         coroutineContext.ensureActive()
                         val n = input.read(buf)
@@ -63,6 +72,7 @@ class TajweedStore(context: Context, private val source: String = SOURCE, privat
         } finally {
             (conn as? HttpURLConnection)?.disconnect()
         }
+        if (part.length() < bytes) throw IOException("The download of the tajweed model was cut short.")
         if (sha256(part) != checksum) {
             part.delete()
             throw IOException("The tajweed model was damaged on the way. Try again.")

@@ -47,9 +47,10 @@ at the far end:
   by the panel's width and the panel comes in behind it, so nothing lies over anything.
   A cross at its head closes it, as do a tap on what is left of the page and Back. It
   holds what belongs to the whole app: a switch between light and dark (or **Auto**,
-  which follows the phone, as the app does until one is chosen), and the app's version
-  with **Check for updates**. How the verses read is in a surah's own menu, and only
-  there. Under the version, **Copy a report** copies what the app
+  which follows the phone, as the app does until one is chosen), the **script** every
+  surah's verses are written in (see [Scripts](#scripts)), and the app's version
+  with **Check for updates**. What is turned to while reading (meanings, text size, the
+  tajweed colours) is in a surah's own menu. Under the version, **Copy a report** copies what the app
   knows about how it is running on this phone: the phone's model and Android version,
   the room left on it, the speech model and engine, how many recordings are ready, queued
   or failed and why, the state of the background work, and the last lines of a small
@@ -199,9 +200,11 @@ phone and nowhere else.
      button is on (the right in English, the left in Arabic), pushing the page aside as
      the first screen's does, with a cross to close it. It holds what belongs to reading
      a surah: which verses to recite, whether the meaning shows under each word, the
-     size of the verses, meanings and translation (70% to 200%), the tajweed colours,
-     and the script the verses are written in (see [Scripts](#scripts)). All of these
-     are remembered. Light or dark is the whole app's, and is in the first screen's menu.
+     size of the verses, meanings and translation (70% to 200%), light or dark right
+     under that (Auto, Light or Dark; it is the whole app's, and in the first screen's
+     menu too), and the tajweed colours with their legend. All of these are remembered.
+     The script the verses are written in is chosen once for every surah, in the first
+     screen's menu (see [Scripts](#scripts)).
    - Tap a verse to see its translation. It closes by itself after long enough to read
      it (6 to 25 seconds, by its length).
    - When a recording ends, the playlist's next prepared one follows.
@@ -298,14 +301,35 @@ the heavy letters that are always heavy (خ ص ض غ ط ق ظ), and the few one-
 
 ### Reciting to the phone
 
-Choose a verse (from the Practise tab, or **Recite this verse yourself** in a verse's own
-menu in a surah), tap the microphone, recite it and tap again. The phone listens, and
-every word that has something to go over is marked: red for a clear mistake (لحن جلي:
-another letter, another vowel, a sound left out or added, a word passed over), amber for a
-fine point of performance (لحن خفي: a madd held too short or too long or unevenly, a
-ghunnah cut short, a hidden nun said clearly, an iqlab or idgham missed, no qalqalah).
-Tapping a marked word says what was heard and how to put it right: for a letter, where in
-the mouth it is made, in the words of the classical books of tajweed.
+**On the page of a surah**, every verse has a microphone beside its number. Tap it,
+recite the verse, and tap it again (it is then a filled disc with the sign for stopping).
+A recording that is playing is paused first. While the microphone is open the word being
+recited is lit on its block, as when a recording plays: about once a second the phone
+listens to what has been recited so far, only to find the word reached. When the reader
+is done the phone listens to the whole (the ear in its turning ring, where the microphone
+was), and what there is to go over is marked right there on the page:
+
+- **A word with something to go over has its block filled**: red for a mistake in the
+  wording itself (لحن جلي: another letter, another vowel, a sound left out or added, a
+  word passed over), and for a point of tajweed **the colour its rule has on the page and
+  in the legend of the colours**: green for a ghunnah cut short, a hidden nun said clearly
+  or an iqlab or idgham missed, the madd's own colour for a madd held too short, too long
+  or unevenly, light blue for a qalqalah with no echo. The letters the rule is on are
+  underlined in that colour, so the mark, the coloured letters and the legend read as one.
+  This holds with the colours of the page switched off, too.
+- **Under the verse, what to go over in the word picked** (the first marked one, until
+  another is tapped): what was heard and how to put it right; for a letter, where in the
+  mouth it is made, in the words of the classical books of tajweed. A point of tajweed is
+  headed by its family of rules with the dot of its colour; a tap on that opens the page
+  that sets the rules out.
+- **Beside the verse's number, how it went**: how many of its words were sound. A tap on
+  that takes the corrections off the page. They stay otherwise until the verse is recited
+  again or the surah is left.
+
+The same can be done a verse at a time from the **Practise** tab, on a page of its own
+with the verse in large letters: there the words still to come are faint, and at a
+surah's first verse the button for the verse before is plainly faint, and at its last
+the button for the verse after.
 
 How it listens:
 
@@ -316,8 +340,11 @@ How it listens:
   model (23 MB) that writes a recitation in the Quran phonetic script, a long vowel once
   for every count it is held, with signs of their own for a hidden nun, a nun turned to a
   mim and the echo of a qalqalah. It is fetched once from [models/tajweed-v2](models/tajweed-v2)
-  and runs on the phone, on the engine the app already has. Nothing recited leaves the
-  phone.
+  by the same background work that fetches recordings, as soon as a surah or the Practise
+  tab is opened (a microphone tapped before it is here shows it on its way, in a filling ring): it carries on with the app closed, waits for a connection,
+  takes a download up where it was cut off, and shows in the top bar as a microphone in
+  a filling ring. It runs on the phone, on the engine the app already has. Nothing
+  recited leaves the phone.
 - **What the verse should sound like** is worked out beforehand for every word of the
   Quran with the phonetizer the model was trained with (quran-transcript), in the four
   forms a word can take: inside a breath, first in one, last in one (as at a stop), or a
@@ -326,7 +353,12 @@ How it listens:
   exactly what the phonetizer gives for it (4,432 random stretches checked).
 - **Comparing.** Where the reciter stopped and began again is found first, so a word
   stopped on is judged in the form it takes at a stop, and words gone back over are not
-  taken for mistakes. Then the two scripts are lined up sound by sound and each difference
+  taken for mistakes. A stop that changes three sounds or more shows in what was heard;
+  many change fewer (a tanween read as an alif, the echo of a qalqalah, a last vowel left
+  off), and those are taken for stops only where the reciter fell silent
+  (`core/…/Silences.kt`: the sound stays under three tenths of its loud level for 0.3 s,
+  which holds in a room that echoes too). Without a silence they are not: a nun left
+  unmerged before the next word is a mistake. Then the two scripts are lined up sound by sound and each difference
   is named. Lengths are allowed one count either way; a long madd is also measured by the
   clock against the reciter's own natural madd; and a remark about a sound the model was
   not sure of is left out. This is the method of the rule engine published with the model
@@ -337,8 +369,17 @@ How it listens:
 What to expect of it, and what not:
 
 - It can be wrong, and says so on its screen. Its makers measured a remark on 4 to 9 in
-  every 100 words that were recited correctly; on the expert recordings tried here it was
-  7 words in 321. It is an aid for going over a recitation, not a teacher.
+  every 100 words that were recited correctly. Measured here on 322 verses by five expert
+  reciters (2,175 words, all correct): 41 words remarked on before stops were told by
+  the silences, 29 with them (1.3%); most of the rest are the recording cut off at a
+  verse's end, a few the model mishearing. On 159 clips of learners marked by human
+  experts (obadx/qdat_bench, the end of 5:109: 1,272 words, 203 of them wrong) it marks
+  65 in 100 of the wrong words, and 10 in 100 of the words the experts marked right. It
+  does not hear a nun held but not hidden. It is an aid for going over a recitation, not
+  a teacher.
+- A model forty times the size (Quran Muaalem, 876 MB) was measured beside it: it finds
+  no more of the mistakes (63 in 100), and marks fewer right words wrong on the learners
+  (4 in 100) but as many on the experts. It was left out.
 - It hears a verse at a time, up to half a minute. A verse longer than that can't be
   recited whole yet.
 - It is for the reading of Hafs from ʿAsim. It does not judge the heavy and light of ر
@@ -394,7 +435,7 @@ its translation under it, and where it is from.
 
 ### Scripts
 
-The words are fetched once in four spellings, and the menu chooses which is shown. The recitation is always lined up with the Uthmani spelling, whichever is shown.
+The words are fetched once in four spellings, and the first screen's menu chooses which is shown. The recitation is always lined up with the Uthmani spelling, whichever is shown.
 
 | Script | What it is | Font |
 |---|---|---|

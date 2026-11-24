@@ -30,6 +30,16 @@ class EditsTest {
     }
 
     @Test
+    fun `finds how far into a verse a reciter has got`() {
+        val verse = "ءَلحَمدُلِللَااهِرَببِلعَاالَمِۦۦۦۦن"
+        assertEquals(0, Edits.reach(verse, ""))
+        assertEquals(8, Edits.reach(verse, "ءَلحَمدُ"))
+        // A sound misheard on the way, and a madd held a count short, don't throw it off.
+        assertEquals(17, Edits.reach(verse, "ءَلهَمدُلِللَاهِ"))
+        assertEquals(verse.length, Edits.reach(verse, verse))
+    }
+
+    @Test
     fun `the changes cover both runs whole, in order`() {
         for ((a, b) in listOf("ءَلحَمدُ" to "ءَلهَمدُو", "" to "اا", "ننن" to "", "abcdef" to "azcdxxf")) {
             val changes = Edits.between(a, b)
