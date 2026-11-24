@@ -63,6 +63,18 @@ object TajweedReference {
         return out
     }
 
+    /** The verses of each of [surahs], by its number, read in one go through the file. */
+    fun surahs(gz: InputStream, surahs: Set<Int>): Map<Int, List<List<WordForms>>> {
+        val out = LinkedHashMap<Int, ArrayList<List<WordForms>>>()
+        GZIPInputStream(gz).bufferedReader().useLines { lines ->
+            for (line in lines) {
+                val surah = line.substringBefore(':').toIntOrNull() ?: continue
+                if (surah in surahs) out.getOrPut(surah) { ArrayList() } += verse(line)
+            }
+        }
+        return out
+    }
+
     /** One line of the file: "surah:verse", then each word after a tab. */
     fun verse(line: String): List<WordForms> = line.split('\t').drop(1).map(::word)
 

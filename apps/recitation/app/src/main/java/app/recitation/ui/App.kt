@@ -43,6 +43,7 @@ import app.recitation.Reading
 import app.recitation.Screen
 import app.recitation.core.SURAHS
 import app.recitation.core.Timings
+import app.recitation.core.Topic
 import app.recitation.data.Place
 import android.content.Context
 import android.os.Handler
@@ -126,6 +127,7 @@ private fun Screens(model: AppModel, choices: Choices) {
     val pins by model.marks.pins.collectAsStateWithLifecycle()
     val collections by model.marks.collections.collectAsStateWithLifecycle()
     val listening by model.stats.listening.collectAsStateWithLifecycle()
+    val mistakes by model.mistakes.tally.collectAsStateWithLifecycle()
 
     // One line of truth about the background work, so nothing ever just sits there unexplained.
     val tracks = playlists.flatMap { it.tracks }
@@ -240,6 +242,8 @@ private fun Screens(model: AppModel, choices: Choices) {
                 PracticeTab(
                     Exercise.entries.associateWith { Settings.voiceBest(context, it.name) },
                     onRecite = { choosing = true }, onExercise = { model.openExercise(it.ordinal) }, modifier = modifier,
+                    tally = mistakes, canEcho = tracks.any { it.ready },
+                    onDrill = model::openDrill, onWeak = model::openWeak, onMadd = model::openMadd, onSpot = model::openSpot, onEcho = model::openEcho,
                 )
                 if (choosing) SurahPicker(onPick = { choosing = false; model.openRecite(VerseRef(it, 1)) }, onDismiss = { choosing = false })
             },
@@ -313,6 +317,31 @@ private fun Screens(model: AppModel, choices: Choices) {
             onWant = { pressed -> model.wantTajweed(); if (pressed && model.paused) model.resume() }, onBack = { model.back() },
         )
         is Screen.Voice -> ExerciseScreen(Exercise.entries[screen.exercise], onBack = { model.back() })
+        is Screen.Drills -> DrillScreen(
+            title = when (screen.topic) {
+                null -> stringResource(R.string.practice_weak_title)
+                Topic.LETTERS -> stringResource(R.string.practice_pairs_title)
+                Topic.STOP -> stringResource(R.string.practice_stops_title)
+                else -> screen.topic.named()
+            },
+            drills = screen.drills, verseOf = { model.verse(it) },
+            fetching = progress?.takeIf { it.trackId == null && (it.step == Step.TAJWEED || it.step == Step.ENGINE) }?.fraction,
+            onWant = { pressed -> model.wantTajweed(); if (pressed && model.paused) model.resume() }, onBack = { model.back() },
+        )
+        Screen.Madd -> MaddScreen(onBack = { model.back() })
+        is Screen.Spots -> {
+            // The words are played apart from the recitation, which is paused for them.
+            LaunchedEffect(Unit) { playback.controller?.pause() }
+            SpotScreen(screen.spots, onBack = { model.back() })
+        }
+        is Screen.Echoes -> {
+            LaunchedEffect(Unit) { playback.controller?.pause() }
+            EchoScreen(
+                screen.echoes, verseOf = { model.verse(it) },
+                fetching = progress?.takeIf { it.trackId == null && (it.step == Step.TAJWEED || it.step == Step.ENGINE) }?.fraction,
+                onWant = { pressed -> model.wantTajweed(); if (pressed && model.paused) model.resume() }, onBack = { model.back() },
+            )
+        }
     }
     }
 

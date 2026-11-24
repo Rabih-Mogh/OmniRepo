@@ -453,6 +453,48 @@ What to expect of it, and what not:
   ten mispronunciations, and the best-known recitation app checks words and vowels but
   not tajweed.
 
+### Tajweed exercises
+
+The Practise tab has seven exercises on top of reciting a verse. Four of them are verses
+to recite one after another, each judged for one thing alone: the verse is heard and
+gone over as any verse is, and marked as ever, but the verdict at its head is about the
+exercise's topic and nothing else, and the exercise ends with how many of its verses
+were sound for it. The verses come from Al-Fatihah and the last part of the Quran
+(surahs 78 to 114), three to ten words long, chosen afresh each time
+(`core/Drills.kt`): they are the ones most widely known by heart, and a breath or two each.
+
+- **Tajweed drills.** One rule: the ghunnah of a doubled nun or mim, ikhfa, iqlab,
+  idgham, qalqalah, or a madd (natural, munfasil, muttasil, lazim, or the one that comes
+  of stopping). A verse is offered for a rule only if the rule is listened for in it.
+- **Your weak spots.** Whatever is corrected when the reader recites, anywhere in the
+  app, is kept by topic (`data/Mistakes.kt`): how often each came up, and the verses it
+  came up in. This exercise is those verses again, the latest first, each judged for
+  what was corrected in it. A verse recited again with that sound is taken off the list.
+- **Letter pairs.** Verses with one of two letters made close to each other (ص س, ض د,
+  ط ت, ظ ذ, ق ك, ح ه, ع ء), judged for one of the pair said for the other.
+- **Stopping on a word.** A longer verse with a word marked to stop on, one that sounds
+  different at a stop than recited on. It is sound if a stop is heard there and the word
+  is said as it sounds at a stop.
+
+The other three:
+
+- **Madd counting.** The reader holds a long vowel and its counts fill, bead by bead,
+  as they hold it; when they let go it says how many counts that was and whether it was
+  on the mark, short or past the counts aimed for (2, 4, 5 or 6). A count is as long as
+  the reader sets it, as their own pace has it. The holds so far stand as bars against
+  the line aimed for, so their evenness shows. Voice is told from silence by loudness
+  (`core/Holding.kt`); the speech model isn't used.
+- **Spot the rule.** A word is shown without its colours, and played where a recording of
+  its surah has been listened to; the reader says which family of rules is at work in
+  it, out of four, and is shown the right one and what it is. No microphone.
+- **Echo the reciter.** A short verse from one of the reader's recordings is played, the
+  reader recites it and is corrected as ever; and for every madd longer than the natural
+  one, the counts the reciter held it for stand beside the reader's own. The reciter's
+  counts are had by having the same model listen to that stretch of the recording.
+
+What these can't judge is what the checker can't: whether ر and ل are heavy or light,
+and a nun held but not hidden.
+
 ### Training the voice
 
 "Adorn the Quran with your voices" (Abu Dawud, al-Nasaʾi). The scholars' condition is

@@ -92,6 +92,11 @@ sealed interface Reciting {
  * recited is lit, as in a surah: [reached] is that word, counted from 0. [needsModel] is
  * true until the tajweed model has been fetched, which [onFetch] asks for again when it
  * isn't being fetched already.
+ *
+ * An exercise uses it too, a verse at a time: with its own [title] and [subtitle] in the
+ * top bar, its own word on what to do ([how]), its own judgement over the general one
+ * ([verdict]), a mark on the word to stop on ([stopAfter], counted from 0), and its own
+ * say over whether there is a verse before and after ([canPrevious], [canNext]).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -107,6 +112,13 @@ fun ReciteContent(
     onNext: () -> Unit,
     onBack: () -> Unit,
     reached: Int = -1,
+    title: String? = null,
+    subtitle: String? = null,
+    how: String? = null,
+    verdict: (@Composable () -> Unit)? = null,
+    stopAfter: Int = -1,
+    canPrevious: Boolean = verseNumber > 1,
+    canNext: Boolean = verseNumber < surah.verses,
 ) {
     val colors = MaterialTheme.colorScheme
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
@@ -120,8 +132,8 @@ fun ReciteContent(
             Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
                 Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
-                    Text(stringResource(R.string.recite_title), style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                    Text(stringResource(R.string.recite_verse, surahName(surah), verseNumber), style = MaterialTheme.typography.bodySmall, color = LocalBanner.current.quiet, maxLines = 1)
+                    Text(title ?: stringResource(R.string.recite_title), style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                    Text(subtitle ?: stringResource(R.string.recite_verse, surahName(surah), verseNumber), style = MaterialTheme.typography.bodySmall, color = LocalBanner.current.quiet, maxLines = 1)
                 }
                 DoingChip()
             }
@@ -153,11 +165,15 @@ fun ReciteContent(
                             } else Modifier).padding(horizontal = 6.dp),
                             fontFamily = QuranFont, fontSize = 30.sp, lineHeight = 62.sp, color = ink,
                         )
+                        // Where an exercise asks for a stop: the sign for pausing, after the word to stop on.
+                        if (i == stopAfter) {
+                            Icon(AppIcons.Pause, stringResource(R.string.drill_stop_here), Modifier.align(Alignment.CenterVertically).size(22.dp).testTag("stop-here"), tint = colors.primary)
+                        }
                     }
                 }
             }
             when (state) {
-                Reciting.Idle -> Text(stringResource(R.string.recite_how), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                Reciting.Idle -> Text(how ?: stringResource(R.string.recite_how), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 Reciting.Listening -> {}
                 // What is being done is a picture: the ear in its turning ring, the fetch with its ring filling.
                 Reciting.Checking -> Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -168,6 +184,7 @@ fun ReciteContent(
                 }
                 is Reciting.Failed -> Text(state.message, style = MaterialTheme.typography.bodyMedium, color = colors.error)
                 is Reciting.Heard -> {
+                    verdict?.invoke()
                     val sound = byWord.values.count { it.sound }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Icon(if (sound == byWord.size) AppIcons.Check else AppIcons.Ear, null, Modifier.size(20.dp), tint = colors.primary)
@@ -198,8 +215,8 @@ fun ReciteContent(
                 // At the surah's first verse there is none before, and at its last none after: that button is plainly faint.
                 val unavailable = band.content.faded(0.28f, band.background)
                 // The verse before on the side reading starts from, the verse after on the other.
-                IconButton(onClick = onPrevious, enabled = verseNumber > 1) {
-                    Icon(AppIcons.SkipPrevious, stringResource(R.string.previous_verse), Modifier.graphicsLayer { scaleX = if (rtl) -1f else 1f }, tint = if (verseNumber > 1) band.content else unavailable)
+                IconButton(onClick = onPrevious, enabled = canPrevious) {
+                    Icon(AppIcons.SkipPrevious, stringResource(R.string.previous_verse), Modifier.graphicsLayer { scaleX = if (rtl) -1f else 1f }, tint = if (canPrevious) band.content else unavailable)
                 }
                 Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     val busy = state is Reciting.Checking || state is Reciting.Fetching
@@ -208,8 +225,8 @@ fun ReciteContent(
                         MicButton(state == Reciting.Listening, onClick = { if (!busy && !needsModel) onMic() })
                     }
                 }
-                IconButton(onClick = onNext, enabled = verseNumber < surah.verses) {
-                    Icon(AppIcons.SkipNext, stringResource(R.string.next_verse), Modifier.graphicsLayer { scaleX = if (rtl) -1f else 1f }, tint = if (verseNumber < surah.verses) band.content else unavailable)
+                IconButton(onClick = onNext, enabled = canNext) {
+                    Icon(AppIcons.SkipNext, stringResource(R.string.next_verse), Modifier.graphicsLayer { scaleX = if (rtl) -1f else 1f }, tint = if (canNext) band.content else unavailable)
                 }
             }
         }

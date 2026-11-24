@@ -27,6 +27,7 @@ import app.recitation.core.Mel
 import app.recitation.core.Silences
 import app.recitation.core.TajweedReference
 import app.recitation.core.WordRecited
+import app.recitation.data.Mistakes
 import app.recitation.speech.EngineStore
 import app.recitation.speech.Mic
 import app.recitation.speech.TajweedEar
@@ -208,7 +209,11 @@ class Reciter(private val context: Context, private val scope: CoroutineScope, p
             } catch (e: Exception) {
                 Reciting.Failed(says.failed.format(e.message ?: e.javaClass.simpleName))
             }
-            (state as? Reciting.Heard)?.let { heard[verse] = it.words }
+            (state as? Reciting.Heard)?.let {
+                heard[verse] = it.words
+                // Kept for the exercises: what was corrected, and what has been put right.
+                Mistakes.get(context).note(surah, verse, it.words)
+            }
         }
     }
 
@@ -256,7 +261,10 @@ class Reciter(private val context: Context, private val scope: CoroutineScope, p
                     val pending = if (!last && sound.size - cut >= LEAST) ear.hear(sound.copyOfRange(cut, sound.size)) else null
                     cut to follower.look(pending, last)
                 }
-                for (verse in finished) heard[verse.verse + 1] = verse.words
+                for (verse in finished) {
+                    heard[verse.verse + 1] = verse.words
+                    Mistakes.get(context).note(surah, verse.verse + 1, verse.words)
+                }
                 // Dropped from the front of what is kept; more has come in at the back meanwhile.
                 var drop = cut
                 while (drop > 0 && blocks.isNotEmpty()) {
@@ -432,7 +440,7 @@ fun rememberPageRecital(surah: Int, fetching: Float?, onWant: (pressed: Boolean)
 }
 
 /** The tajweed model, opened once and kept for as long as the app runs: opening it takes a moment. */
-private object Ears {
+internal object Ears {
     private var ear: TajweedEar? = null
 
     @Synchronized
@@ -455,4 +463,4 @@ private const val LOOK_STEP_MS = 100L
 private const val LEAST = Mel.SAMPLE_RATE / 2
 
 /** The reference file in the app's package: what a correct recitation of every word sounds like. Gzipped, but not named so: Android's build would unpack it. */
-private const val REFERENCE = "tajweed_reference.bin"
+internal const val REFERENCE = "tajweed_reference.bin"

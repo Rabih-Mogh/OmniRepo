@@ -61,6 +61,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import app.recitation.core.Topic
+import app.recitation.data.Tally
 import app.recitation.R
 import app.recitation.core.Pitch
 import app.recitation.core.VoiceTake
@@ -103,11 +105,24 @@ private fun shown(exercise: Exercise, value: Float): String = when (exercise) {
 }
 
 /**
- * The first screen's Practise tab: reciting a verse to the phone to be corrected, and the
- * voice exercises, each with the best result so far ([bests]; 0 before the first go).
+ * The first screen's Practise tab: reciting a verse to the phone to be corrected, the
+ * tajweed exercises (see [TajweedExercises]), and the voice exercises, each with the best
+ * result so far ([bests]; 0 before the first go).
  */
 @Composable
-fun PracticeTab(bests: Map<Exercise, Float>, onRecite: () -> Unit, onExercise: (Exercise) -> Unit, modifier: Modifier = Modifier) {
+fun PracticeTab(
+    bests: Map<Exercise, Float>,
+    onRecite: () -> Unit,
+    onExercise: (Exercise) -> Unit,
+    modifier: Modifier = Modifier,
+    tally: Tally = Tally(),
+    canEcho: Boolean = false,
+    onDrill: (Topic, String) -> Unit = { _, _ -> },
+    onWeak: () -> Unit = {},
+    onMadd: () -> Unit = {},
+    onSpot: () -> Unit = {},
+    onEcho: () -> Unit = {},
+) {
     val colors = MaterialTheme.colorScheme
     Column(modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Card(colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLow)) {
@@ -121,6 +136,7 @@ fun PracticeTab(bests: Map<Exercise, Float>, onRecite: () -> Unit, onExercise: (
                 ThemeButton(stringResource(R.string.practice_recite_go), onRecite, Modifier.fillMaxWidth(), icon = AppIcons.Mic, filled = true)
             }
         }
+        TajweedExercises(tally, canEcho, onDrill, onWeak, onMadd, onSpot, onEcho)
         Card(colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLow)) {
             Column(Modifier.padding(vertical = 16.dp)) {
                 Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

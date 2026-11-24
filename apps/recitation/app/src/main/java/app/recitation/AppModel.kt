@@ -16,6 +16,16 @@ import app.recitation.core.Tajweed
 import app.recitation.core.SurahMatcher
 import app.recitation.core.SurahSearch
 import app.recitation.core.Timings
+import app.recitation.core.Drill
+import app.recitation.core.Drills
+import app.recitation.core.Family
+import app.recitation.core.TajweedReference
+import app.recitation.core.Topic
+import app.recitation.core.WordForms
+import app.recitation.data.Echo
+import app.recitation.data.Mistakes
+import app.recitation.data.Spot
+import kotlin.random.Random
 import app.recitation.data.Hit
 import app.recitation.data.IndoPakFont
 import app.recitation.data.Library
@@ -63,6 +73,22 @@ sealed interface Screen {
 
     /** One of the voice exercises, by its place in their list. */
     data class Voice(val exercise: Int) : Screen
+
+    /**
+     * A tajweed exercise of verses to recite one after another, each judged for one thing:
+     * [topic] with its [letters], or, with no topic, whatever the reader was last corrected
+     * on in each verse.
+     */
+    data class Drills(val topic: Topic?, val letters: String, val drills: List<Drill>) : Screen
+
+    /** Counting a madd as it is held. */
+    data object Madd : Screen
+
+    /** Spotting the rule at work in a word. */
+    data class Spots(val spots: List<Spot>) : Screen
+
+    /** Echoing a reciter, a verse at a time. */
+    data class Echoes(val echoes: List<Echo>) : Screen
 }
 
 /**
@@ -248,6 +274,98 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         screen = Screen.Recite(verse.surah, verse.verse, screen)
     }
 
+    /** What the reader has been corrected on, for the exercises that go over it. */
+    val mistakes = Mistakes.get(app)
+
+    // The verses the exercises choose among, as a correct recitation of each sounds: read once.
+    private var pool: Map<Int, List<List<WordForms>>>? = null
+
+    private suspend fun pool(): Map<Int, List<List<WordForms>>> = pool ?: withContext(Dispatchers.IO) {
+        getApplication<Application>().assets.open("tajweed_reference.bin").use { TajweedReference.surahs(it, EXERCISE_SURAHS) }
+    }.also { pool = it }
+
+    /** Opens a drill on [topic] (for letters, on the pair [letters]): verses that have it, chosen afresh each time. */
+    fun openDrill(topic: Topic, letters: String = "") {
+        viewModelScope.launch {
+            val drills = withContext(Dispatchers.Default) { runCatching { Drills.pick(pool(), topic, GOES, Random(System.nanoTime()), letters) }.getOrDefault(emptyList()) }
+            screen = Screen.Drills(topic, letters, drills)
+        }
+    }
+
+    /** Opens the verses the reader was last corrected in, each to be recited again for what was corrected. */
+    fun openWeak() {
+        screen = Screen.Drills(null, "", mistakes.tally.value.open.take(GOES))
+    }
+
+    fun openMadd() {
+        screen = Screen.Madd
+    }
+
+    /** Opens spotting the rule, with words chosen afresh from the short surahs that are on the phone. */
+    fun openSpot() {
+        viewModelScope.launch { screen = Screen.Spots(withContext(Dispatchers.IO) { runCatching { spots() }.getOrDefault(emptyList()) }) }
+    }
+
+    /** Opens echoing a reciter, with short verses chosen afresh from the recordings that have been listened to. */
+    fun openEcho() {
+        viewModelScope.launch { screen = Screen.Echoes(withContext(Dispatchers.IO) { runCatching { echoes() }.getOrDefault(emptyList()) }) }
+    }
+
+    /**
+     * Words with one family of rules at work in them (not counting letters that are simply
+     * not sounded, which nearly every word has), a family at a time so that every family
+     * comes up; each with three other families to choose among, and with its sound where a
+     * recording of its surah has been listened to.
+     */
+    private suspend fun spots(): List<Spot> {
+        val random = Random(System.nanoTime())
+        val tracks = library.playlists.value.flatMap { it.tracks }
+        val byFamily = HashMap<Family, ArrayList<Spot>>()
+        for (surah in EXERCISE_SURAHS.sorted()) {
+            if (!quran.has(surah)) continue
+            val verses = runCatching { quran.surah(surah) }.getOrNull() ?: continue
+            val words = verses.map { verse -> verse.words.map { it.arabic } }
+            val marks = Tajweed.marks(words.flatten(), Tajweed.stopsAtVerseEnds(words.map { it.size }))
+            val track = tracks.firstOrNull { it.surah == surah && it.ready }
+            val sound = track?.let { library.audio(it.id) }
+            val times = if (track == null || sound == null) null else {
+                runCatching { Timings.decode(library.timings(track.id, surah).readText()) }.getOrNull()?.verses?.flatten()?.takeIf { it.size == marks.size }
+            }
+            var w = 0
+            for ((v, verse) in verses.withIndex()) for (word in verse.words) {
+                val family = marks[w].map { it.rule.family }.toSet().minus(Family.QUIET).singleOrNull()
+                if (family != null) {
+                    val from = times?.get(w)?.startMs ?: 0
+                    byFamily.getOrPut(family) { ArrayList() } += Spot(
+                        surah, v + 1, word.arabic, family,
+                        (Family.entries - family - Family.QUIET).shuffled(random).take(3).plus(family).shuffled(random),
+                        sound.takeIf { times != null }, from, times?.getOrNull(w + 1)?.startMs?.takeIf { it > from } ?: (from + 1_500),
+                    )
+                }
+                w++
+            }
+        }
+        val families = byFamily.keys.shuffled(random)
+        if (families.isEmpty()) return emptyList()
+        return List(GOES + 2) { byFamily.getValue(families[it % families.size]).random(random) }.distinctBy { Triple(it.surah, it.verse, it.word) }
+    }
+
+    /** Short verses of the recordings that have been listened to the end, each with where it is in its recording. */
+    private fun echoes(): List<Echo> {
+        val random = Random(System.nanoTime())
+        val all = ArrayList<Echo>()
+        for (track in library.playlists.value.flatMap { it.tracks }.filter { it.ready }) {
+            val sound = library.audio(track.id) ?: continue
+            val timings = runCatching { Timings.decode(library.timings(track.id, track.surah).readText()) }.getOrNull()?.takeIf { it.complete } ?: continue
+            for ((v, words) in timings.verses.withIndex()) {
+                val from = timings.startOfVerse(v) ?: continue
+                val until = timings.startOfVerse(v + 1) ?: continue
+                if (words.size in 3..10 && until - from in 2_000..25_000) all += Echo(track.surah, v + 1, sound, maxOf(0, from - 300), until)
+            }
+        }
+        return all.shuffled(random).take(ECHOES)
+    }
+
     /** Opens one of the voice exercises. */
     fun openExercise(exercise: Int) {
         screen = Screen.Voice(exercise)
@@ -363,6 +481,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
             is Screen.Collection -> Screen.Home
             is Screen.Surah -> s.from
             is Screen.Recite -> s.from
+            is Screen.Drills, Screen.Madd, is Screen.Spots, is Screen.Echoes -> Screen.Home
             is Screen.Voice -> Screen.Home
         }
         return true
@@ -536,6 +655,13 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         screen = Screen.Home
     }
 }
+
+/** The surahs the exercises take their verses from: Al-Fatihah and the last part of the Quran, whose verses are short and the most widely known by heart. */
+private val EXERCISE_SURAHS = (78..114).toSet() + 1
+
+/** How many verses an exercise is made of, and how many an echoing. */
+private const val GOES = 8
+private const val ECHOES = 6
 
 /** How long the work has had nothing to do before more is looked for, in ms: a run that is only between two things isn't disturbed. */
 private const val IDLE_BEFORE_MORE_MS = 4_000L

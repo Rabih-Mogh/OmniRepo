@@ -76,6 +76,17 @@ import app.recitation.core.Phonemizer
 import app.recitation.core.Timings
 import app.recitation.core.SURAHS
 import app.recitation.core.WordTiming
+import app.recitation.core.Drill
+import app.recitation.core.Drills
+import app.recitation.core.Family
+import app.recitation.core.Topic
+import app.recitation.data.Spot
+import app.recitation.data.Tally
+import app.recitation.ui.DrillOver
+import app.recitation.ui.DrillVerdict
+import app.recitation.ui.MaddContent
+import app.recitation.ui.MaddsBeside
+import app.recitation.ui.SpotContent
 import app.recitation.data.Appearance
 import app.recitation.data.Hit
 import app.recitation.data.Listening
@@ -328,12 +339,13 @@ class ScreensTest {
         compose.onNodeWithText("Practise").assertIsDisplayed()
         compose.onNodeWithText("Recite and be corrected").assertIsDisplayed()
         // The voice is trained under its condition, and without any melody being taught.
-        compose.onNodeWithText("Tajweed comes first", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("14.2 s").assertIsDisplayed()
-        compose.onNodeWithText("± 18 cents").assertIsDisplayed()
         compose.onNodeWithText("Choose a verse").performClick()
         assertTrue(recite)
-        compose.onNodeWithText("A steady note").performClick()
+        // The voice exercises come after the tajweed ones, further down the tab.
+        compose.onNodeWithText("Tajweed comes first", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("14.2 s").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("± 18 cents").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("A steady note").performScrollTo().performClick()
         assertTrue(chosen == Exercise.STEADY)
     }
 
@@ -389,6 +401,140 @@ class ScreensTest {
     private fun Recite(state: Reciting, needsModel: Boolean = false, verse: Int = 2, reached: Int = -1, onMic: () -> Unit = {}, onFetch: () -> Unit = {}) = ReciteContent(
         app.recitation.core.SURAHS[0], verse, fatihah[verse - 1], state, needsModel, onMic, onFetch, onPrevious = {}, onNext = {}, onBack = {}, reached = reached,
     )
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h1500dp-420dpi")
+    fun thePractiseTabOffersTheTajweedExercises() {
+        var drilled: Pair<Topic, String>? = null
+        var started = ""
+        val tally = Tally(mapOf(Topic.IKHFA to 5, Topic.MADD_MUTTASIL to 3, Topic.LETTERS to 1), listOf(Drill(78, 2, Topic.IKHFA), Drill(1, 6, Topic.LETTERS, "صس")))
+        show("en-day-practise-tajweed") {
+            HomeContent(
+                4, {}, emptyList(), null, StatusActions(), recited = setOf(1), onSurah = {}, onOpen = {}, onAdd = {},
+                practice = { modifier ->
+                    PracticeTab(
+                        emptyMap(), onRecite = {}, onExercise = {}, modifier = modifier, tally = tally, canEcho = true,
+                        onDrill = { topic, letters -> drilled = topic to letters }, onWeak = { started = "weak" }, onMadd = { started = "madd" },
+                        onSpot = { started = "spot" }, onEcho = { started = "echo" },
+                    )
+                },
+            )
+        }
+        // A drill for each rule, by the rule's own name with the dot of its colour; and one for each pair of letters.
+        compose.onNodeWithTag("drill-IKHFA").assertIsDisplayed()
+        compose.onNodeWithTag("drill-QALQALAH").performClick()
+        assertEquals(Topic.QALQALAH to "", drilled)
+        compose.onNodeWithTag("pair-قك").performScrollTo().performClick()
+        assertEquals(Topic.LETTERS to "قك", drilled)
+        compose.onNodeWithTag("stops-go").performScrollTo().performClick()
+        assertEquals(Topic.STOP to "", drilled)
+        // What the reader has been corrected on most, and the way to go over it.
+        compose.onNodeWithTag("weak-go").performScrollTo().performClick()
+        assertEquals("weak", started)
+        for (go in listOf("madd", "spot", "echo")) {
+            compose.onNodeWithTag("$go-go").performScrollTo().performClick()
+            assertEquals(go, started)
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aDrillJudgesAVerseForItsRuleAlone() {
+        // 1:2 recited for its ghunnah: a madd in it was held short, which is marked as ever, but the ghunnah was sound.
+        val heard = List(4) { w -> WordRecited(w, false, if (w == 3) listOf(Correction(Fault.MADD_SHORT, clear = false, madd = Madd.ARID, wantedCounts = 4, heardCounts = 1)) else emptyList(), emptyList()) }
+        val drill = Drill(1, 2, Topic.GHUNNAH)
+        show("en-day-drill") {
+            ReciteContent(
+                app.recitation.core.SURAHS[0], 2, fatihah[1], Reciting.Heard(heard), needsModel = false, onMic = {}, onFetch = {}, onPrevious = {}, onNext = {}, onBack = {},
+                title = "Ghunnah of a doubled n or m", subtitle = "3 of 8 · Al-Fatihah · verse 2",
+                verdict = { DrillVerdict(drill, Drills.sound(drill, heard)) }, canPrevious = true, canNext = true,
+            )
+        }
+        compose.onNodeWithText("Sound: Ghunnah of a doubled n or m").assertIsDisplayed()
+        compose.onNodeWithText("3 of 4 words sound").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aStopIsMarkedOnTheWordToStopOn() {
+        // 2:8, to be stopped in after its fifth word.
+        val drill = Drill(2, 8, Topic.STOP, stopAfter = 4)
+        show("en-day-drill-stop") {
+            ReciteContent(
+                app.recitation.core.SURAHS[1], 8, ruled[1], Reciting.Idle, needsModel = false, onMic = {}, onFetch = {}, onPrevious = {}, onNext = {}, onBack = {},
+                title = "Stopping on a word", how = "Recite this verse and stop on the marked word; then carry on, from a word or two back if you like.", stopAfter = drill.stopAfter,
+            )
+        }
+        compose.onNodeWithTag("stop-here", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithText("stop on the marked word", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun anExerciseEndsWithHowManyOfItsVersesWereSound() {
+        var again = false
+        val drills = listOf(Drill(78, 2, Topic.IKHFA), Drill(78, 5, Topic.IKHFA), Drill(79, 3, Topic.IKHFA))
+        show("en-day-drill-over") { DrillOver("Ikhfa’ haqiqi", drills, mapOf(0 to true, 1 to false), onAgain = { again = true }, onBack = {}) }
+        compose.onNodeWithText("1 of 3 sound").assertIsDisplayed()
+        compose.onNodeWithText("Once more").performClick()
+        assertTrue(again)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aMaddIsCountedAsItIsHeld() {
+        var target = 4
+        // Aiming for four counts at half a second a count; two holds so far, and the third 1.6 s in.
+        show("en-day-madd-holding") {
+            MaddContent(4, 0.5f, listening = true, seconds = 1.6f, holds = listOf(2.1f, 1.4f), problem = null, onTarget = { target = it }, onPace = {}, onToggle = {}, onBack = {})
+        }
+        compose.onNodeWithText("3.2 counts").assertIsDisplayed()
+        compose.onNodeWithTag("madd-6").performClick()
+        assertEquals(6, target)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aHoldThatEndsIsJudgedAgainstTheCountsAimedFor() {
+        show("en-day-madd-held") {
+            MaddContent(4, 0.5f, listening = true, seconds = 0f, holds = listOf(2.1f, 1.4f, 2.0f, 2.9f), problem = null, onTarget = {}, onPace = {}, onToggle = {}, onBack = {})
+        }
+        // The last hold was 2.9 s: nearly six counts, past the four aimed for.
+        compose.onNodeWithText("5.8 counts").assertIsDisplayed()
+        compose.onNodeWithText("Past 4").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theRuleInAWordIsSpottedAmongFour() {
+        val spots = listOf(
+            Spot(2, 8, ruled[1].words[4].arabic, Family.MADD_TABII, listOf(Family.NASAL, Family.MADD_TABII, Family.ECHO, Family.HEAVY)),
+            Spot(1, 2, fatihah[1].words[2].arabic, Family.HEAVY, listOf(Family.HEAVY, Family.NASAL, Family.ECHO, Family.MADD_WAJIB)),
+        )
+        show("en-day-spot") { SpotContent(spots, onPlay = {}, onBack = {}) }
+        compose.onNodeWithText("Which rule is in this word?").assertIsDisplayed()
+        // A wrong answer shows the right one, and what that family of rules is.
+        compose.onNodeWithTag("spot-NASAL").performClick()
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/en-day-spot-answered.png")
+        compose.onNodeWithTag("spot-note", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("spot-next").performClick()
+        compose.onNodeWithTag("spot-HEAVY").performClick()
+        compose.onNodeWithTag("spot-next").performClick()
+        compose.onNodeWithText("1 of 2 sound").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theRecitersMaddsStandBesideTheReaders() {
+        // 2:8, stopped on: the reciter held the madd of its last word for four counts, the reader for two.
+        fun words(counts: Int) = List(11) { w -> WordRecited(w, false, emptyList(), if (w == 10) listOf(MaddHeard(Madd.ARID, counts)) else emptyList()) }
+        show("en-day-echo-madds") {
+            Column(Modifier.padding(16.dp)) { MaddsBeside(ruled[1], words(4), words(2)) }
+        }
+        compose.onNodeWithText("Reciter 4").assertIsDisplayed()
+        compose.onNodeWithText("You 2").assertIsDisplayed()
+    }
 
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
