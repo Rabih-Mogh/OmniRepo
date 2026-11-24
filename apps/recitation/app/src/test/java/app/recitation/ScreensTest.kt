@@ -61,6 +61,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -73,6 +74,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.recitation.core.Phonemizer
 import app.recitation.core.Timings
+import app.recitation.core.SURAHS
 import app.recitation.core.WordTiming
 import app.recitation.data.Appearance
 import app.recitation.data.Hit
@@ -129,7 +131,9 @@ import app.recitation.ui.RecordingsContent
 import app.recitation.ui.RecordingStats
 import app.recitation.ui.SavedStats
 import app.recitation.ui.SavedTab
+import app.recitation.ui.Plant
 import app.recitation.ui.StatsTab
+import app.recitation.ui.stageOf
 import app.recitation.ui.ScriptChooser
 import app.recitation.ui.Status
 import app.recitation.ui.StatusActions
@@ -463,41 +467,67 @@ class ScreensTest {
         onBack = {}, onMeanings = {}, onPlayPause = onPlayPause, onSeek = {}, tajweed = tajweed, recital = recital,
     )
 
-    private fun recital(verse: Int = 0, state: Reciting = Reciting.Idle, reached: Int = -1, heard: Map<Int, List<WordRecited>> = emptyMap(), onMic: (Int) -> Unit = {}, onForget: (Int) -> Unit = {}) =
-        PageRecital(verse, state, reached, heard, onMic, onForget)
+    private fun recital(verse: Int = 0, state: Reciting = Reciting.Idle, reached: Int = -1, heard: Map<Int, List<WordRecited>> = emptyMap(), onToggle: () -> Unit = {}, onForget: (Int) -> Unit = {}) =
+        PageRecital(verse, state, reached, heard, onToggle, onForget)
 
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
-    fun everyVerseOfASurahCanBeRecitedToThePhoneOnItsPage() {
+    fun recitingToThePhoneIsAskedForFromTheSurahsMenu() {
         var asked = 0
         var paused = false
-        show("en-day-page-mic") { PageRecited(recital(onMic = { asked = it }), playing = true, onPlayPause = { paused = true }) }
-        // A microphone beside each verse's number.
-        val mics = compose.onAllNodesWithContentDescription("Recite this verse yourself")
-        assertTrue(mics.fetchSemanticsNodes().size >= 3)
-        mics[1].performClick()
-        assertEquals(2, asked)
+        compose.setContent { RecitationTheme { PageRecited(recital(onToggle = { asked++ }), playing = true, onPlayPause = { paused = true }) } }
+        // No microphone beside the verses: the phone finds the verse by itself.
+        compose.onAllNodesWithTag("verse-mic-open").assertCountEquals(0)
+        compose.onNodeWithTag("recite-bar").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Menu").performClick()
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/en-day-reader-menu-recite.png")
+        compose.onNodeWithText("Recite to the phone").assertIsDisplayed()
+        compose.onNodeWithTag("recite-to-phone").performClick()
+        assertEquals(1, asked)
         // It is the reader's voice that is listened to: the recording stops.
         assertTrue(paused)
     }
 
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
-    fun whereRecitingIsNotOfferedThePageHasNoMicrophones() {
+    fun whereRecitingIsNotOfferedTheMenuHasNoneOfIt() {
         compose.setContent { RecitationTheme { PageRecited(null) } }
-        compose.onAllNodesWithContentDescription("Recite this verse yourself").assertCountEquals(0)
+        compose.onNodeWithContentDescription("Menu").performClick()
+        compose.onNodeWithTag("recite-to-phone").assertDoesNotExist()
     }
 
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
-    fun theWordBeingRecitedToThePhoneIsLitOnThePage() {
+    fun theVerseAndTheWordBeingRecitedToThePhoneAreFollowed() {
         var asked = 0
-        // The reader is on the fourth word of 2:8.
-        show("en-day-page-reciting") { PageRecited(recital(verse = 2, state = Reciting.Listening, reached = 3, onMic = { asked = it })) }
-        // That verse's microphone is the button that ends the recitation; the others stay as they were.
-        compose.onNodeWithTag("verse-mic-open").assertIsDisplayed().performClick()
-        assertEquals(2, asked)
-        compose.onNodeWithContentDescription("Done reciting").assertIsDisplayed()
+        // The reader has recited 2:7, which was gone over as they went on, and is on the fourth word of 2:8.
+        val first = List(ruled[0].words.size) { WordRecited(it, false, if (it == 2) listOf(Correction(Fault.GHUNNAH_SHORT, clear = false, wanted = "ن")) else emptyList(), emptyList()) }
+        show("en-day-page-reciting") { PageRecited(recital(verse = 2, state = Reciting.Listening, reached = 3, heard = mapOf(1 to first), onToggle = { asked++ })) }
+        // In the player's place: the microphone, the verse they are at, how the words so far went, and the button that ends it.
+        compose.onNodeWithTag("recite-bar").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Listening to you recite").assertIsDisplayed()
+        compose.onNodeWithTag("recite-verse").assertIsDisplayed()
+        compose.onNodeWithTag("recite-tally").assertIsDisplayed()
+        compose.onNodeWithTag("recite-stop").performClick()
+        assertEquals(1, asked)
+        // The verse gone over has its mark on the page already.
+        assertEquals(1, compose.onAllNodesWithTag("marked-word").fetchSemanticsNodes().size + compose.onAllNodesWithTag("marked-word-picked").fetchSemanticsNodes().size)
+    }
+
+    @Test
+    @Config(qualifiers = "ar-w411dp-h891dp-night-420dpi")
+    fun recitingToThePhoneByNightInArabic() {
+        show("ar-night-page-reciting") { PageRecited(recital(verse = 2, state = Reciting.Listening, reached = 3, heard = mapOf(1 to recitedOnThePage.take(ruled[0].words.size)))) }
+        compose.onNodeWithTag("recite-bar").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun whenTheReaderIsDoneTheLastVerseIsGoneOver() {
+        show("en-day-page-reciting-done") { PageRecited(recital(verse = 2, state = Reciting.Checking)) }
+        compose.onNodeWithContentDescription("Listening to what you recited").assertIsDisplayed()
+        compose.onNodeWithTag("recite-stop").assertDoesNotExist()
     }
 
     @Test
@@ -553,16 +583,20 @@ class ScreensTest {
 
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
-    fun aMicrophoneTappedBeforeTheModelIsHereShowsItBeingFetched() {
-        show("en-day-page-fetching") { PageRecited(recital(verse = 1, state = Reciting.Fetching(R.string.recite_getting_model, 0.4f))) }
+    fun recitingAskedForBeforeTheModelIsHereShowsItBeingFetched() {
+        show("en-day-page-fetching") { PageRecited(recital(state = Reciting.Fetching(R.string.recite_getting_model, 0.4f))) }
         compose.onNodeWithContentDescription("Fetching the tajweed model… 40%").assertIsDisplayed()
     }
 
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
-    fun aVerseThatCouldNotBeHeardSaysSoUnderIt() {
-        show("en-day-page-not-heard") { PageRecited(recital(verse = 1, state = Reciting.Failed("Nothing was heard. Recite a little louder, closer to the phone."))) }
+    fun aRecitationThatCouldNotBeHeardSaysSoInItsBar() {
+        var put = 0
+        show("en-day-page-not-heard") { PageRecited(recital(state = Reciting.Failed("Nothing was heard. Recite a little louder, closer to the phone."), onToggle = { put++ })) }
         compose.onNodeWithText("Nothing was heard.", substring = true).assertIsDisplayed()
+        // Its cross puts it away.
+        compose.onNodeWithContentDescription("Cancel").performClick()
+        assertEquals(1, put)
     }
 
     @Test
@@ -906,12 +940,23 @@ class ScreensTest {
     fun aRecitationCarriesOnWhileOtherScreensAreOpen() {
         var opened = false
         var toggled = false
+        var stepped = 0
         show("en-day-now-reciting") {
             HomeContent(
                 0, {}, listOf(playlist), null, StatusActions(), recited = setOf(1), onSurah = {}, onOpen = {}, onAdd = {},
-                nowPlaying = { NowPlayingBar("Al-Fatihah", playing = true, onPlayPause = { toggled = true }, onOpen = { opened = true }, onStop = {}) },
+                nowPlaying = {
+                    NowPlayingBar(
+                        SURAHS[1], playing = true, position = 3_725_000, duration = 8_927_000, verse = 120,
+                        onPlayPause = { toggled = true }, onPrevious = { stepped-- }, onNext = { stepped++ }, onOpen = { opened = true }, onStop = {},
+                    )
+                },
             )
         }
+        // It does what the surah's player does: the verse being recited, the time, and from verse to verse.
+        compose.onNodeWithText("Verse 120", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithText("1:02:05 / 2:28:47", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithContentDescription("Next verse").performClick()
+        assertEquals(1, stepped)
         // That it is reciting is a picture, the bars of sound; the words are for a screen reader.
         compose.onNodeWithContentDescription("Reciting now").assertIsDisplayed()
         compose.onNodeWithText("Reciting now").assertDoesNotExist()
@@ -1078,7 +1123,8 @@ class ScreensTest {
         compose.onAllNodesWithText("Listening to the recitation… 43%").assertCountEquals(0)
         compose.onAllNodesWithText("1.1×").assertCountEquals(2)
         compose.onNodeWithContentDescription("Waiting its turn").assertIsDisplayed()
-        compose.onNodeWithText("2 · البقرة · Al-Baqarah").assertIsDisplayed()
+        // Each recording is laid out like a surah in the Quran tab: its number with its mark, and under its name the recording's own title.
+        compose.onNodeWithText("سورة البقرة | Surah Al-Baqarah").assertIsDisplayed()
         compose.onNodeWithText("Choose surah").assertIsDisplayed()
         compose.onNodeWithContentDescription("Pause").assertIsDisplayed()
         // Tapping the picture says what it means.
@@ -1097,9 +1143,9 @@ class ScreensTest {
     }
 
     @Composable
-    private fun HalfHeardReader(positionMs: Int, listening: Boolean = true, speed: Float = 0f, sketch: IntArray? = null, listeningAt: Int = -1, onSeek: (Int) -> Unit = {}) = ReaderContent(
+    private fun HalfHeardReader(positionMs: Int, listening: Boolean = true, speed: Float = 0f, sketch: IntArray? = null, listeningAt: Int = -1, playing: Boolean = true, onSeek: (Int) -> Unit = {}) = ReaderContent(
         reading = Reading(1, fatihah, track.copy(ready = false, playable = true, wanted = listening), timingsSoFar(words = 8, heardMs = 8_000).sketched(sketch)),
-        showMeanings = true, playing = true, position = { positionMs }, duration = 74_000,
+        showMeanings = true, playing = playing, position = { positionMs }, duration = 74_000,
         onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = onSeek, listening = listening, speed = speed, listeningAt = listeningAt,
     )
 
@@ -1119,11 +1165,12 @@ class ScreensTest {
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun whileAnotherSurahIsWorkedOnTheReaderShowsWhich() {
-        // This recording waits its turn: an hourglass over the line. What is being done meanwhile, and for which surah, is at the bar's end.
+        // This recording waits its turn: an hourglass over the line. What is being done meanwhile, and for which surah,
+        // isn't in the player: it is at the end of the top bar, which is there whenever the recitation is paused.
         val there = Status.Working(Progress("b", Step.DOWNLOAD, 0.4f), "Al-Baqarah", surah = 2)
         var paused = false
         show("en-day-reader-doing-elsewhere") {
-            CompositionLocalProvider(LocalDoing provides Doing(there, StatusActions(pause = { paused = true }))) { HalfHeardReader(6_500) }
+            CompositionLocalProvider(LocalDoing provides Doing(there, StatusActions(pause = { paused = true }))) { HalfHeardReader(6_500, playing = false) }
         }
         compose.onNodeWithContentDescription("Waiting its turn").assertIsDisplayed()
         compose.onNodeWithContentDescription("Downloading the sound… 40%").assertIsDisplayed()
@@ -1184,6 +1231,8 @@ class ScreensTest {
         var sought: Int? = null
         val sketch = intArrayOf(0, 4_000, 9_000, 14_000, 21_000)
         show("en-night-reader-unheard-verse") { HalfHeardReader(10_000, sketch = sketch, onSeek = { sought = it }) }
+        // None of its words is placed, so all of it is lit rather than its number alone, and all of it is on the page.
+        compose.onNodeWithTag("verse-lit", useUnmergedTree = true).assertIsDisplayed()
         // The recitation is in the third verse, which hasn't been heard: the verses either side are still within reach.
         compose.onNodeWithContentDescription("Next verse").performClick()
         assertTrue("went to $sought", sought == 14_000)
@@ -1219,7 +1268,7 @@ class ScreensTest {
         compose.onAllNodesWithContentDescription("Play")[1].performClick()
         assertTrue(opened?.id == "b")
         // One whose listening was stopped says so, and its button takes the listening up again.
-        compose.onNodeWithContentDescription("Plays, but not listened to the end yet").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Has a recitation on the phone, not listened to the end yet").assertIsDisplayed()
         compose.onNodeWithContentDescription("Get ready").performClick()
         assertTrue(asked?.single()?.id == "c")
     }
@@ -1826,8 +1875,11 @@ class ScreensTest {
     }
 
     @Composable
-    private fun Ruled(position: Int, script: Script = Script.MADINAH, tajweed: Boolean = true, reading: Reading = Reading(2, ruled, track, sounded(ruled))) = ReaderContent(
-        reading = reading, showMeanings = false, playing = true, position = { position }, duration = 74_000,
+    private fun Ruled(
+        position: Int, script: Script = Script.MADINAH, tajweed: Boolean = true, reading: Reading = Reading(2, ruled, track, sounded(ruled)), moving: (() -> Int)? = null,
+    ) = ReaderContent(
+        // [moving] is for a recitation that goes on while the page is on show: the page reads it afresh each time.
+        reading = reading, showMeanings = false, playing = true, position = moving ?: { position }, duration = 74_000,
         onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {}, script = script, tajweed = tajweed,
     )
 
@@ -2030,20 +2082,69 @@ class ScreensTest {
         val once = timings(ruled)
         val again = app.recitation.core.Repeat(1, (1..5).map { w -> (5050 + 150 * w).let { WordTiming(it, intArrayOf(ruled[0].words[w].arabic.length, it)) } })
         val reading = Reading(2, ruled, track, Timings(once.verses, once.clarity, repeats = listOf(again)))
-        compose.mainClock.autoAdvance = false
+        var at by mutableIntStateOf(5_210)
         compose.setContent {
             CompositionLocalProvider(LocalSurahNames provides surahNames) {
-                RecitationTheme(dark) { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { Ruled(5210, reading = reading) } }
+                RecitationTheme(dark) { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { Ruled(0, reading = reading, moving = { at }) } }
             }
         }
-        // It sets out from the word gone back to and passes on a word at a time, as far as the word he had got to.
-        var gone = 0L
-        for (ms in listOf(150L, 400L, 650L, 900L)) {
-            compose.mainClock.advanceTimeBy(ms - gone)
-            gone = ms
+        // All the words gone back over are marked, with a stream flowing back under them, until he has said
+        // them again (at 6 s). It goes by where the recitation is, not by the phone's clock: 150 ms after he went back (at 5.2 s), then 350, 550 and 750.
+        for (ms in listOf(150, 350, 550, 750)) {
+            at = 5_200 + ms
+            compose.waitForIdle()
             compose.onRoot().captureRoboImage("build/screens/$look-reader-said-again-wave-$ms.png")
         }
-        compose.mainClock.autoAdvance = true
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w360dp-h560dp-420dpi")
+    fun whereAVersesWordsRunOutThePageDoesNotGoBackUpToItsStart() {
+        // 2:5 placed, and the first eight words of 2:8, a second a word; the listening is 16 s in. A quick look says roughly where every verse begins.
+        val all = timings(ruled)
+        val placed = Timings(listOf(all.verses[0], all.verses[1].take(8)), 1f, heardMs = 16_000).sketched(intArrayOf(0, 8_000, 19_000, 31_000, 35_000))
+        var at by mutableIntStateOf(15_500)
+        compose.setContent {
+            RecitationTheme {
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    ReaderContent(
+                        reading = Reading(2, ruled, track.copy(ready = false, playable = true, wanted = true), placed), showMeanings = true, playing = true,
+                        position = { at }, duration = 74_000, onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {}, textScale = 1.6f,
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        // The eighth word of 2:8 is being recited, some lines down the verse, and the page has followed it there.
+        fun top() = compose.onNodeWithText(ruled[1].words[0].madinah, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.top
+        val before = top()
+        // The recitation goes on past the last word placed. The verse is lit whole, and stays where it is or moves on: never back down the page.
+        at = 17_000
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/en-day-reader-words-run-out.png")
+        compose.onNodeWithTag("verse-lit", useUnmergedTree = true).assertExists()
+        assertTrue("the verse's start went from $before to ${top()}", top() <= before + 1f)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theSurahsNameInTheTopBarLeadsToAnotherSurah() {
+        var picked = 0
+        compose.setContent {
+            RecitationTheme {
+                ReaderContent(
+                    reading = Reading(2, ruled), showMeanings = false, playing = false, position = { 0 }, duration = 0,
+                    onBack = {}, onMeanings = {}, onPlayPause = {}, onSeek = {}, onSurah = { picked = it },
+                )
+            }
+        }
+        compose.onNodeWithTag("surah-switch").performClick()
+        compose.waitForIdle()
+        compose.onAllNodes(isRoot()).onLast().captureRoboImage("build/screens/en-day-reader-switch-surah.png")
+        // The list opens at the surah that is open, with the ones round it within reach.
+        compose.onNodeWithText("Choose surah").assertIsDisplayed()
+        compose.onNodeWithText("Ali 'Imran").performClick()
+        assertEquals(3, picked)
     }
 
     private val week = LocalDate.of(2026, 11, 20).let { friday ->
@@ -2061,6 +2162,48 @@ class ScreensTest {
         3, {}, emptyList(), null, StatusActions(), recited = setOf(1), onSurah = {}, onOpen = {}, onAdd = {},
         stats = { modifier -> StatsTab(week, RecordingStats(12, 114, 9 * 3_600_000L + 20 * 60_000L), SavedStats(2, 3, 17), space, modifier) },
     )
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theDaysListenedOnInARowAreAPlantInTheTopBar() {
+        show("en-day-streak-chip") {
+            HomeContent(0, {}, listOf(playlist), null, StatusActions(), recited = setOf(1), onSurah = {}, onOpen = {}, onAdd = {}, streak = week)
+        }
+        compose.onNodeWithContentDescription("3 days in a row").assertIsDisplayed()
+        // A tap opens the whole of it: what today asks for, and the last seven days.
+        compose.onNodeWithTag("streak").performClick()
+        compose.waitForIdle()
+        compose.onAllNodes(isRoot()).onLast().captureRoboImage("build/screens/en-day-streak.png")
+        compose.onNodeWithText("3 days in a row").assertIsDisplayed()
+        compose.onNodeWithText("Today's minute is in. It grows again tomorrow.").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun thePlantGrowsWithTheRunAndHangsUntilTodayIsListenedOn() {
+        // A seed, a sprout, a pair of leaves at a time, in flower at a fortnight, in fruit at a month.
+        assertEquals(listOf(0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5), listOf(0, 1, 2, 3, 6, 7, 13, 14, 29, 30, 365).map(::stageOf))
+        compose.setContent {
+            RecitationTheme {
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (watered in listOf(true, false)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                for (days in listOf(0, 1, 3, 7, 14, 30)) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Plant(days, watered, Modifier.size(58.dp))
+                                        Text("$days", style = MaterialTheme.typography.labelMedium)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/en-day-plants.png")
+    }
 
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
@@ -2153,7 +2296,7 @@ class ScreensTest {
     fun recordingsInArabicByNight() {
         show("ar-night-recordings") { Recordings(null) }
         compose.onNodeWithContentDescription("٢ من ٧ جاهزة").assertIsDisplayed()
-        compose.onNodeWithText("٢ · البقرة").assertIsDisplayed()
+        compose.onNodeWithText("سورة البقرة | Surah Al-Baqarah").assertIsDisplayed()
         assertTrue("titles start from the right", startsFromTheRight("القرآن الكريم كاملاً"))
     }
 

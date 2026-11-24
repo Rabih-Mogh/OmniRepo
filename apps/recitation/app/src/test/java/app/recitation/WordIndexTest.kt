@@ -43,6 +43,17 @@ class WordIndexTest {
     }
 
     @Test
+    fun theWaveOverAPassageSaidAgainGoesByWhereTheRecitationIs() {
+        // Before he goes back, none; from then on, the words gone back over, when he went back, and when he goes on past them.
+        assertEquals(null, index.goneBack(4500))
+        assertEquals(WordIndex.GoneBack(3..4, 5200, 7000), index.goneBack(5200))
+        assertEquals(WordIndex.GoneBack(3..4, 5200, 7000), index.goneBack(5900))
+        // Gone back to that place in the recording, it is the same again.
+        assertEquals(WordIndex.GoneBack(3..4, 5200, 7000), index.goneBack(5300))
+        assertEquals(null, WordIndex(Timings(once, 0.9f), listOf(3, 3)).goneBack(6000))
+    }
+
+    @Test
     fun tappingAWordStillGoesToWhereItWasFirstSaid() {
         assertEquals(4000, index.starts[4])
         assertEquals(3000, index.startOfVerse(1))

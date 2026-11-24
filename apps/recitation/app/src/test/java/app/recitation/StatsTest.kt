@@ -85,4 +85,22 @@ class StatsTest {
         assertEquals(2, listening.summary(friday).streak)
         assertEquals(0, Listening().summary(friday).streak)
     }
+
+    @Test
+    fun theRunGrowsOnceTodayIsListenedOnAndTheLongestIsRemembered() {
+        // Five days in a row a fortnight ago; then yesterday and the day before, and nothing yet today.
+        val long = (10..14).associate { friday.minusDays(it.toLong()) to 300_000L }
+        val listening = Listening(days = long + mapOf(friday.minusDays(1) to 120_000L, friday.minusDays(2) to 90_000L))
+        val before = listening.summary(friday)
+        assertEquals(listOf(2, 5), listOf(before.streak, before.best))
+        assertEquals(false, before.todayDone)
+        // Under a minute doesn't count; a minute does.
+        assertEquals(false, Listening(listening.days + (friday to 40_000L)).summary(friday).todayDone)
+        val after = Listening(listening.days + (friday to 61_000L)).summary(friday)
+        assertEquals(listOf(3, 5), listOf(after.streak, after.best))
+        assertEquals(true, after.todayDone)
+        // A day missed, and it is a seed again; the longest stays.
+        val missed = listening.summary(friday.plusDays(2))
+        assertEquals(listOf(0, 5), listOf(missed.streak, missed.best))
+    }
 }

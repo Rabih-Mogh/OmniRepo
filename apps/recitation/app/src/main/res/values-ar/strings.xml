@@ -28,7 +28,6 @@
         <item quantity="many">تجهيز %1$d تلاوة</item>
         <item quantity="other">تجهيز %1$d تلاوة</item>
     </plurals>
-    <string name="get_all_note">الاستماع إلى التلاوة يستغرق نحو مدّتها، مرة واحدة فقط. ويمكن تشغيلها في الأثناء، حالما يُنزَّل صوتها.</string>
     <string name="get">تجهيز</string>
     <string name="queued">في الانتظار</string>
     <string name="surah_chip">%1$d · %2$s</string>
@@ -135,7 +134,6 @@
     <string name="stop_reciting">إيقاف التلاوة</string>
     <string name="listening_stopped">لم يُستمع إليه حتى آخره بعد: تُضاء الكلمات حتى %1$s.</string>
     <string name="listening_stopped_none">لم يُستمع إليه بعد، فلا تُضاء الكلمات.</string>
-    <string name="heard_in_part">يُشغَّل، لكن لم يُستمع إليه حتى آخره بعد</string>
     <string name="stop_listening">إيقاف الاستماع إليه</string>
     <string name="tab_saved">المحفوظات</string>
     <string name="range_short">%1$d – %2$d</string>
@@ -350,7 +348,8 @@
     <string name="recite_failed">تعذّر ذلك: %1$s</string>
     <string name="recite_nothing_heard">لم يُسمع شيء. اقرأ بصوت أعلى قليلًا وأقرب إلى الهاتف.</string>
     <string name="recite_no_reference">لا يمكن تصحيح هذه الآية بعد.</string>
-    <string name="recite_this_verse">اقرأ هذه الآية بنفسك</string>
+    <string name="recite_to_phone">اقرأ على الهاتف</string>
+    <string name="recite_listening">يستمع إلى تلاوتك</string>
     <string name="recite_forget">أزل هذه التصحيحات عن الصفحة</string>
     <string name="recite_stopped_here">وقفتَ هنا</string>
     <string name="recite_counts">%1$d حركات</string>
@@ -432,4 +431,19 @@
         <item>الميم من الشفتين بانطباقهما دون كزّ.</item>
         <item>الواو من الشفتين بانضمامهما.</item>
     </string-array>
+    <plurals name="count_waiting">
+        <item quantity="one">%1$d ينتظر دوره</item>
+        <item quantity="other">%1$d تنتظر دورها</item>
+    </plurals>
+    <plurals name="count_failed">
+        <item quantity="one">%1$d تعذّر تجهيزه</item>
+        <item quantity="other">%1$d تعذّر تجهيزها</item>
+    </plurals>
+    <string name="streak_today_done">تمّ استماع اليوم. تنمو غداً من جديد.</string>
+    <string name="streak_today_left">دقيقة استماع اليوم تُبقيها نامية.</string>
+    <string name="streak_none">استمع دقيقة فتنبت.</string>
+    <plurals name="streak_best">
+        <item quantity="one">الأطول حتى الآن: يوم واحد</item>
+        <item quantity="other">الأطول حتى الآن: %1$d يوماً</item>
+    </plurals>
 </resources>

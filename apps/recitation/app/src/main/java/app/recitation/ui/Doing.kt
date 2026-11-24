@@ -158,29 +158,38 @@ fun WorkIcon(
 }
 
 // The steps a recording goes through, in order, as the row of small pictures shows them.
-private val STAGES = listOf(Step.DOWNLOAD, Step.VERSES, Step.MODEL_DOWNLOAD, Step.ENGINE, Step.LISTEN, Step.ALIGN)
+private val STAGES = listOf(Step.DOWNLOAD, Step.VERSES, Step.LISTEN, Step.ALIGN)
+
+// What is got once, for every recording, when the app is first set up: the speech model,
+// the engine that runs it, and the trial of the fastest way to run it on this phone.
+private val SETUP = listOf(Step.MODEL_DOWNLOAD, Step.ENGINE, Step.TUNE)
+
+private fun Step.setsUp() = this == Step.MODEL_CHECK || this == Step.MODEL_DOWNLOAD || this == Step.ENGINE || this == Step.TUNE
 
 private fun Step.stage(): Int = when (this) {
     Step.DOWNLOAD, Step.RETRY -> 0
     Step.VERSES -> 1
-    Step.MODEL_CHECK, Step.MODEL_DOWNLOAD -> 2
-    Step.ENGINE, Step.TUNE -> 3
-    Step.LISTEN -> 4
-    Step.ALIGN -> 5
+    Step.LISTEN -> 2
+    Step.ALIGN -> 3
+    Step.MODEL_CHECK, Step.MODEL_DOWNLOAD -> 0
+    Step.ENGINE -> 1
+    Step.TUNE -> 2
     // Not a step of any recording: the row of steps isn't shown for it.
     Step.TAJWEED -> -1
 }
 
 /**
  * The whole way a recording goes, as a row of small pictures: its sound, its verses, the
- * speech model, the engine, the listening, and the matching of words. Those behind [step]
- * are in [color], the one being done stands on a disc of it, and those to come are in [faint].
+ * listening, and the matching of words. The speech model and the engine aren't among
+ * them: they are got once, when the app is first set up, and only while that is being
+ * done is the row theirs instead. Those behind [step] are in [color], the one being done
+ * stands on a disc of it, and those to come are in [faint].
  */
 @Composable
 fun Stages(step: Step, modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.primary, onColor: Color = MaterialTheme.colorScheme.onPrimary, faint: Color = MaterialTheme.colorScheme.outline) {
     val at = step.stage()
     Row(modifier.clearAndSetSemantics { }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-        STAGES.forEachIndexed { i, stage ->
+        (if (step.setsUp()) SETUP else STAGES).forEachIndexed { i, stage ->
             val icon = stage.picture().icon
             if (i == at) {
                 Box(Modifier.size(22.dp).background(color, CircleShape), contentAlignment = Alignment.Center) { Icon(icon, null, Modifier.size(14.dp), tint = onColor) }
@@ -263,20 +272,26 @@ fun StatusCard(status: Status, actions: StatusActions, told: Boolean = false, pl
  * What the app is at, small enough for a top bar: the work's icon in its ring and the
  * number of the surah it is for. It is there on every screen for as long as anything is
  * being done or waited for. Tapping it opens the whole of it, with its buttons and its words.
+ * In a surah ([apartFrom] is its number) it shows only what is being done elsewhere: the
+ * work on that surah's own recording shows with its player.
  */
 @Composable
-fun DoingChip(modifier: Modifier = Modifier, size: Dp = 30.dp) {
+fun DoingChip(modifier: Modifier = Modifier, size: Dp = 30.dp, apartFrom: Int = 0) {
     val doing = LocalDoing.current ?: return
     val band = LocalBanner.current
-    val says = doing.status.says()
+    val status = when (val all = doing.status) {
+        is Status.Working -> if (apartFrom > 0 && all.surah == apartFrom) all.fetching?.takeIf { it.surah != apartFrom } ?: return else all
+        else -> all
+    }
+    val says = status.says()
     var open by remember { mutableStateOf(false) }
     Box(modifier) {
         Row(
             Modifier.clip(CircleShape).clickable(onClickLabel = says) { open = true }.padding(4.dp).semantics(mergeDescendants = true) { contentDescription = says },
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            WorkIcon(doing.status.picture(), null, size = size, color = band.content, ground = band.background)
-            val surah = (doing.status as? Status.Working)?.surah ?: 0
+            WorkIcon(status.picture(), null, size = size, color = band.content, ground = band.background)
+            val surah = (status as? Status.Working)?.surah ?: 0
             if (surah > 0) Text(stringResource(R.string.number, surah), style = MaterialTheme.typography.labelLarge, color = band.content)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {

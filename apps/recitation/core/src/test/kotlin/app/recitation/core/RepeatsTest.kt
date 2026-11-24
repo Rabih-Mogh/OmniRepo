@@ -71,6 +71,24 @@ class RepeatsTest {
     }
 
     @Test
+    fun `a short word said faintly at the start of the passage gone back to is not missed`() {
+        // «إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ», then back to «نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ»: but the second «نَعْبُدُ» is heard so
+        // faintly, right after the breath, that it sounds no more like itself than like more of the «نُ» he stopped on.
+        val (clear, _) = heard((0..12) + (11..12) + (13..15))
+        val before = (0..12).sumOf { soundsOfWord[it].size }
+        val stoppedOn = recital.phones[soundsOfWord[12].last()].sound.ordinal + 1
+        val faint = FloatArray(soundsOfWord[10].size * 4 * width) { -4f }
+        for (row in 0 until faint.size / width) faint[row * width + stoppedOn] = -3.5f
+        val rows = clear.copyOfRange(0, before * width) + faint + clear.copyOfRange(before * width, clear.size)
+        val timings = recital.place(rows, IntArray(rows.size / width) { it * 10 })!!
+        assertEquals((0..12) + (10..12) + (13..15), order(timings))
+        // Other speech before a passage said again, far more than the word before it would take, is not that word.
+        val much = FloatArray(soundsOfWord[10].size * 40 * width) { -4f }
+        val other = clear.copyOfRange(0, before * width) + much + clear.copyOfRange(before * width, clear.size)
+        assertEquals((0..12) + (11..12) + (13..15), order(recital.place(other, IntArray(other.size / width) { it * 10 })!!))
+    }
+
+    @Test
     fun `a passage said three times is passed over three times`() {
         val said = (0..8) + (6..8) + (6..8) + (9..15)
         assertEquals(said, order(placed(said)))

@@ -26,24 +26,46 @@ class Listening(val days: Map<LocalDate, Long> = emptyMap(), val heard: Map<Int,
             streak++
             day = day.minusDays(1)
         }
+        // The longest such run there has been.
+        var best = 0
+        var run = 0
+        var before: LocalDate? = null
+        for (listened in days.filter { it.value >= A_MINUTE }.keys.sorted()) {
+            run = if (before != null && listened == before.plusDays(1)) run + 1 else 1
+            best = maxOf(best, run)
+            before = listened
+        }
         return Summary(
             today = days[today] ?: 0L,
             week = week,
             allTime = days.values.sum(),
             streak = streak,
+            best = best,
             versesHeard = heard.values.sumOf { it.size },
             surahsHeard = heard.count { (surah, verses) -> SURAHS.getOrNull(surah - 1)?.verses == verses.size },
         )
     }
 
     private companion object {
-        const val A_MINUTE = 60_000L
+        const val A_MINUTE = Summary.A_DAYS_LISTENING
     }
 }
 
-/** [week]: the last seven days, oldest first, each with its listening time in ms. */
-class Summary(val today: Long, val week: List<Pair<LocalDate, Long>>, val allTime: Long, val streak: Int, val versesHeard: Int, val surahsHeard: Int) {
+/**
+ * [week]: the last seven days, oldest first, each with its listening time in ms. [streak]
+ * is how many days in a row have been listened on, up to today or yesterday, and [best]
+ * the longest such run there has been.
+ */
+class Summary(val today: Long, val week: List<Pair<LocalDate, Long>>, val allTime: Long, val streak: Int, val versesHeard: Int, val surahsHeard: Int, val best: Int = streak) {
     val thisWeek: Long get() = week.sumOf { it.second }
+
+    /** Whether today has been listened on: until it has, the run stands but hasn't grown. */
+    val todayDone: Boolean get() = today >= A_DAYS_LISTENING
+
+    companion object {
+        /** How much listening makes a day count, in ms: a minute. */
+        const val A_DAYS_LISTENING = 60_000L
+    }
 }
 
 /** Keeps [Listening] in a small file on the phone, added to while a recitation plays. */

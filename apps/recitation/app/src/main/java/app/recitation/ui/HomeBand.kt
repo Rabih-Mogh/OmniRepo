@@ -61,6 +61,7 @@ import app.recitation.core.SurahSearch
 import app.recitation.data.Appearance
 import app.recitation.data.Hit
 import app.recitation.data.Script
+import app.recitation.data.Summary
 import app.recitation.data.VerseRef
 
 /** The app's Arabic name, "at-tilawah", with its vowel marks, as calligraphy writes a title. */
@@ -68,11 +69,11 @@ private const val NAME_WITH_VOWELS = "التِّلَاوَة"
 
 /**
  * The band at the top of the first screen: the menu button, the app's name beside it, and
- * the search button at the far end. While searching ([query] isn't null) it is the search box instead, with
+ * at the far end the run of days listened on ([streak]) and the search button. While searching ([query] isn't null) it is the search box instead, with
  * an arrow to leave it.
  */
 @Composable
-fun TitleBand(query: String?, onQuery: (String?) -> Unit, onMenu: () -> Unit) {
+fun TitleBand(query: String?, onQuery: (String?) -> Unit, onMenu: () -> Unit, streak: Summary? = null) {
     val band = LocalBanner.current
     val arabic = LocalConfiguration.current.locales[0].language == "ar"
     Banner {
@@ -95,6 +96,8 @@ fun TitleBand(query: String?, onQuery: (String?) -> Unit, onMenu: () -> Unit) {
                     )
                 }
                 DoingChip()
+                // The days listened on in a row, as a plant that grows with them.
+                if (streak != null) StreakChip(streak)
                 IconButton(onClick = { onQuery("") }) { Icon(AppIcons.Search, stringResource(R.string.search)) }
             }
         } else {

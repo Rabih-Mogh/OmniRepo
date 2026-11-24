@@ -39,6 +39,8 @@ import app.recitation.yt.YouTube
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -152,8 +154,19 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         private set
 
     init {
+        keepBusy()
+        // Whenever the work runs out while the app is open, what else could be listened to is looked for.
+        viewModelScope.launch {
+            combine(PrepareWorker.progress, PrepareWorker.fetching) { listening, fetching -> listening == null && fetching == null }
+                .collectLatest { idle ->
+                    if (idle) {
+                        delay(IDLE_BEFORE_MORE_MS)
+                        keepBusy()
+                    }
+                }
+        }
         // Recordings still waiting from last time (the app was closed, or the model couldn't be had): carry on.
-        if (!paused && (Settings.tajweedWanted(app) || library.playlists.value.any { p -> p.tracks.any { it.wanted && (!it.ready || it.againFrom >= 0) } })) PrepareWorker.start(app)
+        if (!paused && (Settings.tajweedWanted(app) || library.playlists.value.any { p -> p.tracks.any { it.wanted && (!it.ready || it.againFrom >= 0 || it.refresh) } })) PrepareWorker.start(app)
         fetchTheRest()
         viewModelScope.launch { SurahNames.load(app) }
         viewModelScope.launch { IndoPakFont.load(app) }
@@ -273,12 +286,18 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 
     private fun playable(track: Track) = track.canPlay && library.audio(track.id) != null
 
-    /** The player has moved on to another recording: show its surah. */
+    /** The recording the player had before the one it has now. */
+    private var playedBefore: String? = null
+
+    /** The player has moved on to another recording: show its surah, if the one it moved on from is the one on show. */
     fun playing(trackId: String) {
+        val before = playedBefore
+        playedBefore = trackId
         val track = library.track(trackId) ?: return
         val shown = screen as? Screen.Surah ?: return
-        // A surah open just to read stays put, whatever is playing in the background.
-        if (shown.trackId == null || shown.trackId == trackId) return
+        // A surah open just to read stays put, whatever is playing in the background; so
+        // does one whose own recording isn't the one that was playing.
+        if (shown.trackId == null || shown.trackId == trackId || shown.trackId != before) return
         screen = shown.copy(number = track.surah, trackId = trackId)
         load(track.surah, track)
     }
@@ -393,7 +412,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
             val track = asked[it.id]
             when {
                 track == null -> it
-                !track.ready && track.surah in 1..SURAHS.size -> it.copy(wanted = true, error = null)
+                !track.ready && track.surah in 1..SURAHS.size -> it.copy(wanted = true, error = null, aside = false)
                 // A recording that is ready and shows that some verses couldn't be heard again: that is put away.
                 track.ready && track.error != null -> it.copy(error = null)
                 else -> it
@@ -401,6 +420,40 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         }
         resume()
     }
+
+    /**
+     * The speech model is never left with nothing to do while there is something it could
+     * listen to: every recording whose sound is on the phone and that hasn't been listened
+     * to the end goes into the queue by itself. That needs no connection. Not while the
+     * work is paused, and not a recording the reader took out of the queue themselves, or
+     * one that failed: those wait to be asked for.
+     *
+     * With none of those left, a recording that is ready but whose words were placed the
+     * way an earlier version placed them is listened to once more, one at a time, so that
+     * what has been put right since (passages said again, for one) is put right in it too
+     * without being asked for. It keeps what it has until that is done.
+     */
+    private fun keepBusy() {
+        if (paused) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val tracks = library.playlists.value.flatMap { it.tracks }
+            fun mayBeTakenUp(track: Track) = !track.wanted && !track.aside && track.error == null && track.surah in 1..SURAHS.size && library.audio(track.id) != null
+            val more = tracks.filter { !it.ready && mayBeTakenUp(it) }.map { it.id }.toSet()
+            if (more.isNotEmpty()) {
+                library.updateAll { if (it.id in more) it.copy(wanted = true) else it }
+            } else {
+                if (tracks.any { it.wanted }) return@launch
+                val old = tracks.firstOrNull { it.ready && mayBeTakenUp(it) && madeBy(it) < Timings.METHOD } ?: return@launch
+                library.update(old.id) { it.copy(wanted = true, refresh = true) }
+            }
+            if (!paused) PrepareWorker.start(getApplication())
+        }
+    }
+
+    /** The way a recording's words were placed (see [Timings.method]); the way it is done now if that can't be read, so it is left alone. */
+    private fun madeBy(track: Track): Int = runCatching {
+        library.timings(track.id, track.surah).useLines { lines -> lines.first().split(' ').getOrNull(2)?.toIntOrNull() ?: 0 }
+    }.getOrDefault(Timings.METHOD)
 
     /** Stops the work where it is. What has been downloaded and heard so far is kept, and nothing leaves the queue. */
     fun pause() {
@@ -431,7 +484,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     fun cancel() {
         Settings.setTajweedWanted(getApplication(), false)
         val queued = library.playlists.value.flatMap { it.tracks }.filter { it.wanted }
-        library.updateAll { if (it.wanted) it.copy(wanted = false) else it }
+        library.updateAll { if (it.wanted) it.copy(wanted = false, aside = true) else it }
         for (track in queued) library.dropPartial(track.id)
         paused = false
         Settings.setPaused(getApplication(), false)
@@ -440,7 +493,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 
     /** Takes one recording out of the queue; the rest carry on. */
     fun cancel(track: Track) {
-        library.update(track.id) { it.copy(wanted = false) }
+        library.update(track.id) { it.copy(wanted = false, aside = true) }
         library.dropPartial(track.id)
     }
 
@@ -454,7 +507,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     fun setSurah(track: Track, surah: Int) {
         if (surah == track.surah) return
         val downloaded = library.audio(track.id) != null
-        library.update(track.id) { it.copy(surah = surah, ready = false, playable = false, clarity = 0f, error = null, wanted = downloaded) }
+        library.update(track.id) { it.copy(surah = surah, ready = false, playable = false, clarity = 0f, error = null, wanted = downloaded, aside = false) }
         if (downloaded) resume()
     }
 
@@ -483,3 +536,6 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         screen = Screen.Home
     }
 }
+
+/** How long the work has had nothing to do before more is looked for, in ms: a run that is only between two things isn't disturbed. */
+private const val IDLE_BEFORE_MORE_MS = 4_000L

@@ -42,6 +42,7 @@ import app.recitation.R
 import app.recitation.Reading
 import app.recitation.Screen
 import app.recitation.core.SURAHS
+import app.recitation.core.Timings
 import app.recitation.data.Place
 import android.content.Context
 import android.os.Handler
@@ -148,10 +149,38 @@ private fun Screens(model: AppModel, choices: Choices) {
         val reciting = playback.trackId?.let { id -> tracks.firstOrNull { it.id == id } }
         val player = playback.controller
         if (reciting != null && player != null) {
+            // Where the recitation is, looked at twice a second: enough for a line and a clock.
+            var at by remember(reciting.id) { mutableIntStateOf(player.currentPosition.toInt()) }
+            LaunchedEffect(player, reciting.id, playback.playing) {
+                while (true) {
+                    at = player.currentPosition.toInt()
+                    delay(if (playback.playing) 500 else 1_500)
+                }
+            }
+            // When each verse starts, exactly or roughly, for the verse being recited and the buttons that go from verse to verse.
+            val starts by produceState<List<Int?>>(emptyList(), reciting.id, reciting.surah, reciting.ready) {
+                value = withContext(Dispatchers.IO) {
+                    runCatching { Timings.decode(model.library.timings(reciting.id, reciting.surah).readText()) }.getOrNull()
+                        ?.let { timings -> List(SURAHS[reciting.surah - 1].verses) { timings.startOfVerse(it) } }.orEmpty()
+                }
+            }
+            val verse = starts.indexOfLast { it != null && it <= at }
+            fun goTo(ms: Int) {
+                player.seekTo(ms.toLong())
+                at = ms
+            }
             NowPlayingBar(
-                title = surahName(SURAHS[reciting.surah - 1]),
+                surah = SURAHS[reciting.surah - 1],
                 playing = playback.playing,
+                position = at, duration = playback.duration,
+                verse = verse + 1,
                 onPlayPause = { if (player.reciting) player.pause() else player.recite() },
+                // Back to the start of this verse, or to the one before if it has only just begun.
+                onPrevious = if (verse < 0) null else ({
+                    val start = starts[verse] ?: 0
+                    goTo(if (at - start > 2_000 || verse == 0) start else starts.take(verse).lastOrNull { it != null } ?: 0)
+                }),
+                onNext = starts.drop(verse + 1).firstOrNull { it != null }?.let { next -> { goTo(next) } },
                 onOpen = { model.openSurah(reciting.surah, prefer = reciting) },
                 onStop = { player.stop(); player.clearMediaItems() },
             )
@@ -186,6 +215,7 @@ private fun Screens(model: AppModel, choices: Choices) {
             // Not offered while that very recording is the one playing. Whether its sound is
             // still on the phone is looked up when the place or the playlists change, not
             // each time the screen is drawn.
+            streak = listening.summary(LocalDate.now()),
             lastRead = remember(model.lastRead, playlists) { model.lastReadable() }
                 ?.takeIf { it.trackId != playback.trackId }?.let { LastRead(SURAHS[it.surah - 1], it.verse) },
             onLastRead = { model.lastReadable()?.let(model::continueFrom) },
@@ -357,6 +387,7 @@ private fun SurahScreen(
             startVerse = page.startVerse, marks = page.marks, onMark = page.onMark,
             appearance = page.appearance, onAppearance = page.onAppearance,
             tajweed = page.tajweed, onTajweed = page.onTajweed,
+            onSurah = { model.openSurah(it) },
             withoutRecitation = {
                 // Looked up afresh each time the playlists change, so the bar keeps up with the download.
                 val recording = remember(playlists, screen.number) { model.anyRecordingOf(screen.number) }
@@ -569,7 +600,7 @@ private fun PlayingReader(
     // Set when the recording starts from the beginning though it was left further in: offer to go there.
     var offer by remember(track.id) { mutableStateOf<Place?>(null) }
 
-    LaunchedEffect(controller, track.id) {
+    LaunchedEffect(controller, track.id, playWhenLoaded) {
         val player = controller ?: return@LaunchedEffect
         if (player.currentMediaItem?.mediaId == track.id) {
             // Already loaded: only the place changes, and only once.
@@ -577,6 +608,9 @@ private fun PlayingReader(
             moved = true
             return@LaunchedEffect
         }
+        // Another surah is being recited: opening this one to read doesn't stop it. It is
+        // given up for this one's recording only when play is pressed here.
+        if (player.reciting && !playWhenLoaded) return@LaunchedEffect
         val playlist = playlists.firstOrNull { p -> p.tracks.any { it.id == track.id } } ?: return@LaunchedEffect
         // Each comes with a picture in the theme's colours; Android's own media player takes its colours from it.
         fun item(queued: Track): MediaItem? {
@@ -785,6 +819,7 @@ private fun PlayingReader(
             startVerse = page.startVerse, marks = page.marks, onMark = page.onMark,
             appearance = page.appearance, onAppearance = page.onAppearance,
             tajweed = page.tajweed, onTajweed = page.onTajweed,
+            onSurah = { model.openSurah(it) },
             listening = listening,
             speed = working?.takeIf { it.trackId == track.id }?.speed ?: 0f,
             listeningAt = working?.takeIf { it.trackId == track.id && it.step == Step.LISTEN }?.atMs ?: -1,

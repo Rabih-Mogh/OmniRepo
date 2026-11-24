@@ -174,14 +174,23 @@ internal object Repeats {
         var x = 2 * v + 1 - lo
         if (prev[x] <= UNREACHABLE) return emptyList()
 
-        // Back along the way it came: each sound with the row it began at.
+        // Back along the way it came: each sound with the row it began at. And each going
+        // back: the sound gone back to, the row that began at, and the rows before it that
+        // the reading spent standing where he went back from.
         val reached = ArrayList<Pair<Int, Int>>()
+        val jumps = ArrayList<IntArray>() // sound gone back to, its row, the column stood on before it, the first row stood there
         var wentBack = false
+        var open: IntArray? = null
         for (row in n - 1 downTo 1) {
             val how = came[row * size + x]
             if (how != x) {
+                open?.let { it[3] = top + row + 1 }
+                open = null
                 if ((lo + x) % 2 == 1) reached += (lo + x) / 2 to top + row
-                if (how > x) wentBack = true
+                if (how > x) {
+                    wentBack = true
+                    open = intArrayOf((lo + x) / 2, top + row, column(how), top + 1).also { jumps += it }
+                }
                 x = how
             }
         }
@@ -216,7 +225,42 @@ internal object Repeats {
         }
         for (s in u + 1 until v) starts[s] = -1
         for ((sound, row) in once) if (sound < v) starts[sound] = row
+        for (jump in jumps) again.firstOrNull { it.first() == jump[0] to jump[1] }?.addAll(0, saidBefore(phones, ordinal, rows, jump))
         return again
+    }
+
+    /**
+     * The words he said again just before the one the reading has him go back to, where
+     * the reading missed them. A short word said faintly straight after a breath (the «إِذْ»
+     * of «إِذْ بَعَثَ») can score no better as itself than as more of the sound he stopped on,
+     * and the reading then has him stand on that sound through it and go back to the word
+     * after. But the rows are all speech (pauses aren't among them), so rows right before
+     * the going back that were clear neither as the sound stood on nor as a pause are him
+     * saying something, and what he says there is the passage's own words: as many of the
+     * words before the one gone back to as those rows have room for. [jump] is as in [read].
+     */
+    private fun saidBefore(phones: List<Phone>, ordinal: IntArray, rows: FloatArray, jump: IntArray): List<Pair<Int, Int>> {
+        val width = SoundColumns.WIDTH
+        val (to, at, stoodOn, since) = jump
+        var from = at
+        while (from > since && rows[(from - 1) * width + stoodOn] <= CLEAR && rows[(from - 1) * width] <= CLEAR) from--
+        // The words before the one gone back to, nearest first, for as long as there are rows enough for their sounds.
+        var first = to
+        var sounds = 0
+        var words = 0
+        while (first > 0 && words < WORDS_BEFORE) {
+            var start = first - 1
+            while (start > 0 && ordinal[start - 1] == ordinal[first - 1]) start--
+            val more = (start until first).count { !phones[it].optional }
+            if (more == 0 || (at - from) < (sounds + more) * ROWS_A_SOUND) break
+            sounds += more
+            first = start
+            words++
+        }
+        if (words == 0 || at - from > sounds * MOST_ROWS_A_SOUND) return emptyList()
+        // Each sound an equal share of the rows, in order.
+        val said = (first until to).filter { !phones[it].optional }
+        return said.mapIndexed { i, sound -> sound to from + i * (at - from) / said.size }
     }
 
     private var scratch = IntArray(0)
@@ -247,6 +291,11 @@ internal object Repeats {
     /** A passage said again is believed when it has at least this many sounds, and this share of them heard clearly. */
     private const val ENOUGH_SOUNDS = 6
     private const val CLEAR_SHARE = 0.6f
+
+    /** The fewest and the most rows (20 ms each) a sound takes when said, for telling how many words some rows of speech hold; and the most words looked for in them. */
+    private const val ROWS_A_SOUND = 3
+    private const val MOST_ROWS_A_SOUND = 30
+    private const val WORDS_BEFORE = 3
 
     /** The most (rows × positions) a doubtful stretch is placed again with: beyond it, it is left alone. */
     private const val CELLS = 8_000_000L

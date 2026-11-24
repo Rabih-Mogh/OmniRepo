@@ -69,6 +69,8 @@ fun StatsTab(summary: Summary, recordings: RecordingStats, saved: SavedStats, sp
     val context = LocalContext.current
     val allVerses = SURAHS.sumOf { it.verses }
     LazyColumn(modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // The days listened on in a row, as a plant that grows with them.
+        item { StreakCard(summary, Modifier.fillMaxWidth()) }
         item {
             Section(stringResource(R.string.stats_listening)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -77,10 +79,6 @@ fun StatsTab(summary: Summary, recordings: RecordingStats, saved: SavedStats, sp
                     Figure(timeSpent(summary.allTime), stringResource(R.string.stats_all_time), Modifier.weight(1f))
                 }
                 WeekBars(summary.week, Modifier.fillMaxWidth().padding(top = 12.dp))
-                Text(
-                    pluralStringResource(R.plurals.stats_streak, summary.streak, summary.streak),
-                    Modifier.padding(top = 8.dp), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant,
-                )
             }
         }
         item {

@@ -57,7 +57,7 @@ class Recital(surah: Int, verses: List<List<String>>, withOpening: Boolean = tru
         val starts = aligner.starts(path)
         val repeats = Repeats.find(phones, ordinal, rows, path, starts).mapNotNull { pass -> repeat(pass, frameOfRow) }
         val once = build(starts, frameOfRow, aligner, phones.size, Timings.COMPLETE)
-        return Timings(once.verses, once.clarity, once.heardMs, repeats)
+        return Timings(once.verses, once.clarity, once.heardMs, repeats, method = Timings.METHOD)
     }
 
     /**
@@ -306,6 +306,12 @@ class Timings(
      * it was listened to (see [Sketch]): for going to verses whose words aren't placed yet.
      */
     val sketch: IntArray? = null,
+    /**
+     * Which way of placing the words these were made by ([METHOD] for the way it is done
+     * now; 0 for an earlier one, or while the recording is still being listened to): a
+     * recording placed an earlier way is listened to again by itself, in time.
+     */
+    val method: Int = 0,
 ) {
 
     /** False while the recording is still being listened to: [verses] then stops at the last word placed. */
@@ -318,7 +324,7 @@ class Timings(
     fun startOfVerse(verse: Int): Int? = verses.getOrNull(verse)?.firstOrNull()?.startMs ?: sketch?.getOrNull(verse)
 
     /** These timings with [sketch] to go by where words aren't placed. */
-    fun sketched(sketch: IntArray?): Timings = if (sketch == null) this else Timings(verses, clarity, heardMs, repeats, ahead, sketch)
+    fun sketched(sketch: IntArray?): Timings = if (sketch == null) this else Timings(verses, clarity, heardMs, repeats, ahead, sketch, method)
 
     /**
      * When verses [first] to [last] (counting from 0) are recited, with [margin] ms to spare
@@ -344,7 +350,7 @@ class Timings(
         val replaced = verses.subList(first, first + count).sumOf { it.size }
         val kept = repeats.filter { it.first + it.words.size <= before || it.first >= before + replaced }
         val again = part.repeats.map { Repeat(it.first + before, it.words.map(::moved)) }
-        return Timings(verses.take(first) + part.verses.take(count).map { it.map(::moved) } + verses.drop(first + count), clarity, heardMs, kept + again, ahead, sketch)
+        return Timings(verses.take(first) + part.verses.take(count).map { it.map(::moved) } + verses.drop(first + count), clarity, heardMs, kept + again, ahead, sketch, method)
     }
 
     /** The verse (counting from 0) being recited at [ms]: the last one whose first word has started. */
@@ -358,14 +364,14 @@ class Timings(
     }
 
     /**
-     * One line for the clarity and how far the listening has got (-1 once it is done), then
+     * One line for the clarity, how far the listening has got (-1 once it is done) and the way the words were placed, then
      * one per verse: words apart by spaces, numbers by commas. Then one line for each
      * passage said again: "R", the number of its first word, and its words the same way.
      * And, while there are any, a line for the stretches heard out of turn, "A" and each
      * one's start and end; and a line for the sketch: "S" and each verse's rough start.
      */
     fun encode(): String = buildString {
-        append(clarity).append(' ').append(heardMs).append('\n')
+        append(clarity).append(' ').append(heardMs).append(' ').append(method).append('\n')
         for (verse in verses) {
             verse.joinTo(this, " ") { w -> (listOf(w.startMs) + w.letters.toList()).joinToString(",") }
             append('\n')
@@ -381,6 +387,9 @@ class Timings(
 
     companion object {
         const val GOOD_ENOUGH = 0.65f
+
+        /** The way the words are placed now: 1 since a short word at the start of a passage said again stopped being missed. */
+        const val METHOD = 1
 
         /** [heardMs] when the whole recording has been listened to. */
         const val COMPLETE = -1
@@ -403,7 +412,7 @@ class Timings(
                 Repeat(rest.substringBefore(' ').toInt(), words(rest.substringAfter(' ', "")))
             }
             val head = lines[0].split(' ')
-            return Timings(once.map(::words), head[0].toFloat(), head.getOrNull(1)?.toInt() ?: COMPLETE, repeats, ahead, sketch)
+            return Timings(once.map(::words), head[0].toFloat(), head.getOrNull(1)?.toInt() ?: COMPLETE, repeats, ahead, sketch, head.getOrNull(2)?.toIntOrNull() ?: 0)
         }
     }
 }

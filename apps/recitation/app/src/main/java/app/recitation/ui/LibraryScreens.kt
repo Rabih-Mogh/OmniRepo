@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -57,6 +58,14 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.recitation.R
@@ -65,6 +74,7 @@ import app.recitation.core.Surah
 import app.recitation.data.Hit
 import app.recitation.data.Playlist
 import app.recitation.data.VerseRef
+import app.recitation.data.Summary
 import app.recitation.data.Track
 import app.recitation.prepare.ModelProblem
 import app.recitation.prepare.PrepareWorker
@@ -161,6 +171,7 @@ fun HomeContent(
     menu: @Composable () -> Unit = {},
     unheard: Set<Int> = emptySet(),
     queued: Set<Int> = emptySet(),
+    streak: Summary? = null,
 ) {
     // Where the work is: the surah being worked on shows the work's picture under its number.
     val workingOn = status as? Status.Working
@@ -175,7 +186,7 @@ fun HomeContent(
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     SidePanel(open = menuOpen, onClose = { menuOpen = false }, title = stringResource(R.string.app_name), panel = { menu() }) {
     Column(Modifier.fillMaxSize()) {
-        TitleBand(query, onQuery, onMenu = { menuOpen = true })
+        TitleBand(query, onQuery, onMenu = { menuOpen = true }, streak = streak)
         if (query != null) {
             SearchResults(query, hits, onSurah, onVerse, Modifier.weight(1f)) { surah -> row(surah) }
         } else if (tab == 0) {
@@ -209,18 +220,7 @@ fun HomeContent(
                     }
                 }
                 items(playlists, key = { it.url }) { playlist ->
-                    Card(
-                        Modifier.fillMaxWidth().clickable { onOpen(playlist) },
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                    ) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(playlist.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            if (playlist.channel.isNotEmpty()) {
-                                Text(playlist.channel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            ReadyCount(playlist, MaterialTheme.colorScheme.primary)
-                        }
-                    }
+                    PlaylistCard(playlist, status, onClick = { onOpen(playlist) })
                 }
                 item { ThemeButton(stringResource(R.string.add_playlist), onAdd, Modifier.fillMaxWidth(), icon = AppIcons.Add, filled = true) }
             }
@@ -241,6 +241,51 @@ fun HomeContent(
             Spacer(Modifier.windowInsetsPadding(WindowInsets.navigationBars))
         }
     }
+    }
+}
+
+/**
+ * A playlist in the list of them: a ring that fills with the share of its recordings that
+ * are ready, or holds the picture of the work while one of them is being worked on; its
+ * title and channel; and, in the app's own marks, how many are ready, how many wait their
+ * turn and how many couldn't be got ready.
+ */
+@Composable
+private fun PlaylistCard(playlist: Playlist, status: Status?, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val ready = playlist.tracks.count { it.ready }
+    val waiting = playlist.tracks.count { it.wanted }
+    val failed = playlist.tracks.count { it.error != null }
+    val work = (status as? Status.Working)?.let { all -> playlist.tracks.firstNotNullOfOrNull { all.on(it.id) } }
+    Card(Modifier.fillMaxWidth().clickable(onClick = onClick), colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLow)) {
+        Row(Modifier.padding(start = 14.dp, top = 14.dp, bottom = 14.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            WorkIcon(
+                work?.picture() ?: Picture(AppIcons.Playlists, fraction = if (playlist.tracks.isEmpty()) 0f else ready.toFloat() / playlist.tracks.size),
+                work?.says(), size = 46.dp, ground = colors.surfaceContainerLow,
+            )
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(playlist.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (playlist.channel.isNotEmpty()) {
+                    Text(playlist.channel, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    ReadyCount(playlist, colors.primary)
+                    if (waiting > 0) Count(AppIcons.Hourglass, waiting, pluralStringResource(R.plurals.count_waiting, waiting, waiting), colors.onSurfaceVariant)
+                    if (failed > 0) Count(AppIcons.Warning, failed, pluralStringResource(R.plurals.count_failed, failed, failed), colors.error)
+                }
+            }
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = colors.outline)
+        }
+    }
+}
+
+/** A mark with a figure beside it; [says] is what the two mean together. */
+@Composable
+private fun Count(icon: ImageVector, count: Int, says: String, color: Color) {
+    Row(Modifier.clearAndSetSemantics { contentDescription = says }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        Icon(icon, null, Modifier.size(14.dp), tint = color)
+        Text(stringResource(R.string.number, count), style = MaterialTheme.typography.bodySmall, color = color)
     }
 }
 
@@ -271,28 +316,63 @@ private fun BottomTab(label: String, icon: ImageVector, selected: Boolean, onCli
 }
 
 /**
- * Sits at the bottom of the lists while a recitation is loaded in the player: what it is,
- * play or pause, and a cross to stop it. Tapping it goes back to the surah.
+ * Sits at the bottom of the lists while a recitation is loaded in the player, and does
+ * there what the player in the surah does: along its top edge a thin line for how far
+ * the recitation has got; previous verse, play or pause, next verse; the surah's number
+ * and name with the verse being recited and the time gone of the whole; and a cross to
+ * stop it. Tapping it goes back to the surah. [verse] is counted from 1, 0 when it isn't
+ * known; the verse buttons are there only where the verses' starts are.
  */
 @Composable
-fun NowPlayingBar(title: String, playing: Boolean, onPlayPause: () -> Unit, onOpen: () -> Unit, onStop: () -> Unit) {
+fun NowPlayingBar(
+    surah: Surah,
+    playing: Boolean,
+    position: Int,
+    duration: Int,
+    verse: Int,
+    onPlayPause: () -> Unit,
+    onPrevious: (() -> Unit)?,
+    onNext: (() -> Unit)?,
+    onOpen: () -> Unit,
+    onStop: () -> Unit,
+) {
     val band = LocalBanner.current
-    Box(Modifier.clickable(onClick = onOpen)) {
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    Box(Modifier.clickable(onClick = onOpen).testTag("now-playing")) {
         BottomBand(clearOfSystemBar = false) {
-            Row(Modifier.padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onPlayPause) {
-                    if (playing) Icon(AppIcons.Pause, stringResource(R.string.pause), tint = band.content)
-                    else Icon(AppIcons.Play, stringResource(R.string.play), tint = band.content)
+            Column {
+                // The time line runs left to right in every language, as in the surah's player.
+                Canvas(Modifier.fillMaxWidth().height(3.dp)) {
+                    drawRect(band.content.faded(0.25f, band.background))
+                    if (duration > 0) drawRect(band.accent, size = Size(size.width * (position.toFloat() / duration).coerceIn(0f, 1f), size.height))
                 }
-                Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
-                    Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    // Reciting or paused, as a picture: the bars of sound, or the pause mark.
-                    Icon(
-                        if (playing) AppIcons.Sound else AppIcons.Pause, stringResource(if (playing) R.string.now_reciting else R.string.recitation_paused),
-                        Modifier.size(14.dp), tint = band.quiet,
-                    )
+                Row(Modifier.padding(start = 2.dp, end = 2.dp, top = 2.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (onPrevious != null) IconButton(onClick = onPrevious, modifier = Modifier.size(40.dp)) {
+                        Icon(AppIcons.SkipPrevious, stringResource(R.string.previous_verse), Modifier.scale(scaleX = if (rtl) -1f else 1f, scaleY = 1f), tint = band.content)
+                    }
+                    PlayButton(playing, onPlayPause)
+                    if (onNext != null) IconButton(onClick = onNext, modifier = Modifier.size(40.dp)) {
+                        Icon(AppIcons.SkipNext, stringResource(R.string.next_verse), Modifier.scale(scaleX = if (rtl) -1f else 1f, scaleY = 1f), tint = band.content)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Column(Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(stringResource(R.string.number, surah.number), style = MaterialTheme.typography.titleSmall, color = band.quiet)
+                            SurahTitle(surah, 22.sp, band.content)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            // Reciting or paused, as a picture: the bars of sound, or the pause mark.
+                            Icon(
+                                if (playing) AppIcons.Sound else AppIcons.Pause, stringResource(if (playing) R.string.now_reciting else R.string.recitation_paused),
+                                Modifier.size(13.dp), tint = band.quiet,
+                            )
+                            val small = MaterialTheme.typography.labelSmall
+                            if (verse > 0) Text(stringResource(R.string.verse, verse), style = small, color = band.content, maxLines = 1)
+                            if (duration > 0) Text("${clock(position)} / ${clock(duration)}", style = small, color = band.quiet, maxLines = 1)
+                        }
+                    }
+                    IconButton(onClick = onStop) { Icon(AppIcons.Close, stringResource(R.string.stop_reciting), tint = band.content) }
                 }
-                IconButton(onClick = onStop) { Icon(AppIcons.Close, stringResource(R.string.stop_reciting)) }
             }
         }
     }
@@ -447,13 +527,10 @@ fun RecordingsContent(
             if (status != null) item { Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { StatusCard(status, actions) } }
             if (waiting.isNotEmpty()) {
                 item {
-                    Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        ThemeButton(pluralStringResource(R.plurals.get_all, waiting.size, waiting.size), { onGet(waiting) }, Modifier.fillMaxWidth(), icon = AppIcons.Download)
-                        Text(
-                            stringResource(R.string.get_all_note), style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
+                    ThemeButton(
+                        pluralStringResource(R.plurals.get_all, waiting.size, waiting.size), { onGet(waiting) },
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), icon = AppIcons.Download,
+                    )
                 }
             }
             items(playlist.tracks, key = { it.id }) { track ->
@@ -504,6 +581,13 @@ fun RecordingsContent(
     }
 }
 
+/**
+ * One recording, laid out like a surah in the Quran tab: its surah's number, with the mark
+ * under it for where its recitation stands (the bars of sound, the work in its ring, an
+ * hourglass or the picture of what it waits for); the surah's name in calligraphy; under
+ * that the recording's own title and how long it is; then what can be done with it. Only
+ * what went wrong is put in words.
+ */
 @Composable
 private fun RecordingRow(
     track: Track,
@@ -517,76 +601,80 @@ private fun RecordingRow(
     onListenToVerses: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
+    val colors = MaterialTheme.colorScheme
     val surah = SURAHS.getOrNull(track.surah - 1)
-    val working = (status as? Status.Working)?.progress
-    val progress = (status as? Status.Working)?.on(track.id)?.progress
-    val listening = progress != null || track.wanted
+    val work = (status as? Status.Working)?.on(track.id)
+    val listening = work != null || track.wanted
+    // What a recording in the queue is really waiting for, so it never looks stuck: that
+    // thing's own picture, where it isn't simply the recording's turn. The words for it are the short ones.
+    val waitsFor: Status? = if (work != null || !track.wanted) null else status.takeIf {
+        // The speech model or the engine, which every recording waits for, being fetched; or a state of waiting.
+        (it is Status.Working && it.progress.trackId == null) || it == Status.Paused || it == Status.WaitingForNetwork || it == Status.Refused || it is Status.ModelBlocked
+    }
+    val waitsSays = when (waitsFor) {
+        null -> null
+        Status.Paused -> stringResource(R.string.paused)
+        Status.WaitingForNetwork -> stringResource(R.string.status_waiting)
+        Status.Refused -> stringResource(R.string.status_refused_short)
+        is Status.ModelBlocked -> stringResource(R.string.queued_for_model)
+        else -> waitsFor.says()
+    }
+    val mismatch = track.ready && track.clarity < app.recitation.core.Timings.GOOD_ENOUGH
     // Tapping a recording opens its surah: to play along if it is ready, otherwise just to read.
     Row(
-        Modifier.fillMaxWidth().clickable(enabled = surah != null, onClick = onOpen).padding(start = 16.dp, top = 10.dp, bottom = 10.dp, end = 4.dp),
+        Modifier.fillMaxWidth().clickable(enabled = surah != null, onClick = onOpen).padding(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (surah != null) {
+            SurahNumber(
+                surah.number, Modifier.width(44.dp), recitation = track.canPlay, heard = track.ready,
+                // A ready one waiting to be listened to again by itself isn't shown as waiting: nothing about it is.
+                queued = track.wanted && !track.ready && work == null && waitsFor == null,
+                working = work?.picture() ?: waitsFor?.picture(), workSays = work?.says() ?: waitsSays,
+            )
+        } else {
+            // Which surah it is isn't known: nothing can be done with it until that is said.
+            Box(Modifier.width(44.dp), contentAlignment = Alignment.Center) { Icon(AppIcons.Warning, null, Modifier.size(22.dp), tint = colors.error) }
+        }
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(track.title, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AssistChip(
-                    onClick = onPickSurah,
-                    label = { Text(if (surah != null) stringResource(R.string.surah_chip, surah.number, surahName(surah)) else stringResource(R.string.choose_surah)) },
-                    colors = if (surah != null) AssistChipDefaults.assistChipColors() else AssistChipDefaults.assistChipColors(labelColor = MaterialTheme.colorScheme.error),
+            if (surah != null) {
+                SurahTitle(surah, 28.sp, if (track.canPlay) colors.primary else colors.onSurface)
+            } else {
+                Text(
+                    stringResource(R.string.choose_surah), Modifier.clip(RoundedCornerShape(50)).clickable(role = Role.Button, onClick = onPickSurah),
+                    style = MaterialTheme.typography.titleMedium, color = colors.error,
                 )
-                Text(clock((track.seconds * 1000).toInt()), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            val mismatch = track.ready && track.clarity < app.recitation.core.Timings.GOOD_ENOUGH
-            val colors = MaterialTheme.colorScheme
-            // Where the recording stands, as a picture; only what went wrong is put in words.
+            Text(track.title, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                @Composable fun mark(icon: ImageVector, says: String?, tint: Color = colors.primary) = Icon(icon, says, Modifier.size(18.dp), tint = tint)
-                when {
-                    track.error != null -> {
-                        mark(AppIcons.Warning, stringResource(R.string.try_again), colors.error)
-                        Text(track.error, style = MaterialTheme.typography.bodySmall, color = colors.error)
-                    }
-                    progress != null -> {
-                        WorkIcon(progress.step.picture(progress.fraction), stringResource(PrepareWorker.stepLabel(progress.step), (progress.fraction * 100).toInt()), size = 24.dp)
-                        if (progress.speed > 0f) Text(times(progress.speed), style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
-                    }
-                    // What the queue is really waiting for, so it never looks stuck.
-                    track.wanted -> when {
-                        status == Status.Paused -> mark(AppIcons.Pause, stringResource(R.string.paused))
-                        status == Status.WaitingForNetwork -> mark(AppIcons.CloudOff, stringResource(R.string.status_waiting))
-                        status == Status.Refused -> mark(AppIcons.Blocked, stringResource(R.string.status_refused_short))
-                        status is Status.ModelBlocked -> {
-                            mark(AppIcons.Hourglass, stringResource(R.string.queued_for_model))
-                            mark(AppIcons.Model, null, colors.error)
-                        }
-                        // The speech model or the engine, which every recording waits for, is being fetched.
-                        working != null && working.trackId == null -> {
-                            mark(AppIcons.Hourglass, stringResource(R.string.queued))
-                            WorkIcon(working.step.picture(working.fraction), stringResource(PrepareWorker.stepLabel(working.step), (working.fraction * 100).toInt()), size = 24.dp)
-                        }
-                        else -> mark(AppIcons.Hourglass, stringResource(R.string.queued))
-                    }
-                    mismatch -> {
-                        mark(AppIcons.Warning, stringResource(R.string.mismatch_short), colors.error)
-                        Text(stringResource(R.string.mismatch_short), style = MaterialTheme.typography.bodySmall, color = colors.error)
-                    }
-                    // It plays, but the listening was stopped before the end.
-                    track.canPlay && !track.ready -> mark(AppIcons.SoundPart, stringResource(R.string.heard_in_part))
+                Text(clock((track.seconds * 1000).toInt()), style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
+                // How the listening compares with playing the recording.
+                if (work != null && work.progress.speed > 0f) Text(times(work.progress.speed), style = MaterialTheme.typography.labelMedium, color = colors.primary)
+            }
+            when {
+                track.error != null -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(AppIcons.Warning, null, Modifier.size(16.dp), tint = colors.error)
+                    Text(track.error, style = MaterialTheme.typography.bodySmall, color = colors.error)
+                }
+                mismatch && !listening -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(AppIcons.Warning, null, Modifier.size(16.dp), tint = colors.error)
+                    Text(stringResource(R.string.mismatch_short), style = MaterialTheme.typography.bodySmall, color = colors.error)
                 }
             }
         }
         when {
-            track.ready -> IconButton(onClick = onOpen) { Icon(AppIcons.Play, stringResource(R.string.play), tint = MaterialTheme.colorScheme.primary) }
+            track.ready -> IconButton(onClick = onOpen) { Icon(AppIcons.Play, stringResource(R.string.play), tint = colors.primary) }
             // It can be played as soon as its sound is here, while the listening carries on. (Cancel moves to the menu.)
-            listening && track.canPlay -> IconButton(onClick = onOpen) { Icon(AppIcons.Play, stringResource(R.string.play), tint = MaterialTheme.colorScheme.primary) }
-            listening -> IconButton(onClick = onCancel) { Icon(AppIcons.Close, stringResource(R.string.cancel)) }
-            track.error != null -> IconButton(onClick = onGet, enabled = surah != null) { Icon(AppIcons.Retry, stringResource(R.string.try_again), tint = MaterialTheme.colorScheme.primary) }
+            listening && track.canPlay -> IconButton(onClick = onOpen) { Icon(AppIcons.Play, stringResource(R.string.play), tint = colors.primary) }
+            listening -> IconButton(onClick = onCancel) { Icon(AppIcons.Close, stringResource(R.string.cancel), tint = colors.onSurfaceVariant) }
+            track.error != null -> IconButton(onClick = onGet, enabled = surah != null) { Icon(AppIcons.Retry, stringResource(R.string.try_again), tint = colors.primary) }
             else -> IconButton(onClick = onGet, enabled = surah != null) {
-                Icon(AppIcons.Download, stringResource(R.string.get), tint = if (surah != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
+                Icon(AppIcons.Download, stringResource(R.string.get), tint = if (surah != null) colors.primary else colors.outline)
             }
         }
         Box {
-            IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.more)) }
+            IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.more), tint = colors.onSurfaceVariant) }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 if (listening && track.canPlay) {
                     DropdownMenuItem(text = { Text(stringResource(R.string.stop_listening)) }, onClick = { menu = false; onCancel() })
@@ -601,19 +689,28 @@ private fun RecordingRow(
     }
 }
 
-/** All 114 surahs, to say which one a recording is. */
+/**
+ * All 114 surahs: to say which one a recording is, or to go to another from the one that
+ * is open ([current], which the list opens at and marks).
+ */
 @Composable
-fun SurahPicker(onPick: (Int) -> Unit, onDismiss: () -> Unit) {
+fun SurahPicker(onPick: (Int) -> Unit, onDismiss: () -> Unit, current: Int = 0) {
+    val colors = MaterialTheme.colorScheme
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.choose_surah)) },
         text = {
-            LazyColumn(Modifier.height(420.dp)) {
+            LazyColumn(Modifier.height(420.dp), state = rememberLazyListState(initialFirstVisibleItemIndex = (current - 3).coerceAtLeast(0))) {
                 items(SURAHS) { surah ->
-                    Row(Modifier.fillMaxWidth().clickable { onPick(surah.number) }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("${surah.number}", Modifier.width(40.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(surah.arabic, Modifier.weight(1f))
-                        Text(surah.latin)
+                    val here = surah.number == current
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(if (here) colors.primary.copy(alpha = 0.12f) else Color.Transparent)
+                            .clickable { onPick(surah.number) }.padding(horizontal = 6.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("${surah.number}", Modifier.width(40.dp), color = if (here) colors.primary else colors.onSurfaceVariant)
+                        SurahTitle(surah, 24.sp, if (here) colors.primary else colors.onSurface, Modifier.weight(1f))
+                        Text(surah.latin, color = if (here) colors.primary else colors.onSurface)
                     }
                 }
             }

@@ -80,6 +80,15 @@ the whole Quran ends up readable without a connection.
 [Reciting to the phone](#reciting-to-the-phone)) and **Train your voice** (see
 [Training the voice](#training-the-voice)).
 
+**The days listened on in a row are a plant.** A day counts once a minute has been
+listened to on it. The plant is a seed in the soil before the first day and a sprout on
+it; it grows a pair of leaves at three days and another at a week, flowers at a
+fortnight and bears fruit at a month. On a day not yet listened on it is grey and its
+leaves hang until that day's minute is in; a day missed, and it is a seed again. It
+stands small in the first screen's top bar with the number of days, and a tap opens the
+whole of it: what today still asks for, the longest run so far, and the last seven
+days, each a dot that is filled if it was listened on. The same card heads the Stats tab.
+
 **Stats** shows what has been listened to: the time today, over the last seven days (as
 bars, a day each) and in all; how many days in a row; how many of the Quran's 6,236
 verses, and how many whole surahs, have been heard at least once; how many recordings are
@@ -92,8 +101,17 @@ phone and nowhere else.
 
 1. **Add a playlist.** Paste a YouTube or YouTube Music playlist link, or use **Share** in
    YouTube and pick Recitation. One surah per video is expected. The app reads which surah
-   each video is from its title ("سورة البقرة", "Surah Al-Baqarah", "002 | …"); tap the
-   surah under a recording to correct it.
+   each video is from its title ("سورة البقرة", "Surah Al-Baqarah", "002 | …"); **Choose
+   surah** in a recording's menu corrects it.
+   - A playlist shows as a card: a ring that fills with the share of its recordings that
+     are ready (or holds the picture of the work while one of them is being worked on),
+     its title and channel, and in the app's own marks how many are ready, how many
+     wait their turn and how many couldn't be got ready.
+   - Its recordings are laid out like the surahs of the Quran tab: the surah's number
+     with the mark under it for where its recitation stands (the bars of sound, the
+     work in its ring, an hourglass, or the picture of what it waits for), the surah's
+     name in calligraphy, and under it the recording's own title and how long it is.
+     Only what went wrong is put in words.
 2. **Get recordings ready.** For each recording the app:
    - downloads the sound (not the video);
    - fetches the surah's words, each word's meaning, and the verse translation;
@@ -121,20 +139,29 @@ phone and nowhere else.
    - **Pause** stops the work where it is and keeps what was fetched; **Resume** carries
      on from there, also after the app was closed.
    - **Cancel** empties the queue. The cross on a recording takes just that one out.
+   - **The speech model is never left idle while the app is open.** Every recording whose
+     sound is on the phone and that hasn't been listened to the end goes into the queue
+     by itself, when the app opens and whenever the work runs out. That needs no
+     connection. It doesn't happen while the work is paused, nor for a recording taken
+     out of the queue with its cross or by **Cancel**, nor for one that failed: those
+     wait to be asked for.
    - What the app is at is shown in pictures, not told in words. Each kind of work has
-     its own icon (an arrow for the sound being downloaded, a book for the verses, a chip
-     for the speech model, a cog for the engine, sliders for the trial of the fastest way
-     to run it, an ear for the listening, bars over words for the matching), and so has
+     its own icon (an arrow for the sound being downloaded, a book for the verses, an ear
+     for the listening, bars over words for the matching; and, only while the app is
+     first being set up, a chip for the speech model, a cog for the engine and sliders
+     for the trial of the fastest way to run it), and so has
      each way of waiting (an hourglass for a turn, a pause mark, a struck-through cloud
      for no connection, a struck-through circle for YouTube refusing). A ring round the
      icon fills as the work goes; work that can't say how far it is has a ring that turns.
      Only what went wrong is put in words.
    - It is in sight on every screen for as long as anything is being done or waited for:
-     the icon in its ring, with the number of the surah it is for, stands in the top bar
-     of the lists and at the end of the player's bar in a surah. Tapping it opens the
-     whole of it, with the words for the picture and the buttons to pause or call it off.
+     the icon in its ring, with the number of the surah it is for, stands at the end of
+     the top bar, in the lists and in a surah. In a surah it shows only what is being
+     done to other surahs: the work on the surah's own recording shows in its player,
+     and nothing about other surahs does. Tapping it opens the whole of it, with the
+     words for the picture and the buttons to pause or call it off.
    - A card at the top of the playlists, and of a playlist's recordings, shows the same larger: the icon, the surah's number
-     and name, the row of all six steps with the one being done marked, the listening's
+     and name, the row of a recording's four steps with the one being done marked (the three steps of setting the app up, only while that is being done), the listening's
      speed as a figure, and the pause and cancel buttons. In the list of surahs the surah
      being worked on has the icon under its number, and in a surah the player's line has
      a small mark standing on it at the place being listened to. After a connection problem, or
@@ -166,6 +193,13 @@ phone and nowhere else.
      calligraphic piece. (Not for Al-Fatihah, whose first verse is the basmala, nor for
      At-Tawbah, which has none.) The
      title page fills the top half, so the first verse starts at the middle of the page.
+   - The surah's name in the top bar is also the way to another surah: a tap opens the
+     list of all of them at the one that is open. Opening another surah doesn't stop a
+     recitation that is playing: it carries on, and is given up for the new surah's own
+     recording only when play is pressed there.
+   - Where a verse's words run out part-way (the listening hasn't got further yet), the
+     page never goes back up to the verse's start: the verse is lit whole and the page
+     stays, or goes on down to show the rest of it.
    - The top bar gets out of the way. Once the page goes on down the surah, whether a
      finger scrolls it or the recitation carries it, the bar slides up out of sight and
      the verses have its room; the strip behind the phone's status bar stays. It slides
@@ -226,8 +260,10 @@ phone and nowhere else.
      recitation listened to last, where it was left. Android colours that player from the picture
      it is given, so each surah comes with one in the theme's colours: its name under the
      arch, on the bars' teal by day and their dark teal in dark mode. Inside the app, a bar at the bottom of the
-     lists shows what is reciting, with play or pause, a cross to stop it, and a tap to
-     go back to its surah.
+     lists does what the player in the surah does: a thin line along its top for how
+     far the recitation has got, previous verse, play or pause, next verse, the surah's
+     number and name, the verse being recited and the time gone of the whole, a cross
+     to stop it, and a tap to go back to its surah.
 
 ### Tajweed
 
@@ -309,13 +345,34 @@ the heavy letters that are always heavy (خ ص ض غ ط ق ظ), and the few one-
 
 ### Reciting to the phone
 
-**On the page of a surah**, every verse has a microphone beside its number. Tap it,
-recite the verse, and tap it again (it is then a filled disc with the sign for stopping).
-A recording that is playing is paused first. While the microphone is open the word being
-recited is lit on its block, as when a recording plays: about once a second the phone
-listens to what has been recited so far, only to find the word reached. When the reader
-is done the phone listens to the whole (the ear in its turning ring, where the microphone
-was), and what there is to go over is marked right there on the page:
+**On the page of a surah**, **Recite to the phone** in the surah's menu opens the
+microphone. Nothing more is asked: the phone finds by itself which verse is being recited,
+wherever in the surah the reader begins, and follows them from verse to verse to the
+surah's end or until they stop. A recording that is playing is paused first. In the
+player's place there is a bar for it: the microphone in its turning ring, the number of
+the verse the reader is heard to be at, how many of the words gone over so far were
+sound, and the button that ends it.
+
+- **The page follows the reader**: the verse they are at is brought into view and the
+  word they have reached is lit on its block, as when a recording plays.
+- **Each verse is gone over as the reader goes on to the next**, and what there is to go
+  over is marked on it right away; the last one when they stop.
+- **The reader may go back or skip ahead**: they are found again, and a verse recited a
+  second time is gone over afresh. A verse taken up in its middle is followed but not
+  gone over, as its beginning wasn't heard. The basmala said before a surah's first
+  verse is followed and not taken for that verse's words.
+
+How it is done is in `core/Follower.kt`. The sound is heard a stretch at a time, each
+ending where the reader falls silent, so no word is cut in two and a verse of any length
+can be recited: the model takes half a minute at once, a stretch is never that long.
+What was heard is kept in one run. Its last forty sounds (four or five words) say where
+the reader is: they are looked for near where the reader was first, where the words of a
+refrain are the ones meant, and then anywhere in the surah. When the reader is heard to
+be five sounds into the next verse, the one before is cut out of the run where its
+sounds end, at the silence if there is one within a few sounds, and gone over the way a
+verse recited by itself is.
+
+What there is to go over is marked right there on the page:
 
 - **A word with something to go over has its block filled**: red for a mistake in the
   wording itself (لحن جلي: another letter, another vowel, a sound left out or added, a
@@ -527,17 +584,31 @@ muffled recording, whose placing drifts, was shown none. Where the recording is 
 out of turn, because it is being played there, the words are still placed once through,
 so over a passage said again they stand still until it has passed.
 
-When the recitation goes back, a wave in the app's colour runs over the blocks of the
-words gone back over. It sets out from the word gone back to and passes a word at a
-time as far as the word that had been reached: each block is faintly filled for its
-turn, with three broad arrowheads on it that point the way the words are read and light
-one after the other, so the eye is taken back and then on with the reciter. A word's
-turn lasts 0.7 s and the next word's starts 0.16 s after it, sooner over a long passage,
-so the last word's turn has always started within 1.4 s.
+While the reciter is saying a passage again, all the words he went back over are marked,
+in a way of their own: their blocks are faintly tinted and a stream flows back along
+their foot, the way he went, in two swells that run on unbroken from block to block. It
+is there from the moment he goes back until he has said the passage again and goes on
+past it, and the word being uttered is lit on top of it as ever. It goes by where the
+recitation is, not by the phone's clock, so it shows whatever the phone does with
+animations, stands still when the recitation is paused, and is there again when that
+place is gone back to.
 
-Recordings prepared before version 1.45 don't have it: **Listen again**, in a
-recording's menu, has the phone hear it once more (the sound is kept, so nothing is
-downloaded) and places its words afresh.
+A short word at the start of the passage gone back to could be missed: said faintly
+straight after a breath (the «إِذْ» of «إِذْ بَعَثَ» in 3:164), it can sound no more like itself
+than like more of the sound the reciter stopped on, and he was then taken to have gone
+back to the word after it. The model's rows are all speech (pauses aren't among them),
+so rows right before the going back that were clear neither as the sound stopped on nor
+as a pause are him saying something, and they are now given to the words before the one
+gone back to, as many as they have room for (`Repeats.saidBefore`).
+
+None of this has to be asked for, recording by recording. A recording's timings say
+which way of placing the words they were made by (`Timings.method`). One that is ready
+but was placed an earlier way is listened to once more by itself when nothing else is
+waiting, one at a time, and keeps the timings it has, whole, until the new ones are
+whole too. That is a recording's worth of listening each, so going through a whole
+library takes many hours of the app being open; **Pause** holds it, and taking one out
+of the queue leaves that one as it is. **Listen again**, in a recording's menu, still
+does it for one right away.
 
 **Listen again to some verses…**, in the same menu, does that for a part of the recording
 only: choose the first and last verse, and just that stretch of the sound is heard again
@@ -571,8 +642,9 @@ word is lit from it. Where it is wrong the reader lands off the mark; the listen
 sent to where they are, and what the model hears there takes the guess's place.
 
 With it, before a verse has been heard: the next and previous verse buttons and the
-"which verses to recite" chooser go to it; the page follows the verse being played and
-lights its number; and the listening, which goes to where the recording is being played,
+"which verses to recite" chooser go to it; the page follows the verse being played,
+lights all of it (softly: every block of the verse, not its number alone) and brings
+all of it into view, in the middle of the page if it fits there; and the listening, which goes to where the recording is being played,
 gets there straight away. Going to such a verse (by those buttons, the chooser, or the
 play bar) puts everything else aside: the listening is sent there at once and stays with
 the reader, up to five minutes ahead, before it goes back to the pieces in order; and the

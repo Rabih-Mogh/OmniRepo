@@ -49,6 +49,38 @@ object Edits {
         return best
     }
 
+    /** Where something said was found in a longer run: it ends at [until] of the run, with [cost] changes between them. */
+    class Found(val until: Int, val cost: Int)
+
+    /**
+     * Where in [whole], between [from] and [until], [said] fits best, wherever it begins:
+     * for finding the place of a few words heard in a surah. Of places that fit equally
+     * well, the first that ends at or past [after]; failing that, the first.
+     */
+    fun within(whole: String, said: String, from: Int = 0, until: Int = whole.length, after: Int = 0): Found? {
+        val n = until - from
+        if (said.isEmpty() || n <= 0) return null
+        // The fewest changes between all of [said] so far and a stretch of [whole] ending at each place.
+        var prev = IntArray(n + 1)
+        var cur = IntArray(n + 1)
+        for (i in 1..said.length) {
+            cur[0] = i
+            val c = said[i - 1]
+            for (j in 1..n) {
+                cur[j] = minOf(prev[j - 1] + if (whole[from + j - 1] == c) 0 else 1, prev[j] + 1, cur[j - 1] + 1)
+            }
+            val t = prev; prev = cur; cur = t
+        }
+        var least = Int.MAX_VALUE
+        for (j in 1..n) if (prev[j] < least) least = prev[j]
+        var first = -1
+        for (j in 1..n) if (prev[j] == least) {
+            if (first < 0) first = j
+            if (from + j >= after) return Found(from + j, least)
+        }
+        return Found(from + first, least)
+    }
+
     /** The changes from [a] to [b], in order, covering both runs whole; neighbouring changes of one kind are one change. */
     fun between(a: String, b: String): List<Change> {
         val n = a.length

@@ -25,7 +25,6 @@
         <item quantity="one">Get %1$d recording ready</item>
         <item quantity="other">Get all %1$d ready</item>
     </plurals>
-    <string name="get_all_note">Listening to a recording takes about as long as the recording itself, once. It can be played meanwhile, as soon as its sound is downloaded.</string>
     <string name="get">Get ready</string>
     <string name="queued">Waiting its turn</string>
     <string name="surah_chip">%1$d · %2$s</string>
@@ -128,7 +127,6 @@
     <string name="stop_reciting">Stop the recitation</string>
     <string name="listening_stopped">Not listened to the end yet: words light up as far as %1$s.</string>
     <string name="listening_stopped_none">Not listened to yet, so no words light up.</string>
-    <string name="heard_in_part">Plays, but not listened to the end yet</string>
     <string name="stop_listening">Stop listening to it</string>
     <string name="tab_saved">Saved</string>
     <string name="range_short">%1$d – %2$d</string>
@@ -342,7 +340,8 @@
     <string name="recite_failed">That couldn\'t be done: %1$s</string>
     <string name="recite_nothing_heard">Nothing was heard. Recite a little louder, closer to the phone.</string>
     <string name="recite_no_reference">This verse can\'t be checked yet.</string>
-    <string name="recite_this_verse">Recite this verse yourself</string>
+    <string name="recite_to_phone">Recite to the phone</string>
+    <string name="recite_listening">Listening to you recite</string>
     <string name="recite_forget">Take these corrections off the page</string>
     <string name="recite_stopped_here">You stopped here</string>
     <string name="recite_counts">%1$d counts</string>
@@ -425,4 +424,19 @@
         <item>م is the two lips closed, without pressing.</item>
         <item>و is the two lips rounded.</item>
     </string-array>
+    <plurals name="count_waiting">
+        <item quantity="one">%1$d waiting its turn</item>
+        <item quantity="other">%1$d waiting their turn</item>
+    </plurals>
+    <plurals name="count_failed">
+        <item quantity="one">%1$d couldn\'t be got ready</item>
+        <item quantity="other">%1$d couldn\'t be got ready</item>
+    </plurals>
+    <string name="streak_today_done">Today\'s minute is in. It grows again tomorrow.</string>
+    <string name="streak_today_left">A minute of listening today keeps it growing.</string>
+    <string name="streak_none">Listen for a minute and it sprouts.</string>
+    <plurals name="streak_best">
+        <item quantity="one">Longest so far: %1$d day</item>
+        <item quantity="other">Longest so far: %1$d days</item>
+    </plurals>
 </resources>

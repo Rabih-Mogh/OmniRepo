@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat
 import app.recitation.R
 import app.recitation.core.Corrections
 import app.recitation.core.Expected
+import app.recitation.core.Follower
 import app.recitation.core.Mel
 import app.recitation.core.Silences
 import app.recitation.core.TajweedReference
@@ -41,11 +42,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Listens to a verse being recited to the phone and corrects it: opens the microphone,
- * finds the word being recited as it goes, and when the reader is done has the tajweed
- * model listen and the corrections worked out, all on the phone. One verse at a time; the
- * verses recited before keep what was heard of them. It lives as long as the screen that
- * made it, and lets go of the microphone with it.
+ * Listens to the reader reciting to the phone and corrects them, all on the phone. Either
+ * one verse it is told ([toggle]): the microphone is opened, the word being recited is
+ * found as it goes, and when the reader is done the tajweed model listens and the
+ * corrections are worked out. Or a surah, from wherever the reader begins ([follow]): the
+ * verse and the word are found by what is heard, and each verse is gone over as the reader
+ * goes on to the next (see [Follower]). The verses recited before keep what was heard of
+ * them. It lives as long as the screen that made it, and lets go of the microphone with it.
  */
 @Stable
 class Reciter(private val context: Context, private val scope: CoroutineScope, private val says: Says) {
@@ -100,9 +103,29 @@ class Reciter(private val context: Context, private val scope: CoroutineScope, p
     fun allowed(granted: Boolean) {
         val (surah, verse) = waiting ?: return
         waiting = null
-        if (granted) recite(surah, verse) else {
+        if (granted) {
+            if (verse == 0) followFrom(surah) else recite(surah, verse)
+        } else {
             this.verse = verse
             state = Reciting.Failed(says.refused)
+        }
+    }
+
+    /**
+     * The page's microphone: opens it on [surah], to follow the reader from whichever
+     * verse they begin at; with it open, says the reader is done; and after something
+     * couldn't be done, puts that away. Asks for the microphone the first time.
+     */
+    fun follow(surah: Int) {
+        when {
+            listening -> done = true
+            state == Reciting.Checking -> {}
+            state is Reciting.Failed -> rest()
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED -> followFrom(surah)
+            else -> {
+                waiting = surah to 0
+                ask()
+            }
         }
     }
 
@@ -188,6 +211,138 @@ class Reciter(private val context: Context, private val scope: CoroutineScope, p
             (state as? Reciting.Heard)?.let { heard[verse] = it.words }
         }
     }
+
+    private fun followFrom(surah: Int) {
+        if (surah != this.surah) {
+            tempo.clear()
+            heard.clear()
+            this.surah = surah
+        }
+        job?.cancel()
+        verse = 0
+        state = Reciting.Listening
+        reached = -1
+        done = false
+        job = scope.launch {
+            val follower = withContext(Dispatchers.Default) {
+                runCatching {
+                    val verses = context.assets.open(REFERENCE).use { TajweedReference.surah(it, surah) }
+                    // The basmala a reader begins with is a verse of Al-Fatihah alone, and At-Tawbah has none.
+                    val opening = if (surah == 1 || surah == 9) null else context.assets.open(REFERENCE).use { TajweedReference.surah(it, 1) }.firstOrNull()
+                    Follower(verses, opening, tempo).takeIf { verses.isNotEmpty() }
+                }.getOrNull()
+            }
+            if (follower == null) {
+                state = Reciting.Failed(says.unknown)
+                return@launch
+            }
+            // The sound not yet heard for good, and how much has been: a stretch is handed on
+            // where the reader falls silent, and what is left is heard again at every look.
+            val blocks = ArrayList<FloatArray>()
+            var samples = 0
+            var taken = 0L
+            var failed: String? = null
+            suspend fun look(last: Boolean) {
+                val sound = FloatArray(samples)
+                var at = 0
+                for (block in blocks) { System.arraycopy(block, 0, sound, at, block.size); at += block.size }
+                val (cut, finished) = withContext(Dispatchers.Default) {
+                    val ear = Ears.get(context)
+                    val cut = (if (last) sound.size else Breaths.end(sound)).takeIf { it >= LEAST } ?: 0
+                    if (cut > 0) {
+                        val stretch = sound.copyOf(cut)
+                        follower.add(ear.hear(stretch), taken.toFloat() / Mel.SAMPLE_RATE, Silences.of(stretch))
+                    }
+                    val pending = if (!last && sound.size - cut >= LEAST) ear.hear(sound.copyOfRange(cut, sound.size)) else null
+                    cut to follower.look(pending, last)
+                }
+                for (verse in finished) heard[verse.verse + 1] = verse.words
+                // Dropped from the front of what is kept; more has come in at the back meanwhile.
+                var drop = cut
+                while (drop > 0 && blocks.isNotEmpty()) {
+                    val first = blocks[0]
+                    if (first.size <= drop) { drop -= first.size; blocks.removeAt(0) } else { blocks[0] = first.copyOfRange(drop, first.size); drop = 0 }
+                }
+                samples -= cut
+                taken += cut
+                verse = follower.verse + 1
+                reached = follower.word
+            }
+            try {
+                coroutineScope {
+                    // About once a second: where the reader is, and any verse they have finished.
+                    val looking = launch {
+                        var waited = 0L
+                        while (!done) {
+                            delay(LOOK_STEP_MS)
+                            waited += LOOK_STEP_MS
+                            if (waited < FOLLOW_EVERY_MS) continue
+                            waited = 0
+                            try {
+                                look(last = false)
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                failed = says.failed.format(e.message ?: e.javaClass.simpleName)
+                                done = true
+                            }
+                        }
+                    }
+                    // Until the reader says they are done.
+                    Mic.sound().takeWhile { !done }.collect { block ->
+                        blocks += block
+                        samples += block.size
+                    }
+                    // A look under way is let finish: what it took in is taken in once.
+                    looking.join()
+                }
+            } catch (e: Mic.Unavailable) {
+                state = Reciting.Failed(says.busy)
+                return@launch
+            }
+            failed?.let {
+                state = Reciting.Failed(it)
+                return@launch
+            }
+            state = Reciting.Checking
+            state = try {
+                look(last = true)
+                if (taken == 0L || (heard.isEmpty() && follower.verse < 0)) Reciting.Failed(says.nothing) else Reciting.Idle
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Reciting.Failed(says.failed.format(e.message ?: e.javaClass.simpleName))
+            }
+            reached = -1
+        }
+    }
+}
+
+/**
+ * Where a stretch of sound still being recited can be handed on to be heard for good:
+ * in the middle of the last silence the reader has made in it, so no word is cut in two.
+ */
+internal object Breaths {
+    /** The shortest stretch handed on, and the longest one kept waiting for a silence, in seconds: the model takes under half a minute at once. */
+    private const val SHORTEST = 0.8f
+    private const val LONGEST = 24
+
+    /** How long a silence the reader is still in has to have lasted to end a stretch, in seconds. */
+    private const val STILL_SILENT = 0.7f
+
+    /** How many samples from the start of [sound] the stretch ends; 0 if it isn't to end yet. */
+    fun end(sound: FloatArray): Int {
+        val seconds = sound.size.toFloat() / Mel.SAMPLE_RATE
+        val silences = Silences.of(sound)
+        for (s in silences.size / 2 - 1 downTo 0) {
+            val from = silences[2 * s]
+            val until = silences[2 * s + 1]
+            if (from < SHORTEST) break
+            // Over, the reader reciting again; or still going on, and long enough to be a breath.
+            if (until < seconds - 0.1f || until - from >= STILL_SILENT) return ((from + until) / 2 * Mel.SAMPLE_RATE).toInt()
+        }
+        return if (seconds > LONGEST) LONGEST * Mel.SAMPLE_RATE else 0
+    }
 }
 
 /** A [Reciter] for the screen on show. */
@@ -207,20 +362,24 @@ fun rememberReciter(): Reciter {
 }
 
 /**
- * Reciting to the phone on the page of a surah: what the page shows of it, and what the
- * microphone beside each verse does. [verse] (counted from 1; 0 for none) is the verse
- * being recited or recited last, [state] where that stands, [reached] the word of it being
- * recited while the microphone is open, and [heard] every verse recited so far as it was
- * heard, by its number. [onForget] takes a verse's corrections off the page.
+ * Reciting to the phone on the page of a surah: what the page shows of it. [verse]
+ * (counted from 1; 0 until it is known) is the verse the reader is heard to be at, [state]
+ * where the reciting stands, [reached] the word of that verse being recited while the
+ * microphone is open, and [heard] every verse gone over so far as it was heard, by its
+ * number. [onToggle] opens the microphone, or with it open says the reader is done;
+ * [onForget] takes a verse's corrections off the page.
  */
 class PageRecital(
     val verse: Int,
     val state: Reciting,
     val reached: Int,
     val heard: Map<Int, List<WordRecited>>,
-    val onMic: (verse: Int) -> Unit,
+    val onToggle: () -> Unit,
     val onForget: (verse: Int) -> Unit,
-)
+) {
+    /** Whether the reader is reciting to the phone, or that is being got ready, gone over, or couldn't be done: the bar for it shows. */
+    val active: Boolean get() = state != Reciting.Idle && state !is Reciting.Heard
+}
 
 /** Reciting to the phone on the page of the surah on show; null where that isn't offered. */
 val LocalPageRecital = compositionLocalOf<PageRecital?> { null }
@@ -228,8 +387,8 @@ val LocalPageRecital = compositionLocalOf<PageRecital?> { null }
 /**
  * Reciting to the phone on the page of [surah]. The model it checks with is fetched by the
  * background work: [fetching] is how far that has got (null when it isn't being fetched
- * now), and [onWant] asks for it: by itself when the page opens, or because a microphone
- * was tapped before it was here.
+ * now), and [onWant] asks for it: by itself when the page opens, or because reciting was
+ * asked for before it was here, in which case the microphone opens as soon as it is.
  */
 @Composable
 fun rememberPageRecital(surah: Int, fetching: Float?, onWant: (pressed: Boolean) -> Unit): PageRecital {
@@ -239,22 +398,33 @@ fun rememberPageRecital(surah: Int, fetching: Float?, onWant: (pressed: Boolean)
     val engine = remember { EngineStore(context) }
     // Looked at again whenever the fetching moves: it ends with the model on the phone.
     val ready = remember(fetching) { store.isReady && engine.isReady }
-    // The verse whose microphone was tapped before the model was here: the fetching shows there.
-    var wanted by remember(surah) { mutableIntStateOf(0) }
+    // Reciting was asked for before the model was here: the fetching shows, and the microphone opens when it is.
+    var wanted by remember(surah) { mutableStateOf(false) }
     LaunchedEffect(Unit) { if (!ready) onWant(false) }
+    LaunchedEffect(ready, wanted) {
+        if (ready && wanted) {
+            wanted = false
+            reciter.follow(surah)
+        }
+    }
     return PageRecital(
-        verse = if (ready) reciter.verse else wanted,
+        verse = if (ready) reciter.verse else 0,
         state = when {
             ready -> reciter.state
-            wanted != 0 -> Reciting.Fetching(R.string.recite_getting_model, fetching ?: Reciting.Fetching.UNKNOWN)
+            wanted -> Reciting.Fetching(R.string.recite_getting_model, fetching ?: Reciting.Fetching.UNKNOWN)
             else -> Reciting.Idle
         },
         reached = reciter.reached,
         heard = reciter.heard,
-        onMic = { verse ->
-            if (ready) reciter.toggle(surah, verse) else {
-                wanted = verse
-                onWant(true)
+        onToggle = {
+            when {
+                ready -> reciter.follow(surah)
+                // Asked for again while it is being fetched: not wanted after all.
+                wanted -> wanted = false
+                else -> {
+                    wanted = true
+                    onWant(true)
+                }
             }
         },
         onForget = reciter::forget,
@@ -277,6 +447,12 @@ private const val LONGEST = TajweedEar.LONGEST_SECONDS * Mel.SAMPLE_RATE
 
 /** How often, while the reader recites, the word they have reached is looked for. */
 private const val FOLLOW_EVERY_MS = 900L
+
+/** How often, between two looks, it is asked whether the reader is done. */
+private const val LOOK_STEP_MS = 100L
+
+/** The least sound worth hearing, in samples: half a second. */
+private const val LEAST = Mel.SAMPLE_RATE / 2
 
 /** The reference file in the app's package: what a correct recitation of every word sounds like. Gzipped, but not named so: Android's build would unpack it. */
 private const val REFERENCE = "tajweed_reference.bin"

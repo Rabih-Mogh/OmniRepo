@@ -364,7 +364,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
     /** The recording whose sound is to be fetched next: the one the reader has open, if it has none; otherwise the first in line without. */
     private fun nextToFetch(): Track? = Lanes.toFetch(waiting(), preferred, online(), refused)?.let(library::track)
 
-    private fun waits(track: Track) = track.wanted && (!track.ready || track.againFrom >= 0) && track.error == null && track.surah > 0
+    private fun waits(track: Track) = track.wanted && (!track.ready || track.againFrom >= 0 || track.refresh) && track.error == null && track.surah > 0
 
     /** Whether the phone has a connection to fetch over. */
     private fun online(): Boolean {
@@ -414,7 +414,14 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
     /** Unless it has been given another surah since: then what went wrong was to do with the old one. */
     private fun fail(track: Track, message: String) {
         journal.note("surah ${track.surah}: failed: $message")
-        library.update(track.id) { if (it.surah != track.surah) it else it.copy(wanted = false, error = message, againFrom = -1, againTo = -1) }
+        library.update(track.id) {
+            when {
+                it.surah != track.surah -> it
+                // Listening again to one that was ready, unasked: it is as good as it was, and isn't tried again by itself.
+                it.ready && it.refresh && it.againFrom < 0 -> it.copy(wanted = false, refresh = false, aside = true)
+                else -> it.copy(wanted = false, error = message, againFrom = -1, againTo = -1)
+            }
+        }
     }
 
     private class Stopped : Exception()
@@ -474,6 +481,9 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         }
 
         val timingsFile = library.timings(id, track.surah)
+        // A recording that was ready, listened to once more by itself: the reader keeps the
+        // timings it has, whole, until the new ones are whole too.
+        val quiet = track.ready && track.refresh && track.againFrom < 0
         // Roughly where each verse begins (see pausesOf) is added to the timings that are
         // shown and kept, whenever it turns up.
         val starts = object {
@@ -484,6 +494,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
 
             /** Shows [timings] to the reader, and keeps [keep] on the phone. */
             @Synchronized fun show(timings: Timings, keep: Timings? = null) {
+                if (quiet) return
                 shown = timings
                 _live.value = Live(id, track.surah, timings.sketched(sketch))
                 if (keep != null) {
@@ -663,6 +674,14 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         looking?.cancel()
         report(Step.ALIGN, 0f)
         val timings = recital.place(heard.rows, heard.frames) ?: throw TooShort()
+        // Listened to again unasked, and it came out worse than what it has: what it has stays.
+        if (quiet && !timings.matches) {
+            journal.note("surah ${track.surah}: listened to again, kept as it was")
+            notes.delete()
+            done.delete()
+            mark { it.copy(wanted = false, refresh = false, aside = true) }
+            return@coroutineScope
+        }
         timingsFile.writeWhole(timings.encode())
         // Given another surah while its words were being placed: what was heard is kept, for that one's words.
         if (library.track(id)?.surah != track.surah) throw Stopped()
@@ -671,7 +690,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             notes.delete()
             done.delete()
         }
-        mark { it.copy(ready = true, playable = true, wanted = false, clarity = timings.clarity, error = null) }
+        mark { it.copy(ready = true, playable = true, wanted = false, clarity = timings.clarity, error = null, refresh = false) }
     }
 
     /**

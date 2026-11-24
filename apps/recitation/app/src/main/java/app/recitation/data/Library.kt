@@ -31,6 +31,13 @@ data class Track(
     /** Verses (counting from 0) waiting to be listened to again by themselves; -1 when none are. */
     val againFrom: Int = -1,
     val againTo: Int = -1,
+    /** Taken out of the queue by the reader: the listening doesn't take it up again by itself. */
+    val aside: Boolean = false,
+    /**
+     * Ready, and being listened to once more by itself so its words are placed the way this
+     * version places them. What it has stays as it is until that is done.
+     */
+    val refresh: Boolean = false,
 ) {
     /** Whether it can be opened to play: fully prepared, or far enough along. */
     val canPlay: Boolean get() = ready || playable
@@ -136,7 +143,7 @@ class Library private constructor(context: Context) {
                 tracks.put(
                     JSONObject().put("id", t.id).put("title", t.title).put("seconds", t.seconds).put("surah", t.surah)
                         .put("wanted", t.wanted).put("ready", t.ready).put("clarity", t.clarity.toDouble()).put("error", t.error ?: JSONObject.NULL)
-                        .put("playable", t.playable).put("againFrom", t.againFrom).put("againTo", t.againTo),
+                        .put("playable", t.playable).put("againFrom", t.againFrom).put("againTo", t.againTo).put("aside", t.aside).put("refresh", t.refresh),
                 )
             }
             json.put(JSONObject().put("url", p.url).put("title", p.title).put("channel", p.channel).put("tracks", tracks))
@@ -162,7 +169,7 @@ class Library private constructor(context: Context) {
                         t.getString("id"), t.getString("title"), t.getLong("seconds"), t.getInt("surah"),
                         t.getBoolean("wanted"), t.getBoolean("ready"), t.getDouble("clarity").toFloat(),
                         if (t.isNull("error")) null else t.getString("error"),
-                        t.optBoolean("playable", false), t.optInt("againFrom", -1), t.optInt("againTo", -1),
+                        t.optBoolean("playable", false), t.optInt("againFrom", -1), t.optInt("againTo", -1), t.optBoolean("aside", false), t.optBoolean("refresh", false),
                     )
                 },
             )
