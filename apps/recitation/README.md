@@ -108,8 +108,16 @@ phone and nowhere else.
      up as far as it has got; the player says how far. Past that point the recitation
      plays and the words are there to read, but none is lit until the listening catches
      up. Tapping a word, or **Next verse**, jumps only to words that have been placed.
-   - The recording that is open goes to the front of the queue, ahead of the one being
-     worked on.
+   - **The sounds are downloaded beside the listening, not in its way.** Downloading
+     takes the connection and hardly any of the phone's strength; listening takes all of
+     that strength and no connection. So the sounds are fetched one after another, with
+     a short while between them so YouTube isn't asked for too much at once, and
+     meanwhile the recordings already on the phone are listened to, one at a time. Every
+     recording of a playlist can so be played long before the last has been listened to.
+     The status card shows both: the listening, and under it the surah whose sound is
+     being downloaded; each has its own ring on its row in the lists.
+   - The recording that is open goes first in both: its sound is fetched ahead of the
+     one being downloaded, and it is listened to ahead of the one being listened to.
    - **Pause** stops the work where it is and keeps what was fetched; **Resume** carries
      on from there, also after the app was closed.
    - **Cancel** empties the queue. The cross on a recording takes just that one out.
@@ -550,12 +558,17 @@ every verse closest to its share of the surah's sounds, longer pauses being the 
 ends. That gives a rough start for every verse (the "sketch"), kept with the timings
 until the real ones replace it.
 
-The look goes on by the side and holds nothing up. It begins with the download, reading
-the sound as it arrives (`speech/Arriving.kt`), so it is done about when the download is;
-the recording can be played, the model fetched and the listening begun without waiting
-for it, and the verse starts are added to what the reader shows when they turn up. What
-was read as it arrived is only used if it comes to the whole recording's length;
-otherwise the finished file is looked over again.
+The look begins with the download, reading the sound as it arrives
+(`speech/Arriving.kt`), so it is done about when the download is, and the recording has
+its rough verse starts from the moment it can be played. What was read as it arrived is
+only used if it comes to the whole recording's length; otherwise the finished file is
+looked over again. The pauses found are kept, so the listening, when the recording's
+turn comes, doesn't look for them a second time.
+
+The sketch is a guess and is treated as one. It is gone by only where no word has been
+placed yet: for where "go to this verse" lands, and for which verse shows as playing. No
+word is lit from it. Where it is wrong the reader lands off the mark; the listening is
+sent to where they are, and what the model hears there takes the guess's place.
 
 With it, before a verse has been heard: the next and previous verse buttons and the
 "which verses to recite" chooser go to it; the page follows the verse being played and

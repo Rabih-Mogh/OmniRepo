@@ -84,8 +84,26 @@ fun arabicThenLatin(surah: Surah): String = "${surah.arabic} · ${surah.latin}"
 
 /** What the background work is up to, for the card at the top of the lists. */
 sealed interface Status {
-    /** [title] is the recording being worked on and [surah] its surah; null and 0 while the speech model is fetched. */
-    data class Working(val progress: Progress, val title: String?, val surah: Int = 0) : Status
+    /**
+     * [title] is the recording being worked on and [surah] its surah; null and 0 while the
+     * speech model is fetched. [fetching] is another recording, whose sound is being
+     * downloaded meanwhile.
+     */
+    data class Working(val progress: Progress, val title: String?, val surah: Int = 0, val fetching: Working? = null) : Status {
+        /** The work on the recording [trackId], which may be the download beside the rest; null when none of it is for that recording. */
+        fun on(trackId: String?): Working? = when {
+            trackId == null -> null
+            progress.trackId == trackId -> this
+            else -> fetching?.on(trackId)
+        }
+
+        /** The work on a recording of the surah [number]: likewise. */
+        fun onSurah(number: Int): Working? = when {
+            number <= 0 -> null
+            surah == number -> this
+            else -> fetching?.onSurah(number)
+        }
+    }
 
     /** Accent Coach is installed but couldn't lend its speech model. */
     data class ModelBlocked(val problem: ModelProblem) : Status
@@ -145,11 +163,11 @@ fun HomeContent(
     queued: Set<Int> = emptySet(),
 ) {
     // Where the work is: the surah being worked on shows the work's picture under its number.
-    val workingOn = (status as? Status.Working)?.takeIf { it.surah > 0 }
+    val workingOn = status as? Status.Working
     val row: @Composable (Surah) -> Unit = { surah ->
         SurahRow(
             surah, recited = surah.number in recited, heard = surah.number !in unheard, queued = surah.number in queued,
-            working = workingOn?.takeIf { it.surah == surah.number }, onClick = { onSurah(surah.number) },
+            working = workingOn?.onSurah(surah.number), onClick = { onSurah(surah.number) },
         )
     }
     // The menu's panel comes in beside the page when its button is pressed, pushing the page
@@ -501,7 +519,7 @@ private fun RecordingRow(
     var menu by remember { mutableStateOf(false) }
     val surah = SURAHS.getOrNull(track.surah - 1)
     val working = (status as? Status.Working)?.progress
-    val progress = working?.takeIf { it.trackId == track.id }
+    val progress = (status as? Status.Working)?.on(track.id)?.progress
     val listening = progress != null || track.wanted
     // Tapping a recording opens its surah: to play along if it is ready, otherwise just to read.
     Row(

@@ -66,6 +66,7 @@ import app.recitation.player.Artwork
 import app.recitation.player.PlaybackService
 import app.recitation.prepare.Playing
 import app.recitation.prepare.PrepareWorker
+import app.recitation.prepare.Progress
 import app.recitation.prepare.Step
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -96,6 +97,7 @@ private fun Screens(model: AppModel, choices: Choices) {
     val context = LocalContext.current
     val playlists by model.library.playlists.collectAsStateWithLifecycle()
     val progress by PrepareWorker.progress.collectAsStateWithLifecycle()
+    val fetching by PrepareWorker.fetching.collectAsStateWithLifecycle()
     val modelProblem by PrepareWorker.modelProblem.collectAsStateWithLifecycle()
 
     val indopak by IndoPakFont.font.collectAsStateWithLifecycle()
@@ -126,10 +128,12 @@ private fun Screens(model: AppModel, choices: Choices) {
 
     // One line of truth about the background work, so nothing ever just sits there unexplained.
     val tracks = playlists.flatMap { it.tracks }
-    val working = progress
+    // The listening comes first in it; a sound being downloaded meanwhile stands beside that, or alone when nothing else is going on.
+    fun work(progress: Progress) = tracks.firstOrNull { it.id == progress.trackId }.let { Status.Working(progress, it?.title, it?.surah ?: 0) }
+    val working = progress ?: fetching
     val problem = modelProblem
     val status: Status? = when {
-        working != null -> tracks.firstOrNull { it.id == working.trackId }.let { Status.Working(working, it?.title, it?.surah ?: 0) }
+        working != null -> work(working).copy(fetching = fetching?.takeIf { it !== working }?.let(::work))
         tracks.none { it.wanted && !it.ready } -> null
         model.paused -> Status.Paused
         problem != null -> Status.ModelBlocked(problem)
@@ -356,11 +360,11 @@ private fun SurahScreen(
             withoutRecitation = {
                 // Looked up afresh each time the playlists change, so the bar keeps up with the download.
                 val recording = remember(playlists, screen.number) { model.anyRecordingOf(screen.number) }
-                val working = (status as? Status.Working)?.progress?.takeIf { recording != null && it.trackId == recording.id }
+                val working = (status as? Status.Working)?.on(recording?.id)
                 when {
                     recording == null -> NoRecitationBar(stringResource(R.string.no_recitation))
                     recording.canPlay -> NoRecitationBar(stringResource(R.string.recitation_ready), stringResource(R.string.play), AppIcons.Play) { model.openSurah(screen.number, recording) }
-                    working != null -> RecitationComingBar(status, here = true)
+                    working != null -> RecitationComingBar(working, here = true)
                     recording.wanted -> RecitationComingBar(status, here = false)
                     recording.error != null -> NoRecitationBar(recording.error, stringResource(R.string.try_again), AppIcons.Retry) { get(listOf(recording)) }
                     else -> NoRecitationBar(stringResource(R.string.recitation_not_ready), stringResource(R.string.get), AppIcons.Download) { get(listOf(recording)) }

@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -237,6 +238,21 @@ fun StatusCard(status: Status, actions: StatusActions, told: Boolean = false, pl
                     else -> IconButton(onClick = actions.pause) { Icon(AppIcons.Pause, stringResource(R.string.pause_work), tint = colors.primary) }
                 }
                 IconButton(onClick = actions.cancel) { Icon(AppIcons.Close, stringResource(R.string.cancel), tint = colors.onSurfaceVariant) }
+            }
+            // The sound being downloaded beside that: its own ring, smaller, and the surah it is for.
+            (status as? Status.Working)?.fetching?.let { beside ->
+                val surah = SURAHS.getOrNull(beside.surah - 1)
+                Row(Modifier.padding(start = 10.dp, top = 6.dp, end = 8.dp).testTag("fetching-beside"), verticalAlignment = Alignment.CenterVertically) {
+                    WorkIcon(beside.picture(), beside.says(), size = 28.dp, ground = if (plain) colors.surfaceContainer else colors.secondaryContainer)
+                    Spacer(Modifier.width(22.dp))
+                    if (surah != null) {
+                        Text(stringResource(R.string.number, surah.number), style = MaterialTheme.typography.labelLarge, color = colors.primary)
+                        Spacer(Modifier.width(8.dp))
+                        SurahTitle(surah, 18.sp, colors.onSurface)
+                    } else if (beside.title != null) {
+                        Text(beside.title, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
             }
             if (saying) Text(says, Modifier.padding(top = 8.dp, end = 8.dp), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
         }

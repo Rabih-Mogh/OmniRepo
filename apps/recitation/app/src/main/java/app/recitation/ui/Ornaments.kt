@@ -33,9 +33,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.recitation.R
 import app.recitation.core.Surah
 import app.recitation.data.SurahNames
@@ -96,7 +98,8 @@ fun StarNumber(
 }
 
 /**
- * A surah's number in the list of surahs: large and plain. Where the surah has a
+ * A surah's number in the list of surahs: plain, and lighter than a heading, so the
+ * surah's name beside it is what the eye goes to. Where the surah has a
  * recitation on the phone ([recitation]) it is in the app's colour, where it has none it
  * is grey. Under it is a mark for where its recitation stands: the bars of sound once one
  * has been listened to the end; the first bars and dots when the listening was left off
@@ -123,7 +126,7 @@ fun SurahNumber(
         else -> null
     }
     Column(if (label != null) modifier.semantics { contentDescription = label } else modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(stringResource(R.string.number, number), style = MaterialTheme.typography.titleLarge, color = ink)
+        Text(stringResource(R.string.number, number), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium, fontSize = 20.sp), color = ink)
         when {
             working != null -> WorkIcon(working, null, Modifier.padding(top = 2.dp), size = 20.dp)
             queued -> Icon(AppIcons.Hourglass, null, Modifier.size(14.dp), tint = ink)

@@ -143,6 +143,7 @@ import app.recitation.ui.VerseMarksContent
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlin.math.abs
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -1028,6 +1029,42 @@ class ScreensTest {
         repeat(20) { compose.onNodeWithContentDescription("Smaller").performClick() }
         // It stops at the smallest size rather than shrinking to nothing.
         compose.onNodeWithText("70%").assertIsDisplayed()
+    }
+
+    /** A recording being listened to and another whose sound is being downloaded meanwhile. */
+    private val twoLanes = Status.Working(
+        Progress("b", Step.LISTEN, 0.43f, speed = 1.1f), "Surah Al-Baqarah", surah = 2,
+        fetching = Status.Working(Progress("c", Step.DOWNLOAD, 0.2f), "Surah Al-imran", surah = 3),
+    )
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aSoundBeingDownloadedShowsBesideTheListening() {
+        show("en-day-recordings-two-lanes") { Recordings(twoLanes) }
+        // On the card: the listening, and under it the download with the surah it is for. On the list: each recording's own ring.
+        compose.onNodeWithTag("fetching-beside").assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("Listening to the recitation… 43%").assertCountEquals(2)
+        compose.onAllNodesWithContentDescription("Downloading the sound… 20%").assertCountEquals(2)
+        // The one being downloaded isn't shown as waiting its turn.
+        compose.onAllNodesWithContentDescription("Waiting its turn").assertCountEquals(0)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun inTheListOfSurahsBothTheOneListenedToAndTheOneDownloadedShowTheirRings() {
+        show("en-day-quran-two-lanes") { Home(tab = 0, playlists = listOf(playlist), status = twoLanes) }
+        compose.onNodeWithContentDescription("Listening to the recitation… 43%").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Downloading the sound… 20%").assertIsDisplayed()
+    }
+
+    @Test
+    fun theWorkOnARecordingIsFoundWhicheverLaneItIsIn() {
+        assertEquals(Step.LISTEN, twoLanes.on("b")?.progress?.step)
+        assertEquals(Step.DOWNLOAD, twoLanes.on("c")?.progress?.step)
+        assertNull(twoLanes.on("d"))
+        assertNull(twoLanes.on(null))
+        assertEquals(Step.DOWNLOAD, twoLanes.onSurah(3)?.progress?.step)
+        assertNull(twoLanes.onSurah(0))
     }
 
     @Test
