@@ -44,10 +44,16 @@ data class Assessment(
  */
 object Assessor {
 
-    fun assess(sentence: Sentence, heardRaw: List<String>): Assessment {
+    /**
+     * [mirrored] is for native sounds that were themselves heard by the recogniser (a
+     * word the learner added that isn't in the dictionary): either side may then be the
+     * variant of the other, since the recogniser writes a native sound down in more
+     * than one way.
+     */
+    fun assess(sentence: Sentence, heardRaw: List<String>, mirrored: Boolean = false): Assessment {
         val heard = Phonemes.normalize(heardRaw)
         val expected = sentence.words.flatMapIndexed { w, word -> Phonemes.normalize(word.phonemes).map { it to w } }
-        val pairs = align(expected.map { it.first }, heard)
+        val pairs = align(expected.map { it.first }, heard, mirrored)
 
         // Hand each aligned pair to a word: expected phonemes carry their word; extras join the word before them.
         val perWord = List(sentence.words.size) { mutableListOf<PhonemeResult>() }
@@ -58,7 +64,7 @@ object Assessor {
                 currentWord = expected[e].second
                 e++
             }
-            perWord[currentWord] += PhonemeResult(exp, got, grade(exp, got, heard.isEmpty()))
+            perWord[currentWord] += PhonemeResult(exp, got, grade(exp, got, heard.isEmpty(), mirrored))
         }
         markEpenthesis(perWord)
         forgiveMergedDoubles(perWord)
@@ -67,7 +73,7 @@ object Assessor {
     }
 
     /** Pairs of (expected, heard) along the cheapest alignment; null marks a gap. */
-    fun align(expected: List<String>, heard: List<String>): List<Pair<String?, String?>> {
+    fun align(expected: List<String>, heard: List<String>, mirrored: Boolean = false): List<Pair<String?, String?>> {
         val n = expected.size
         val m = heard.size
         val cost = Array(n + 1) { FloatArray(m + 1) }
@@ -75,7 +81,7 @@ object Assessor {
         for (j in 1..m) cost[0][j] = cost[0][j - 1] + GAP
         for (i in 1..n) for (j in 1..m) {
             cost[i][j] = minOf(
-                cost[i - 1][j - 1] + swapCost(expected[i - 1], heard[j - 1]),
+                cost[i - 1][j - 1] + swapCost(expected[i - 1], heard[j - 1], mirrored),
                 cost[i - 1][j] + gapCost(expected[i - 1]),
                 cost[i][j - 1] + GAP,
             )
@@ -85,7 +91,7 @@ object Assessor {
         var j = m
         while (i > 0 || j > 0) {
             when {
-                i > 0 && j > 0 && cost[i][j] == cost[i - 1][j - 1] + swapCost(expected[i - 1], heard[j - 1]) -> {
+                i > 0 && j > 0 && cost[i][j] == cost[i - 1][j - 1] + swapCost(expected[i - 1], heard[j - 1], mirrored) -> {
                     out.addFirst(expected[i - 1] to heard[j - 1]); i--; j--
                 }
                 i > 0 && cost[i][j] == cost[i - 1][j] + gapCost(expected[i - 1]) -> {
@@ -99,10 +105,18 @@ object Assessor {
         return out
     }
 
-    private fun grade(expected: String?, heard: String?, nothingHeard: Boolean): Verdict = when {
+    private fun grade(expected: String?, heard: String?, nothingHeard: Boolean, mirrored: Boolean): Verdict = when {
         expected == null -> Verdict.EXTRA
         heard == null -> if (!nothingHeard && expected in REDUCED) Verdict.OK else Verdict.MISSING
-        else -> judge(expected, heard)
+        else -> judge(expected, heard, mirrored)
+    }
+
+    /** How a heard phoneme compares with the native one it stands for; [mirrored] takes the kinder of the two ways round. */
+    fun judge(expected: String, heard: String, mirrored: Boolean): Verdict {
+        val forward = judge(expected, heard)
+        if (!mirrored || forward == Verdict.OK) return forward
+        val back = judge(heard, expected)
+        return if (back == Verdict.OK || back == Verdict.CLOSE) back else forward
     }
 
     /** How a heard phoneme compares with the native one it stands for. */
@@ -187,7 +201,7 @@ object Assessor {
     /** Leaving out a reduced vowel is what native speakers do, so it costs little. */
     private fun gapCost(expected: String) = if (expected in REDUCED) 0.35f else GAP
 
-    private fun swapCost(expected: String, heard: String): Float = when (judge(expected, heard)) {
+    private fun swapCost(expected: String, heard: String, mirrored: Boolean): Float = when (judge(expected, heard, mirrored)) {
         Verdict.OK -> if (expected == heard) 0f else 0.1f
         Verdict.CLOSE -> 0.4f
         else -> if (Phonemes.isVowel(expected) == Phonemes.isVowel(heard)) 0.9f else 1.3f

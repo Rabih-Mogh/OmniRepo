@@ -9,7 +9,7 @@ affect each other and can use different languages or toolchains.
 | App | What it is | Platform |
 |---|---|---|
 | [Fajr Alarm](apps/fajr-alarm/) | An alarm that rings relative to Fajr or sunrise, with missions (a sum, or finding a real sink) to turn it off | Android |
-| [Accent Coach](apps/accent-coach/) | Read a sentence aloud and see the sounds you made next to a native American speaker's, with non-native sounds highlighted; lessons and drills on the hardest sounds, and a streak | Android |
+| [Accent Coach](apps/accent-coach/) | Read a sentence aloud and see the sounds you made next to a native American speaker's, with non-native sounds highlighted; lessons and drills on the hardest sounds, your own hard words, and a streak | Android |
 | [Recitation](apps/recitation/) | Listen to a recitation of the Quran from a YouTube playlist and follow it word by word, with each word's meaning and the word being recited lit up | Android |
 
 ## Layout

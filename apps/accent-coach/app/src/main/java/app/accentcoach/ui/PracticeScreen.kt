@@ -80,8 +80,8 @@ fun PracticeScreen(vm: PracticeViewModel) {
 
     val scroll = rememberScrollState()
     // A lesson opened from far down the list, or a drill's next word, starts at its top.
-    LaunchedEffect(vm.page, vm.lesson, vm.drill?.at) { scroll.scrollTo(0) }
-    BackHandler(enabled = vm.lesson != null) { vm.back() }
+    LaunchedEffect(vm.page, vm.lesson, vm.drill?.at, vm.word?.text) { scroll.scrollTo(0) }
+    BackHandler(enabled = vm.lesson != null || vm.word != null) { vm.back() }
 
     Column(
         Modifier
@@ -100,17 +100,19 @@ fun PracticeScreen(vm: PracticeViewModel) {
 
         StreakCard(vm.streak)
 
-        // Inside a lesson or its drill the way out is its own back arrow.
-        if (vm.lesson == null) {
+        // Inside a lesson, its drill or a word of the learner's own, the way out is its own back arrow.
+        if (vm.lesson == null && vm.word == null) {
             TabRow(selectedTabIndex = vm.page.ordinal, containerColor = Color.Transparent) {
                 Tab(selected = vm.page == Page.SENTENCES, onClick = { vm.show(Page.SENTENCES) }, text = { Text("Sentences") })
                 Tab(selected = vm.page == Page.SOUNDS, onClick = { vm.show(Page.SOUNDS) }, text = { Text("Sounds") })
+                Tab(selected = vm.page == Page.WORDS, onClick = { vm.show(Page.WORDS) }, text = { Text("My words") })
             }
         }
 
         when (vm.page) {
             Page.SENTENCES -> Sentences(vm, ::record)
             Page.SOUNDS -> Sounds(vm, ::record)
+            Page.WORDS -> Words(vm, ::record)
         }
 
         vm.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -250,7 +252,7 @@ internal fun HeardBox(heard: List<String>, hint: String?) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Result(vm: PracticeViewModel, a: Assessment) {
+internal fun Result(vm: PracticeViewModel, a: Assessment, next: String = "Next sentence", onNext: () -> Unit = vm::next) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -302,7 +304,7 @@ private fun Result(vm: PracticeViewModel, a: Assessment) {
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         FilledTonalButton(onClick = vm::tryAgain, modifier = Modifier.weight(1f)) { Text("Try again") }
-        FilledTonalButton(onClick = vm::next, modifier = Modifier.weight(1f)) { Text("Next sentence") }
+        FilledTonalButton(onClick = onNext, modifier = Modifier.weight(1f)) { Text(next) }
     }
 }
 

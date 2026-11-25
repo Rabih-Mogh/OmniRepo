@@ -316,7 +316,7 @@ private fun DrillEnd(vm: PracticeViewModel, run: DrillRun) {
 }
 
 @Composable
-private fun BackRow(title: String, onBack: () -> Unit, trailing: String? = null) {
+internal fun BackRow(title: String, onBack: () -> Unit, trailing: String? = null) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back") }
         Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
@@ -325,7 +325,7 @@ private fun BackRow(title: String, onBack: () -> Unit, trailing: String? = null)
 }
 
 @Composable
-private fun Label(text: String, modifier: Modifier = Modifier) {
+internal fun Label(text: String, modifier: Modifier = Modifier) {
     Text(text, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, modifier = modifier)
 }
 

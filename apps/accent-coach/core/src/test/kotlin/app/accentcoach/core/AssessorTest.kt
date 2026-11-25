@@ -84,7 +84,20 @@ class AssessorTest {
         assertEquals(100, Assessor.assess(s, heard("w", "ɪ", "l", "iː", "v")).score)
     }
 
-        @Test
+    @Test
+    fun nativeSoundsThatWereHeardAreComparedEitherWayRound() {
+        // The recogniser wrote the phone's voice down with a flap and a short "ɐ"; a learner's
+        // "t" and schwa are the same sounds written the other way.
+        val word = Sentence("m", "mine", "data", listOf(Word("data", listOf("d", "eɪ", "ɾ", "ɐ"))))
+        val oneWay = Assessor.assess(word, heard("d", "eɪ", "t", "ə"))
+        assertTrue(oneWay.words.single().needsWork || oneWay.words.single().slightlyOff)
+        val mirrored = Assessor.assess(word, heard("d", "eɪ", "t", "ə"), mirrored = true)
+        assertEquals(100, mirrored.score)
+        // A different sound is still a different sound.
+        assertTrue(Assessor.assess(word, heard("d", "eɪ", "s", "ə"), mirrored = true).words.single().needsWork)
+    }
+
+    @Test
     fun hearingNothingScoresZero() {
         val a = Assessor.assess(sentence, emptyList())
         assertEquals(0, a.score)

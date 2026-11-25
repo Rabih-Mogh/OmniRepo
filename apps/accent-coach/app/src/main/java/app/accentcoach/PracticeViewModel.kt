@@ -2,6 +2,7 @@ package app.accentcoach
 
 import android.app.Application
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -16,25 +17,36 @@ import app.accentcoach.core.DrillItem
 import app.accentcoach.core.DrillResult
 import app.accentcoach.core.Drills
 import app.accentcoach.core.Lesson
+import app.accentcoach.core.MyWord
+import app.accentcoach.core.MyWords
+import app.accentcoach.core.Phonemes
 import app.accentcoach.core.Practice
 import app.accentcoach.core.Said
 import app.accentcoach.core.Sentence
 import app.accentcoach.core.Streak
+import app.accentcoach.data.Dictionary
 import app.accentcoach.data.Progress
+import app.accentcoach.data.References
 import app.accentcoach.data.SentenceBank
+import app.accentcoach.data.Wordbook
 import app.accentcoach.speech.ModelDownloadWorker
 import app.accentcoach.speech.ModelStore
 import app.accentcoach.speech.PhonemeRecognizer
 import app.accentcoach.speech.Playback
 import app.accentcoach.speech.Recorder
+import app.accentcoach.speech.Wav
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 
 sealed interface ModelState {
     data object Missing : ModelState
@@ -52,8 +64,8 @@ sealed interface Stage {
     data class Done(val assessment: Assessment) : Stage
 }
 
-/** The two halves of the app: reading sentences, and the lessons on single sounds. */
-enum class Page { SENTENCES, SOUNDS }
+/** The parts of the app: reading sentences, the lessons on single sounds, and the learner's own words. */
+enum class Page { SENTENCES, SOUNDS, WORDS }
 
 /**
  * A lesson's drill under way: which of its items is [at] hand, and how each one went the
@@ -74,6 +86,8 @@ class PracticeViewModel(app: Application) : AndroidViewModel(app) {
     val focuses: List<String> = sentences.map { it.focus }.distinct()
     val lessons: List<Lesson> = SentenceBank.lessons(app)
     private val progress = Progress(File(app.filesDir, "progress.json"))
+    private val wordbook = Wordbook(File(app.filesDir, "words.json"))
+    private val references = References(Dictionary { app.assets.open("dictionary.txt") }, ::hearFromVoice)
 
     var model by mutableStateOf<ModelState>(if (store.isReady) ModelState.Loading else ModelState.Missing)
         private set
@@ -88,6 +102,14 @@ class PracticeViewModel(app: Application) : AndroidViewModel(app) {
         private set
     /** The open lesson's drill, once it has been started. */
     var drill by mutableStateOf<DrillRun?>(null)
+        private set
+    /** The text of the learner's own word that is open on the My words page, if one is. */
+    private var opened by mutableStateOf<String?>(null)
+    /** True while the native sounds of a word being added are worked out. */
+    var adding by mutableStateOf(false)
+        private set
+    /** Why the last word couldn't be added. */
+    var addError by mutableStateOf<String?>(null)
         private set
     var stage by mutableStateOf<Stage>(Stage.Idle)
         private set
@@ -106,19 +128,24 @@ class PracticeViewModel(app: Application) : AndroidViewModel(app) {
     private var analysis: Job? = null
     private var tts: TextToSpeech? = null
     private var ttsReady = false
+    /** Words the voice is saying into a file, by utterance, each waiting to hear how it went. */
+    private val voicing = ConcurrentHashMap<String, CompletableDeferred<Boolean>>()
+    private var voiced = 0
 
     val visible: List<Sentence> get() = focus?.let { f -> sentences.filter { it.focus == f } } ?: sentences
     val sentence: Sentence get() = visible[index.coerceIn(0, visible.lastIndex)]
     val hasRecording: Boolean get() = lastRecording.isNotEmpty()
     val practice: Practice get() = progress.practice
     val streak: Streak get() = progress.streak
+    val words: List<MyWord> get() = wordbook.words
+    val word: MyWord? get() = opened?.let { text -> wordbook.words.firstOrNull { it.text == text } }
 
-    /** What is to be said next: the drill's item when a drill is under way, the sentence otherwise. */
+    /** What is to be said next: the drill's item when a drill is under way, the open word of the learner's own, or the sentence. */
     private val saying: Sentence
         get() {
             val run = drill
             val item = run?.item
-            return if (run != null && item != null) Drills.sentence(run.lesson, item) else sentence
+            return if (run != null && item != null) Drills.sentence(run.lesson, item) else word?.sentence ?: sentence
         }
 
     init {
@@ -127,6 +154,19 @@ class PracticeViewModel(app: Application) : AndroidViewModel(app) {
             ttsReady = status == TextToSpeech.SUCCESS
             tts?.language = Locale.US
         }
+        tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) = Unit
+            override fun onDone(utteranceId: String?) {
+                voicing.remove(utteranceId)?.complete(true)
+            }
+            @Deprecated("Deprecated in Java")
+            override fun onError(utteranceId: String?) {
+                voicing.remove(utteranceId)?.complete(false)
+            }
+            override fun onError(utteranceId: String?, errorCode: Int) {
+                voicing.remove(utteranceId)?.complete(false)
+            }
+        })
     }
 
     /** Starts the background download; [watchDownload] follows it from here. */
@@ -195,7 +235,75 @@ class PracticeViewModel(app: Application) : AndroidViewModel(app) {
         page = p
         lesson = null
         drill = null
+        opened = null
+        addError = null
         reset()
+    }
+
+    /** Opens one of the learner's own words to practise. */
+    fun open(w: MyWord) {
+        opened = w.text
+        reset()
+    }
+
+    /**
+     * Adds what was [typed] to the learner's own words, with its native sounds: from the
+     * dictionary where it has the word, heard from the phone's voice where it hasn't.
+     * [onAdded] is called once it is in the list.
+     */
+    fun addWord(typed: String, onAdded: () -> Unit = {}) {
+        if (adding) return
+        val text = MyWords.clean(typed)
+        if (text == null) {
+            addError = "Type a word or a short phrase: letters only, up to ${MyWords.MAX_WORDS} words."
+            return
+        }
+        adding = true
+        addError = null
+        viewModelScope.launch {
+            try {
+                wordbook.add(withContext(Dispatchers.IO) { references.of(text) })
+                onAdded()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                addError = e.message ?: "\"$text\" couldn't be added."
+            } finally {
+                adding = false
+            }
+        }
+    }
+
+    fun removeWord(w: MyWord) {
+        wordbook.remove(w.text)
+    }
+
+    /**
+     * The native sounds of a [word] the dictionary doesn't have: the phone's voice says
+     * it into a file and the recogniser writes down what it hears there.
+     */
+    private suspend fun hearFromVoice(word: String): List<String> {
+        val rec = recognizer ?: error("\"$word\" isn't in the dictionary, and the speech model that would work it out hasn't started.")
+        val t = tts
+        if (t == null || !ttsReady) {
+            error("\"$word\" isn't in the dictionary. Working it out needs an American English voice: add one in Settings → Text-to-speech.")
+        }
+        val id = "voiced-${voiced++}"
+        val file = File(getApplication<Application>().cacheDir, "$id.wav")
+        val done = CompletableDeferred<Boolean>()
+        voicing[id] = done
+        try {
+            t.setSpeechRate(0.95f)
+            val said = t.synthesizeToFile(word, null, file, id) == TextToSpeech.SUCCESS &&
+                withTimeoutOrNull(VOICE_TIMEOUT_MS) { done.await() } == true
+            val audio = if (said && file.exists()) Wav.read(file.readBytes()) else null
+            val heard = audio?.let { Phonemes.normalize(rec.recognize(trimSilence(it)).map { p -> p.symbol }) }.orEmpty()
+            if (heard.isEmpty()) error("\"$word\" isn't in the dictionary, and the phone's voice couldn't be heard saying it.")
+            return heard
+        } finally {
+            voicing.remove(id)
+            file.delete()
+        }
     }
 
     fun open(l: Lesson) {
@@ -220,11 +328,12 @@ class PracticeViewModel(app: Application) : AndroidViewModel(app) {
         reset()
     }
 
-    /** Steps back from a drill to its lesson, or from a lesson to the list; false when there is nowhere to step back to. */
+    /** Steps back from a drill to its lesson, or from a lesson or a word to its list; false when there is nowhere to step back to. */
     fun back(): Boolean {
         when {
             drill != null -> drill = null
             lesson != null -> lesson = null
+            opened != null -> opened = null
             else -> return false
         }
         reset()
@@ -298,16 +407,21 @@ class PracticeViewModel(app: Application) : AndroidViewModel(app) {
         val target = saying
         val run = drill
         val item = run?.item
+        val mine = word
         // Cancelled when the sentence or the drill's item is left, so a late result never lands on another one.
         analysis = viewModelScope.launch {
             val heard = withContext(Dispatchers.Default) { rec.recognize(trimSilence(audio)) }
             live = heard.map { it.symbol }
-            val assessment = if (run != null && item != null) {
-                val result = Drills.judge(run.lesson, item, live)
-                drill = run.copy(results = run.results + (run.at to result))
-                result.assessment
-            } else {
-                Assessor.assess(target, live)
+            val assessment = when {
+                run != null && item != null -> {
+                    val result = Drills.judge(run.lesson, item, live)
+                    drill = run.copy(results = run.results + (run.at to result))
+                    result.assessment
+                }
+                mine != null -> Assessor.assess(target, live, mirrored = mine.heard).also {
+                    if (it.heard.isNotEmpty()) wordbook.scored(mine.text, it.score)
+                }
+                else -> Assessor.assess(target, live)
             }
             stage = Stage.Done(assessment)
             // A recording with nothing in it isn't practice.
@@ -328,6 +442,9 @@ class PracticeViewModel(app: Application) : AndroidViewModel(app) {
 
     private companion object {
         const val SAMPLE_STEP = 8_000
+
+        /** How long the phone's voice gets to say a word into a file. */
+        const val VOICE_TIMEOUT_MS = 15_000L
 
         /** Cuts quiet lead-in and tail (below 2% of the peak), so silence isn't heard as sounds. */
         fun trimSilence(audio: FloatArray): FloatArray {

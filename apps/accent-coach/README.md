@@ -4,8 +4,8 @@ An Android app for practising a native **General American** English accent. Read
 sentence aloud: the app writes down the sounds you actually made (in IPA), lines them
 up with how a native speaker says the sentence, and highlights the sounds that give
 away a non-native accent, with a tip for each. It also teaches the hardest sounds one at
-a time, each with a lesson on how the sound is made and a drill of words, and keeps a
-streak of the days you practised.
+a time, each with a lesson on how the sound is made and a drill of words, lets you add
+the words you find hard and practise those, and keeps a streak of the days you practised.
 
 ## How it works
 
@@ -45,10 +45,32 @@ glides, the American T in *water*, NG and H.
 - **A lesson is learned** once a drill ends with three in four native (seven of nine).
   The list shows a tick on the learned ones and the best result of each.
 
+### My words
+
+The **My words** tab is for the words you can't get right. Type a word or a short phrase
+(up to six words; letters, apostrophes and hyphens) and tap **Add**. It joins your list
+with its native sounds, and you practise it like a sentence: **Listen**, say it, and see
+each sound coloured, with a score and tips. The list keeps your best score for each word.
+
+Where a word's native sounds come from:
+
+- **The dictionary.** The app carries the sounds of about 234,000 English words, made
+  with espeak-ng like the sentences'. A word found there is added at once.
+- **The phone's voice.** A word that isn't there (*undisablable*, a name, a plural such
+  as *vegetables*) is said by the phone's American English voice into a file, and the
+  recogniser writes down what it hears. The word's page says when its sounds were got
+  this way. They are only as good as that hearing, so such a word is compared more
+  kindly: a sound counts as native if either it or the reference is a native variant of
+  the other.
+
+Adding a word that isn't in the dictionary needs an American English text-to-speech
+voice on the phone, the same one **Listen** uses. The words are kept in a small file on
+the phone (`files/words.json`), like the streak.
+
 ### Streak
 
-A day counts once five recordings have been scored on it, sentences and drill words
-alike. A recording in which nothing was heard doesn't count. The card at the top shows:
+A day counts once five recordings have been scored on it: sentences, drill words and
+your own words alike. A recording in which nothing was heard doesn't count. The card at the top shows:
 
 - how many days in a row have counted, up to today, or up to yesterday while today's five
   aren't done yet;
@@ -107,9 +129,13 @@ Comparison happens in `core/`:
 - **Speed:** the model is large. On a budget phone, expect a few seconds of analysis
   after each sentence, and the live **What I hear** line updates about once every
   couple of seconds.
+- **The dictionary is old and plain:** its word list is Webster's Second (1934), so it
+  has rare words but few plurals, past tenses or new words; those go to the phone's
+  voice. Its pronunciations are espeak-ng's, which are now and then odd.
 - **Untested on real voices:** the sentences have only been tried with synthetic voices
   on a Mac, not yet on a phone with real speech. The drills haven't been tried with any
-  voice: their judging is tested on written sounds only.
+  voice: their judging is tested on written sounds only. Getting a word's sounds from
+  the phone's voice hasn't been tried on a phone at all.
 
 ## Project layout
 
@@ -119,12 +145,14 @@ accent-coach/
 │            drill judging, streak (unit-tested)
 ├── app/     Android app (Jetpack Compose)
 │   ├── speech/  Recording, playback, model download and sharing, ONNX recogniser
-│   ├── data/    Sentence, lesson and symbol loading from assets/; the progress file
-│   └── ui/      Setup, sentences, sounds and streak
+│   ├── data/    Sentence, lesson and symbol loading from assets/; the dictionary;
+│   │            the progress and words files
+│   └── ui/      Setup, sentences, sounds, my words and streak
 ├── tools/
 │   ├── sentences.txt       The practice sentences, by focus sound
 │   ├── lessons.txt         The sound lessons and the words of their drills
-│   └── make_sentences.py   Builds assets/sentences.json and lessons.json with espeak-ng
+│   ├── make_sentences.py   Builds assets/sentences.json and lessons.json with espeak-ng
+│   └── make_dictionary.py  Builds assets/dictionary.txt from the system's word list
 └── apk/     Ready-to-install builds
 ```
 
@@ -148,6 +176,9 @@ To change the sentences or the lessons, edit `tools/sentences.txt` or `tools/les
 then run `python3 tools/make_sentences.py`. This needs `espeak-ng`
 (`brew install espeak-ng`). The script stops if a drill word doesn't have its lesson's
 sound, or if the two words of a pair differ in more than that sound.
+
+`python3 tools/make_dictionary.py` rebuilds the dictionary from `/usr/share/dict/words`
+(or a word list given as its argument). It takes about a minute.
 
 ## Updates
 

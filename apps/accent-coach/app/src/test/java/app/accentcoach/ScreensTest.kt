@@ -1,6 +1,7 @@
 package app.accentcoach
 
 import android.content.Context
+import android.os.Looper
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -11,11 +12,13 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.work.testing.WorkManagerTestInitHelper
+import app.accentcoach.core.Assessor
 import app.accentcoach.core.Drills
 import app.accentcoach.core.Phonemes
 import app.accentcoach.core.Said
@@ -28,6 +31,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
 import java.time.LocalDate
@@ -46,14 +50,22 @@ class ScreensTest {
 
     private val context: Context get() = ApplicationProvider.getApplicationContext()
     private val progress: File get() = File(context.filesDir, "progress.json")
+    private val words: File get() = File(context.filesDir, "words.json")
 
-    /** Three full days before today and two recordings today; one lesson learned and one tried. */
+    /**
+     * Three full days before today and two recordings today; one lesson learned and one
+     * tried; two words of the learner's own, the first of them heard from the phone's voice.
+     */
     @Before
     fun setUp() {
         WorkManagerTestInitHelper.initializeTestWorkManager(context)
         val today = LocalDate.now()
         progress.writeText(
             """{"days":{"${today.minusDays(3)}":5,"${today.minusDays(2)}":7,"${today.minusDays(1)}":5,"$today":2},"drills":{"th":8,"r":4}}""",
+        )
+        words.writeText(
+            """[{"text":"undisablable","heard":true,"words":[{"text":"undisablable","phonemes":["ʌ","n","d","ɪ","s","eɪ","b","l","ə","b","ə","l"]}]},""" +
+                """{"text":"squirrel","heard":false,"best":62,"words":[{"text":"squirrel","phonemes":["s","k","w","ɜː","l"]}]}]""",
         )
     }
 
@@ -206,6 +218,76 @@ class ScreensTest {
         }
     }
 
+    @Test
+    fun aWordIsAddedWithItsSoundsFromTheDictionary() {
+        open("words") { vm ->
+            vm.ready()
+            compose.onNodeWithText("My words").performClick()
+            compose.onNodeWithText("2 WORDS").assertIsDisplayed()
+            compose.onNodeWithText("/skwɜːl/").assertIsDisplayed()
+            compose.onNodeWithText("Best: 62%").assertIsDisplayed()
+            compose.onNodeWithText("Not tried yet").assertIsDisplayed()
+
+            compose.onNodeWithText("A word or short phrase").performTextInput(" Rural juror? ")
+            compose.onNodeWithText("Add").performClick()
+            until { vm.words.size == 3 }
+            compose.onNodeWithText("Rural juror").assertIsDisplayed()
+            compose.onNodeWithText("/ɹʊɹɹəl dʒjʊɹɹəɹ/").assertIsDisplayed()
+            compose.onNodeWithText("3 WORDS").assertIsDisplayed()
+            assertTrue("the word is kept", words.readText().contains("Rural juror"))
+
+            // What can't be said is turned away, and says why.
+            compose.onNodeWithText("A word or short phrase").performTextInput("route 66")
+            compose.onNodeWithText("Add").performClick()
+            compose.onNodeWithText("Type a word or a short phrase: letters only, up to 6 words.").assertIsDisplayed()
+
+            compose.onNodeWithContentDescription("Remove squirrel").performClick()
+            compose.onAllNodesWithText("squirrel").assertCountEquals(0)
+            assertTrue("the word is forgotten", !words.readText().contains("squirrel"))
+        }
+    }
+
+    @Test
+    fun aWordNotInTheDictionaryNeedsTheSpeechModelToWorkItOut() {
+        open("words-not-added") { vm ->
+            vm.ready()
+            compose.onNodeWithText("My words").performClick()
+            compose.onNodeWithText("A word or short phrase").performTextInput("unfoobarable")
+            compose.onNodeWithText("Add").performClick()
+            until { vm.addError != null }
+            // The model can't run here; on a phone it has started by the time this page shows.
+            compose.onNodeWithText("\"unfoobarable\" isn't in the dictionary", substring = true).assertIsDisplayed()
+            assertEquals(2, vm.words.size)
+        }
+    }
+
+    @Test
+    fun aWordOfOnesOwnIsPractisedLikeASentence() {
+        open("words-after-practice") { vm ->
+            vm.ready()
+            compose.onNodeWithText("My words").performClick()
+            compose.onNodeWithText("undisablable").performClick()
+            compose.onNodeWithText("MY WORD").assertIsDisplayed()
+            compose.onNodeWithText("/ʌndɪseɪbləbəl/").assertIsDisplayed()
+            compose.onNodeWithText("This isn't in the app's dictionary", substring = true).assertIsDisplayed()
+            compose.onNodeWithText("Tap and say it aloud").assertIsDisplayed()
+            compose.onAllNodesWithText("Sentences").assertCountEquals(0)
+            captureScreenRoboImage("build/screens/word.png")
+
+            // Said with the first vowel as "a" and the last L left out.
+            val word = vm.word!!
+            val said = listOf("a", "n", "d", "ɪ", "s", "eɪ", "b", "l", "ə", "b", "ə")
+            vm.put("stage", Stage.Done(Assessor.assess(word.sentence, said, mirrored = word.heard)))
+            compose.waitForIdle()
+            compose.onNodeWithText("/l/ dropped").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("Try again").performScrollTo().assertIsDisplayed()
+            captureScreenRoboImage("build/screens/word-result.png")
+
+            compose.onAllNodesWithText("My words")[1].performScrollTo().performClick()
+            compose.onNodeWithText("2 WORDS").assertIsDisplayed()
+        }
+    }
+
     private fun open(picture: String, check: (PracticeViewModel) -> Unit) {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             lateinit var vm: PracticeViewModel
@@ -214,6 +296,17 @@ class ScreensTest {
             check(vm)
             captureScreenRoboImage("build/screens/$picture.png")
         }
+    }
+
+    /** Waits for work that goes off the main thread and comes back to it, as adding a word does. */
+    private fun until(done: () -> Boolean) {
+        val deadline = System.currentTimeMillis() + 10_000
+        while (!done()) {
+            assertTrue("it never happened", System.currentTimeMillis() < deadline)
+            Thread.sleep(20)
+            shadowOf(Looper.getMainLooper()).idle()
+        }
+        compose.waitForIdle()
     }
 
     /** As if the speech model had been downloaded and had started. */
