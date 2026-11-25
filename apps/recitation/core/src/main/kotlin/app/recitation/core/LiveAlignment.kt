@@ -88,7 +88,7 @@ class LiveAlignment(private val recital: Recital) {
         }
         val seen = view
         val shown = if (seen == null) starts else IntArray(starts.size) { if (it < viewSounds) seen[it] else starts[it] }
-        return recital.timingsSoFar(shown, frames, sounds, heardMs, again + pending)
+        return recital.timingsSoFar(shown, frames, rows, sounds, heardMs, again + pending)
     }
 
     /**

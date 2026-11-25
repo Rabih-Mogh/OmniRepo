@@ -80,7 +80,6 @@ fun Step.picture(fraction: Float? = null): Picture = when (this) {
     Step.DOWNLOAD -> Picture(AppIcons.Download, fraction = fraction)
     Step.VERSES -> Picture(AppIcons.Book)
     Step.MODEL_DOWNLOAD -> Picture(AppIcons.Model, AppIcons.Download, fraction)
-    Step.MODEL_CHECK -> Picture(AppIcons.Model, AppIcons.Check, fraction)
     Step.ENGINE -> Picture(AppIcons.Engine, AppIcons.Download, fraction)
     Step.TUNE -> Picture(AppIcons.Tune, fraction = fraction)
     Step.LISTEN -> Picture(AppIcons.Ear, fraction = fraction)
@@ -91,7 +90,6 @@ fun Step.picture(fraction: Float? = null): Picture = when (this) {
 
 fun Status.picture(): Picture = when (this) {
     is Status.Working -> progress.step.picture(progress.fraction)
-    is Status.ModelBlocked -> Picture(AppIcons.Model, AppIcons.Warning, still = true)
     Status.Paused -> Picture(AppIcons.Pause, still = true)
     Status.WaitingForNetwork -> Picture(AppIcons.CloudOff, still = true)
     Status.Refused -> Picture(AppIcons.Blocked, AppIcons.Hourglass, still = true)
@@ -102,7 +100,6 @@ fun Status.picture(): Picture = when (this) {
 @Composable
 fun Status.says(): String = when (this) {
     is Status.Working -> stringResource(PrepareWorker.stepLabel(progress.step), (progress.fraction * 100).toInt())
-    is Status.ModelBlocked -> stringResource(R.string.model_problem_title)
     Status.Paused -> stringResource(R.string.status_paused)
     Status.WaitingForNetwork -> stringResource(R.string.status_waiting)
     Status.Refused -> stringResource(R.string.status_refused)
@@ -164,14 +161,14 @@ private val STAGES = listOf(Step.DOWNLOAD, Step.VERSES, Step.LISTEN, Step.ALIGN)
 // the engine that runs it, and the trial of the fastest way to run it on this phone.
 private val SETUP = listOf(Step.MODEL_DOWNLOAD, Step.ENGINE, Step.TUNE)
 
-private fun Step.setsUp() = this == Step.MODEL_CHECK || this == Step.MODEL_DOWNLOAD || this == Step.ENGINE || this == Step.TUNE
+private fun Step.setsUp() = this == Step.MODEL_DOWNLOAD || this == Step.ENGINE || this == Step.TUNE
 
 private fun Step.stage(): Int = when (this) {
     Step.DOWNLOAD, Step.RETRY -> 0
     Step.VERSES -> 1
     Step.LISTEN -> 2
     Step.ALIGN -> 3
-    Step.MODEL_CHECK, Step.MODEL_DOWNLOAD -> 0
+    Step.MODEL_DOWNLOAD -> 0
     Step.ENGINE -> 1
     Step.TUNE -> 2
     // Not a step of any recording: the row of steps isn't shown for it.
@@ -207,10 +204,6 @@ fun Stages(step: Step, modifier: Modifier = Modifier, color: Color = MaterialThe
  */
 @Composable
 fun StatusCard(status: Status, actions: StatusActions, told: Boolean = false, plain: Boolean = false) {
-    if (status is Status.ModelBlocked) {
-        ModelProblemCard(status.problem, actions.retryModel)
-        return
-    }
     val colors = MaterialTheme.colorScheme
     val says = status.says()
     var saying by remember { mutableStateOf(told) }

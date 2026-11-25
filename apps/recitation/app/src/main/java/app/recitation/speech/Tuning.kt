@@ -44,12 +44,15 @@ data class Tuning(val threads: Int, val spin: Boolean) {
         /** What was found on this phone for the engine now in use; null if it hasn't been tried yet. */
         fun kept(context: Context): Tuning? {
             val parts = Settings.tuning(context)?.split(',') ?: return null
-            if (parts.size != 3 || parts[2] != EngineStore.VERSION) return null
+            if (parts.size != 3 || parts[2] != FOR) return null
             return Tuning(parts[0].toIntOrNull() ?: return null, parts[1] == "spin")
         }
 
         fun keep(context: Context, tuning: Tuning) =
-            Settings.setTuning(context, "${tuning.threads},${if (tuning.spin) "spin" else "calm"},${EngineStore.VERSION}")
+            Settings.setTuning(context, "${tuning.threads},${if (tuning.spin) "spin" else "calm"},$FOR")
+
+        /** What a trial holds for: the engine and the model it was made with. Another of either is tried afresh. */
+        private const val FOR = EngineStore.VERSION + "/tajweed-v2"
 
         /** How much slower not spinning may be and still be taken. */
         private const val SLOWER_BY = 1.1f

@@ -1,7 +1,8 @@
 # HisnLabs Tajweed v2 (int8)
 
-`model-int8.onnx` is the speech model the app's "Recite and be corrected" listens with. The app fetches it
-from here once, the first time a recitation is to be checked, and keeps it on the phone.
+`model-int8.onnx` is the app's speech model: it listens to the recordings, to say when each word is recited,
+and to the reader reciting, to go over how they said it. The app fetches it from here once, the first time a
+recording is to be listened to or a recitation checked, and keeps it on the phone.
 
 | | |
 |---|---|

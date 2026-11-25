@@ -10,7 +10,9 @@ import kotlin.test.assertNull
 class HearingTest {
 
     private val hop = 320
-    private val vocab = listOf("<pad>", "a", "i")
+    private val symbols = SoundColumns.SYMBOLS
+    private val a = HeardScript.ALPHABET.indexOf('َ') + 1
+    private val i = HeardScript.ALPHABET.indexOf('ِ') + 1
 
     /**
      * A made-up recording in which every 20 ms frame spells out its own number: twenty
@@ -43,12 +45,12 @@ class HearingTest {
      */
     private val model = SpeechModel { samples ->
         val frames = (samples.size - 400) / hop + 1
-        val logits = FloatArray(frames * vocab.size)
+        val logits = FloatArray(frames * symbols)
         for (f in 0 until frames) {
             var number = 0
             for (bit in 0 until 20) if (samples[f * hop + bit * 16 + 8] > 0) number = number or (1 shl bit)
-            val heard = if (number % 5 == 0) 0 else if (number % 2 == 0) 1 else 2
-            for (v in vocab.indices) logits[f * vocab.size + v] = if (v == heard) 12f else 0f
+            val heard = if (number % 5 == 0) 0 else if (number % 2 == 0) a else i
+            for (v in 0 until symbols) logits[f * symbols + v] = if (v == heard) 12f else 0f
         }
         logits
     }
@@ -69,7 +71,7 @@ class HearingTest {
     fun `hears every frame of a recording once, whatever its length`() {
         // Under one piece, exactly two pieces, just over, and a ragged length.
         for (length in listOf(52_000, 320_000, 320_500, 757_123)) {
-            val heard = Hearing(model, vocab).listen(Recording(length, 1), notes())
+            val heard = Hearing(model).listen(Recording(length, 1), notes())
             check(assertNotNull(heard), length)
         }
     }
@@ -79,19 +81,19 @@ class HearingTest {
         val length = 757_123
         val notes = notes()
         var pieces = 0
-        assertNull(Hearing(model, vocab).listen(Recording(length, 2), notes, stillWanted = { ++pieces < 2 }))
+        assertNull(Hearing(model).listen(Recording(length, 2), notes, stillWanted = { ++pieces < 2 }))
         val sizeWhenStopped = notes.length()
         // The app was killed half way through writing the next piece.
         notes.appendBytes(ByteArray(37) { 1 })
         val progress = ArrayList<Float>()
-        val heard = Hearing(model, vocab).listen(Recording(length, 3), notes, onProgress = { progress += it })
+        val heard = Hearing(model).listen(Recording(length, 3), notes, onProgress = { progress += it })
         check(assertNotNull(heard), length)
         assertEquals(true, notes.length() > sizeWhenStopped)
         assertEquals(true, progress.first() > 0.3f, "it didn't start from the beginning again")
         assertEquals(1f, progress.last())
 
         // Asked again when everything has been heard, it only reads its notes back.
-        check(assertNotNull(Hearing(SpeechModel { error("nothing left to listen to") }, vocab).listen(Recording(length, 4), notes)), length)
+        check(assertNotNull(Hearing(SpeechModel { error("nothing left to listen to") }).listen(Recording(length, 4), notes)), length)
     }
 
     @Test
@@ -100,7 +102,7 @@ class HearingTest {
         val notes = notes()
         val order = ArrayList<Int>()
         // The recording is being played from its fourth piece on: that one first, then on from there, then the rest.
-        val heard = Hearing(model, vocab).listen(
+        val heard = Hearing(model).listen(
             Recording(length, 5), notes, onPiece = { piece, _, _ -> order += piece },
             next = { done -> (3..9).firstOrNull { it !in done } },
         )
@@ -113,11 +115,11 @@ class HearingTest {
         val length = 757_123
         val notes = notes()
         var pieces = 0
-        assertNull(Hearing(model, vocab).listen(Recording(length, 6), notes, stillWanted = { ++pieces < 2 }, next = { done -> if (2 !in done) 2 else null }))
+        assertNull(Hearing(model).listen(Recording(length, 6), notes, stillWanted = { ++pieces < 2 }, next = { done -> if (2 !in done) 2 else null }))
         // The third piece and the first were heard; they are handed back by their numbers.
-        assertEquals(listOf(0, 2), Hearing(model, vocab).resume(notes).keys.sorted())
+        assertEquals(listOf(0, 2), Hearing(model).resume(notes).keys.sorted())
         val later = ArrayList<Int>()
-        val heard = Hearing(model, vocab).listen(Recording(length, 7), notes, onPiece = { piece, _, _ -> later += piece })
+        val heard = Hearing(model).listen(Recording(length, 7), notes, onPiece = { piece, _, _ -> later += piece })
         assertEquals(listOf(1, 3, 4), later)
         check(assertNotNull(heard), length)
     }

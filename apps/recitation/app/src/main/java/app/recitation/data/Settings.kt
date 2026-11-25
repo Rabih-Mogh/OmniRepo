@@ -19,11 +19,6 @@ enum class Appearance(val key: String) {
 object Settings {
     private fun store(context: Context) = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
-    /** Whether the model may be downloaded even though Accent Coach is installed and could, once put right, lend it. */
-    fun downloadModel(context: Context): Boolean = store(context).getBoolean("download_model", false)
-
-    fun setDownloadModel(context: Context, allowed: Boolean) = store(context).edit().putBoolean("download_model", allowed).apply()
-
     /** How the speech engine was found to run fastest on this phone, as `Tuning` writes it; null until that has been tried. */
     fun tuning(context: Context): String? = store(context).getString("tuning", null)
 

@@ -21,10 +21,11 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 /**
- * The model that listens to a learner reciting and writes down how each sound was said:
- * HisnLabs Tajweed v2 (Apache-2.0), a small one made for this, 23 MB. It is fetched once,
- * from the app's own repository, by the background work that fetches everything else
- * (see PrepareWorker), and kept on the phone. It runs on the same engine as the model that follows a reciter's recording.
+ * The app's speech model: HisnLabs Tajweed v2 (Apache-2.0), a small one made for writing
+ * down how each sound of a recitation was said, 23 MB. It listens to the recordings, to
+ * say when each word is recited ([Listener]), and to a reader reciting, to go over how
+ * they said it ([TajweedEar]). It is fetched once, from the app's own repository, by the
+ * background work that fetches everything else (see PrepareWorker), and kept on the phone.
  */
 class TajweedStore(context: Context, private val source: String = SOURCE, private val bytes: Long = BYTES, private val checksum: String = SHA256) {
 
@@ -96,6 +97,20 @@ class TajweedStore(context: Context, private val source: String = SOURCE, privat
     }
 
     companion object {
+        /**
+         * Frees what the model the app used to listen to recordings with left on the phone:
+         * its file (318 MB, where the app had a copy of its own), what was noted about it,
+         * and what it had heard of recordings it hadn't finished, which this model's hearing
+         * can't carry on from. True if there was anything.
+         */
+        fun dropOld(context: Context): Boolean {
+            val model = File(context.filesDir, "model")
+            val had = model.exists()
+            model.deleteRecursively()
+            context.deleteSharedPreferences("model")
+            return had
+        }
+
         private const val NAME = "tajweed-v2-int8.onnx"
         const val BYTES = 23_173_931L
         private const val SHA256 = "79cca1a2fc7ef81e325a3071a5f26cfec69203ef2c63177549065cdc1022c373"
@@ -126,21 +141,8 @@ class TajweedEar(model: File) : AutoCloseable {
         val body = minOf(sound.size, LONGEST_SECONDS * Mel.SAMPLE_RATE)
         val padded = FloatArray(body + 2 * lead)
         System.arraycopy(sound, 0, padded, lead, body)
-        var frames = Mel.frames(padded.size)
-        val mel = Mel.of(padded)
-        // An even number of its frames, as its first layers halve them.
-        val used = minOf(frames / 2 * 2, MOST_FRAMES)
-        val input = if (used == frames) mel else FloatArray(Mel.BANDS * used).also { for (b in 0 until Mel.BANDS) System.arraycopy(mel, b * frames, it, b * used, used) }
-        frames = used
-        OnnxTensor.createTensor(env, FloatBuffer.wrap(input), longArrayOf(1, Mel.BANDS.toLong(), frames.toLong())).use { picture ->
-            OnnxTensor.createTensor(env, LongBuffer.wrap(longArrayOf(HAFS)), longArrayOf(1)).use { reading ->
-                session.run(mapOf("mel" to picture, "riwaya" to reading)).use { result ->
-                    val scores = (result[0] as OnnxTensor).floatBuffer // [1, frames / 2, symbols + 1]
-                    val all = FloatArray(scores.remaining()).also { scores.get(it) }
-                    return HeardScript.read(all, all.size / (HeardScript.ALPHABET.length + 1))
-                }
-            }
-        }
+        val all = session.scores(env, padded)
+        return HeardScript.read(all, all.size / (HeardScript.ALPHABET.length + 1))
     }
 
     override fun close() = session.close()
@@ -148,9 +150,32 @@ class TajweedEar(model: File) : AutoCloseable {
     companion object {
         /** The longest stretch it takes at once: a verse or a phrase, not a page. */
         const val LONGEST_SECONDS = 29
-        private const val MOST_FRAMES = 3000
+    }
+}
 
-        /** Which reading the recitation is in: this app's is Hafs from 'Asim. */
-        private const val HAFS = 0L
+/** The most frames of its picture of the sound the model takes at once: thirty seconds. */
+private const val MOST_FRAMES = 3000
+
+/** Which reading the recitation is in: this app's is Hafs from 'Asim. */
+private const val HAFS = 0L
+
+/**
+ * What the model, opened in this session, makes of [sound] (16,000 samples a second,
+ * between -1 and 1): for every 20 ms of it, the log of the chance of "nothing here" and
+ * then of each symbol of the phonetic script. Sound past thirty seconds is left out.
+ */
+internal fun OrtSession.scores(env: OrtEnvironment, sound: FloatArray): FloatArray {
+    val frames = Mel.frames(sound.size)
+    val mel = Mel.of(sound)
+    // An even number of its frames, as its first layers halve them.
+    val used = minOf(frames / 2 * 2, MOST_FRAMES)
+    val input = if (used == frames) mel else FloatArray(Mel.BANDS * used).also { for (b in 0 until Mel.BANDS) System.arraycopy(mel, b * frames, it, b * used, used) }
+    OnnxTensor.createTensor(env, FloatBuffer.wrap(input), longArrayOf(1, Mel.BANDS.toLong(), used.toLong())).use { picture ->
+        OnnxTensor.createTensor(env, LongBuffer.wrap(longArrayOf(HAFS)), longArrayOf(1)).use { reading ->
+            run(mapOf("mel" to picture, "riwaya" to reading)).use { result ->
+                val scores = (result[0] as OnnxTensor).floatBuffer // [1, frames / 2, symbols + 1]
+                return FloatArray(scores.remaining()).also { scores.get(it) }
+            }
+        }
     }
 }

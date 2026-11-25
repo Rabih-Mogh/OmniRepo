@@ -86,6 +86,7 @@ import app.recitation.core.SURAHS
 import app.recitation.core.Silences
 import app.recitation.core.TajweedReference
 import app.recitation.core.Topic
+import app.recitation.core.Went
 import app.recitation.core.WordRecited
 import app.recitation.data.Echo
 import app.recitation.data.Hear
@@ -272,7 +273,7 @@ fun DrillScreen(
 ) {
     val context = LocalContext.current.applicationContext
     var at by remember(drills) { mutableIntStateOf(0) }
-    val results = remember(drills) { mutableStateMapOf<Int, Boolean>() }
+    val results = remember(drills) { mutableStateMapOf<Int, Went>() }
     var over by remember(drills) { mutableStateOf(drills.isEmpty()) }
     var verse by remember { mutableStateOf<Verse?>(null) }
     val reciter = rememberReciter()
@@ -292,8 +293,8 @@ fun DrillScreen(
         voice = drill?.let { voiceOf(it) }
     }
     val state = reciter.state
-    LaunchedEffect(state) { if (state is Reciting.Heard && drill != null) results[at] = Drills.sound(drill, state.words) }
-    LaunchedEffect(over) { if (over && drills.isNotEmpty()) onDone(results.values.count { it }, drills.size) }
+    LaunchedEffect(state) { if (state is Reciting.Heard && drill != null) results[at] = Drills.went(drill, state.words) }
+    LaunchedEffect(over) { if (over && drills.isNotEmpty()) onDone(results.values.count { it == Went.SOUND }, drills.size) }
     if (over || drill == null) {
         DrillOver(title, drills, results, onAgain = { results.clear(); at = 0; over = drills.isEmpty() }, onBack = onBack)
         return
@@ -322,9 +323,9 @@ fun DrillScreen(
             else -> stringResource(R.string.drill_how, name)
         },
         verdict = {
-            results[at]?.let { sound ->
+            results[at]?.let { went ->
                 DrillVerdict(
-                    drill, sound,
+                    drill, went,
                     // The words the go was about as the reciter says them, or failing that the whole verse.
                     onHear = voice?.let { v -> { if (v.placeFromMs >= 0) clip.play(v.sound, v.placeFromMs, v.placeUntilMs) else clip.play(v.sound, v.fromMs, v.untilMs) } },
                 )
@@ -339,33 +340,36 @@ fun DrillScreen(
 /**
  * How a go went for the thing it was about: sound, or to go over; and if to go over, how
  * it is said, as the lesson has it, with the way to hear a reciter say it ([onHear];
- * null where no recording has the verse).
+ * null where no recording has the verse). If the words that carry it weren't said, it
+ * says so and judges nothing.
  */
 @Composable
-fun DrillVerdict(drill: Drill, sound: Boolean, onHear: (() -> Unit)? = null) {
+fun DrillVerdict(drill: Drill, went: Went, onHear: (() -> Unit)? = null) {
     val colors = MaterialTheme.colorScheme
     val name = drill.topic.named(drill.letters)
-    val says = when {
-        drill.topic == Topic.STOP -> stringResource(if (sound) R.string.drill_stop_sound else R.string.drill_stop_missed)
-        sound -> stringResource(R.string.drill_sound, name)
-        else -> stringResource(R.string.drill_missed, name)
-    }
+    val missed = went == Went.MISSED
+    val says = stringResource(
+        if (drill.topic == Topic.STOP) when (went) { Went.SOUND -> R.string.drill_stop_sound; Went.MISSED -> R.string.drill_stop_missed; Went.UNHEARD -> R.string.drill_stop_unheard }
+        else when (went) { Went.SOUND -> R.string.drill_sound; Went.MISSED -> R.string.drill_missed; Went.UNHEARD -> R.string.drill_unheard },
+        name,
+    )
+    val ink = when (went) { Went.SOUND -> colors.primary; Went.MISSED -> colors.error; Went.UNHEARD -> colors.outline }
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background((if (sound) colors.primary else colors.error).copy(alpha = 0.1f)).padding(12.dp).testTag("drill-verdict"),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(ink.copy(alpha = 0.1f)).padding(12.dp).testTag("drill-verdict"),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(if (sound) AppIcons.Check else AppIcons.Warning, null, Modifier.size(22.dp), tint = if (sound) colors.primary else colors.error)
+        Icon(when (went) { Went.SOUND -> AppIcons.Check; Went.MISSED -> AppIcons.Warning; Went.UNHEARD -> AppIcons.Ear }, null, Modifier.size(22.dp), tint = ink)
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(says, style = MaterialTheme.typography.titleSmall, color = colors.onSurface)
-            if (!sound) Text(stringResource(lessonOf(drill.topic, drill.letters).how), Modifier.testTag("drill-teach"), style = MaterialTheme.typography.bodyMedium, color = colors.onSurface)
-            if (!sound && onHear != null) ThemeButton(stringResource(R.string.drill_hear_it), onHear, Modifier.testTag("hear-it"), icon = AppIcons.Sound)
+            if (missed) Text(stringResource(lessonOf(drill.topic, drill.letters).how), Modifier.testTag("drill-teach"), style = MaterialTheme.typography.bodyMedium, color = colors.onSurface)
+            if (missed && onHear != null) ThemeButton(stringResource(R.string.drill_hear_it), onHear, Modifier.testTag("hear-it"), icon = AppIcons.Sound)
         }
     }
 }
 
-/** The end of an exercise: how many of its goes were sound, each go with how it went, and whether to do it once more. */
+/** The end of an exercise: how many of its goes were sound, each go with how it went (an ear where its words weren't heard), and whether to do it once more. */
 @Composable
-fun DrillOver(title: String, drills: List<Drill>, results: Map<Int, Boolean>, onAgain: () -> Unit, onBack: () -> Unit) {
+fun DrillOver(title: String, drills: List<Drill>, results: Map<Int, Went>, onAgain: () -> Unit, onBack: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Column(Modifier.fillMaxSize()) {
         Banner {
@@ -378,13 +382,13 @@ fun DrillOver(title: String, drills: List<Drill>, results: Map<Int, Boolean>, on
             if (drills.isEmpty()) {
                 Text(stringResource(R.string.drill_none), style = MaterialTheme.typography.bodyLarge)
             } else {
-                Text(stringResource(R.string.drill_over, results.values.count { it }, drills.size), Modifier.testTag("drill-score"), style = MaterialTheme.typography.headlineSmall, color = colors.primary)
+                Text(stringResource(R.string.drill_over, results.values.count { it == Went.SOUND }, drills.size), Modifier.testTag("drill-score"), style = MaterialTheme.typography.headlineSmall, color = colors.primary)
                 for ((i, drill) in drills.withIndex()) {
                     val result = results[i]
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Icon(
-                            when (result) { true -> AppIcons.Check; false -> AppIcons.Warning; null -> AppIcons.Hourglass }, null, Modifier.size(20.dp),
-                            tint = when (result) { true -> colors.primary; false -> colors.error; null -> colors.outline },
+                            when (result) { Went.SOUND -> AppIcons.Check; Went.MISSED -> AppIcons.Warning; Went.UNHEARD -> AppIcons.Ear; null -> AppIcons.Hourglass }, null, Modifier.size(20.dp),
+                            tint = when (result) { Went.SOUND -> colors.primary; Went.MISSED -> colors.error; Went.UNHEARD, null -> colors.outline },
                         )
                         Text(stringResource(R.string.recite_verse, surahName(SURAHS[drill.surah - 1]), drill.verse), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                         Text(drill.topic.named(drill.letters), style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant)

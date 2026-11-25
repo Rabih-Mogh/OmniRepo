@@ -74,7 +74,7 @@ class EngineStore(private val context: Context, private val parts: List<Part> = 
 
     /** Copies [part] out of Accent Coach's package, if that app is installed and carries a file of that size. */
     private suspend fun fromAccentCoach(part: Part, into: File, onProgress: (Long) -> Unit): Boolean = try {
-        val apk = context.packageManager.getApplicationInfo(ModelStore.ACCENT_COACH, 0).sourceDir
+        val apk = context.packageManager.getApplicationInfo(ACCENT_COACH, 0).sourceDir
         ZipFile(apk).use { zip ->
             val entry = zip.getEntry("lib/$ABI/${part.name}")
             if (entry == null || entry.size != part.bytes) {
@@ -169,6 +169,9 @@ class EngineStore(private val context: Context, private val parts: List<Part> = 
         private const val SOURCE = "https://raw.githubusercontent.com/Rabih-Mogh/OmniRepo/main/apps/recitation/engine/onnxruntime-$VERSION/$ABI/"
 
         private const val ENGINE = "libonnxruntime.so"
+
+        /** Another app of the same maker's that carries the same engine in its package. */
+        private const val ACCENT_COACH = "app.accentcoach"
 
         /** What is put on the phone: the engine itself. The small library that joins it to the Java side is in the app's package. */
         val PARTS = listOf(Part(ENGINE, 34_208_680L, "46e0c16cd515c62a1dd6c5994448b5413705478354bc20a756a5a82634c3ca03"))

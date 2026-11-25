@@ -56,7 +56,7 @@ class Recital(surah: Int, verses: List<List<String>>, withOpening: Boolean = tru
         val path = aligner.path() ?: return null
         val starts = aligner.starts(path)
         val repeats = Repeats.find(phones, ordinal, rows, path, starts).mapNotNull { pass -> repeat(pass, frameOfRow) }
-        val once = build(starts, frameOfRow, aligner, phones.size, Timings.COMPLETE)
+        val once = build(starts, frameOfRow, aligner::score, true, phones.size, Timings.COMPLETE)
         return Timings(once.verses, once.clarity, once.heardMs, repeats, method = Timings.METHOD)
     }
 
@@ -130,15 +130,16 @@ class Recital(surah: Int, verses: List<List<String>>, withOpening: Boolean = tru
      * [frameOfRow] the model frame each kept row came from.
      */
     fun timings(starts: IntArray, frameOfRow: IntArray, aligner: Aligner): Timings =
-        build(starts, frameOfRow, aligner, phones.size, Timings.COMPLETE)
+        build(starts, frameOfRow, aligner::score, true, phones.size, Timings.COMPLETE)
 
     /**
      * The same while the recording is still being listened to: only the first [sounds]
      * sounds have been placed, and the model has heard as far as [heardMs]. The answer
-     * holds the words placed so far and nothing after them.
+     * holds the words placed so far and nothing after them. [rows] are the rows heard so far.
      */
-    fun timingsSoFar(starts: IntArray, frameOfRow: IntArray, sounds: Int, heardMs: Int, again: List<List<Pair<Int, Int>>> = emptyList()): Timings {
-        val once = build(starts, frameOfRow, null, sounds, heardMs)
+    fun timingsSoFar(starts: IntArray, frameOfRow: IntArray, rows: FloatArray, sounds: Int, heardMs: Int, again: List<List<Pair<Int, Int>>> = emptyList()): Timings {
+        val width = SoundColumns.WIDTH
+        val once = build(starts, frameOfRow, { sound, row -> rows[row * width + phones[sound].sound.ordinal + 1] }, false, sounds, heardMs)
         return if (again.isEmpty()) once else Timings(once.verses, once.clarity, once.heardMs, again.mapNotNull { repeat(it, frameOfRow) })
     }
 
@@ -151,7 +152,11 @@ class Recital(surah: Int, verses: List<List<String>>, withOpening: Boolean = tru
         Repeats.find(phones, ordinal, rows, IntArray(0), starts, fromRow, read)
     }
 
-    private fun build(starts: IntArray, frameOfRow: IntArray, aligner: Aligner?, sounds: Int, heardMs: Int): Timings {
+    /**
+     * [heard] is how well a sound was heard at a row; [whole] whether the whole recording
+     * has been heard, so that how clearly the surah was heard can be told.
+     */
+    private fun build(starts: IntArray, frameOfRow: IntArray, heard: (sound: Int, row: Int) -> Float, whole: Boolean, sounds: Int, heardMs: Int): Timings {
         val total = verseSizes.sum()
         val wordStart = IntArray(total) { -1 }
         val letters = Array(total) { ArrayList<Int>() }
@@ -172,12 +177,13 @@ class Recital(surah: Int, verses: List<List<String>>, withOpening: Boolean = tru
                     val row = starts[p]
                     if (!phones[p].optional) {
                         required++
-                        if (row >= 0 && aligner != null && aligner.score(p, row) > CLEAR) clear++
+                        if (row >= 0 && whole && heard(p, row) > CLEAR) clear++
                     }
                     if (row < 0) continue
                     val ms = maxOf(0, frameOfRow[row] * SoundColumns.FRAME_MS - LEAD_MS)
                     if (first < 0) {
-                        first = ms
+                        // A word that opens on a held consonant begins where the hold is let go.
+                        first = if (phones[p].sound in HELD) maxOf(0, frameOfRow[released(p, row, starts, sounds, frameOfRow, heard)] * SoundColumns.FRAME_MS - LEAD_MS) else ms
                         firstOptional = phones[p].optional
                     } else if (second < 0) {
                         second = ms
@@ -219,8 +225,31 @@ class Recital(surah: Int, verses: List<List<String>>, withOpening: Boolean = tru
             }
         }
         // How clearly the surah was heard is only known once all of it has been.
-        val clarity = if (aligner == null) 1f else if (required == 0) 0f else clear.toFloat() / required
+        val clarity = if (!whole) 1f else if (required == 0) 0f else clear.toFloat() / required
         return Timings(verses, clarity, heardMs)
+    }
+
+    /**
+     * The row at which the consonant [sound], which a word opens with and which was first
+     * heard at [row], is let go into the word. The model writes a held sound once for every
+     * count of it: a nun or a tanween merged into the next word's first letter is that
+     * letter held through the nose for two counts, and a doubled ل or sun letter is held
+     * too. The hold is the end of the word before as much as the start of this one, and
+     * the word is taken to begin where it ends: at the last time the sound is written
+     * before the word's next sound, if it is written again after a gap.
+     */
+    private fun released(sound: Int, row: Int, starts: IntArray, sounds: Int, frameOfRow: IntArray, heard: (Int, Int) -> Float): Int {
+        var next = sound + 1
+        while (next < sounds && starts[next] < 0) next++
+        val until = if (next < sounds) starts[next] else minOf(frameOfRow.size, row + HOLD_ROWS)
+        var last = row
+        var at = row
+        for (r in row + 1 until until) {
+            if (heard(sound, r) <= CLEAR) continue
+            if (frameOfRow[r] - frameOfRow[at] > HOLD_GAP) last = r
+            at = r
+        }
+        return last
     }
 
     companion object {
@@ -234,6 +263,15 @@ class Recital(surah: Int, verses: List<List<String>>, withOpening: Boolean = tru
         const val LEAD_MS = 100
 
         private const val MAX_LEAD_IN_MS = 400
+
+        /** The sounds a word may open on held: the consonants. */
+        private val HELD = Sound.entries.toSet() - setOf(Sound.A, Sound.AA, Sound.I, Sound.II, Sound.U, Sound.UU, Sound.LINK)
+
+        /** How many frames apart two writings of a held sound are, at least: more than the frames one writing spreads over. */
+        private const val HOLD_GAP = 4
+
+        /** How many rows after a recording's last sound are looked at for its being held. */
+        private const val HOLD_ROWS = 60
 
         /** A sound scoring above this (about one chance in ten) counts as clearly heard. */
         private const val CLEAR = -2.3f

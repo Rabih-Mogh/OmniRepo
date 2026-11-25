@@ -76,10 +76,8 @@ import app.recitation.data.Playlist
 import app.recitation.data.VerseRef
 import app.recitation.data.Summary
 import app.recitation.data.Track
-import app.recitation.prepare.ModelProblem
 import app.recitation.prepare.PrepareWorker
 import app.recitation.prepare.Progress
-import app.recitation.speech.ModelStore
 
 /**
  * A surah's name. The app is for readers whose first language is Arabic and whose second is
@@ -115,9 +113,6 @@ sealed interface Status {
         }
     }
 
-    /** Accent Coach is installed but couldn't lend its speech model. */
-    data class ModelBlocked(val problem: ModelProblem) : Status
-
     data object Paused : Status
 
     data object WaitingForNetwork : Status
@@ -133,7 +128,6 @@ class StatusActions(
     val pause: () -> Unit = {},
     val resume: () -> Unit = {},
     val cancel: () -> Unit = {},
-    val retryModel: (download: Boolean) -> Unit = {},
 )
 
 /**
@@ -458,31 +452,6 @@ fun AddPlaylistDialog(link: String, busy: Boolean, error: String?, onChange: (St
     )
 }
 
-/**
- * Shown when Accent Coach is on the phone but couldn't lend its speech model: says why,
- * and offers to try again once that's put right, or to download the model after all.
- */
-@Composable
-fun ModelProblemCard(problem: ModelProblem, onRetry: (download: Boolean) -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)) {
-        Column(Modifier.padding(start = 16.dp, top = 12.dp, end = 8.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(stringResource(R.string.model_problem_title), style = MaterialTheme.typography.titleSmall)
-            Text(
-                when (problem.reason) {
-                    ModelStore.Lender.TOO_OLD -> stringResource(R.string.model_too_old)
-                    ModelStore.Lender.NO_MODEL -> stringResource(R.string.model_no_model)
-                    else -> stringResource(R.string.model_refused, problem.detail.orEmpty())
-                },
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Row(Modifier.align(Alignment.End).padding(top = 8.dp, end = 8.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ThemeButton(stringResource(R.string.model_download_instead), { onRetry(true) }, icon = AppIcons.Download)
-                ThemeButton(stringResource(R.string.try_again), { onRetry(false) }, icon = AppIcons.Retry, filled = true)
-            }
-        }
-    }
-}
-
 /** One playlist: its recordings, which surah each is, and getting them ready to read along with. */
 @Composable
 fun RecordingsContent(
@@ -609,14 +578,13 @@ private fun RecordingRow(
     // thing's own picture, where it isn't simply the recording's turn. The words for it are the short ones.
     val waitsFor: Status? = if (work != null || !track.wanted) null else status.takeIf {
         // The speech model or the engine, which every recording waits for, being fetched; or a state of waiting.
-        (it is Status.Working && it.progress.trackId == null) || it == Status.Paused || it == Status.WaitingForNetwork || it == Status.Refused || it is Status.ModelBlocked
+        (it is Status.Working && it.progress.trackId == null) || it == Status.Paused || it == Status.WaitingForNetwork || it == Status.Refused
     }
     val waitsSays = when (waitsFor) {
         null -> null
         Status.Paused -> stringResource(R.string.paused)
         Status.WaitingForNetwork -> stringResource(R.string.status_waiting)
         Status.Refused -> stringResource(R.string.status_refused_short)
-        is Status.ModelBlocked -> stringResource(R.string.queued_for_model)
         else -> waitsFor.says()
     }
     val mismatch = track.ready && track.clarity < app.recitation.core.Timings.GOOD_ENOUGH

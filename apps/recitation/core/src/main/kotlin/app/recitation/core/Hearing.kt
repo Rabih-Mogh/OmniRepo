@@ -6,7 +6,6 @@ import java.io.EOFException
 import java.io.File
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
-import kotlin.math.sqrt
 
 /** A recording as 16 kHz mono samples (-1..1), read a block at a time. */
 interface Samples {
@@ -58,7 +57,10 @@ class Span(private val whole: Samples, private val from: Long, until: Long) : Sa
     }
 }
 
-/** The speech model: takes a stretch of sound and gives, for each 20 ms frame of it, a score per symbol. */
+/**
+ * The speech model: takes a stretch of sound (16,000 samples a second, between -1 and 1)
+ * and gives, for each 20 ms of it from its start, [SoundColumns.SYMBOLS] scores.
+ */
 fun interface SpeechModel {
     fun run(samples: FloatArray): FloatArray
 }
@@ -75,10 +77,10 @@ class Heard(val frames: IntArray, val rows: FloatArray)
  * piece is appended to a file, so listening that is cut short (the phone restarts, Android
  * stops the app) carries on from the last piece instead of starting the recording again.
  */
-class Hearing(private val model: SpeechModel, vocab: List<String>) {
+class Hearing(private val model: SpeechModel) {
 
-    private val columns = SoundColumns(vocab)
-    private val symbols = vocab.size
+    private val columns = SoundColumns()
+    private val symbols = SoundColumns.SYMBOLS
     private val width = SoundColumns.WIDTH
 
     /** How many samples a millisecond of a recording is. */
@@ -195,7 +197,7 @@ class Hearing(private val model: SpeechModel, vocab: List<String>) {
         windowStart: Long,
         onPiece: (Int, IntArray, FloatArray) -> Unit,
     ) {
-        val logits = model.run(normalized(window, length))
+        val logits = model.run(if (length == window.size) window else window.copyOf(length))
         val frames = logits.size / symbols
         val first = bodyOffset / HOP
         val last = minOf(frames, first + bodySamples / HOP)
@@ -224,17 +226,6 @@ class Hearing(private val model: SpeechModel, vocab: List<String>) {
     fun resume(notes: File): Map<Int, Heard> {
         piecesIn(notes)
         return if (notes.exists()) pieces(notes) else emptyMap()
-    }
-
-    /** Zero mean, unit variance, as the model was trained on. */
-    private fun normalized(audio: FloatArray, length: Int): FloatArray {
-        var sum = 0.0
-        for (i in 0 until length) sum += audio[i]
-        val mean = (sum / length).toFloat()
-        var v = 0.0
-        for (i in 0 until length) v += (audio[i] - mean) * (audio[i] - mean)
-        val std = sqrt(v / length + 1e-7).toFloat()
-        return FloatArray(length) { (audio[it] - mean) / std }
     }
 
     /** Which whole pieces [notes] holds. A piece cut off mid-write is trimmed away. */

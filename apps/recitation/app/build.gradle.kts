@@ -92,7 +92,7 @@ dependencies {
     // Downloads and prepares recordings in the background, carrying on after interruptions.
     implementation("androidx.work:work-runtime-ktx:2.10.0")
 
-    // Runs the phoneme recogniser (wav2vec2, ONNX) on the phone.
+    // Runs the speech model (ONNX) on the phone.
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.31.1")
 
     // Plays the recitation, also with the screen off, with controls in the notification.

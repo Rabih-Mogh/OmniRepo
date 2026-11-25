@@ -21,6 +21,18 @@ enum class Topic {
  */
 data class Drill(val surah: Int, val verse: Int, val topic: Topic, val letters: String = "", val stopAfter: Int = -1)
 
+/** How a go of an exercise went, for the thing it was about. */
+enum class Went {
+    /** Nothing to correct about it. */
+    SOUND,
+
+    /** Something to go over. */
+    MISSED,
+
+    /** The words that carry it weren't said: there was nothing to judge. */
+    UNHEARD,
+}
+
 /**
  * Chooses verses for the tajweed exercises and judges a recitation for one topic. The
  * verses are short ones, so each is a breath or two: a rule is practised by reciting
@@ -112,13 +124,28 @@ object Drills {
     }
 
     /**
-     * Whether [words], what was heard of the drill's verse, were sound as far as the drill's
-     * topic goes: nothing to correct about it. For a stop, the reader has to have stopped on
-     * the word asked, and said it as it sounds at a stop.
+     * How [words], what was heard of the drill's verse, went as far as the drill's topic
+     * goes. It is judged only in the words that were said: a rule in a word passed over
+     * was neither kept nor broken, and if none of the words that carry it were said, the
+     * go is [Went.UNHEARD]. For a stop, the reader has to have stopped on the word asked,
+     * and said it as it sounds at a stop.
      */
-    fun sound(drill: Drill, words: List<WordRecited>): Boolean = when (drill.topic) {
-        Topic.STOP -> words.any { it.index == drill.stopAfter && it.stopped && it.sound }
-        Topic.LETTERS -> words.none { word -> word.corrections.any { c -> c.fault == Fault.LETTER && (c.wanted.any { it in drill.letters } || c.heard.any { it in drill.letters }) } }
-        else -> words.none { word -> word.corrections.any { topicOf(it) == drill.topic } }
+    fun went(drill: Drill, words: List<WordRecited>): Went {
+        val said = words.filter { !it.unsaid }
+        return when (drill.topic) {
+            Topic.STOP -> said.filter { it.index == drill.stopAfter }.let { asked ->
+                if (asked.isEmpty()) Went.UNHEARD else if (asked.any { it.stopped && it.sound }) Went.SOUND else Went.MISSED
+            }
+            Topic.LETTERS -> when {
+                said.any { word -> word.corrections.any { c -> c.fault == Fault.LETTER && (c.wanted.any { it in drill.letters } || c.heard.any { it in drill.letters }) } } -> Went.MISSED
+                said.none { word -> word.wanted.any { it in drill.letters } } -> Went.UNHEARD
+                else -> Went.SOUND
+            }
+            else -> when {
+                said.any { word -> word.corrections.any { topicOf(it) == drill.topic } } -> Went.MISSED
+                said.none { word -> word.listened.any { topicOf(it) == drill.topic } } -> Went.UNHEARD
+                else -> Went.SOUND
+            }
+        }
     }
 }

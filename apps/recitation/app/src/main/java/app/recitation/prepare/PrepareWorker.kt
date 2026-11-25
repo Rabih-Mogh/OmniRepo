@@ -43,7 +43,6 @@ import app.recitation.data.isNoRoom
 import app.recitation.data.writeWhole
 import app.recitation.speech.Listener
 import app.recitation.speech.EngineStore
-import app.recitation.speech.ModelStore
 import app.recitation.speech.Tuning
 import app.recitation.yt.YouTube
 import kotlinx.coroutines.CancellationException
@@ -64,7 +63,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -72,16 +70,13 @@ import kotlin.math.abs
 import kotlin.math.sin
 
 /** What is being done to a recording right now. */
-enum class Step { MODEL_CHECK, MODEL_DOWNLOAD, ENGINE, TUNE, DOWNLOAD, VERSES, LISTEN, ALIGN, RETRY, TAJWEED }
+enum class Step { MODEL_DOWNLOAD, ENGINE, TUNE, DOWNLOAD, VERSES, LISTEN, ALIGN, RETRY, TAJWEED }
 
 /** A recording's word timings while, and just after, it is listened to. */
 class Live(val trackId: String, val surah: Int, val timings: Timings)
 
 /** Where a recording is being played, in ms. */
 class Playing(val trackId: String, val ms: Int)
-
-/** Why the speech model couldn't be copied from Accent Coach. */
-data class ModelProblem(val reason: ModelStore.Lender, val detail: String?)
 
 /**
  * [trackId] is null while the speech model, which every recording needs, is being fetched.
@@ -124,7 +119,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
     private val notifications = context.getSystemService(NotificationManager::class.java)
     private val library = Library.get(context)
     private val quran = QuranStore(context)
-    private val model = ModelStore(context)
+    private val model = TajweedStore(context)
     private val engine = EngineStore(context)
     private val journal = Journal.get(context)
     private var listener: Listener? = null
@@ -159,7 +154,6 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "recitation:prepare")
         awake.acquire(6 * 60 * 60 * 1000L)
         try {
-            _modelProblem.value = null
             fetchTajweed()
             val ended = coroutineScope {
                 val fetching = launch(Dispatchers.IO) { fetchSounds() }
@@ -246,11 +240,6 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                     } catch (e: NoRoom) {
                         fail(track, applicationContext.getString(R.string.error_storage))
                         break
-                    } catch (e: ModelStore.Unavailable) {
-                        // Every recording needs the model, so there's nothing to go on with. The
-                        // recordings stay in the queue and the screen says what to do about it.
-                        _modelProblem.value = ModelProblem(e.reason, e.detail)
-                        return Result.success()
                     } catch (e: Stopped) {
                         // Paused or cancelled by the user, or Android is stopping the work.
                         if (isStopped) return Result.retry()
@@ -353,7 +342,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
     /** The recordings that still have something to be done to them, as the two lanes see them. */
     private fun waiting(): List<Lanes.Waiting> {
         // The speech model and the engine are for every recording.
-        val shared = !engine.isReady || model.needsDownload
+        val shared = !engine.isReady || !model.isReady
         return library.playlists.value.flatMap { it.tracks }.filter(::waits)
             .map { Lanes.Waiting(it.id, library.audio(it.id) != null, shared || !quran.onPhone(it.surah)) }
     }
@@ -375,7 +364,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
 
     /** Whether something [track] needs is still to be fetched: its sound, its surah's words, the speech model or the engine. */
     private fun needsConnection(track: Track) =
-        library.audio(track.id) == null || !quran.onPhone(track.surah) || !engine.isReady || model.needsDownload
+        library.audio(track.id) == null || !quran.onPhone(track.surah) || !engine.isReady || !model.isReady
 
     /**
      * Whether the recording the reader has open would be the next a lane takes up ([next]),
@@ -450,7 +439,6 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         // The engine with the model in it, run the way found fastest on this phone: found
         // by trying, the first time, with a few seconds of sound each way.
         fun listener(): Listener = listener ?: run {
-            val vocab = vocab()
             val tuning = Tuning.kept(applicationContext) ?: run {
                 val sound = FloatArray(TRIAL_SAMPLES) { sin(it * 0.05f) * 0.1f }
                 var tried = 0
@@ -463,7 +451,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                             if (!wanted()) throw Stopped()
                             report(Step.TUNE, tried++ / 4f, forModel = true)
                             runCatching {
-                                Listener(model.open(), vocab, way).use {
+                                Listener(model.file, way).use {
                                     it.run(sound) // the first run sets the engine up; the second is the one timed
                                     val from = System.nanoTime()
                                     it.run(sound)
@@ -477,7 +465,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                     trying = false
                 }
             }
-            Listener(model.open(), vocab, tuning).also { listener = it }
+            Listener(model.file, tuning).also { listener = it }
         }
 
         val timingsFile = library.timings(id, track.surah)
@@ -545,10 +533,8 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             mark { it.copy(playable = true) }
         }
 
-        // The speech model: Accent Coach's copy, read where it is, or this app's own.
-        model.obtain(download = Settings.downloadModel(applicationContext)) { checking, p ->
-            report(if (checking) Step.MODEL_CHECK else Step.MODEL_DOWNLOAD, p, forModel = true)
-        }
+        // The speech model, small enough to be fetched in a moment, once.
+        model.obtain { report(Step.MODEL_DOWNLOAD, it, forModel = true) }
         // The engine that runs it isn't shipped inside the app: it is put on the phone once.
         if (!engine.isReady) engine.obtain { report(Step.ENGINE, it, forModel = true) }
 
@@ -807,23 +793,16 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         })
     }
 
-    private fun vocab(): List<String> {
-        val json = JSONObject(applicationContext.assets.open("vocab.json").bufferedReader().use { it.readText() })
-        val vocab = arrayOfNulls<String>(json.length())
-        for (key in json.keys()) vocab[json.getInt(key)] = key
-        return vocab.map { it.orEmpty() }
-    }
-
     /**
-     * Fetches the model that checks the reader's own recitation, when it has been asked
-     * for, and the engine it runs on if that isn't here yet: before any recording, as it is
-     * small and is being waited for. Without a connection, or if it can't be had after a
+     * Fetches the speech model when it has been asked for to check the reader's own
+     * recitation with, and the engine it runs on if that isn't here yet: before any
+     * recording, as it is small and is being waited for. Without a connection, or if it can't be had after a
      * few tries, it is left for the next run.
      */
     private suspend fun fetchTajweed() {
         val context = applicationContext
         if (!Settings.tajweedWanted(context)) return
-        val store = TajweedStore(context)
+        val store = model
         var attempt = 0
         while (!(store.isReady && engine.isReady)) {
             if (!online()) return
@@ -860,7 +839,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
 
     private fun show(track: Track, step: Step, fraction: Float, lane: Int = HEARING) {
         val text = applicationContext.getString(stepLabel(step), (fraction * 100).toInt())
-        notify(lane, if (step == Step.MODEL_CHECK || step == Step.MODEL_DOWNLOAD || step == Step.ENGINE || step == Step.TUNE) text else "${track.title}\n$text")
+        notify(lane, if (step == Step.MODEL_DOWNLOAD || step == Step.ENGINE || step == Step.TUNE) text else "${track.title}\n$text")
     }
 
     /** Puts what a lane is at ([line]; null for nothing) in the notification: the listening's first, the fetching's under it. */
@@ -916,8 +895,8 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         /** With less room than this, a failure to write is the phone being full. */
         private const val FULL_BELOW_BYTES = 1L shl 20
 
-        /** How much sound the engine is tried on, each way of running it: four seconds. */
-        private const val TRIAL_SAMPLES = 4 * Hearing.SAMPLE_RATE
+        /** How much sound the engine is tried on, each way of running it: as much as it is given at a time of a recording. */
+        private const val TRIAL_SAMPLES = 11 * Hearing.SAMPLE_RATE
 
         /** How many pieces go into each line of the journal about the listening's speed: ten minutes of recitation. */
         private const val LAP_PIECES = 60
@@ -972,13 +951,8 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         /** How many ten-second pieces ahead of where it is being played a recording is listened to before the rest gets its turn: the reader comes first. */
         private const val AHEAD_PIECES = 30
 
-        private val _modelProblem = MutableStateFlow<ModelProblem?>(null)
-
-        /** Set when the work stopped because Accent Coach is installed but couldn't lend its speech model. */
-        val modelProblem: StateFlow<ModelProblem?> = _modelProblem.asStateFlow()
 
         fun stepLabel(step: Step): Int = when (step) {
-            Step.MODEL_CHECK -> R.string.step_model_check
             Step.MODEL_DOWNLOAD -> R.string.step_model_download
             Step.ENGINE -> R.string.step_engine
             Step.TUNE -> R.string.step_tune

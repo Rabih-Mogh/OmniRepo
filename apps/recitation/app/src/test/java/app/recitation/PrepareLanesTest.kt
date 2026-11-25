@@ -13,7 +13,7 @@ import app.recitation.data.Track
 import app.recitation.prepare.PrepareWorker
 import app.recitation.prepare.Sounds
 import app.recitation.speech.EngineStore
-import app.recitation.speech.ModelStore
+import app.recitation.speech.TajweedStore
 import app.recitation.yt.YouTube
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -73,7 +73,7 @@ class PrepareLanesTest {
         library.add(Playlist("https://example.org/lanes-${tracks.first().id}", "Lanes", "Test", tracks.toList()))
         File(context.filesDir, "quran").mkdirs()
         File(context.filesDir, "quran/1.v2.json").writeText(List(7) { """{"w":[["قُلْ","Say"]],"t":"Say"}""" }.joinToString(",", "[", "]"))
-        standIn(File(context.filesDir, "model/phonemes_int8.onnx"), ModelStore.MODEL_BYTES)
+        standIn(File(context.filesDir, "tajweed/tajweed-v2-int8.onnx"), TajweedStore.BYTES)
         for (part in EngineStore.PARTS) standIn(File(context.filesDir, "engine/${EngineStore.VERSION}/${part.name}"), part.bytes)
         return library
     }

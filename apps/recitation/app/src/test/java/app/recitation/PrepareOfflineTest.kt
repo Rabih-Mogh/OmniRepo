@@ -13,7 +13,7 @@ import app.recitation.data.Playlist
 import app.recitation.data.Track
 import app.recitation.prepare.PrepareWorker
 import app.recitation.speech.EngineStore
-import app.recitation.speech.ModelStore
+import app.recitation.speech.TajweedStore
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -62,7 +62,7 @@ class PrepareOfflineTest {
         File(context.filesDir, "quran/1.v2.json").writeText(List(7) { """{"w":[["قُلْ","Say"]],"t":"Say"}""" }.joinToString(",", "[", "]"))
         // Its timings were cut off half written, as by an app closed in the middle of keeping them.
         library.timings("offline-here", 1).writeText("0.9 12000\n0,3,0 1000,3,")
-        standIn(File(context.filesDir, "model/phonemes_int8.onnx"), ModelStore.MODEL_BYTES)
+        standIn(File(context.filesDir, "tajweed/tajweed-v2-int8.onnx"), TajweedStore.BYTES)
         for (part in EngineStore.PARTS) standIn(File(context.filesDir, "engine/${EngineStore.VERSION}/${part.name}"), part.bytes)
 
         val worker = TestListenableWorkerBuilder<PrepareWorker>(context).build()

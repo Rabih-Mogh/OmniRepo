@@ -104,11 +104,12 @@ import app.recitation.data.Track
 import app.recitation.data.Verse
 import app.recitation.data.Word
 import app.recitation.player.Artwork
-import app.recitation.prepare.ModelProblem
 import app.recitation.prepare.Progress
 import app.recitation.prepare.Step
-import app.recitation.speech.ModelStore
 import app.recitation.core.Correction
+import app.recitation.core.Listened
+import app.recitation.core.Awaited
+import app.recitation.core.Went
 import app.recitation.core.Fault
 import app.recitation.core.Madd
 import app.recitation.core.MaddHeard
@@ -264,7 +265,7 @@ class ScreensTest {
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun everyKindOfWorkHasItsOwnPicture() {
         val steps = Step.entries.map { Status.Working(Progress("b", it, 0.6f), null, surah = 2) }
-        val states = listOf(Status.Starting, Status.Paused, Status.WaitingForNetwork, Status.Refused, Status.ModelBlocked(ModelProblem(ModelStore.Lender.TOO_OLD, null)))
+        val states = listOf(Status.Starting, Status.Paused, Status.WaitingForNetwork, Status.Refused)
         val all: List<Status> = steps + states
         // No two look alike: the icon and the small one at its corner together tell them apart.
         assertEquals(all.size, all.map { it.picture().let { p -> p.icon.name to p.badge?.name } }.toSet().size)
@@ -534,7 +535,7 @@ class ScreensTest {
     fun aGoThatWasNotSoundIsTaughtAgainThereAndThen() {
         val drill = Drill(1, 2, Topic.QALQALAH)
         var heard = 0
-        show("en-day-drill-taught") { Column(Modifier.padding(16.dp)) { DrillVerdict(drill, sound = false, onHear = { heard++ }) } }
+        show("en-day-drill-taught") { Column(Modifier.padding(16.dp)) { DrillVerdict(drill, Went.MISSED, onHear = { heard++ }) } }
         compose.onNodeWithText("To go over: Qalqalah").assertIsDisplayed()
         compose.onNodeWithText("It is not a vowel", substring = true).assertIsDisplayed()
         // And in the reciter's voice: the words it was about, as he says them.
@@ -546,17 +547,43 @@ class ScreensTest {
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun aDrillJudgesAVerseForItsRuleAlone() {
         // 1:2 recited for its ghunnah: a madd in it was held short, which is marked as ever, but the ghunnah was sound.
-        val heard = List(4) { w -> WordRecited(w, false, if (w == 3) listOf(Correction(Fault.MADD_SHORT, clear = false, madd = Madd.ARID, wantedCounts = 4, heardCounts = 1)) else emptyList(), emptyList()) }
+        val ghunnah = listOf(Awaited(0, 4, Listened.GHUNNAH, 1, 4, symbol = 'ل'))
+        val heard = List(4) { w ->
+            WordRecited(w, false, if (w == 3) listOf(Correction(Fault.MADD_SHORT, clear = false, madd = Madd.ARID, wantedCounts = 4, heardCounts = 1)) else emptyList(), emptyList(), listened = if (w == 1) ghunnah else emptyList())
+        }
         val drill = Drill(1, 2, Topic.GHUNNAH)
         show("en-day-drill") {
             ReciteContent(
                 app.recitation.core.SURAHS[0], 2, fatihah[1], Reciting.Heard(heard), needsModel = false, onMic = {}, onFetch = {}, onPrevious = {}, onNext = {}, onBack = {},
                 title = "Ghunnah of a doubled n or m", subtitle = "3 of 8 · Al-Fatihah · verse 2",
-                verdict = { DrillVerdict(drill, Drills.sound(drill, heard)) }, canPrevious = true, canNext = true,
+                verdict = { DrillVerdict(drill, Drills.went(drill, heard)) }, canPrevious = true, canNext = true,
             )
         }
         compose.onNodeWithText("Sound: Ghunnah of a doubled n or m").assertIsDisplayed()
         compose.onNodeWithText("3 of 4 words sound").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aRuleInAWordThatWasNotSaidIsNotJudged() {
+        // 1:2 recited for its ghunnah, but only its first word was said: the word with the ghunnah wasn't, so
+        // there is nothing to say of the ghunnah. The words not said are told as that, and as nothing else.
+        val unsaid = listOf(Correction(Fault.WORD_MISSING, clear = true))
+        val heard = List(4) { w -> WordRecited(w, false, if (w == 0) emptyList() else unsaid, emptyList()) }
+        val drill = Drill(1, 2, Topic.GHUNNAH)
+        assertEquals(Went.UNHEARD, Drills.went(drill, heard))
+        show("en-day-drill-unheard") {
+            ReciteContent(
+                app.recitation.core.SURAHS[0], 2, fatihah[1], Reciting.Heard(heard), needsModel = false, onMic = {}, onFetch = {}, onPrevious = {}, onNext = {}, onBack = {},
+                title = "Ghunnah of a doubled n or m", subtitle = "3 of 8 · Al-Fatihah · verse 2",
+                verdict = { DrillVerdict(drill, Drills.went(drill, heard), onHear = {}) }, canPrevious = true, canNext = true,
+            )
+        }
+        compose.onNodeWithText("Not heard: Ghunnah of a doubled n or m.", substring = true).assertIsDisplayed()
+        // Nothing is taught over it: there was no mistake.
+        compose.onNodeWithTag("drill-teach").assertDoesNotExist()
+        compose.onNodeWithTag("hear-it").assertDoesNotExist()
+        compose.onNodeWithTag("rule-family").assertDoesNotExist()
     }
 
     @Test
@@ -579,7 +606,7 @@ class ScreensTest {
     fun anExerciseEndsWithHowManyOfItsVersesWereSound() {
         var again = false
         val drills = listOf(Drill(78, 2, Topic.IKHFA), Drill(78, 5, Topic.IKHFA), Drill(79, 3, Topic.IKHFA))
-        show("en-day-drill-over") { DrillOver("Ikhfa’ haqiqi", drills, mapOf(0 to true, 1 to false), onAgain = { again = true }, onBack = {}) }
+        show("en-day-drill-over") { DrillOver("Ikhfa’ haqiqi", drills, mapOf(0 to Went.SOUND, 1 to Went.MISSED, 2 to Went.UNHEARD), onAgain = { again = true }, onBack = {}) }
         compose.onNodeWithText("1 of 3 sound").assertIsDisplayed()
         compose.onNodeWithText("Once more").performClick()
         assertTrue(again)
@@ -2541,7 +2568,7 @@ class ScreensTest {
     fun queuedRecordingsSayWhatTheyAreWaitingFor() {
         // While the speech model is fetched, a queued recording shows that, not a bare "waiting".
         show("en-day-model-download") { Recordings(Status.Working(Progress(null, Step.MODEL_DOWNLOAD, 0.37f), null)) }
-        compose.onAllNodesWithContentDescription("Downloading the speech model (318 MB)… 37%").assertCountEquals(3)
+        compose.onAllNodesWithContentDescription("Downloading the speech model (23 MB)… 37%").assertCountEquals(3)
     }
 
     @Test
@@ -2564,9 +2591,9 @@ class ScreensTest {
     @Test
     @Config(qualifiers = "ar-rLB-w411dp-h891dp-night-420dpi")
     fun playlistsInArabicByNight() {
-        show("ar-night-playlists") { Home(tab = 1, playlists = listOf(playlist), status = Status.Working(Progress(null, Step.MODEL_CHECK, 0.6f), null)) }
+        show("ar-night-playlists") { Home(tab = 1, playlists = listOf(playlist), status = Status.Working(Progress(null, Step.MODEL_DOWNLOAD, 0.6f), null)) }
         compose.onNodeWithContentDescription("التلاوة").assertIsDisplayed()
-        compose.onAllNodesWithContentDescription("جارٍ التحقق من نموذج الصوت", substring = true).onFirst().assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("جارٍ تنزيل نموذج الصوت", substring = true).onFirst().assertIsDisplayed()
     }
 
     @Test
@@ -2623,22 +2650,5 @@ class ScreensTest {
         val back = compose.onNodeWithContentDescription("رجوع").fetchSemanticsNode().boundsInRoot
         val menu = compose.onNodeWithContentDescription("القائمة").fetchSemanticsNode().boundsInRoot
         assertTrue("back $back, menu $menu", back.left > menu.right)
-    }
-
-    @Test
-    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
-    fun accentCoachIsTooOldToLendItsModel() {
-        var download: Boolean? = null
-        show("en-day-model-problem") {
-            Recordings(Status.ModelBlocked(ModelProblem(ModelStore.Lender.TOO_OLD, null)), StatusActions(retryModel = { download = it }))
-        }
-        compose.onNodeWithText("Couldn't use Accent Coach's speech model").assertIsDisplayed()
-        compose.onNodeWithText("accept its update", substring = true).assertIsDisplayed()
-        compose.onAllNodesWithContentDescription("Waiting for the speech model").onFirst().assertIsDisplayed()
-        // Nothing is downloaded unless asked for.
-        compose.onNodeWithText("Download it instead (318 MB)").performClick()
-        assertTrue(download == true)
-        compose.onNodeWithText("Try again").performClick()
-        assertTrue(download == false)
     }
 }

@@ -16,7 +16,14 @@ class DrillsTest {
     }
     private val surahs = verses.entries.groupBy({ it.key.substringBefore(':').toInt() }, { it.value })
 
-    private fun word(index: Int, vararg faults: Correction, stopped: Boolean = false) = WordRecited(index, stopped, faults.toList(), emptyList())
+    /** A word that was said, in which a ghunnah and a madd were listened for; [wanted] is how it should have sounded. */
+    private fun word(index: Int, vararg faults: Correction, stopped: Boolean = false, wanted: String = "") = WordRecited(
+        index, stopped, faults.toList(), emptyList(), wanted,
+        listOf(Awaited(0, 4, Listened.GHUNNAH, index, 4, symbol = 'ن'), Awaited(4, 8, Listened.MADD, index, 4, Madd.MUTTASIL, 'ا')),
+    )
+
+    /** A word that wasn't said. */
+    private fun unsaid(index: Int) = WordRecited(index, false, listOf(Correction(Fault.WORD_MISSING, clear = true)), emptyList(), "صِرَااطَ")
 
     @Test
     fun `a verse is chosen for a topic only if the topic is listened for in it`() {
@@ -52,9 +59,9 @@ class DrillsTest {
         val drill = Drill(67, 2, Topic.GHUNNAH)
         val short = Correction(Fault.GHUNNAH_SHORT, clear = false, wanted = "ن")
         val madd = Correction(Fault.MADD_SHORT, clear = false, madd = Madd.MUTTASIL, wantedCounts = 4, heardCounts = 2)
-        assertTrue(Drills.sound(drill, listOf(word(0), word(1, madd))))
-        assertTrue(!Drills.sound(drill, listOf(word(0, short), word(1))))
-        assertTrue(!Drills.sound(drill.copy(topic = Topic.MADD_MUTTASIL), listOf(word(0), word(1, madd))))
+        assertEquals(Went.SOUND, Drills.went(drill, listOf(word(0), word(1, madd))))
+        assertEquals(Went.MISSED, Drills.went(drill, listOf(word(0, short), word(1))))
+        assertEquals(Went.MISSED, Drills.went(drill.copy(topic = Topic.MADD_MUTTASIL), listOf(word(0), word(1, madd))))
         assertEquals(Topic.MADD_MUTTASIL, Drills.topicOf(madd))
         assertEquals(Topic.MADD_ARID, Drills.topicOf(Correction(Fault.MADD_LONG, clear = false, madd = Madd.LIN)))
         assertEquals(null, Drills.topicOf(Correction(Fault.VOWEL, clear = true)))
@@ -64,8 +71,8 @@ class DrillsTest {
     fun `letters are judged by the pair being practised`() {
         val drill = Drill(1, 6, Topic.LETTERS, letters = "صس")
         val said = Correction(Fault.LETTER, clear = true, wanted = "ص", heard = "س")
-        assertTrue(!Drills.sound(drill, listOf(word(1, said))))
-        assertTrue(Drills.sound(drill, listOf(word(1, Correction(Fault.LETTER, clear = true, wanted = "ق", heard = "ك")))))
+        assertEquals(Went.MISSED, Drills.went(drill, listOf(word(1, said, wanted = "صِرَااطَ"))))
+        assertEquals(Went.SOUND, Drills.went(drill, listOf(word(1, Correction(Fault.LETTER, clear = true, wanted = "ق", heard = "ك"), wanted = "صِرَااطَ"))))
         assertEquals("صس", Drills.pairOf(said))
         assertEquals("", Drills.pairOf(Correction(Fault.LETTER, clear = true, wanted = "ص", heard = "ك")))
         assertTrue(Drills.has(verses.getValue("1:6"), Topic.LETTERS, "صس"))
@@ -83,10 +90,37 @@ class DrillsTest {
         val drill = Drills.pick(mapOf(67 to listOf(verse)), Topic.STOP, 1, Random(1)).single()
         assertEquals(at, drill.stopAfter)
         // Stopped there and said as it sounds at a stop: sound. Recited on, or stopped elsewhere: not.
-        assertTrue(Drills.sound(drill, listOf(word(at - 1), word(at, stopped = true), word(at + 1))))
-        assertTrue(!Drills.sound(drill, listOf(word(at - 1), word(at), word(at + 1))))
-        assertTrue(!Drills.sound(drill, listOf(word(at - 1, stopped = true), word(at), word(at + 1))))
-        assertTrue(!Drills.sound(drill, listOf(word(at, Correction(Fault.VOWEL, clear = true), stopped = true))))
+        assertEquals(Went.SOUND, Drills.went(drill, listOf(word(at - 1), word(at, stopped = true), word(at + 1))))
+        assertEquals(Went.MISSED, Drills.went(drill, listOf(word(at - 1), word(at), word(at + 1))))
+        assertEquals(Went.MISSED, Drills.went(drill, listOf(word(at - 1, stopped = true), word(at), word(at + 1))))
+        assertEquals(Went.MISSED, Drills.went(drill, listOf(word(at, Correction(Fault.VOWEL, clear = true), stopped = true))))
+        // Stopped on, with the rest of the verse never said: still a stop made there.
+        assertEquals(Went.SOUND, Drills.went(drill, listOf(word(at - 1), word(at, stopped = true), unsaid(at + 1))))
+    }
+
+    @Test
+    fun `a rule in a word that was not said is not judged`() {
+        // The ghunnah is listened for in the second word alone, and that word wasn't said: nothing to judge.
+        val plain = WordRecited(0, false, emptyList(), emptyList(), "قُل")
+        assertEquals(Went.UNHEARD, Drills.went(Drill(67, 2, Topic.GHUNNAH), listOf(plain, unsaid(1))))
+        // Said, and sound: judged. And one of two places said is judged by that one.
+        assertEquals(Went.SOUND, Drills.went(Drill(67, 2, Topic.GHUNNAH), listOf(plain, word(1))))
+        assertEquals(Went.SOUND, Drills.went(Drill(67, 2, Topic.GHUNNAH), listOf(word(0), unsaid(1))))
+        // The letters of a pair, when no word that was said has either; and the word to stop on, when it wasn't said.
+        assertEquals(Went.UNHEARD, Drills.went(Drill(1, 6, Topic.LETTERS, letters = "صس"), listOf(plain, unsaid(1))))
+        assertEquals(Went.UNHEARD, Drills.went(Drill(67, 2, Topic.STOP, stopAfter = 1), listOf(plain, unsaid(1))))
+        // On real sound: 67:5 recited up to its eighth word. Its qalqalah is in the first word, which was said; its
+        // last words, with the madd a verse ends on, weren't.
+        val lines = javaClass.getResourceAsStream("/follow.txt")!!.bufferedReader().readText().trim().split("\n\n").first { it.startsWith("C r3_s67 67:5") }.split('\n')
+        fun of(key: Char) = lines.first { it.startsWith("$key ") }.drop(2)
+        fun numbers(key: Char) = of(key).split(' ').map { it.toFloat() }.toFloatArray()
+        val verse = verses.getValue("67:5")
+        val until = of('H').indexOf("وَءَعتَد")
+        val heard = HeardScript(of('H').take(until), numbers('P').copyOf(until), numbers('T').copyOf(until + 1))
+        val words = Corrections.of(Expected.recited(verse, heard.symbols), heard)
+        assertEquals(listOf(8, 9, 10, 11), words.filter { it.unsaid }.map { it.index })
+        assertEquals(Went.SOUND, Drills.went(Drill(67, 5, Topic.QALQALAH), words))
+        assertEquals(Went.UNHEARD, Drills.went(Drill(67, 5, Topic.MADD_ARID), words.filter { it.index != 7 }))
     }
 
     private fun tone(seconds: Double, loud: Double) = FloatArray((seconds * Mel.SAMPLE_RATE).toInt()) { (loud * sin(2 * PI * 180 * it / Mel.SAMPLE_RATE)).toFloat() }

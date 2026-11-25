@@ -4,6 +4,7 @@ import android.content.Context
 import app.recitation.core.Drill
 import app.recitation.core.Drills
 import app.recitation.core.Topic
+import app.recitation.core.Went
 import app.recitation.core.WordRecited
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +30,8 @@ class Tally(val counts: Map<Topic, Int> = emptyMap(), val open: List<Drill> = em
 /**
  * Keeps a [Tally] in a small file on the phone. Every verse recited to the phone is noted:
  * what was corrected in it is added, and what was corrected in it before and is sound now
- * is taken off the list of verses to go over.
+ * is taken off the list of verses to go over. What was corrected in a word that this time
+ * wasn't said stays on the list: it wasn't put right.
  */
 class Mistakes(private val file: File) {
     private val _tally = MutableStateFlow(load())
@@ -49,8 +51,8 @@ class Mistakes(private val file: File) {
             missed += Drill(surah, verse, topic, letters)
         }
         for (drill in missed) counts[drill.topic] = (counts[drill.topic] ?: 0) + 1
-        // Recited again: what was to go over in it stands only if it still is.
-        val open = (missed + now.open.filter { it.surah != surah || it.verse != verse }).take(KEPT)
+        // Recited again: what was to go over in it stands only if it still is, or if the words that carry it weren't said this time.
+        val open = (missed + now.open.filter { it.surah != surah || it.verse != verse || Drills.went(it, words) == Went.UNHEARD }).take(KEPT)
         if (missed.isEmpty() && open.size == now.open.size) return
         _tally.value = Tally(counts, open, now.learned)
         save()

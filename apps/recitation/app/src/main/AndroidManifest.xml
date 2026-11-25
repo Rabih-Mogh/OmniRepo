@@ -22,11 +22,9 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
-    <!-- Accent Coach, if installed, lends the speech model it has already downloaded. -->
-    <uses-permission android:name="app.accentcoach.permission.READ_MODEL" />
+    <!-- Accent Coach, if installed, carries the same speech engine in its package: it is copied from there rather than downloaded. -->
     <queries>
         <package android:name="app.accentcoach" />
-        <provider android:authorities="app.accentcoach.model" />
     </queries>
 
     <application

@@ -7,7 +7,7 @@ import android.os.PowerManager
 import androidx.work.WorkManager
 import app.recitation.prepare.PrepareWorker
 import app.recitation.speech.EngineStore
-import app.recitation.speech.ModelStore
+import app.recitation.speech.TajweedStore
 import app.recitation.speech.Tuning
 import app.recitation.update.AppUpdate
 import java.io.File
@@ -42,11 +42,8 @@ object Report {
             val power = context.getSystemService(PowerManager::class.java)
             (if (power.isPowerSaveMode) "on" else "off") + "; this app " + if (power.isIgnoringBatteryOptimizations(context.packageName)) "is exempt from battery limits" else "is under battery limits"
         }
-        line("Storage") { "${mb(files.usableSpace)} free; sound ${mb(size(File(files, "audio")))}, heard ${mb(size(File(files, "heard")))}, model ${mb(size(File(files, "model")))}, engine ${mb(size(File(files, "engine")))}" }
-        line("Speech model") {
-            val model = ModelStore(context)
-            (if (model.needsDownload) "not on the phone" else "on the phone") + "; Accent Coach: ${model.lender().first}"
-        }
+        line("Storage") { "${mb(files.usableSpace)} free; sound ${mb(size(File(files, "audio")))}, heard ${mb(size(File(files, "heard")))}, model ${mb(size(File(files, "tajweed")))}, engine ${mb(size(File(files, "engine")))}" }
+        line("Speech model") { if (TajweedStore(context).isReady) "on the phone" else "not on the phone" }
         line("Speech engine") { (if (EngineStore(context).isReady) "on the phone" else "not on the phone") + "; run on ${Tuning.kept(context) ?: "${Tuning.USUAL} (nothing else tried yet)"}" }
         line("Paused") { Settings.paused(context) }
 

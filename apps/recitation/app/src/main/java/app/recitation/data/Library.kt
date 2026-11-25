@@ -69,7 +69,16 @@ class Library private constructor(context: Context) {
     fun timings(id: String, surah: Int): File = File(timingsDir.apply { mkdirs() }, "$id-$surah.txt")
 
     /** What the model heard in a recording, kept until its timings are settled. */
-    fun heard(id: String): File = File(heardDir.apply { mkdirs() }, "$id.rows")
+    fun heard(id: String): File = File(heardDir.apply { mkdirs() }, "$id.heard")
+
+    /**
+     * Deletes what the model the app listened with before had heard of recordings it hadn't
+     * finished (files ending in .rows): the model it listens with now writes sounds its own
+     * way and can't carry on from them. Those recordings are listened to from their start.
+     */
+    fun dropOldHearing() {
+        heardDir.listFiles { f -> f.name.endsWith(".rows") }?.forEach { it.delete() }
+    }
 
     /** Where the reciter pauses in a recording, found by a quick look over its sound. */
     fun pauses(id: String): File = File(heardDir.apply { mkdirs() }, "$id.pauses")

@@ -25,7 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -131,7 +130,7 @@ fun LessonContent(topic: Topic, letters: String, hears: List<Hear>, learned: Boo
                 for (letter in letters) TIP_LETTERS.indexOf(letter).takeIf { it >= 0 }?.let { Text(tips[it], style = MaterialTheme.typography.bodyLarge) }
             }
             // First, how it sounds: words from the reader's own recordings that show it, in their
-            // reciter's voice, each played at a tap. The first is played as the lesson opens.
+            // reciter's voice, each played at a tap. Nothing is played until one is tapped.
             Text(stringResource(R.string.lesson_hear), Modifier.semantics { heading() }, style = MaterialTheme.typography.labelLarge, color = colors.primary)
             if (hears.isEmpty()) {
                 Text(stringResource(R.string.lesson_hear_none), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
@@ -173,10 +172,9 @@ private fun Part(heading: String, text: String, mark: Color = MaterialTheme.colo
     }
 }
 
-/** A lesson, with its words played from the reader's recordings: the first of them by itself as the lesson opens. */
+/** A lesson, with its words played from the reader's recordings: each when it is tapped, and none before. */
 @Composable
 fun LessonScreen(topic: Topic, letters: String, hears: List<Hear>, learned: Boolean, onPractise: () -> Unit, onBack: () -> Unit) {
     val clip = rememberClip()
-    LaunchedEffect(hears.firstOrNull()) { hears.firstOrNull()?.let { clip.play(it.sound, it.fromMs, it.untilMs) } }
     LessonContent(topic, letters, hears, learned, onHear = { clip.play(it.sound, it.fromMs, it.untilMs) }, onPractise = onPractise, onBack = onBack)
 }

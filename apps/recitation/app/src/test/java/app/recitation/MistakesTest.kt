@@ -1,7 +1,9 @@
 package app.recitation
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import app.recitation.core.Awaited
 import app.recitation.core.Correction
+import app.recitation.core.Listened
 import app.recitation.core.Drill
 import app.recitation.core.Fault
 import app.recitation.core.Madd
@@ -22,7 +24,11 @@ class MistakesTest {
     val folder = TemporaryFolder()
 
     private fun file() = File(folder.root, "mistakes.json")
-    private fun word(index: Int, vararg faults: Correction) = WordRecited(index, false, faults.toList(), emptyList())
+    /** A word that was said, with the ghunnah and the madd of these tests listened for in it. */
+    private fun word(index: Int, vararg faults: Correction) = WordRecited(
+        index, false, faults.toList(), emptyList(),
+        listened = listOf(Awaited(0, 4, Listened.GHUNNAH, index, 4, symbol = 'ن'), Awaited(4, 8, Listened.MADD, index, 4, Madd.MUTTASIL, 'ا')),
+    )
     private val ghunnah = Correction(Fault.GHUNNAH_SHORT, clear = false, wanted = "ن")
     private val madd = Correction(Fault.MADD_SHORT, clear = false, madd = Madd.MUTTASIL, wantedCounts = 4, heardCounts = 2)
 
@@ -43,6 +49,18 @@ class MistakesTest {
         // And 78:2 recited soundly: it is off the list.
         mistakes.note(78, 2, listOf(word(0), word(1)))
         assertEquals(listOf(Drill(78, 5, Topic.GHUNNAH)), mistakes.tally.value.open)
+    }
+
+    @Test
+    fun whatWasCorrectedInAWordStaysToGoOverWhenTheWordIsNotSaidTheNextTime() {
+        val mistakes = Mistakes(file())
+        mistakes.note(78, 2, listOf(word(0), word(1, ghunnah)))
+        // Recited again, but only its first word: the ghunnah wasn't put right, it wasn't said.
+        val unsaid = WordRecited(1, false, listOf(Correction(Fault.WORD_MISSING, clear = true)), emptyList())
+        mistakes.note(78, 2, listOf(WordRecited(0, false, emptyList(), emptyList()), unsaid))
+        assertEquals(listOf(Drill(78, 2, Topic.GHUNNAH)), mistakes.tally.value.open)
+        // And a word not said isn't counted against any rule.
+        assertEquals(mapOf(Topic.GHUNNAH to 1), mistakes.tally.value.counts)
     }
 
     @Test

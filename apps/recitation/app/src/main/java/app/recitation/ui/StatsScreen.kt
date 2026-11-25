@@ -118,7 +118,7 @@ fun StatsTab(summary: Summary, recordings: RecordingStats, saved: SavedStats, sp
                     fun size(bytes: Long) = Formatter.formatShortFileSize(context, bytes)
                     Line(stringResource(R.string.stats_space_recordings), size(space.recordings))
                     Line(stringResource(R.string.stats_space_engine), size(space.engine))
-                    Line(stringResource(R.string.stats_space_model), if (space.model > 0) size(space.model) else stringResource(R.string.stats_space_model_borrowed))
+                    Line(stringResource(R.string.stats_space_model), size(space.model))
                     Line(stringResource(R.string.stats_space_other), size(space.other))
                 }
             }

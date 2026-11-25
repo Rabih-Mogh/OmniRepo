@@ -100,7 +100,6 @@ private fun Screens(model: AppModel, choices: Choices) {
     val playlists by model.library.playlists.collectAsStateWithLifecycle()
     val progress by PrepareWorker.progress.collectAsStateWithLifecycle()
     val fetching by PrepareWorker.fetching.collectAsStateWithLifecycle()
-    val modelProblem by PrepareWorker.modelProblem.collectAsStateWithLifecycle()
 
     val indopak by IndoPakFont.font.collectAsStateWithLifecycle()
 
@@ -134,17 +133,15 @@ private fun Screens(model: AppModel, choices: Choices) {
     // The listening comes first in it; a sound being downloaded meanwhile stands beside that, or alone when nothing else is going on.
     fun work(progress: Progress) = tracks.firstOrNull { it.id == progress.trackId }.let { Status.Working(progress, it?.title, it?.surah ?: 0) }
     val working = progress ?: fetching
-    val problem = modelProblem
     val status: Status? = when {
         working != null -> work(working).copy(fetching = fetching?.takeIf { it !== working }?.let(::work))
         tracks.none { it.wanted && !it.ready } -> null
         model.paused -> Status.Paused
-        problem != null -> Status.ModelBlocked(problem)
         model.refusedForNow -> Status.Refused
         model.waitingForNetwork -> Status.WaitingForNetwork
         else -> Status.Starting
     }
-    val actions = remember(model) { StatusActions(model::pause, model::resume, model::cancel, model::retryModel) }
+    val actions = remember(model) { StatusActions(model::pause, model::resume, model::cancel) }
 
     // What is reciting in the background, on the screens that aren't its surah.
     val nowPlaying: @Composable () -> Unit = {

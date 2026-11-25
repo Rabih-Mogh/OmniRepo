@@ -372,6 +372,23 @@ be five sounds into the next verse, the one before is cut out of the run where i
 sounds end, at the silence if there is one within a few sounds, and gone over the way a
 verse recited by itself is.
 
+**A word that wasn't said is not judged.** It is told as not heard and nothing else:
+no madd, ghunnah or qalqalah in it is called short or missing, since those are ways of
+saying a word wrongly and it wasn't said. Which words weren't said is settled before
+anything is judged (`Corrections.unsaid`): a word nearly all of whose sounds are missing,
+or one that what was heard fits better without, by two thirds of the word's sounds or
+more. The second is there because, lined up sound by sound, a word passed over borrows a
+vowel or a ل from its neighbours and then looks said, and said badly. The words that
+were said are then lined up again without the others, so none of them is corrected for
+sounds that were the unsaid word's, and nothing that rests on an unsaid word (a nun
+merged into it) is judged either. A reader who recites half a verse and stops is held to
+how the word they stopped on sounds at a stop, if that is nearer to what was heard. This
+departs from the rule engine the corrections follow, which judges such a word's rules
+before it finds the word missing. Checked on the 35 expert verses of the tests, each
+with every word dropped in turn and cut short after every word (383 cases: before, 17
+had a rule judged in a word not said; now none), and on the 159 learner clips, where one
+word in 1,272 changes, from "said badly" to "not heard".
+
 What there is to go over is marked right there on the page:
 
 - **A word with something to go over has its block filled**: red for a mistake in the
@@ -472,8 +489,8 @@ the player the recitations go through (which is paused meanwhile):
 
 - A lesson opens on the reciter: up to five stretches of the reader's recordings that
   show the rule (the word it is in and the one after, since most rules lie between two
-  words), from more than one surah, the short surahs first. The first is played as the
-  lesson opens; each of the others at a tap. What the rule is comes after it has been heard.
+  words), from more than one surah, the short surahs first. Each is played at a tap, and
+  nothing is played until one is tapped. What the rule is comes after them on the page.
 - In an exercise, **Hear the reciter** plays the verse before it is recited, and after a
   verse that wasn't sound for its rule, **Hear how the reciter says it** plays the words
   the rule is in. The verses of an exercise are chosen from surahs that have a recording
@@ -501,6 +518,11 @@ exercise's topic and nothing else, and the exercise ends with how many of its ve
 were sound for it. The verses come from Al-Fatihah and the last part of the Quran
 (surahs 78 to 114), three to ten words long, chosen afresh each time
 (`core/Drills.kt`): they are the ones most widely known by heart, and a breath or two each.
+
+A rule is judged only where its words were said. If none of the words that carry the
+exercise's rule were said (the verse was cut short before them, say), the verdict is
+**Not heard** instead of sound or to go over, the go doesn't count as sound, and a
+mistake noted in that verse earlier stays on the list of verses to go over.
 
 - **A rule's exercise**, reached from its lesson. One rule: the ghunnah of a doubled nun or mim, ikhfa, iqlab,
   idgham, qalqalah, or a madd (natural, munfasil, muttasil, lazim, or the one that comes
@@ -599,9 +621,18 @@ fetched again, quietly, the next time the app is open with a connection.
   script with all its marks, into the sounds a reciter makes. That script spells recitation
   out closely (a letter with no mark is silent or merged into the next, long vowels and
   stops are marked), so following the marks gets close enough.
-- **The model:** `wav2vec2-lv-60-espeak-cv-ft` (Facebook AI, Apache-2.0), the same model
-  Accent Coach uses. It writes down the sounds it hears, in any language, rather than
-  guessing words.
+- **The model:** HisnLabs Tajweed v2 (Apache-2.0), the small model that also checks the
+  reader's own recitation (see below). It writes down the sounds it hears in the Quran
+  phonetic script, every 20 ms, rather than guessing words. `core/Sounds.kt` boils each
+  20 ms down to the chance of a pause and of each sound a word can be made of: a long
+  vowel takes its short vowel's sign too (the model writes قَالَ as قَ ا ا لَ, a long
+  vowel once per count), a hidden nun or mim counts as the nun or mim, and the echo of a
+  qalqalah counts with the pause.
+- **A held sound at a word's start:** the model writes a held sound once for every count.
+  A nun or tanween merged into the next word («لَهُم مَّغْفِرَةٌ», «مَن يَقُولُ») is that
+  word's first letter held through the nose, and a doubled ل or sun letter is held too.
+  The word is taken to begin where the hold is let go, not where it starts
+  (`Recital.released`): that is where the published timings put it.
 - **Alignment:** `core/Aligner.kt` finds the best way to place the surah's sounds, in
   order, on what the model heard across the whole recording. Sounds a reciter may leave
   out (a vowel dropped at a stop, the opening *a'udhu* and *basmala*) are optional, and
@@ -780,30 +811,42 @@ second off, mostly early, until the pieces in order reach it and place it proper
 
 ### The speech model
 
-The model is 318 MB, too big to ship in the APK.
+One model does all the listening: **HisnLabs Tajweed v2**, 23 MB. It listens to the
+recordings, to say when each word is recited, and to the reader reciting, to go over how
+they said it. It is fetched once from this repo ([models/tajweed-v2](models/tajweed-v2)),
+checked against its SHA-256, and kept on the phone. Everything after that runs on the
+phone with ONNX Runtime.
 
-- **Accent Coach installed:** Recitation reads [Accent Coach](../accent-coach/)'s copy of
-  the model where it lies, and keeps none of its own, so the phone holds the file once.
-  Accent Coach hands the open file only to apps signed with the same key. If Accent Coach
-  can't lend it (it is a version from before it shared the model, it hasn't finished
-  downloading the model itself, or its file doesn't match the checksum), Recitation stops
-  and says which, with **Try again** and **Download it instead**. It never downloads
-  318 MB on its own while Accent Coach is there.
-- **A copy from before:** versions up to 1.42 copied the model out of Accent Coach, so the
-  phone held it twice. The next time the app is opened it checks Accent Coach's copy
-  against the checksum and, if it matches, deletes its own, freeing 318 MB. Preparing a
-  recording does the same. A copy Recitation downloaded itself is kept for as long as
-  Accent Coach can't lend one.
-- **Accent Coach not installed:** the model is downloaded once, pinned to one revision, into
-  the app's own storage.
-- **Accent Coach removed later:** Recitation then has no model. The next recording to be
-  prepared downloads it, as on a phone that never had Accent Coach. Recordings already
-  prepared don't need the model and keep working.
+Up to version 1.63 the recordings were listened to with another model
+(`wav2vec2-lv-60-espeak-cv-ft`, 318 MB, written in IPA and trained on ordinary speech in
+many languages), read out of Accent Coach's storage where that app was installed. It is
+gone:
 
-Either way the file is checked against its SHA-256 before it is used. Accent Coach's file
-is read through for that once: after it has passed, the same file (by its size, the moment
-it was written and its place on the storage) isn't read through again each time the work
-starts. Everything after that runs on the phone with ONNX Runtime.
+- **Measured before the change**, on recordings whose word times Quran.com publishes
+  (`recitation-scratch/make_lp.py` in the notes, and the app's own placing run over the
+  model's output). On the four recordings both models could be scored on (938 words):
+
+  | recording | 23 MB model: typical error, within 0.1 s, within 0.3 s | 318 MB model |
+  |---|---|---|
+  | An-Naba, as-Sudais | 40 ms, 74%, 98% | 40 ms, 76%, 98% |
+  | Al-Mulk, al-Husary | 41 ms, 72%, 85% | 60 ms, 67%, 85% |
+  | Ya-Sin, al-`Afasy | 55 ms, 73%, 90% | 45 ms, 76%, 90% |
+  | Al-Mulk, al-`Afasy | 55 ms, 74%, 92% | 45 ms, 73%, 91% |
+
+  The same passages said again were found in each (among them the two spliced into Ya-Sin
+  for the tests), and a recording set against another surah's words scored 0.38 to 0.57
+  for clarity against 0.98 to 1.0 for its own, so the wrong surah is still told.
+- **Speed:** on the Mac the model alone gets through a recording about 450 times as fast
+  as it plays, against 25 times for the old one. On a phone it has not been measured.
+- **Download:** 23 MB instead of 318 MB.
+- **On a phone that had the old model:** the app's own copy of it, if it had one, is
+  deleted the next time the app opens, with what that model had heard of recordings it
+  hadn't finished (those are listened to again from their start). Recordings already
+  listened to keep their timings. The fastest way to run the engine is tried afresh, since
+  it was found for the other model.
+- **Not known:** how the small model does on poor recordings (old, echoing, a phone held
+  up in a mosque). The old model's clarity on a muffled recording was measured; this
+  one's was not, as that recording is no longer on the Mac.
 
 ONNX Runtime's Android library comes with a part that reports on its use. The app leaves
 that part out (`tools:node="remove"` in the manifest); it could not start in this app in
@@ -816,8 +859,8 @@ app's package used to weigh, and the same in every build. It is no longer inside
 package, which is about 4 MB instead of 38 MB, so every update is that much smaller. The
 engine is put on the phone once, the first time a recording is prepared:
 
-- **Accent Coach installed:** the library is copied out of Accent Coach's installed
-  package, which carries the very same file. Nothing is downloaded.
+- **Accent Coach installed:** the library is copied out of [Accent Coach](../accent-coach/)'s
+  installed package, which carries the very same file. Nothing is downloaded.
 - **Otherwise:** it is downloaded from this repo ([engine/](engine/)), compressed (13 MB).
 
 The file must match its fixed SHA-256 before it is kept, and is kept read-only in the
@@ -873,14 +916,14 @@ to four threads, with the same result.
 - **Not yet run on a phone.** The app was built and its logic tested on a Mac. Decoding
   the sound, running the model, playback, background work and installing updates use
   Android itself and have only been compiled. That includes starting the engine from the
-  app's storage rather than from inside its package, and reading the model straight out of
-  Accent Coach's file. If the engine won't start on a phone, the recording being prepared
-  says so, with Android's own wording.
+  app's storage rather than from inside its package. If the engine won't start on a phone,
+  the recording being prepared says so, with Android's own wording.
 - **One surah per video.** A video with several surahs, part of a surah, or verses
   repeated (as in prayer) won't line up; the app will usually say it doesn't match.
 - **Old or echoing recordings** are heard less clearly and line up less tightly.
-- **Speed on a phone is unknown.** On the Mac the model runs 25 times faster than the
-  recording plays. A phone is much slower; "about as long as the recording" is a guess.
+- **Speed on a phone is unknown.** On the Mac the model runs about 450 times faster than
+  the recording plays (the model it replaced ran 25 times faster). A phone is much slower;
+  how much is not known.
   While a recording is being listened to, the card on the first screen shows how the
   listening compares with playing it as a figure ("1.3×"), so it can be
   read off a phone. Under 1×, the listening can't keep up with someone playing the
@@ -900,8 +943,7 @@ to four threads, with the same result.
 | What | From | Licence |
 |---|---|---|
 | Quran text (Uthmani, IndoPak and everyday spellings), word meanings, verse translation (Saheeh International) | [Quran.com](https://quran.com) API, fetched by the app and kept on the phone; not stored in this repo | Their own terms |
-| Speech model | [wav2vec2-lv-60-espeak-cv-ft](https://huggingface.co/facebook/wav2vec2-lv-60-espeak-cv-ft), ONNX export by onnx-community | Apache-2.0 |
-| Model that listens to the reader reciting | [HisnLabs Tajweed v2](https://huggingface.co/Hisnlabs/tajweed-v2), int8 ONNX, in [models/tajweed-v2](models/tajweed-v2) and fetched by the app. Its base is the encoder of tarteel-ai/whisper-base-ar-quran; its teacher was Quran Muaalem | Apache-2.0 ([text](licenses/Apache-2.0.txt)) |
+| Speech model, for the recordings and for the reader reciting | [HisnLabs Tajweed v2](https://huggingface.co/Hisnlabs/tajweed-v2), int8 ONNX, in [models/tajweed-v2](models/tajweed-v2) and fetched by the app. Its base is the encoder of tarteel-ai/whisper-base-ar-quran; its teacher was Quran Muaalem | Apache-2.0 ([text](licenses/Apache-2.0.txt)) |
 | How a recitation is compared with the verse | The rule engine published with that model (`imam.py`), written again in Kotlin | Apache-2.0 ([text](licenses/Apache-2.0.txt)) |
 | What each word should sound like (`tajweed_reference.bin`) | Written with [quran-transcript](https://github.com/obadx/quran-transcript), from the Tanzil Uthmani text it carries (Tanzil Project, tanzil.net) | MIT for quran-transcript; Creative Commons Attribution 3.0 for the Tanzil text ([both](licenses/QuranTranscript-MIT-Tanzil.txt)) |
 | Speech engine | [ONNX Runtime](https://github.com/microsoft/onnxruntime) 1.31.1: its Java classes in the app, its native library in [engine/](engine/) and fetched by the app | MIT ([text](licenses/ONNXRuntime-MIT.txt)) |

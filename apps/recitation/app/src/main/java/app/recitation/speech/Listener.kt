@@ -1,6 +1,5 @@
 package app.recitation.speech
 
-import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import app.recitation.core.Heard
@@ -8,14 +7,14 @@ import app.recitation.core.Hearing
 import app.recitation.core.Span
 import app.recitation.core.SpeechModel
 import java.io.File
-import java.nio.FloatBuffer
 
 /**
- * The speech model on the phone: wav2vec2 (CTC over IPA symbols), run with ONNX Runtime.
- * It writes down the sounds actually made rather than guessing words, which is what
+ * The speech model listening to a recording, run with ONNX Runtime: the same small model
+ * that checks a reader's own recitation (see [TajweedStore]). It writes down the sounds
+ * actually made, in the Quran phonetic script, rather than guessing words, which is what
  * lining a known text up with a recording needs. [tuning] says how the engine is run.
  */
-class Listener(model: ModelStore.Opened, vocab: List<String>, tuning: Tuning = Tuning.USUAL) : SpeechModel, AutoCloseable {
+class Listener(model: File, tuning: Tuning = Tuning.USUAL) : SpeechModel, AutoCloseable {
 
     private val env = OrtEnvironment.getEnvironment()
     private val options = OrtSession.SessionOptions().apply {
@@ -24,21 +23,11 @@ class Listener(model: ModelStore.Opened, vocab: List<String>, tuning: Tuning = T
         if (!tuning.spin) addConfigEntry("session.intra_op.allow_spinning", "0")
         setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
     }
+    private val session: OrtSession = env.createSession(model.path, options)
+    private val hearing = Hearing(this)
 
-    // Accent Coach's copy of the model is read straight out of its file, mapped into memory;
-    // this app's own copy is opened by its path. The mapping is held for as long as the session is.
-    private val borrowed = model.bytes
-    private val session: OrtSession = if (borrowed != null) env.createSession(borrowed, options) else env.createSession(model.file!!.path, options)
-    private val inputName = session.inputNames.first()
-    private val hearing = Hearing(this, vocab)
-
-    override fun run(samples: FloatArray): FloatArray =
-        OnnxTensor.createTensor(env, FloatBuffer.wrap(samples), longArrayOf(1, samples.size.toLong())).use { tensor ->
-            session.run(mapOf(inputName to tensor)).use { result ->
-                val scores = (result[0] as OnnxTensor).floatBuffer // [1, frames, symbols]; a copy, so asked for once
-                FloatArray(scores.remaining()).also { scores.get(it) }
-            }
-        }
+    /** The model's scores for every 20 ms of [samples], from their start: a stretch of a recording as it is, with nothing put before or after it. */
+    override fun run(samples: FloatArray): FloatArray = session.scores(env, samples)
 
     /** Listens to a downloaded recording; see [Hearing.listen]. */
     fun listen(

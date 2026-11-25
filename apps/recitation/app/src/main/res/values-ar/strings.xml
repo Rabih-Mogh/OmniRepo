@@ -45,11 +45,10 @@
 
     <!-- Getting a recording ready -->
     <string name="preparing">تجهيز التلاوات</string>
-    <string name="step_model_check">جارٍ التحقق من نموذج الصوت في Accent Coach… %1$d%%</string>
     <string name="step_engine">جارٍ جلب محرّك الصوت… %1$d%%</string>
     <string name="step_tune">جارٍ إيجاد أسرع طريقة للاستماع على هذا الهاتف… %1$d%%</string>
     <string name="error_engine">تعذّر تشغيل محرّك الصوت على هذا الهاتف. (%1$s)</string>
-    <string name="step_model_download">جارٍ تنزيل نموذج الصوت (318 ميغابايت)… %1$d%%</string>
+    <string name="step_model_download">جارٍ تنزيل نموذج الصوت (23 ميغابايت)… %1$d%%</string>
     <string name="step_download">جارٍ تنزيل الصوت… %1$d%%</string>
     <string name="step_verses">جارٍ جلب الآيات…</string>
     <string name="listening_first">جارٍ الاستماع إلى هذه الآية أولًا…</string>
@@ -62,12 +61,6 @@
     <string name="error_too_short">التسجيل أقصر من هذه السورة. تحقّق من السورة.</string>
     <string name="error_storage">مساحة التخزين في الهاتف ممتلئة. أفرِغ بعض المساحة ثم حاول مجدداً.</string>
 
-    <!-- The speech model, when Accent Coach is installed but can't lend it -->
-    <string name="model_problem_title">تعذّر استعمال نموذج الصوت في Accent Coach</string>
-    <string name="model_too_old">نسخة Accent Coach على هذا الهاتف أقدم من أن تشارك نموذج الصوت. افتح Accent Coach واقبل تحديثه، ثم حاول مجدداً.</string>
-    <string name="model_no_model">لم يُكمل Accent Coach تنزيل نموذج الصوت بعد. افتح Accent Coach ودعه يُكمل، ثم حاول مجدداً.</string>
-    <string name="model_refused">تعذّر استعمال نموذج الصوت في Accent Coach: %1$s</string>
-    <string name="model_download_instead">تنزيله بدلاً من ذلك (318 ميغابايت)</string>
 
     <!-- The first screen's tabs, and the list of surahs -->
     <string name="tab_quran">القرآن</string>
@@ -91,7 +84,6 @@
     <string name="status_refused">يوتيوب لا يسمح بتنزيل التلاوات حالياً. ستُعاد المحاولة بعد قليل، ويستمر العمل على ما هو موجود في الهاتف.</string>
     <string name="status_refused_short">يوتيوب يرفض حالياً. ستُعاد المحاولة بعد قليل…</string>
     <string name="status_starting">جارٍ البدء…</string>
-    <string name="queued_for_model">في انتظار نموذج الصوت</string>
 
     <!-- A surah open without a recitation -->
     <string name="no_recitation">لا توجد تلاوة لهذه السورة في قوائمك.</string>
@@ -253,7 +245,6 @@
     <string name="stats_space_recordings">التسجيلات</string>
     <string name="stats_space_engine">محرّك الصوت</string>
     <string name="stats_space_model">نموذج الصوت</string>
-    <string name="stats_space_model_borrowed">يُقرأ من Accent Coach</string>
     <string name="stats_space_other">الآيات والخطوط وغيرها</string>
     <string name="previous_verse">الآية السابقة</string>
     <string name="next_verse">الآية التالية</string>
@@ -472,6 +463,8 @@
     <string name="drill_missed">للمراجعة: %1$s</string>
     <string name="drill_stop_sound">وقفتَ على الكلمة ونطقتَها كما تُنطق عند الوقف.</string>
     <string name="drill_stop_missed">لم يُسمع وقف على الكلمة المعلَّمة، أو لم تُنطق كما تُنطق عند الوقف.</string>
+    <string name="drill_unheard">لم يُسمع: %1$s. الكلمات التي فيها لم تُتلَ، فلا شيء يُحكم عليه. اتلُ الآية كاملة.</string>
+    <string name="drill_stop_unheard">لم تُسمع الكلمة المعلَّمة. اتلُ حتى تبلغها ثم قِف عليها.</string>
     <string name="drill_stop_here">قِف هنا</string>
     <string name="drill_over">%1$d من %2$d سليمة</string>
     <string name="drill_again">مرة أخرى</string>

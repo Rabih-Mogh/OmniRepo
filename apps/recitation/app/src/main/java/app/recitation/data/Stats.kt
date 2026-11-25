@@ -137,5 +137,5 @@ class Stats(private val file: File, private val today: () -> LocalDate = LocalDa
     }
 }
 
-/** How much room the app's files take on the phone, in bytes. [model] is 0 when Accent Coach's copy is the one read. */
+/** How much room the app's files take on the phone, in bytes. */
 class Space(val recordings: Long, val engine: Long, val model: Long, val other: Long)

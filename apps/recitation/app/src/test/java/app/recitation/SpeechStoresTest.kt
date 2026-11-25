@@ -12,7 +12,6 @@ import android.os.ParcelFileDescriptor
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.recitation.speech.EngineStore
-import app.recitation.speech.ModelStore
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -117,12 +116,12 @@ class SpeechStoresTest {
             }
         }
         val app = ApplicationInfo().apply {
-            packageName = ModelStore.ACCENT_COACH
+            packageName = "app.accentcoach"
             sourceDir = apk.path
         }
         shadowOf(context.packageManager).installPackage(
             PackageInfo().apply {
-                packageName = ModelStore.ACCENT_COACH
+                packageName = "app.accentcoach"
                 applicationInfo = app
             },
         )
@@ -181,103 +180,23 @@ class SpeechStoresTest {
         assertFalse(old.exists())
     }
 
-    // ---- the model
-
-    private val model = ByteArray(200_000) { (it * 31).toByte() }
-    private val ownCopy get() = File(context.filesDir, "model/phonemes_int8.onnx")
-
-    private fun store() = ModelStore(context, model.size.toLong(), sha256(model))
-
-    /** Makes the stand-in Accent Coach lend [bytes] as its model, the way the real one does: as an open file. */
-    private fun accentCoachLends(bytes: ByteArray?) {
-        installAccentCoach(emptyMap())
-        val file = bytes?.let { folder.newFile().apply { writeBytes(it) } }
-        val provider = object : ContentProvider() {
-            override fun onCreate() = true
-            override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor =
-                ParcelFileDescriptor.open(file ?: throw FileNotFoundException("not downloaded yet"), ParcelFileDescriptor.MODE_READ_ONLY)
-            override fun getType(uri: Uri): String = "application/octet-stream"
-            override fun query(uri: Uri, projection: Array<String>?, selection: String?, selectionArgs: Array<String>?, sortOrder: String?): Cursor? = null
-            override fun insert(uri: Uri, values: ContentValues?): Uri? = null
-            override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<String>?): Int = 0
-            override fun delete(uri: Uri, selection: String?, selectionArgs: Array<String>?): Int = 0
-        }
-        val authority = ModelStore.ACCENT_COACH_MODEL.authority!!
-        val info = ProviderInfo().apply {
-            this.authority = authority
-            name = "app.accentcoach.speech.ModelProvider"
-            packageName = ModelStore.ACCENT_COACH
-            applicationInfo = context.packageManager.getApplicationInfo(ModelStore.ACCENT_COACH, 0)
-            exported = true
-        }
-        shadowOf(context.packageManager).addOrUpdateProvider(info)
-        provider.attachInfo(context, info)
-        ShadowContentResolver.registerProviderInternal(authority, provider)
-    }
-
-    private fun keepOwnCopy() {
-        ownCopy.parentFile!!.mkdirs()
-        ownCopy.writeBytes(model)
-    }
+    // ---- what the model the app listened with before left behind
 
     @Test
-    fun accentCoachsModelIsReadInPlaceAndTheAppsOwnCopyIsDeleted() = runBlocking {
-        keepOwnCopy()
-        accentCoachLends(model)
-        val store = store()
-        assertEquals(ModelStore.Lender.READY to null, store.lender())
-        store.obtain(download = false) { _, _ -> }
-        assertFalse("the copy this app made earlier is gone", ownCopy.exists())
-        val opened = store.open()
-        assertNull(opened.file)
-        val read = ByteArray(model.size).also { opened.bytes!!.get(it) }
-        assertArrayEquals(model, read)
-    }
-
-    @Test
-    fun tidyingAtStartFreesTheOwnCopyOnlyWhenAccentCoachsIsGood() = runBlocking {
-        keepOwnCopy()
-        // No Accent Coach: the app's own copy is all there is, and stays.
-        assertFalse(store().tidy())
-        assertTrue(ownCopy.exists())
-        // Accent Coach arrives with a damaged file: still stays.
-        accentCoachLends(ByteArray(model.size) { 3 })
-        assertFalse(store().tidy())
-        assertTrue(ownCopy.exists())
-        // And with the real one: freed.
-        accentCoachLends(model)
-        assertTrue(store().tidy())
-        assertFalse(ownCopy.exists())
-    }
-
-    @Test
-    fun withoutAccentCoachTheAppsOwnCopyIsUsed() = runBlocking {
-        keepOwnCopy()
-        val store = store()
-        store.obtain(download = false) { _, _ -> }
-        assertEquals(ownCopy, store.open().file)
-        assertTrue(ownCopy.exists())
-    }
-
-    @Test
-    fun aDamagedAccentCoachModelIsRefusedRatherThanUsed() = runBlocking {
-        accentCoachLends(ByteArray(model.size) { 3 })
-        try {
-            store().obtain(download = false) { _, _ -> }
-            fail("a damaged model was accepted")
-        } catch (e: ModelStore.Unavailable) {
-            assertEquals(ModelStore.Lender.REFUSED, e.reason)
-        }
-    }
-
-    @Test
-    fun anAccentCoachThatHasNotDownloadedItsModelSaysSo() = runBlocking {
-        accentCoachLends(null)
-        try {
-            store().obtain(download = false) { _, _ -> }
-            fail("there was no model to use")
-        } catch (e: ModelStore.Unavailable) {
-            assertEquals(ModelStore.Lender.NO_MODEL, e.reason)
-        }
+    fun whatTheOldModelLeftOnThePhoneIsFreed() {
+        val old = File(context.filesDir, "model/phonemes_int8.onnx").apply { parentFile!!.mkdirs(); writeBytes(ByteArray(1_000)) }
+        val library = app.recitation.data.Library.get(context)
+        // What the old model had heard of a recording it hadn't finished, and what the new one has.
+        val heardBefore = File(library.heard("old-model").parentFile, "old-model.rows").apply { writeBytes(ByteArray(100)) }
+        val heardNow = library.heard("old-model").apply { writeBytes(ByteArray(100)) }
+        assertTrue(app.recitation.speech.TajweedStore.dropOld(context))
+        library.dropOldHearing()
+        assertFalse(old.exists())
+        assertFalse(old.parentFile!!.exists())
+        assertFalse(heardBefore.exists())
+        assertTrue("what the model in use has heard stays", heardNow.exists())
+        // Nothing left: nothing to do.
+        assertFalse(app.recitation.speech.TajweedStore.dropOld(context))
+        heardNow.delete()
     }
 }

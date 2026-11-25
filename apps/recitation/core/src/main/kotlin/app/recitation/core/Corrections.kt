@@ -114,9 +114,21 @@ class MaddHeard(val rule: Madd, val counts: Int)
 /**
  * A word as it was recited: which word of the verse ([index]), whether the reciter stopped
  * on it mid-verse ([stopped]), what to correct in it, and how long its madds were held.
+ * [wanted] is how it should have sounded, and [listened] what was listened for in it. A
+ * word that wasn't said has nothing listened for: it is told as not said, and nothing else.
  */
-class WordRecited(val index: Int, val stopped: Boolean, val corrections: List<Correction>, val madds: List<MaddHeard>) {
+class WordRecited(
+    val index: Int,
+    val stopped: Boolean,
+    val corrections: List<Correction>,
+    val madds: List<MaddHeard>,
+    val wanted: String = "",
+    val listened: List<Awaited> = emptyList(),
+) {
     val sound: Boolean get() = corrections.isEmpty()
+
+    /** Whether the word wasn't said at all. */
+    val unsaid: Boolean get() = corrections.any { it.fault == Fault.WORD_MISSING }
 }
 
 /**
@@ -125,6 +137,11 @@ class WordRecited(val index: Int, val stopped: Boolean, val corrections: List<Co
  * A correction about sounds the model was not sure of is left out: better to say nothing
  * than to correct a reciter who was right. A clear mistake asks for more sureness
  * ([sureOfClear]) than a fine point ([sure]).
+ *
+ * A word that wasn't said is told as that and nothing more. No rule is judged in it: a
+ * madd not held, a nasal sound cut short, an echo left off are things said wrongly, and it
+ * wasn't said. The words that were said are lined up with what was heard without it, so
+ * that none of them is corrected for sounds that were the unsaid word's.
  */
 object Corrections {
     private const val LONG = "اۥۦ"
@@ -140,6 +157,12 @@ object Corrections {
     private const val SIX = 8.3f
     private const val FIVE = 7.0f
 
+    /** How many words either side of a word are looked at with it, to tell whether it was said. */
+    private const val AROUND = 3
+
+    /** How many sounds either side of where a word wasn't said aren't judged sound by sound: how a word ends and begins goes by its neighbour. */
+    private const val GAP = 2
+
     /**
      * [tempo] is kept by the caller through a session: the natural madds heard so far, in
      * seconds, for a verse with too few of its own to set the pace by.
@@ -147,12 +170,89 @@ object Corrections {
     fun of(expected: Expected, heard: HeardScript, sure: Float = 0.3f, sureOfClear: Float = 0.7f, tempo: MutableList<Float>? = null): List<WordRecited> {
         val ref = expected.script
         val got = heard.symbols
+        val at = boundaries(ref, got, Edits.between(ref, got))
+        val unsaid = unsaid(expected, got, at)
+        if (unsaid.none { it }) return judged(expected, heard, sure, sureOfClear, tempo)
+        // The words that were said, gone over without the others; and the others in their places.
+        val left = expected.without(unsaid, got)
+        val said = if (left.words == 0) emptyList() else judged(left, heard, sure, sureOfClear, tempo)
+        val ends = left.ends.toSet()
+        var j = 0
+        return List(expected.words) { k ->
+            val a = expected.spans[2 * k]
+            val z = expected.spans[2 * k + 1]
+            if (unsaid[k]) {
+                WordRecited(expected.index[k], false, listOf(Correction(Fault.WORD_MISSING, clear = true, wanted = ref.substring(a, z), heard = got.substring(at[a], at[z]))), emptyList(), ref.substring(a, z))
+            } else {
+                // Stopped on, if a breath ended on it and it isn't the last word there is.
+                val word = said[j]
+                WordRecited(word.index, j++ in ends && k != expected.words - 1, word.corrections, word.madds, word.wanted, word.listened)
+            }
+        }
+    }
+
+    /**
+     * Which words of [expected] weren't said, going by what was heard ([got], lined up with
+     * the expected script by [at]). One whose sounds are all but all missing is one. So is
+     * one that what was heard fits better without: nearer, by two thirds of the word's
+     * sounds or more, to the recitation with the word left out than with it in. Lined up
+     * sound by sound, a word passed over can take sounds of its neighbours for its own (a
+     * vowel here, a ل there), and would then look said, and said badly. The clearest is
+     * taken out first and the rest looked at again without it: beside a word not said, one
+     * that was said would else look as if it could be done without too.
+     */
+    private fun unsaid(expected: Expected, got: String, at: IntArray): BooleanArray {
+        val ref = expected.script
+        val words = expected.words
+        fun from(k: Int) = expected.spans[2 * k]
+        fun until(k: Int) = expected.spans[2 * k + 1]
+        val out = BooleanArray(words) { until(it) > from(it) && at[until(it)] - at[from(it)] <= max(0, (until(it) - from(it)) / 4) }
+        var whole = -1
+        while (true) {
+            val said = (0 until words).filter { !out[it] }
+            var best = -1
+            var gained = 0
+            for ((p, k) in said.withIndex()) {
+                val length = until(k) - from(k)
+                if (length == 0) continue
+                // First with only the few words either side of it that count as said: most words are plainly there.
+                val first = said[max(0, p - AROUND)]
+                val last = said[min(said.size - 1, p + AROUND)]
+                val there = got.substring(at[from(first)], at[until(last)])
+                fun about(with: Boolean) = (first..last).filter { !out[it] && (with || it != k) }.joinToString("") { ref.substring(from(it), until(it)) }
+                val with = Edits.distance(about(true), there)
+                if (with * 4 < length || (with - Edits.distance(about(false), there)) * 4 < length) continue
+                // Then the whole recitation, with the word and without it.
+                if (whole < 0) whole = Edits.distance(expected.without(out, got).script, got)
+                val gain = whole - Edits.distance(expected.without(BooleanArray(words) { out[it] || it == k }, got).script, got)
+                if (gain * 3 < length * 2) continue
+                // Of two, the one more of whose sounds are accounted for by its not having been said.
+                val before = if (best < 0) 1 else until(best) - from(best)
+                if (best < 0 || gain * before > gained * length) { best = k; gained = gain }
+            }
+            if (best < 0) return out
+            out[best] = true
+            whole -= gained
+        }
+    }
+
+    /** The corrections of [expected] as it stands: every word of it taken to have been said, or passed over whole. */
+    private fun judged(expected: Expected, heard: HeardScript, sure: Float, sureOfClear: Float, tempo: MutableList<Float>?): List<WordRecited> {
+        val ref = expected.script
+        val got = heard.symbols
         val changes = Edits.between(ref, got)
         val at = boundaries(ref, got, changes)
         val words = expected.words
         val notes = List(words) { ArrayList<Correction>() }
         val madds = List(words) { ArrayList<MaddHeard>() }
+        val listened = List(words) { ArrayList<Awaited>() }
         val covered = BooleanArray(ref.length)
+        // A word whose sounds are all but all missing was passed over: nothing is listened for in it.
+        val passed = BooleanArray(words) { k ->
+            val a = expected.spans[2 * k]
+            val z = expected.spans[2 * k + 1]
+            z > a && at[z] - at[a] <= max(0, (z - a) / 4)
+        }
 
         fun unsure(from: Int, until: Int, threshold: Float = sure): Boolean {
             val a = max(0, from - 1)
@@ -171,6 +271,8 @@ object Corrections {
         val seen = LinkedHashMap<Madd, ArrayList<Pair<Int, Int>>>() // by kind of madd: the word and the symbols written
         for (u in expected.awaited) {
             for (x in u.from until u.until) covered[x] = true
+            if (passed[u.word]) continue
+            listened[u.word] += u
             val hs = at[u.from]
             val he = at[u.until]
             fun add(correction: Correction) { if (!unsure(hs, he)) notes[u.word] += correction }
@@ -234,6 +336,7 @@ object Corrections {
             var w = words - 1
             for (k in 0 until words) if (expected.spans[2 * k] <= c.from && c.from < expected.spans[2 * k + 1]) { w = k; break }
             if (c.from < ONSET) continue
+            if (expected.gaps.any { c.from <= it + GAP && c.until >= it - GAP }) continue
             val wantedCore = withoutLength(exp)
             val heardCore = withoutLength(was)
             if (wantedCore == heardCore) continue // only lengths differ
@@ -262,14 +365,12 @@ object Corrections {
             }
         }
 
-        // A word whose sounds are all but all missing was passed over.
         for (k in 0 until words) {
+            if (!passed[k]) continue
             val a = expected.spans[2 * k]
             val z = expected.spans[2 * k + 1]
-            if (z > a && at[z] - at[a] <= max(0, (z - a) / 4)) {
-                notes[k].clear()
-                notes[k] += Correction(Fault.WORD_MISSING, clear = true, wanted = ref.substring(a, z), heard = got.substring(at[a], at[z]))
-            }
+            notes[k].clear()
+            notes[k] += Correction(Fault.WORD_MISSING, clear = true, wanted = ref.substring(a, z), heard = got.substring(at[a], at[z]))
         }
 
         // The same kind of madd keeps the same length through the recitation.
@@ -284,7 +385,7 @@ object Corrections {
         }
 
         val stops = expected.ends.dropLast(1).toSet()
-        return List(words) { k -> WordRecited(expected.index[k], k in stops, notes[k], madds[k]) }
+        return List(words) { k -> WordRecited(expected.index[k], k in stops, notes[k], madds[k], ref.substring(expected.spans[2 * k], expected.spans[2 * k + 1]), listened[k]) }
     }
 
     /** For each place in the expected script, the place in the heard one that answers to it. */

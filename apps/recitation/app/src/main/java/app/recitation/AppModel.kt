@@ -46,7 +46,6 @@ import app.recitation.speech.EngineStore
 import app.recitation.data.VerseCollection
 import app.recitation.data.VerseRef
 import app.recitation.prepare.PrepareWorker
-import app.recitation.speech.ModelStore
 import app.recitation.yt.YouTube
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -201,8 +200,8 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         fetchTheRest()
         viewModelScope.launch { SurahNames.load(app) }
         viewModelScope.launch { IndoPakFont.load(app) }
-        // A copy of the speech model made before the app learnt to read Accent Coach's: free its 318 MB.
-        viewModelScope.launch { runCatching { ModelStore(app).tidy() } }
+        // What the model the app listened with before left on the phone is of no use now: free it.
+        viewModelScope.launch(Dispatchers.IO) { runCatching { TajweedStore.dropOld(app); library.dropOldHearing() } }
         // While the open recording is being listened to its word timings grow: show the latest.
         viewModelScope.launch {
             PrepareWorker.live.collect { live ->
@@ -486,7 +485,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         val files = getApplication<Application>().filesDir
         val recordings = size(File(files, "audio"))
         val engine = size(File(files, "engine"))
-        val model = size(File(files, "model"))
+        val model = size(File(files, "tajweed"))
         Space(recordings, engine, model, size(files) - recordings - engine - model)
     }
 
@@ -718,12 +717,6 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     fun cancel(track: Track) {
         library.update(track.id) { it.copy(wanted = false, aside = true) }
         library.dropPartial(track.id)
-    }
-
-    /** Tries again to get the speech model, after the user has put Accent Coach right or chosen to download it. */
-    fun retryModel(download: Boolean) {
-        if (download) Settings.setDownloadModel(getApplication(), true)
-        resume()
     }
 
     /** Corrects which surah a recording is. If it was already downloaded it is lined up again with the new words. */

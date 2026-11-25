@@ -113,6 +113,8 @@ class Awaited(val from: Int, val until: Int, val kind: Listened, val word: Int, 
  *
  * [script] is the whole of it; word k of it is [spans]`[2k]` until [spans]`[2k + 1]`.
  * [index] says which word of the verse each is, and [ends] which of them end a breath.
+ * [gaps] are the places in the script where words that weren't said have been taken out
+ * (see [without]), and [verse] the verse it is words of.
  */
 class Expected(
     val script: String,
@@ -120,8 +122,79 @@ class Expected(
     val awaited: List<Awaited>,
     val index: IntArray,
     val ends: IntArray,
+    val gaps: IntArray = IntArray(0),
+    private val verse: List<WordForms>? = null,
 ) {
     val words: Int get() = index.size
+
+    /**
+     * This without the words marked in [unsaid]: what is left to line up with what was
+     * [heard] when those weren't said. What was listened for in them goes with them.
+     *
+     * Where the words at a breath's end weren't said, the reader may have stopped on the
+     * last one they did say (reciting half a verse, one stops on its middle word, and says
+     * it as a word is said at a stop), or have run on past the others. Whichever brings
+     * the script nearer to what was heard is taken, as for a stop anywhere else (see
+     * [recited]); of two as near, the stop.
+     */
+    fun without(unsaid: BooleanArray, heard: String): Expected {
+        val running = taken(unsaid)
+        val verse = verse ?: return running
+        val parts = ArrayList<Expected>()
+        var from = 0
+        var cut = false
+        for (end in ends) {
+            val first = (from..end).firstOrNull { !unsaid[it] }
+            if (first != null) {
+                val last = (from..end).last { !unsaid[it] }
+                if (first != from || last != end) cut = true
+                parts += breath(verse, index[first], index[last] + 1).taken(BooleanArray(last - first + 1) { unsaid[first + it] })
+            }
+            from = end + 1
+        }
+        if (!cut) return running
+        val stopped = joined(parts)
+        return if (Edits.distance(stopped.script, heard) <= Edits.distance(running.script, heard)) stopped else running
+    }
+
+    /** This with the words marked in [unsaid] taken out as they stand, and with them whatever rests on one of them from the word before (a nun merged into it). */
+    private fun taken(unsaid: BooleanArray): Expected {
+        if (unsaid.none { it }) return this
+        val text = StringBuilder()
+        val kept = ArrayList<Int>()
+        val moved = IntArray(words) // how far back each word that stays has come
+        val gaps = ArrayList<Int>()
+        for (k in 0 until words) {
+            if (unsaid[k]) {
+                if (gaps.lastOrNull() != text.length) gaps += text.length
+                continue
+            }
+            moved[k] = spans[2 * k] - text.length
+            kept += k
+            text.append(script, spans[2 * k], spans[2 * k + 1])
+        }
+        fun wordAt(x: Int) = (0 until words).first { spans[2 * it] <= x && x < spans[2 * it + 1] }
+        val place = IntArray(words) { -1 }
+        for ((j, k) in kept.withIndex()) place[k] = j
+        // A breath ends on the last of its words that was said.
+        val breaths = ArrayList<Int>()
+        var from = 0
+        for (end in ends) {
+            (from..end).lastOrNull { !unsaid[it] }?.let { breaths += place[it] }
+            from = end + 1
+        }
+        return Expected(
+            text.toString(),
+            IntArray(2 * kept.size) { spans[2 * kept[it / 2] + it % 2] - moved[kept[it / 2]] },
+            // Where it is said decides how far it has moved: for a nun merged into the next word, that word.
+            awaited.filter { u -> !unsaid[u.word] && (u.from until u.until).none { unsaid[wordAt(it)] } }
+                .map { u -> moved[wordAt(u.from)].let { by -> Awaited(u.from - by, u.until - by, u.kind, place[u.word], u.counts, u.madd, u.symbol) } },
+            IntArray(kept.size) { index[kept[it]] },
+            breaths.toIntArray(),
+            gaps.toIntArray(),
+            verse,
+        )
+    }
 
     /**
      * Which word a reciter has reached who has so far been heard to say [heard]: for
@@ -206,7 +279,7 @@ class Expected(
                 i = j
             }
             awaited.sortBy { it.from }
-            return Expected(text, spans, awaited, IntArray(count) { from + it }, intArrayOf(count - 1))
+            return Expected(text, spans, awaited, IntArray(count) { from + it }, intArrayOf(count - 1), verse = verse)
         }
 
         /** Several breaths, in the order they were recited, as one. */
@@ -216,16 +289,18 @@ class Expected(
             val awaited = ArrayList<Awaited>()
             val index = ArrayList<Int>()
             val ends = ArrayList<Int>()
+            val gaps = ArrayList<Int>()
             for (part in parts) {
                 val o = script.length
                 val w0 = index.size
+                for (x in part.gaps) gaps += x + o
                 for (x in part.spans) spans += x + o
                 for (u in part.awaited) awaited += Awaited(u.from + o, u.until + o, u.kind, u.word + w0, u.counts, u.madd, u.symbol)
                 for (x in part.index) index += x
                 script.append(part.script)
                 ends += index.size - 1
             }
-            return Expected(script.toString(), spans.toIntArray(), awaited, index.toIntArray(), ends.toIntArray())
+            return Expected(script.toString(), spans.toIntArray(), awaited, index.toIntArray(), ends.toIntArray(), gaps.toIntArray(), parts.firstOrNull()?.verse)
         }
 
         /**
