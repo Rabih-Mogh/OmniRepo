@@ -96,7 +96,8 @@ sealed interface Reciting {
  * An exercise uses it too, a verse at a time: with its own [title] and [subtitle] in the
  * top bar, its own word on what to do ([how]), its own judgement over the general one
  * ([verdict]), a mark on the word to stop on ([stopAfter], counted from 0), and its own
- * say over whether there is a verse before and after ([canPrevious], [canNext]).
+ * say over whether there is a verse before and after ([canPrevious], [canNext]). Where a
+ * reciter's recording has the verse, [onHear] plays it: the verse is heard before it is recited.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -119,6 +120,7 @@ fun ReciteContent(
     stopAfter: Int = -1,
     canPrevious: Boolean = verseNumber > 1,
     canNext: Boolean = verseNumber < surah.verses,
+    onHear: (() -> Unit)? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
@@ -173,7 +175,11 @@ fun ReciteContent(
                 }
             }
             when (state) {
-                Reciting.Idle -> Text(how ?: stringResource(R.string.recite_how), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                Reciting.Idle -> {
+                    Text(how ?: stringResource(R.string.recite_how), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                    // How it should go, in the reciter's own voice.
+                    if (onHear != null) ThemeButton(stringResource(R.string.echo_play), onHear, Modifier.testTag("hear-reciter"), icon = AppIcons.Sound)
+                }
                 Reciting.Listening -> {}
                 // What is being done is a picture: the ear in its turning ring, the fetch with its ring filling.
                 Reciting.Checking -> Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -307,7 +313,7 @@ internal fun CorrectionsCard(word: WordRecited, modifier: Modifier = Modifier) {
 }
 
 /** The letters the guidance is written for, in the order of the letter_tips array. */
-private const val TIP_LETTERS = "ءهعحغخقكجشيضلنرطدتصزسظذثفبمو"
+internal const val TIP_LETTERS = "ءهعحغخقكجشيضلنرطدتصزسظذثفبمو"
 
 /** A correction in words: what is wrong, and how to put it right. */
 @Composable

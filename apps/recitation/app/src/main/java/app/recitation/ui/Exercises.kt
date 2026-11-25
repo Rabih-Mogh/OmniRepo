@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -48,6 +49,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,9 +88,11 @@ import app.recitation.core.TajweedReference
 import app.recitation.core.Topic
 import app.recitation.core.WordRecited
 import app.recitation.data.Echo
+import app.recitation.data.Hear
 import app.recitation.data.Spot
 import app.recitation.data.Tally
 import app.recitation.data.Verse
+import app.recitation.data.Voice
 import app.recitation.data.VerseRef
 import app.recitation.speech.AudioDecoder
 import app.recitation.speech.EngineStore
@@ -96,6 +100,7 @@ import app.recitation.speech.Mic
 import app.recitation.speech.TajweedStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
@@ -135,17 +140,19 @@ val RULE_TOPICS = listOf(
 )
 
 /**
- * The tajweed exercises on the Practise tab, a card each: drills on one rule, the reader's
- * weak spots, letters made close to each other, stopping on a word, counting a madd,
- * spotting the rule in a word, and echoing a reciter. [tally] is what the reader has been
- * corrected on; [canEcho] whether there is a recording to echo.
+ * Tajweed on the Practise tab, a card each. First the lessons: every rule is taught before
+ * it is practised, and the ones whose exercise has gone well are ticked. Then the reader's
+ * weak spots, letters made close to each other, stopping on a word (each of those two
+ * taught first as well), counting a madd, spotting the rule in a word, and echoing a
+ * reciter. [tally] is what the reader has been corrected on and has learned; [canEcho]
+ * whether there is a recording to echo. [onLesson] opens the lesson on a topic.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TajweedExercises(
     tally: Tally,
     canEcho: Boolean,
-    onDrill: (Topic, String) -> Unit,
+    onLesson: (Topic, String) -> Unit,
     onWeak: () -> Unit,
     onMadd: () -> Unit,
     onSpot: () -> Unit,
@@ -153,9 +160,25 @@ fun TajweedExercises(
 ) {
     val colors = MaterialTheme.colorScheme
     val tajweed = LocalTajweed.current
-    ExerciseCard(AppIcons.Tune, stringResource(R.string.practice_drills_title), stringResource(R.string.practice_drills_body)) {
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            for (topic in RULE_TOPICS) Choice(topic.named(), tajweed.ink(topic.rule()!!.family), Modifier.testTag("drill-${topic.name}")) { onDrill(topic, "") }
+    ExerciseCard(AppIcons.Book, stringResource(R.string.practice_learn_title), stringResource(R.string.practice_learn_body)) {
+        Text(
+            stringResource(R.string.practice_learned, RULE_TOPICS.count { tally.learned(it) }, RULE_TOPICS.size), Modifier.testTag("learned-count"),
+            style = MaterialTheme.typography.labelLarge, color = colors.primary,
+        )
+        // The rules in the order a learner meets them, each by its own name with the dot of its colour.
+        Column {
+            for (topic in RULE_TOPICS) {
+                val learned = tally.learned(topic)
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button) { onLesson(topic, "") }.padding(horizontal = 4.dp, vertical = 11.dp).testTag("lesson-${topic.name}"),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Box(Modifier.size(12.dp).background(tajweed.ink(topic.rule()!!.family), CircleShape))
+                    Text(topic.named(), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                    if (learned) Icon(AppIcons.Check, stringResource(R.string.lesson_learned), Modifier.size(20.dp), tint = colors.primary)
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(20.dp), tint = colors.outline)
+                }
+            }
         }
     }
     ExerciseCard(AppIcons.Retry, stringResource(R.string.practice_weak_title), stringResource(if (tally.open.isEmpty()) R.string.practice_weak_none else R.string.practice_weak_body)) {
@@ -175,11 +198,11 @@ fun TajweedExercises(
     }
     ExerciseCard(AppIcons.Meanings, stringResource(R.string.practice_pairs_title), stringResource(R.string.practice_pairs_body)) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            for (pair in Drills.PAIRS) Choice(Topic.LETTERS.named(pair), null, Modifier.testTag("pair-$pair"), arabic = true) { onDrill(Topic.LETTERS, pair) }
+            for (pair in Drills.PAIRS) Choice(Topic.LETTERS.named(pair), null, Modifier.testTag("pair-$pair"), arabic = true, ticked = tally.learned(Topic.LETTERS, pair)) { onLesson(Topic.LETTERS, pair) }
         }
     }
     ExerciseCard(AppIcons.Pause, stringResource(R.string.practice_stops_title), stringResource(R.string.practice_stops_body)) {
-        ThemeButton(stringResource(R.string.practice_start), { onDrill(Topic.STOP, "") }, Modifier.fillMaxWidth().testTag("stops-go"), icon = AppIcons.Mic)
+        ThemeButton(stringResource(R.string.practice_start), { onLesson(Topic.STOP, "") }, Modifier.fillMaxWidth().testTag("stops-go"), icon = AppIcons.Book)
     }
     ExerciseCard(AppIcons.Steady, stringResource(R.string.practice_madd_title), stringResource(R.string.practice_madd_body)) {
         ThemeButton(stringResource(R.string.practice_start), onMadd, Modifier.fillMaxWidth().testTag("madd-go"), icon = AppIcons.Mic)
@@ -211,7 +234,7 @@ private fun ExerciseCard(icon: ImageVector, title: String, body: String, content
 
 /** One of a card's choices: a rule with the dot of its colour, or a pair of letters. */
 @Composable
-private fun Choice(label: String, dot: Color?, modifier: Modifier = Modifier, arabic: Boolean = false, onClick: () -> Unit) {
+private fun Choice(label: String, dot: Color?, modifier: Modifier = Modifier, arabic: Boolean = false, ticked: Boolean = false, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Row(
         modifier.clip(RoundedCornerShape(50)).border(1.dp, colors.outlineVariant, RoundedCornerShape(50)).clickable(role = Role.Button, onClick = onClick).padding(horizontal = 12.dp, vertical = 7.dp),
@@ -219,6 +242,7 @@ private fun Choice(label: String, dot: Color?, modifier: Modifier = Modifier, ar
     ) {
         if (dot != null) Box(Modifier.size(10.dp).background(dot, CircleShape))
         if (arabic) Text(label, fontFamily = QuranFont, fontSize = 20.sp, color = colors.onSurface) else Text(label, style = MaterialTheme.typography.labelLarge, color = colors.onSurface)
+        if (ticked) Icon(AppIcons.Check, stringResource(R.string.lesson_learned), Modifier.size(16.dp), tint = colors.primary)
     }
 }
 
@@ -227,10 +251,25 @@ private fun Choice(label: String, dot: Color?, modifier: Modifier = Modifier, ar
  * alone: a rule, a pair of letters, a stop, or whatever the reader was corrected on in
  * that verse. [title] names it. Each go counts as it was last recited; at the end the
  * goes that were sound are counted. The verses are recited and checked as on the page for
- * reciting a verse (see [ReciteScreen]).
+ * reciting a verse (see [ReciteScreen]). A go that wasn't sound is taught again there and
+ * then: how the thing is said stands under the verdict. [onDone] is told how it went at
+ * the end: how many goes were sound, of how many.
+ *
+ * It is taught in a reciter's voice wherever a recording on the phone has the verse
+ * ([voiceOf]): the verse can be heard before it is recited, and after a go that wasn't
+ * sound, the words the go was about can be heard as the reciter says them.
  */
 @Composable
-fun DrillScreen(title: String, drills: List<Drill>, verseOf: suspend (VerseRef) -> Verse?, fetching: Float?, onWant: (pressed: Boolean) -> Unit, onBack: () -> Unit) {
+fun DrillScreen(
+    title: String,
+    drills: List<Drill>,
+    verseOf: suspend (VerseRef) -> Verse?,
+    fetching: Float?,
+    onWant: (pressed: Boolean) -> Unit,
+    onBack: () -> Unit,
+    onDone: (sound: Int, of: Int) -> Unit = { _, _ -> },
+    voiceOf: suspend (Drill) -> Voice? = { null },
+) {
     val context = LocalContext.current.applicationContext
     var at by remember(drills) { mutableIntStateOf(0) }
     val results = remember(drills) { mutableStateMapOf<Int, Boolean>() }
@@ -242,13 +281,19 @@ fun DrillScreen(title: String, drills: List<Drill>, verseOf: suspend (VerseRef) 
     val ready = remember(fetching) { store.isReady && engine.isReady }
     LaunchedEffect(Unit) { if (!ready) onWant(false) }
     val drill = drills.getOrNull(at)
+    var voice by remember { mutableStateOf<Voice?>(null) }
+    val clip = rememberClip()
     LaunchedEffect(drills, at) {
         verse = null
+        voice = null
+        clip.stop()
         reciter.rest()
         verse = drill?.let { verseOf(VerseRef(it.surah, it.verse)) }
+        voice = drill?.let { voiceOf(it) }
     }
     val state = reciter.state
     LaunchedEffect(state) { if (state is Reciting.Heard && drill != null) results[at] = Drills.sound(drill, state.words) }
+    LaunchedEffect(over) { if (over && drills.isNotEmpty()) onDone(results.values.count { it }, drills.size) }
     if (over || drill == null) {
         DrillOver(title, drills, results, onAgain = { results.clear(); at = 0; over = drills.isEmpty() }, onBack = onBack)
         return
@@ -259,7 +304,11 @@ fun DrillScreen(title: String, drills: List<Drill>, verseOf: suspend (VerseRef) 
         surah, drill.verse, verse,
         state = if (!ready && fetching != null && state == Reciting.Idle) Reciting.Fetching(R.string.recite_getting_model, fetching) else state,
         needsModel = !ready,
-        onMic = { reciter.toggle(drill.surah, drill.verse) },
+        onMic = {
+            // The reader's voice is what is listened to: the reciter's falls silent.
+            clip.stop()
+            reciter.toggle(drill.surah, drill.verse)
+        },
         onFetch = { onWant(true) },
         onPrevious = { if (at > 0 && !reciter.listening) at-- },
         onNext = { if (!reciter.listening) { if (at == drills.lastIndex) over = true else at++ } },
@@ -272,15 +321,28 @@ fun DrillScreen(title: String, drills: List<Drill>, verseOf: suspend (VerseRef) 
             Topic.LETTERS -> stringResource(R.string.drill_how_letters, name)
             else -> stringResource(R.string.drill_how, name)
         },
-        verdict = { results[at]?.let { DrillVerdict(drill, it) } },
+        verdict = {
+            results[at]?.let { sound ->
+                DrillVerdict(
+                    drill, sound,
+                    // The words the go was about as the reciter says them, or failing that the whole verse.
+                    onHear = voice?.let { v -> { if (v.placeFromMs >= 0) clip.play(v.sound, v.placeFromMs, v.placeUntilMs) else clip.play(v.sound, v.fromMs, v.untilMs) } },
+                )
+            }
+        },
         stopAfter = drill.stopAfter,
         canPrevious = at > 0, canNext = true,
+        onHear = voice?.let { v -> { clip.play(v.sound, v.fromMs, v.untilMs) } },
     )
 }
 
-/** How a go went for the thing it was about: sound, or to go over. */
+/**
+ * How a go went for the thing it was about: sound, or to go over; and if to go over, how
+ * it is said, as the lesson has it, with the way to hear a reciter say it ([onHear];
+ * null where no recording has the verse).
+ */
 @Composable
-fun DrillVerdict(drill: Drill, sound: Boolean) {
+fun DrillVerdict(drill: Drill, sound: Boolean, onHear: (() -> Unit)? = null) {
     val colors = MaterialTheme.colorScheme
     val name = drill.topic.named(drill.letters)
     val says = when {
@@ -293,7 +355,11 @@ fun DrillVerdict(drill: Drill, sound: Boolean) {
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Icon(if (sound) AppIcons.Check else AppIcons.Warning, null, Modifier.size(22.dp), tint = if (sound) colors.primary else colors.error)
-        Text(says, style = MaterialTheme.typography.titleSmall, color = colors.onSurface)
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(says, style = MaterialTheme.typography.titleSmall, color = colors.onSurface)
+            if (!sound) Text(stringResource(lessonOf(drill.topic, drill.letters).how), Modifier.testTag("drill-teach"), style = MaterialTheme.typography.bodyMedium, color = colors.onSurface)
+            if (!sound && onHear != null) ThemeButton(stringResource(R.string.drill_hear_it), onHear, Modifier.testTag("hear-it"), icon = AppIcons.Sound)
+        }
     }
 }
 
@@ -333,6 +399,12 @@ fun DrillOver(title: String, drills: List<Drill>, results: Map<Int, Boolean>, on
     }
 }
 
+/** Each madd with how long it is held, for the table over the counting. */
+private val MADD_LENGTHS = listOf(
+    Topic.MADD_NATURAL to R.string.madd_len_2, Topic.MADD_MUNFASIL to R.string.madd_len_4_5, Topic.MADD_MUTTASIL to R.string.madd_len_4_5,
+    Topic.MADD_LAZIM to R.string.madd_len_6, Topic.MADD_ARID to R.string.madd_len_2_4_6,
+)
+
 /** The counts a madd can be asked to be held for. */
 val MADD_COUNTS = listOf(2, 4, 5, 6)
 
@@ -356,6 +428,7 @@ fun MaddContent(
     onPace: (Float) -> Unit,
     onToggle: () -> Unit,
     onBack: () -> Unit,
+    onHearMadd: ((Topic) -> Unit)? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val shown = if (seconds > 0f) seconds else holds.lastOrNull() ?: 0f
@@ -369,6 +442,24 @@ fun MaddContent(
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(stringResource(R.string.madd_how), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+            // What to aim for: how long each madd is.
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(colors.surfaceContainerLow).padding(12.dp).testTag("madd-table"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(stringResource(R.string.madd_table), style = MaterialTheme.typography.labelLarge, color = colors.primary)
+                for ((topic, length) in MADD_LENGTHS) {
+                    // Each can be heard as a reciter holds it, where a recording on the phone has one.
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                            .then(if (onHearMadd != null) Modifier.clickable(role = Role.Button, onClickLabel = stringResource(R.string.madd_hear)) { onHearMadd(topic) } else Modifier)
+                            .padding(vertical = 4.dp).testTag("madd-row-${topic.name}"),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        topic.ink()?.let { Box(Modifier.size(10.dp).background(it, CircleShape)) }
+                        Text(topic.named(), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(length), style = MaterialTheme.typography.labelLarge, color = colors.onSurface)
+                        if (onHearMadd != null) Icon(AppIcons.Sound, null, Modifier.size(18.dp), tint = colors.primary)
+                    }
+                }
+            }
             // How many counts to aim for.
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.madd_target), style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant)
@@ -441,10 +532,16 @@ fun MaddContent(
     }
 }
 
-/** Counting a madd, at work: the microphone is listened to and each stretch of voice timed (see [Holding]). */
+/**
+ * Counting a madd, at work: the microphone is listened to and each stretch of voice timed
+ * (see [Holding]). [hearOf] finds words of a recording on the phone with a madd of a kind
+ * in them, to be heard as its reciter holds it.
+ */
 @Composable
-fun MaddScreen(onBack: () -> Unit) {
+fun MaddScreen(onBack: () -> Unit, hearOf: suspend (Topic) -> Hear? = { null }) {
     val context = LocalContext.current
+    val clip = rememberClip()
+    val scope = rememberCoroutineScope()
     var target by remember { mutableIntStateOf(4) }
     var pace by remember { mutableFloatStateOf(0.5f) }
     var listening by remember { mutableStateOf(false) }
@@ -480,11 +577,14 @@ fun MaddScreen(onBack: () -> Unit) {
             if (listening) listening = false
             else {
                 holds.clear()
+                clip.stop()
                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) listening = true
                 else ask.launch(Manifest.permission.RECORD_AUDIO)
             }
         },
         onBack = onBack,
+        // Not while the microphone is open: it would time the reciter's madd as the reader's.
+        onHearMadd = { topic -> if (!listening) scope.launch { hearOf(topic)?.let { clip.play(it.sound, it.fromMs, it.untilMs) } } },
     )
 }
 
@@ -547,12 +647,14 @@ fun SpotContent(spots: List<Spot>, onPlay: (Spot) -> Unit, onBack: () -> Unit) {
                         }
                     }
                     // Once answered: what that family of rules is.
+                    // Once answered, it is taught: the rule at work in the word by its name, and what the rule is.
                     if (picked != null) {
-                        val name = spot.family.named()
-                        Text(
-                            (if (arabic) name.arabic else name.latin) + " · " + stringResource(name.note), Modifier.testTag("spot-note"),
-                            style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
-                        )
+                        val family = spot.family.named()
+                        val rule = spot.rule?.named()
+                        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(colors.surfaceContainerLow).padding(14.dp).testTag("spot-note"), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(if (rule != null) (if (arabic) rule.arabic else rule.latin) else (if (arabic) family.arabic else family.latin), style = MaterialTheme.typography.titleSmall, color = tajweed.ink(spot.family))
+                            Text(stringResource(rule?.meaning ?: family.note), style = MaterialTheme.typography.bodyMedium, color = colors.onSurface)
+                        }
                     }
                 }
             }

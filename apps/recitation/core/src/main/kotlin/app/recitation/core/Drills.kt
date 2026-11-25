@@ -67,6 +67,17 @@ object Drills {
         else -> Expected.breath(verse, 0, verse.size).awaited.any { topicOf(it) == topic }
     }
 
+    /**
+     * The words of [verse], counted from 0, where [topic] shows when the verse is recited in
+     * one breath (for letters: one of [letters]; for a stop: its last word): the words to
+     * point at, or to play, to show what the topic sounds like.
+     */
+    fun places(verse: List<WordForms>, topic: Topic, letters: String = ""): List<Int> = when (topic) {
+        Topic.STOP -> listOf(verse.size - 1)
+        Topic.LETTERS -> verse.indices.filter { w -> verse[w].inside.script.any { it in letters } }
+        else -> Expected.breath(verse, 0, verse.size).awaited.filter { topicOf(it) == topic }.map { it.word }.distinct()
+    }
+
     private fun topicOf(awaited: Awaited): Topic? = when (awaited.kind) {
         Listened.MADD -> topicOf(awaited.madd)
         Listened.QALQALAH -> Topic.QALQALAH

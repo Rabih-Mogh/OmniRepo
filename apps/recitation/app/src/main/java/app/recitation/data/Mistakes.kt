@@ -16,9 +16,12 @@ import java.io.IOException
 /**
  * What the reader has been corrected on: how often each topic came up ([counts]), and
  * the verses in which one did and hasn't been put right since ([open], the latest first),
- * each as the go of an exercise that practises it.
+ * each as the go of an exercise that practises it. And the lessons learned ([learned]).
  */
-class Tally(val counts: Map<Topic, Int> = emptyMap(), val open: List<Drill> = emptyList()) {
+class Tally(val counts: Map<Topic, Int> = emptyMap(), val open: List<Drill> = emptyList(), val learned: Set<String> = emptySet()) {
+    /** Whether the lesson on [topic] (for letters, on the pair [letters]) has been learned: an exercise on it was done and went well. */
+    fun learned(topic: Topic, letters: String = ""): Boolean = Mistakes.key(topic, letters) in learned
+
     /** The topics corrected most often, the most first: where the reader is weakest. */
     val weakest: List<Pair<Topic, Int>> get() = counts.entries.filter { it.value > 0 }.sortedByDescending { it.value }.map { it.key to it.value }
 }
@@ -49,7 +52,16 @@ class Mistakes(private val file: File) {
         // Recited again: what was to go over in it stands only if it still is.
         val open = (missed + now.open.filter { it.surah != surah || it.verse != verse }).take(KEPT)
         if (missed.isEmpty() && open.size == now.open.size) return
-        _tally.value = Tally(counts, open)
+        _tally.value = Tally(counts, open, now.learned)
+        save()
+    }
+
+    /** Notes that the lesson on [topic] (with its [letters]) has been learned. */
+    @Synchronized
+    fun learned(topic: Topic, letters: String = "") {
+        val now = _tally.value
+        if (now.learned(topic, letters)) return
+        _tally.value = Tally(now.counts, now.open, now.learned + key(topic, letters))
         save()
     }
 
@@ -62,6 +74,7 @@ class Mistakes(private val file: File) {
             List(open.length()) { open.getJSONObject(it) }.mapNotNull { o ->
                 Topic.entries.firstOrNull { it.name == o.getString("topic") }?.let { Drill(o.getInt("surah"), o.getInt("verse"), it, o.optString("letters")) }
             },
+            json.optJSONArray("learned")?.let { all -> List(all.length()) { all.getString(it) }.toSet() }.orEmpty(),
         )
     } catch (_: Exception) {
         // One that can't be read: start afresh, but not by writing over it.
@@ -73,6 +86,7 @@ class Mistakes(private val file: File) {
         val now = _tally.value
         val json = JSONObject()
             .put("counts", JSONObject().apply { for ((topic, count) in now.counts) put(topic.name, count) })
+            .put("learned", JSONArray().apply { for (key in now.learned) put(key) })
             .put("open", JSONArray().apply { for (d in now.open) put(JSONObject().put("surah", d.surah).put("verse", d.verse).put("topic", d.topic.name).put("letters", d.letters)) })
         // With the storage full it can't be kept; the next note tries again.
         try {
@@ -82,6 +96,9 @@ class Mistakes(private val file: File) {
     }
 
     companion object {
+        /** A lesson's name in the file: the topic, and for letters the pair. */
+        internal fun key(topic: Topic, letters: String = ""): String = if (letters.isEmpty()) topic.name else "${topic.name}:$letters"
+
         /** How many verses to go over are kept: the latest. */
         private const val KEPT = 40
 

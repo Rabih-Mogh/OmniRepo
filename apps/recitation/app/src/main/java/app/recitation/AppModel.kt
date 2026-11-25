@@ -23,8 +23,10 @@ import app.recitation.core.TajweedReference
 import app.recitation.core.Topic
 import app.recitation.core.WordForms
 import app.recitation.data.Echo
+import app.recitation.data.Hear
 import app.recitation.data.Mistakes
 import app.recitation.data.Spot
+import app.recitation.data.Voice
 import kotlin.random.Random
 import app.recitation.data.Hit
 import app.recitation.data.IndoPakFont
@@ -80,6 +82,9 @@ sealed interface Screen {
      * on in each verse.
      */
     data class Drills(val topic: Topic?, val letters: String, val drills: List<Drill>) : Screen
+
+    /** The lesson on [topic] (for letters, on the pair [letters]), with words of the reader's recordings to hear it in. */
+    data class Lesson(val topic: Topic, val letters: String, val hears: List<Hear>) : Screen
 
     /** Counting a madd as it is held. */
     data object Madd : Screen
@@ -284,12 +289,110 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         getApplication<Application>().assets.open("tajweed_reference.bin").use { TajweedReference.surahs(it, EXERCISE_SURAHS) }
     }.also { pool = it }
 
-    /** Opens a drill on [topic] (for letters, on the pair [letters]): verses that have it, chosen afresh each time. */
+    /**
+     * Opens a drill on [topic] (for letters, on the pair [letters]): verses that have it,
+     * chosen afresh each time. Verses of surahs whose recitation is on the phone come
+     * first, so that the reciter can be heard saying each.
+     */
     fun openDrill(topic: Topic, letters: String = "") {
         viewModelScope.launch {
-            val drills = withContext(Dispatchers.Default) { runCatching { Drills.pick(pool(), topic, GOES, Random(System.nanoTime()), letters) }.getOrDefault(emptyList()) }
+            val voiced = library.playlists.value.flatMap { it.tracks }.filter { it.ready }.map { it.surah }.toSet()
+            val drills = withContext(Dispatchers.Default) {
+                runCatching { Drills.pick(pool(), topic, Int.MAX_VALUE, Random(System.nanoTime()), letters) }.getOrDefault(emptyList())
+                    .sortedBy { it.surah !in voiced }.take(GOES)
+            }
             screen = Screen.Drills(topic, letters, drills)
         }
+    }
+
+    // The timings of the recordings a voice was last taken from: read once, not for every verse.
+    private val placed = LinkedHashMap<String, Timings>()
+
+    private fun placed(track: Track): Timings? = synchronized(placed) { placed[track.id] }
+        ?: runCatching { Timings.decode(library.timings(track.id, track.surah).readText()) }.getOrNull()?.also {
+            synchronized(placed) {
+                placed[track.id] = it
+                if (placed.size > TIMINGS_KEPT) placed.remove(placed.keys.first())
+            }
+        }
+
+    /**
+     * How the reciter of a recording on the phone says [drill]'s verse, and within it the
+     * words that show what the drill is about: the teaching is in a reciter's own voice
+     * wherever there is one. Null where no recording has that verse's words placed.
+     */
+    suspend fun voiceOf(drill: Drill): Voice? = withContext(Dispatchers.IO) {
+        runCatching {
+            for (track in library.playlists.value.flatMap { it.tracks }.filter { it.surah == drill.surah && it.canPlay }) {
+                val sound = library.audio(track.id) ?: continue
+                val timings = placed(track) ?: continue
+                val times = timings.verses.getOrNull(drill.verse - 1)?.takeIf { it.isNotEmpty() } ?: continue
+                val from = times.first().startMs
+                val until = timings.startOfVerse(drill.verse)?.takeIf { it > from } ?: (times.last().startMs + 3_000)
+                // Still being listened to: only a verse the listening has passed is whole.
+                if (!timings.complete && until > timings.heardMs) continue
+                val verse = (pool()[drill.surah] ?: getApplication<Application>().assets.open("tajweed_reference.bin").use { TajweedReference.surah(it, drill.surah) }).getOrNull(drill.verse - 1)
+                // The word the drill is about, where the reference and the recording count the verse's words alike.
+                val at = verse?.takeIf { it.size == times.size }?.let { if (drill.topic == Topic.STOP) drill.stopAfter.takeIf { w -> w in times.indices } else Drills.places(it, drill.topic, drill.letters).firstOrNull() }
+                val first = at?.let { if (drill.topic == Topic.STOP) maxOf(0, it - 1) else it }
+                return@runCatching Voice(
+                    sound, maxOf(0, from - 200), until,
+                    first?.let { maxOf(0, times[it].startMs - 150) } ?: -1,
+                    first?.let { times.getOrNull(it + 2)?.startMs ?: until } ?: -1,
+                )
+            }
+            null
+        }.getOrNull()
+    }
+
+    /** Words of a recording on the phone that show [topic], for hearing it there and then; null if there are none. */
+    suspend fun hearOf(topic: Topic): Hear? = withContext(Dispatchers.IO) { runCatching { hears(topic, "", 1).firstOrNull() }.getOrNull() }
+
+    /** Opens the lesson on [topic] (for letters, on the pair [letters]): it is taught before it is practised. */
+    fun openLesson(topic: Topic, letters: String = "") {
+        screen = Screen.Lesson(topic, letters, emptyList())
+        // The words to hear it in are looked for meanwhile, and added when they are found.
+        viewModelScope.launch {
+            val hears = withContext(Dispatchers.IO) { runCatching { hears(topic, letters, HEARS) }.getOrDefault(emptyList()) }
+            (screen as? Screen.Lesson)?.takeIf { it.topic == topic && it.letters == letters }?.let { screen = it.copy(hears = hears) }
+        }
+    }
+
+    /**
+     * Words that show [topic], from the recordings that have been listened to the end: the
+     * word the rule is in and the one after it, since most rules lie between two words,
+     * with where they are in the recording. A few, each from another verse.
+     */
+    private suspend fun hears(topic: Topic, letters: String, count: Int): List<Hear> {
+        val random = Random(System.nanoTime())
+        val found = ArrayList<Hear>()
+        // The short surahs first: their verses are the ones the exercises are made of.
+        val tracks = library.playlists.value.flatMap { it.tracks }.filter { it.ready }.shuffled(random).sortedBy { it.surah !in EXERCISE_SURAHS }
+        for (track in tracks.take(HEARS_FROM)) {
+            if (found.size >= count) break
+            val sound = library.audio(track.id) ?: continue
+            val timings = placed(track)?.takeIf { it.complete } ?: continue
+            if (!quran.has(track.surah)) continue
+            val verses = runCatching { quran.surah(track.surah) }.getOrNull() ?: continue
+            val forms = pool()[track.surah] ?: getApplication<Application>().assets.open("tajweed_reference.bin").use { TajweedReference.surah(it, track.surah) }
+            var fromThis = 0
+            for (v in verses.indices.shuffled(random)) {
+                // No more than two from one recording, so that more than one surah is heard.
+                if (found.size >= count || fromThis >= 2) break
+                val words = verses[v].words
+                val times = timings.verses.getOrNull(v) ?: continue
+                val verse = forms.getOrNull(v) ?: continue
+                // Only where the three count the verse's words alike: then a word is the same word in each.
+                if (verse.size != words.size || times.size != words.size || words.size > LONGEST_TO_LOOK_IN) continue
+                val at = Drills.places(verse, topic, letters).shuffled(random).firstOrNull() ?: continue
+                val first = if (topic == Topic.STOP) maxOf(0, at - 1) else at
+                val last = minOf(words.lastIndex, first + 1)
+                val until = times.getOrNull(last + 1)?.startMs ?: timings.startOfVerse(v + 1) ?: (times[last].startMs + 2_500)
+                found += Hear((first..last).joinToString(" ") { words[it].arabic }, sound, maxOf(0, times[first].startMs - 150), minOf(until, times[first].startMs + LONGEST_HEAR_MS))
+                fromThis++
+            }
+        }
+        return found
     }
 
     /** Opens the verses the reader was last corrected in, each to be recited again for what was corrected. */
@@ -340,6 +443,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
                         surah, v + 1, word.arabic, family,
                         (Family.entries - family - Family.QUIET).shuffled(random).take(3).plus(family).shuffled(random),
                         sound.takeIf { times != null }, from, times?.getOrNull(w + 1)?.startMs?.takeIf { it > from } ?: (from + 1_500),
+                        marks[w].firstOrNull { it.rule.family == family }?.rule,
                     )
                 }
                 w++
@@ -481,7 +585,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
             is Screen.Collection -> Screen.Home
             is Screen.Surah -> s.from
             is Screen.Recite -> s.from
-            is Screen.Drills, Screen.Madd, is Screen.Spots, is Screen.Echoes -> Screen.Home
+            is Screen.Drills, is Screen.Lesson, Screen.Madd, is Screen.Spots, is Screen.Echoes -> Screen.Home
             is Screen.Voice -> Screen.Home
         }
         return true
@@ -662,6 +766,15 @@ private val EXERCISE_SURAHS = (78..114).toSet() + 1
 /** How many verses an exercise is made of, and how many an echoing. */
 private const val GOES = 8
 private const val ECHOES = 6
+
+/** How many stretches of the reader's recordings a lesson offers to hear, out of how many recordings at most, in verses no longer than so many words, and none longer than this. */
+private const val HEARS = 5
+private const val HEARS_FROM = 12
+
+/** How many recordings' timings are kept at hand for taking a reciter's voice from. */
+private const val TIMINGS_KEPT = 6
+private const val LONGEST_TO_LOOK_IN = 40
+private const val LONGEST_HEAR_MS = 8_000
 
 /** How long the work has had nothing to do before more is looked for, in ms: a run that is only between two things isn't disturbed. */
 private const val IDLE_BEFORE_MORE_MS = 4_000L

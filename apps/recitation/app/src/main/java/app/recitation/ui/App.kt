@@ -243,7 +243,7 @@ private fun Screens(model: AppModel, choices: Choices) {
                     Exercise.entries.associateWith { Settings.voiceBest(context, it.name) },
                     onRecite = { choosing = true }, onExercise = { model.openExercise(it.ordinal) }, modifier = modifier,
                     tally = mistakes, canEcho = tracks.any { it.ready },
-                    onDrill = model::openDrill, onWeak = model::openWeak, onMadd = model::openMadd, onSpot = model::openSpot, onEcho = model::openEcho,
+                    onLesson = model::openLesson, onWeak = model::openWeak, onMadd = model::openMadd, onSpot = model::openSpot, onEcho = model::openEcho,
                 )
                 if (choosing) SurahPicker(onPick = { choosing = false; model.openRecite(VerseRef(it, 1)) }, onDismiss = { choosing = false })
             },
@@ -317,18 +317,35 @@ private fun Screens(model: AppModel, choices: Choices) {
             onWant = { pressed -> model.wantTajweed(); if (pressed && model.paused) model.resume() }, onBack = { model.back() },
         )
         is Screen.Voice -> ExerciseScreen(Exercise.entries[screen.exercise], onBack = { model.back() })
-        is Screen.Drills -> DrillScreen(
-            title = when (screen.topic) {
-                null -> stringResource(R.string.practice_weak_title)
-                Topic.LETTERS -> stringResource(R.string.practice_pairs_title)
-                Topic.STOP -> stringResource(R.string.practice_stops_title)
-                else -> screen.topic.named()
-            },
-            drills = screen.drills, verseOf = { model.verse(it) },
-            fetching = progress?.takeIf { it.trackId == null && (it.step == Step.TAJWEED || it.step == Step.ENGINE) }?.fraction,
-            onWant = { pressed -> model.wantTajweed(); if (pressed && model.paused) model.resume() }, onBack = { model.back() },
-        )
-        Screen.Madd -> MaddScreen(onBack = { model.back() })
+        is Screen.Drills -> {
+            // The reciter is heard a verse at a time here: the recitation that was playing is paused for it.
+            LaunchedEffect(Unit) { playback.controller?.pause() }
+            DrillScreen(
+                title = when (screen.topic) {
+                    null -> stringResource(R.string.practice_weak_title)
+                    Topic.LETTERS -> stringResource(R.string.practice_pairs_title)
+                    Topic.STOP -> stringResource(R.string.practice_stops_title)
+                    else -> screen.topic.named()
+                },
+                drills = screen.drills, verseOf = { model.verse(it) },
+                fetching = progress?.takeIf { it.trackId == null && (it.step == Step.TAJWEED || it.step == Step.ENGINE) }?.fraction,
+                onWant = { pressed -> model.wantTajweed(); if (pressed && model.paused) model.resume() }, onBack = { model.back() },
+                // A lesson is learned once its exercise goes well: three goes in four sound.
+                onDone = { sound, of -> screen.topic?.let { if (sound * 4 >= of * 3) model.mistakes.learned(it, screen.letters) } },
+                voiceOf = model::voiceOf,
+            )
+        }
+        is Screen.Lesson -> {
+            LaunchedEffect(Unit) { playback.controller?.pause() }
+            LessonScreen(
+                screen.topic, screen.letters, screen.hears, learned = mistakes.learned(screen.topic, screen.letters),
+                onPractise = { model.openDrill(screen.topic, screen.letters) }, onBack = { model.back() },
+            )
+        }
+        Screen.Madd -> {
+            LaunchedEffect(Unit) { playback.controller?.pause() }
+            MaddScreen(onBack = { model.back() }, hearOf = model::hearOf)
+        }
         is Screen.Spots -> {
             // The words are played apart from the recitation, which is paused for them.
             LaunchedEffect(Unit) { playback.controller?.pause() }

@@ -76,6 +76,9 @@ import app.recitation.core.Phonemizer
 import app.recitation.core.Timings
 import app.recitation.core.SURAHS
 import app.recitation.core.WordTiming
+import app.recitation.data.Hear
+import app.recitation.ui.LessonContent
+import app.recitation.ui.lessonOf
 import app.recitation.core.Drill
 import app.recitation.core.Drills
 import app.recitation.core.Family
@@ -407,22 +410,26 @@ class ScreensTest {
     fun thePractiseTabOffersTheTajweedExercises() {
         var drilled: Pair<Topic, String>? = null
         var started = ""
-        val tally = Tally(mapOf(Topic.IKHFA to 5, Topic.MADD_MUTTASIL to 3, Topic.LETTERS to 1), listOf(Drill(78, 2, Topic.IKHFA), Drill(1, 6, Topic.LETTERS, "صس")))
+        val tally = Tally(
+            mapOf(Topic.IKHFA to 5, Topic.MADD_MUTTASIL to 3, Topic.LETTERS to 1), listOf(Drill(78, 2, Topic.IKHFA), Drill(1, 6, Topic.LETTERS, "صس")),
+            learned = setOf("GHUNNAH", "QALQALAH", "LETTERS:قك"),
+        )
         show("en-day-practise-tajweed") {
             HomeContent(
                 4, {}, emptyList(), null, StatusActions(), recited = setOf(1), onSurah = {}, onOpen = {}, onAdd = {},
                 practice = { modifier ->
                     PracticeTab(
                         emptyMap(), onRecite = {}, onExercise = {}, modifier = modifier, tally = tally, canEcho = true,
-                        onDrill = { topic, letters -> drilled = topic to letters }, onWeak = { started = "weak" }, onMadd = { started = "madd" },
+                        onLesson = { topic, letters -> drilled = topic to letters }, onWeak = { started = "weak" }, onMadd = { started = "madd" },
                         onSpot = { started = "spot" }, onEcho = { started = "echo" },
                     )
                 },
             )
         }
-        // A drill for each rule, by the rule's own name with the dot of its colour; and one for each pair of letters.
-        compose.onNodeWithTag("drill-IKHFA").assertIsDisplayed()
-        compose.onNodeWithTag("drill-QALQALAH").performClick()
+        // A lesson for each rule, by the rule's own name with the dot of its colour, ticked once it is learned; and one for each pair of letters.
+        compose.onNodeWithTag("lesson-IKHFA").assertIsDisplayed()
+        compose.onNodeWithText("2 of 10 learned").assertIsDisplayed()
+        compose.onNodeWithTag("lesson-QALQALAH").performClick()
         assertEquals(Topic.QALQALAH to "", drilled)
         compose.onNodeWithTag("pair-قك").performScrollTo().performClick()
         assertEquals(Topic.LETTERS to "قك", drilled)
@@ -435,6 +442,104 @@ class ScreensTest {
             compose.onNodeWithTag("$go-go").performScrollTo().performClick()
             assertEquals(go, started)
         }
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h1300dp-420dpi")
+    fun aRuleIsTaughtBeforeItIsPractised() {
+        var heard: Hear? = null
+        var practise = false
+        val hears = listOf(Hear("مِن قَبْلِ", File("a.m4a"), 12_000, 14_000), Hear("أَنتُمْ", File("a.m4a"), 40_000, 41_500))
+        show("en-day-lesson") { LessonContent(Topic.IKHFA, "", hears, learned = true, onHear = { heard = it }, onPractise = { practise = true }, onBack = {}) }
+        // The reciter's voice comes first, before anything is said about the rule.
+        val hearAt = compose.onAllNodesWithTag("lesson-hear").onFirst().fetchSemanticsNode().boundsInRoot.top
+        assertTrue(hearAt < compose.onNodeWithText("When").fetchSemanticsNode().boundsInRoot.top)
+        // Then when it comes, how it is said, and the slip most often made.
+        compose.onNodeWithText("fifteen letters", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("When").assertIsDisplayed()
+        compose.onNodeWithText("shape the mouth for the letter that follows", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("The common slip").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Learned").assertIsDisplayed()
+        // Words from the reader's own recordings that show it, each played at a tap.
+        compose.onAllNodesWithTag("lesson-hear").onFirst().performScrollTo().performClick()
+        assertEquals(12_000, heard?.fromMs)
+        compose.onNodeWithTag("lesson-practise").performClick()
+        assertTrue(practise)
+    }
+
+    @Test
+    @Config(qualifiers = "ar-w411dp-h1300dp-night-420dpi")
+    fun aLessonByNightInArabic() {
+        show("ar-night-lesson") { LessonContent(Topic.MADD_LAZIM, "", emptyList(), learned = false, onHear = {}, onPractise = {}, onBack = {}) }
+        compose.onNodeWithText("ستّ حركات دائماً", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h1300dp-420dpi")
+    fun twoLettersMadeCloseTogetherAreTaughtSideBySide() {
+        show("en-day-lesson-pair") { LessonContent(Topic.LETTERS, "قك", emptyList(), learned = false, onHear = {}, onPractise = {}, onBack = {}) }
+        // Where each is made, and how they differ.
+        compose.onNodeWithText("ق is the deepest part of the tongue", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("ك is the back of the tongue", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("How they differ").assertIsDisplayed()
+    }
+
+    @Test
+    fun everyTopicHasALesson() {
+        for (topic in Topic.entries) {
+            if (topic == Topic.LETTERS) for (pair in Drills.PAIRS) assertTrue(lessonOf(topic, pair).examples.isNotEmpty()) else assertTrue(lessonOf(topic).examples.isNotEmpty())
+        }
+        // The seven pairs have seven lessons, no two the same.
+        assertEquals(7, Drills.PAIRS.map { lessonOf(Topic.LETTERS, it).how }.toSet().size)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aVerseCanBeHeardFromTheReciterBeforeItIsRecited() {
+        var heard = 0
+        show("en-day-drill-hear") {
+            ReciteContent(
+                app.recitation.core.SURAHS[0], 2, fatihah[1], Reciting.Idle, needsModel = false, onMic = {}, onFetch = {}, onPrevious = {}, onNext = {}, onBack = {},
+                title = "Ghunnah of a doubled n or m", how = "Recite this verse. Only Ghunnah of a doubled n or m is judged.", onHear = { heard++ },
+            )
+        }
+        compose.onNodeWithText("Hear the reciter").performClick()
+        assertEquals(1, heard)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun whereNoRecordingHasTheVerseThereIsNothingToHear() {
+        compose.setContent {
+            RecitationTheme {
+                ReciteContent(app.recitation.core.SURAHS[0], 2, fatihah[1], Reciting.Idle, needsModel = false, onMic = {}, onFetch = {}, onPrevious = {}, onNext = {}, onBack = {})
+            }
+        }
+        compose.onNodeWithTag("hear-reciter").assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theRecitersMaddsCanBeHeardFromTheTableOfTheirLengths() {
+        var asked: Topic? = null
+        show("en-day-madd-hear") {
+            MaddContent(4, 0.5f, listening = false, seconds = 0f, holds = emptyList(), problem = null, onTarget = {}, onPace = {}, onToggle = {}, onBack = {}, onHearMadd = { asked = it })
+        }
+        compose.onNodeWithTag("madd-row-MADD_LAZIM").performClick()
+        assertEquals(Topic.MADD_LAZIM, asked)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aGoThatWasNotSoundIsTaughtAgainThereAndThen() {
+        val drill = Drill(1, 2, Topic.QALQALAH)
+        var heard = 0
+        show("en-day-drill-taught") { Column(Modifier.padding(16.dp)) { DrillVerdict(drill, sound = false, onHear = { heard++ }) } }
+        compose.onNodeWithText("To go over: Qalqalah").assertIsDisplayed()
+        compose.onNodeWithText("It is not a vowel", substring = true).assertIsDisplayed()
+        // And in the reciter's voice: the words it was about, as he says them.
+        compose.onNodeWithText("Hear how the reciter says it").performClick()
+        assertEquals(1, heard)
     }
 
     @Test
@@ -508,7 +613,7 @@ class ScreensTest {
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun theRuleInAWordIsSpottedAmongFour() {
         val spots = listOf(
-            Spot(2, 8, ruled[1].words[4].arabic, Family.MADD_TABII, listOf(Family.NASAL, Family.MADD_TABII, Family.ECHO, Family.HEAVY)),
+            Spot(2, 8, ruled[1].words[4].arabic, Family.MADD_TABII, listOf(Family.NASAL, Family.MADD_TABII, Family.ECHO, Family.HEAVY), rule = app.recitation.core.Rule.MADD_TABII),
             Spot(1, 2, fatihah[1].words[2].arabic, Family.HEAVY, listOf(Family.HEAVY, Family.NASAL, Family.ECHO, Family.MADD_WAJIB)),
         )
         show("en-day-spot") { SpotContent(spots, onPlay = {}, onBack = {}) }
@@ -518,6 +623,8 @@ class ScreensTest {
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("build/screens/en-day-spot-answered.png")
         compose.onNodeWithTag("spot-note", useUnmergedTree = true).assertIsDisplayed()
+        // It is taught: the rule by its name, and what the rule is.
+        compose.onAllNodesWithText("Madd tabi‘i", useUnmergedTree = true).assertCountEquals(2)
         compose.onNodeWithTag("spot-next").performClick()
         compose.onNodeWithTag("spot-HEAVY").performClick()
         compose.onNodeWithTag("spot-next").performClick()

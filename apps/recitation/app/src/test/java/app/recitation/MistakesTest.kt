@@ -54,6 +54,20 @@ class MistakesTest {
     }
 
     @Test
+    fun aLessonLearnedStaysLearned() {
+        val mistakes = Mistakes(file())
+        mistakes.learned(Topic.IKHFA)
+        mistakes.learned(Topic.LETTERS, "صس")
+        mistakes.note(78, 2, listOf(word(1, ghunnah)))
+        val again = Mistakes(file()).tally.value
+        assertEquals(true, again.learned(Topic.IKHFA))
+        assertEquals(true, again.learned(Topic.LETTERS, "صس"))
+        // Another pair of letters is another lesson.
+        assertEquals(false, again.learned(Topic.LETTERS, "قك"))
+        assertEquals(false, again.learned(Topic.GHUNNAH))
+    }
+
+    @Test
     fun itIsStillThereNextTime() {
         Mistakes(file()).note(78, 2, listOf(word(1, ghunnah)))
         val again = Mistakes(file()).tally.value

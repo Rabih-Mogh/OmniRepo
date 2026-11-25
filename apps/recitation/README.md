@@ -453,7 +453,46 @@ What to expect of it, and what not:
   ten mispronunciations, and the best-known recitation app checks words and vowels but
   not tajweed.
 
-### Tajweed exercises
+### Tajweed lessons and exercises
+
+**The app teaches before it tests.** The Practise tab opens on the lessons: the ten rules
+in the order a learner meets them, each by its own name with the dot of its colour, and
+a tick on the ones learned. A lesson (`ui/Lessons.kt`) says when the rule comes (the
+letters that bring it about), how it is said (where the tongue and lips are, what goes
+through the nose, how many counts), and the slip most often made with it; shows words of
+the Quran that have it; and plays words from the reader's own recordings that have it,
+at a tap, so it is heard as a reciter does it. Only then comes **Practise it**, which
+opens the rule's exercise. A lesson counts as learned once its exercise goes well: three
+verses in four sound for the rule. A pair of letters has a lesson too (the two letters,
+where each is made, and how they differ), and so has stopping on a word.
+
+**It is taught in the voice of the reciter on the phone.** Wherever a recording that has
+been listened to has the words, they are played from it, a stretch at a time, apart from
+the player the recitations go through (which is paused meanwhile):
+
+- A lesson opens on the reciter: up to five stretches of the reader's recordings that
+  show the rule (the word it is in and the one after, since most rules lie between two
+  words), from more than one surah, the short surahs first. The first is played as the
+  lesson opens; each of the others at a tap. What the rule is comes after it has been heard.
+- In an exercise, **Hear the reciter** plays the verse before it is recited, and after a
+  verse that wasn't sound for its rule, **Hear how the reciter says it** plays the words
+  the rule is in. The verses of an exercise are chosen from surahs that have a recording
+  first, so there is a voice for as many of them as can be.
+- Over the counting of a madd, each kind of madd in the table can be heard held by the reciter.
+
+Where no recording has the words (none has been listened to yet, or not that surah), the
+lesson and the exercise are as they are without the voice.
+
+The teaching goes on inside the exercises. A verse that wasn't sound for its rule has how
+the rule is said under its verdict, there and then. Spotting the rule names the rule at
+work in the word once it is answered and says what that rule is. Counting a madd has the
+length of every madd set out above the counting.
+
+What is taught is the ordinary teaching for the reading of Hafs from Asim, as the primers
+set it out (Tuhfat al-Atfal for the nun, the mim and the madds; al-Muqaddimah
+al-Jazariyyah for where the letters are made). The lessons' wording is the app's own, in
+English and in Arabic, and has not been read over by a teacher of tajweed: it should be
+before it is relied on.
 
 The Practise tab has seven exercises on top of reciting a verse. Four of them are verses
 to recite one after another, each judged for one thing alone: the verse is heard and
@@ -463,7 +502,7 @@ were sound for it. The verses come from Al-Fatihah and the last part of the Qura
 (surahs 78 to 114), three to ten words long, chosen afresh each time
 (`core/Drills.kt`): they are the ones most widely known by heart, and a breath or two each.
 
-- **Tajweed drills.** One rule: the ghunnah of a doubled nun or mim, ikhfa, iqlab,
+- **A rule's exercise**, reached from its lesson. One rule: the ghunnah of a doubled nun or mim, ikhfa, iqlab,
   idgham, qalqalah, or a madd (natural, munfasil, muttasil, lazim, or the one that comes
   of stopping). A verse is offered for a rule only if the rule is listened for in it.
 - **Your weak spots.** Whatever is corrected when the reader recites, anywhere in the

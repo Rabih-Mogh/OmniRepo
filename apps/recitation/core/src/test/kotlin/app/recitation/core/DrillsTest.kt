@@ -38,6 +38,16 @@ class DrillsTest {
     }
 
     @Test
+    fun `the words a topic shows in are the ones to point at`() {
+        // 1:7 ends on «ٱلضَّآلِّينَ», whose madd is the six-count one; 1:6 has a ص in its second word.
+        val last = verses.getValue("1:7")
+        assertEquals(listOf(last.size - 1), Drills.places(last, Topic.MADD_LAZIM))
+        assertEquals(listOf(1), Drills.places(verses.getValue("1:6"), Topic.LETTERS, "صس").take(1))
+        assertEquals(listOf(last.size - 1), Drills.places(last, Topic.STOP))
+        assertEquals(emptyList(), Drills.places(verses.getValue("1:2"), Topic.IQLAB))
+    }
+
+    @Test
     fun `a recitation is judged for the drill's topic alone`() {
         val drill = Drill(67, 2, Topic.GHUNNAH)
         val short = Correction(Fault.GHUNNAH_SHORT, clear = false, wanted = "ن")

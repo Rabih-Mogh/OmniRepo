@@ -117,7 +117,7 @@ fun PracticeTab(
     modifier: Modifier = Modifier,
     tally: Tally = Tally(),
     canEcho: Boolean = false,
-    onDrill: (Topic, String) -> Unit = { _, _ -> },
+    onLesson: (Topic, String) -> Unit = { _, _ -> },
     onWeak: () -> Unit = {},
     onMadd: () -> Unit = {},
     onSpot: () -> Unit = {},
@@ -136,7 +136,7 @@ fun PracticeTab(
                 ThemeButton(stringResource(R.string.practice_recite_go), onRecite, Modifier.fillMaxWidth(), icon = AppIcons.Mic, filled = true)
             }
         }
-        TajweedExercises(tally, canEcho, onDrill, onWeak, onMadd, onSpot, onEcho)
+        TajweedExercises(tally, canEcho, onLesson, onWeak, onMadd, onSpot, onEcho)
         Card(colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLow)) {
             Column(Modifier.padding(vertical = 16.dp)) {
                 Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
