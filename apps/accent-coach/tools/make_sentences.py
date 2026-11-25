@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Builds app/src/main/assets/sentences.json from tools/sentences.txt.
+"""Builds app/src/main/assets/sentences.json from tools/sentences.txt, and
+app/src/main/assets/lessons.json from tools/lessons.txt.
 
 Every word gets its native General American phonemes from espeak-ng (en-us), spelt
 in the recogniser's own symbols (app/src/main/assets/vocab.json), so the app compares
@@ -17,6 +18,8 @@ ROOT = Path(__file__).resolve().parent.parent
 VOCAB = ROOT / "app/src/main/assets/vocab.json"
 SOURCE = ROOT / "tools/sentences.txt"
 OUT = ROOT / "app/src/main/assets/sentences.json"
+LESSONS_SOURCE = ROOT / "tools/lessons.txt"
+LESSONS_OUT = ROOT / "app/src/main/assets/lessons.json"
 
 MARKS = set("ˈˌ.-_' ")
 # Must match Phonemes.SPLIT in core: compound symbols compared as their parts.
@@ -90,6 +93,46 @@ def phonemize(sentence, vocab, max_len):
     return result
 
 
+def read_lessons(vocab, max_len):
+    """The sound lessons, each word of their drills with its native phonemes.
+
+    A word must have its lesson's sound, and the two words of a pair must differ in one
+    sound only, the first of them having the lesson's: the app judges just those sounds.
+    """
+    def word(text):
+        return {"text": text, "phonemes": tokenize(espeak(text), vocab, max_len)}
+
+    lessons, wrong = [], []
+    for line in LESSONS_SOURCE.read_text().splitlines():
+        line = line.strip()
+        if not line or (line.startswith("#") and not line.startswith("## ")):
+            continue
+        if line.startswith("## "):
+            ident, title, sound = (part.strip() for part in line[3:].split("|"))
+            lessons.append({"id": ident, "title": title, "sound": sound, "made": "", "slip": "", "words": [], "pairs": []})
+            continue
+        key, _, value = line.partition(":")
+        lesson, value = lessons[-1], value.strip()
+        if key in ("made", "slip"):
+            lesson[key] = value
+        elif key == "words":
+            lesson["words"] = [word(w.strip()) for w in value.split(",")]
+            wrong += [f"{lesson['id']}: {w['text']} has no {lesson['sound']}: {w['phonemes']}"
+                      for w in lesson["words"] if lesson["sound"] not in w["phonemes"]]
+        elif key == "pairs":
+            for pair in value.split(","):
+                a, b = (word(w.strip()) for w in pair.split("/"))
+                differ = [i for i, (x, y) in enumerate(zip(a["phonemes"], b["phonemes"])) if x != y]
+                if len(a["phonemes"]) != len(b["phonemes"]) or len(differ) != 1 or a["phonemes"][differ[0]] != lesson["sound"]:
+                    wrong.append(f"{lesson['id']}: {a['text']}/{b['text']} isn't a pair for {lesson['sound']}: {a['phonemes']} {b['phonemes']}")
+                lesson["pairs"].append([a, b])
+        else:
+            wrong.append(f"{lesson['id']}: unknown line {line!r}")
+    if wrong:
+        sys.exit("\n".join(wrong))
+    return lessons
+
+
 def main():
     vocab = set(json.loads(VOCAB.read_text()))
     max_len = max(len(v) for v in vocab)
@@ -111,6 +154,10 @@ def main():
         })
     OUT.write_text(json.dumps(sentences, ensure_ascii=False, indent=1) + "\n")
     print(f"wrote {len(sentences)} sentences to {OUT.relative_to(ROOT)}")
+
+    lessons = read_lessons(vocab, max_len)
+    LESSONS_OUT.write_text(json.dumps(lessons, ensure_ascii=False, indent=1) + "\n")
+    print(f"wrote {len(lessons)} lessons to {LESSONS_OUT.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

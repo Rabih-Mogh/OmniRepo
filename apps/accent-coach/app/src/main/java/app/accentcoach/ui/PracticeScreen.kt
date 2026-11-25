@@ -2,6 +2,7 @@ package app.accentcoach.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -38,9 +39,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +60,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import app.accentcoach.Page
 import app.accentcoach.PracticeViewModel
 import app.accentcoach.Stage
 import app.accentcoach.core.Assessment
@@ -73,11 +78,16 @@ fun PracticeScreen(vm: PracticeViewModel) {
         if (ok) vm.startRecording() else askMic.launch(Manifest.permission.RECORD_AUDIO)
     }
 
+    val scroll = rememberScrollState()
+    // A lesson opened from far down the list, or a drill's next word, starts at its top.
+    LaunchedEffect(vm.page, vm.lesson, vm.drill?.at) { scroll.scrollTo(0) }
+    BackHandler(enabled = vm.lesson != null) { vm.back() }
+
     Column(
         Modifier
             .fillMaxSize()
             .safeDrawingPadding()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scroll)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -88,35 +98,58 @@ fun PracticeScreen(vm: PracticeViewModel) {
 
         UpdateDialog()
 
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = vm.focus == null, onClick = { vm.chooseFocus(null) }, label = { Text("All") })
-            vm.focuses.forEach { f ->
-                FilterChip(selected = vm.focus == f, onClick = { vm.chooseFocus(f) }, label = { Text(f) })
+        StreakCard(vm.streak)
+
+        // Inside a lesson or its drill the way out is its own back arrow.
+        if (vm.lesson == null) {
+            TabRow(selectedTabIndex = vm.page.ordinal, containerColor = Color.Transparent) {
+                Tab(selected = vm.page == Page.SENTENCES, onClick = { vm.show(Page.SENTENCES) }, text = { Text("Sentences") })
+                Tab(selected = vm.page == Page.SOUNDS, onClick = { vm.show(Page.SOUNDS) }, text = { Text("Sounds") })
             }
         }
 
-        SentenceCard(vm)
-
-        when (val s = vm.stage) {
-            Stage.Idle -> RecordButton(recording = false, level = 0f, onClick = ::record)
-            Stage.Recording -> {
-                RecordButton(recording = true, level = vm.level, onClick = vm::stopRecording)
-                HeardBox(vm.live, "Listening… tap to stop when you've finished.")
-            }
-            Stage.Analysing -> {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
-                    Spacer(Modifier.width(12.dp))
-                    Text("Comparing your sounds…")
-                }
-                HeardBox(vm.live, null)
-            }
-            is Stage.Done -> Result(vm, s.assessment)
+        when (vm.page) {
+            Page.SENTENCES -> Sentences(vm, ::record)
+            Page.SOUNDS -> Sounds(vm, ::record)
         }
 
         vm.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
         VersionFooter()
+    }
+}
+
+@Composable
+private fun Sentences(vm: PracticeViewModel, record: () -> Unit) {
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(selected = vm.focus == null, onClick = { vm.chooseFocus(null) }, label = { Text("All") })
+        vm.focuses.forEach { f ->
+            FilterChip(selected = vm.focus == f, onClick = { vm.chooseFocus(f) }, label = { Text(f) })
+        }
+    }
+
+    SentenceCard(vm)
+
+    when (val s = vm.stage) {
+        Stage.Idle -> RecordButton(recording = false, level = 0f, onClick = record)
+        Stage.Recording -> {
+            RecordButton(recording = true, level = vm.level, onClick = vm::stopRecording)
+            HeardBox(vm.live, "Listening… tap to stop when you've finished.")
+        }
+        Stage.Analysing -> {
+            Analysing()
+            HeardBox(vm.live, null)
+        }
+        is Stage.Done -> Result(vm, s.assessment)
+    }
+}
+
+@Composable
+internal fun Analysing() {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
+        Spacer(Modifier.width(12.dp))
+        Text("Comparing your sounds…")
     }
 }
 
@@ -161,7 +194,7 @@ private fun SentenceCard(vm: PracticeViewModel) {
 }
 
 @Composable
-private fun RecordButton(recording: Boolean, level: Float, onClick: () -> Unit) {
+internal fun RecordButton(recording: Boolean, level: Float, onClick: () -> Unit, prompt: String = "Tap and read the sentence aloud") {
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(120.dp)) {
             if (recording) {
@@ -189,7 +222,7 @@ private fun RecordButton(recording: Boolean, level: Float, onClick: () -> Unit) 
             }
         }
         Text(
-            if (recording) "Tap to stop" else "Tap and read the sentence aloud",
+            if (recording) "Tap to stop" else prompt,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -198,7 +231,7 @@ private fun RecordButton(recording: Boolean, level: Float, onClick: () -> Unit) 
 
 /** The sounds heard, as IPA, while you speak. */
 @Composable
-private fun HeardBox(heard: List<String>, hint: String?) {
+internal fun HeardBox(heard: List<String>, hint: String?) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         modifier = Modifier.fillMaxWidth(),
@@ -275,7 +308,7 @@ private fun Result(vm: PracticeViewModel, a: Assessment) {
 
 /** A word, its native sounds, and what you said, each sound coloured by how native it was. */
 @Composable
-private fun WordColumn(w: WordResult) {
+internal fun WordColumn(w: WordResult) {
     val wordColor = when {
         w.needsWork -> verdictColor(Verdict.WRONG)
         w.slightlyOff -> verdictColor(Verdict.CLOSE)

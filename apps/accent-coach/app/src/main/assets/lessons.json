@@ -1,0 +1,1717 @@
+[
+ {
+  "id": "th",
+  "title": "TH as in think",
+  "sound": "θ",
+  "made": "Put the tip of your tongue lightly between your teeth, or against the edge of the top ones, and blow. The air keeps flowing over the tongue; nothing stops it. Your voice is off: a hand on your throat feels no buzz.",
+  "slip": "Pressing the tongue on the ridge behind the teeth stops the air and gives \"t\" (tink). Keeping it behind the teeth gives \"s\" (sink). Using the lip gives \"f\" (fink).",
+  "words": [
+   {
+    "text": "think",
+    "phonemes": [
+     "θ",
+     "ɪ",
+     "ŋ",
+     "k"
+    ]
+   },
+   {
+    "text": "thank",
+    "phonemes": [
+     "θ",
+     "æ",
+     "ŋ",
+     "k"
+    ]
+   },
+   {
+    "text": "three",
+    "phonemes": [
+     "θ",
+     "ɹ",
+     "iː"
+    ]
+   },
+   {
+    "text": "thumb",
+    "phonemes": [
+     "θ",
+     "ʌ",
+     "m"
+    ]
+   },
+   {
+    "text": "bath",
+    "phonemes": [
+     "b",
+     "æ",
+     "θ"
+    ]
+   },
+   {
+    "text": "mouth",
+    "phonemes": [
+     "m",
+     "aʊ",
+     "θ"
+    ]
+   }
+  ],
+  "pairs": [
+   [
+    {
+     "text": "think",
+     "phonemes": [
+      "θ",
+      "ɪ",
+      "ŋ",
+      "k"
+     ]
+    },
+    {
+     "text": "sink",
+     "phonemes": [
+      "s",
+      "ɪ",
+      "ŋ",
+      "k"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "thin",
+     "phonemes": [
+      "θ",
+      "ɪ",
+      "n"
+     ]
+    },
+    {
+     "text": "tin",
+     "phonemes": [
+      "t",
+      "ɪ",
+      "n"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "three",
+     "phonemes": [
+      "θ",
+      "ɹ",
+      "iː"
+     ]
+    },
+    {
+     "text": "tree",
+     "phonemes": [
+      "t",
+      "ɹ",
+      "iː"
+     ]
+    }
+   ]
+  ]
+ },
+ {
+  "id": "th-voiced",
+  "title": "TH as in this",
+  "sound": "ð",
+  "made": "The same place as the TH in think: the tip of your tongue between your teeth, air flowing over it. This time your voice is on, so a hand on your throat feels a buzz.",
+  "slip": "Pressing the tongue behind the teeth gives \"d\" (dis). Pulling it back gives \"z\" (zis). It comes in the commonest words (the, this, that, they), so it is worth getting right.",
+  "words": [
+   {
+    "text": "this",
+    "phonemes": [
+     "ð",
+     "ɪ",
+     "s"
+    ]
+   },
+   {
+    "text": "that",
+    "phonemes": [
+     "ð",
+     "æ",
+     "t"
+    ]
+   },
+   {
+    "text": "they",
+    "phonemes": [
+     "ð",
+     "eɪ"
+    ]
+   },
+   {
+    "text": "mother",
+    "phonemes": [
+     "m",
+     "ʌ",
+     "ð",
+     "ə",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "other",
+    "phonemes": [
+     "ʌ",
+     "ð",
+     "ə",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "breathe",
+    "phonemes": [
+     "b",
+     "ɹ",
+     "iː",
+     "ð"
+    ]
+   }
+  ],
+  "pairs": [
+   [
+    {
+     "text": "then",
+     "phonemes": [
+      "ð",
+      "ɛ",
+      "n"
+     ]
+    },
+    {
+     "text": "den",
+     "phonemes": [
+      "d",
+      "ɛ",
+      "n"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "they",
+     "phonemes": [
+      "ð",
+      "eɪ"
+     ]
+    },
+    {
+     "text": "day",
+     "phonemes": [
+      "d",
+      "eɪ"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "breathe",
+     "phonemes": [
+      "b",
+      "ɹ",
+      "iː",
+      "ð"
+     ]
+    },
+    {
+     "text": "breeze",
+     "phonemes": [
+      "b",
+      "ɹ",
+      "iː",
+      "z"
+     ]
+    }
+   ]
+  ]
+ },
+ {
+  "id": "r",
+  "title": "American R",
+  "sound": "ɹ",
+  "made": "Pull your tongue back and up, with its sides against your upper back teeth, and round your lips a little. The tip touches nothing. The sound is held and smooth, and after a vowel (car, more) it is still said.",
+  "slip": "Letting the tip tap or trill against the roof of the mouth, making it in the throat, or leaving it out after a vowel. If the tip touches anything, it isn't the American R.",
+  "words": [
+   {
+    "text": "red",
+    "phonemes": [
+     "ɹ",
+     "ɛ",
+     "d"
+    ]
+   },
+   {
+    "text": "right",
+    "phonemes": [
+     "ɹ",
+     "aɪ",
+     "t"
+    ]
+   },
+   {
+    "text": "sorry",
+    "phonemes": [
+     "s",
+     "ɑː",
+     "ɹ",
+     "i"
+    ]
+   },
+   {
+    "text": "very",
+    "phonemes": [
+     "v",
+     "ɛ",
+     "ɹ",
+     "i"
+    ]
+   },
+   {
+    "text": "car",
+    "phonemes": [
+     "k",
+     "ɑː",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "more",
+    "phonemes": [
+     "m",
+     "ɔː",
+     "ɹ"
+    ]
+   }
+  ],
+  "pairs": [
+   [
+    {
+     "text": "right",
+     "phonemes": [
+      "ɹ",
+      "aɪ",
+      "t"
+     ]
+    },
+    {
+     "text": "light",
+     "phonemes": [
+      "l",
+      "aɪ",
+      "t"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "red",
+     "phonemes": [
+      "ɹ",
+      "ɛ",
+      "d"
+     ]
+    },
+    {
+     "text": "led",
+     "phonemes": [
+      "l",
+      "ɛ",
+      "d"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "pray",
+     "phonemes": [
+      "p",
+      "ɹ",
+      "eɪ"
+     ]
+    },
+    {
+     "text": "play",
+     "phonemes": [
+      "p",
+      "l",
+      "eɪ"
+     ]
+    }
+   ]
+  ]
+ },
+ {
+  "id": "l",
+  "title": "L as in light",
+  "sound": "l",
+  "made": "Press the tip of your tongue on the ridge behind your top teeth and let your voice flow round the sides of the tongue. At the end of a word (feel, full) the back of the tongue also lifts, which makes the L darker; the tip still goes up.",
+  "slip": "Leaving the tip down, so that the L becomes an \"r\" or a \"w\" (feel as \"fee-oo\"), or tapping it so fast it can't be heard.",
+  "words": [
+   {
+    "text": "light",
+    "phonemes": [
+     "l",
+     "aɪ",
+     "t"
+    ]
+   },
+   {
+    "text": "yellow",
+    "phonemes": [
+     "j",
+     "ɛ",
+     "l",
+     "oʊ"
+    ]
+   },
+   {
+    "text": "please",
+    "phonemes": [
+     "p",
+     "l",
+     "iː",
+     "z"
+    ]
+   },
+   {
+    "text": "feel",
+    "phonemes": [
+     "f",
+     "iː",
+     "l"
+    ]
+   },
+   {
+    "text": "full",
+    "phonemes": [
+     "f",
+     "ʊ",
+     "l"
+    ]
+   },
+   {
+    "text": "milk",
+    "phonemes": [
+     "m",
+     "ɪ",
+     "l",
+     "k"
+    ]
+   }
+  ],
+  "pairs": [
+   [
+    {
+     "text": "lake",
+     "phonemes": [
+      "l",
+      "eɪ",
+      "k"
+     ]
+    },
+    {
+     "text": "rake",
+     "phonemes": [
+      "ɹ",
+      "eɪ",
+      "k"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "glass",
+     "phonemes": [
+      "ɡ",
+      "l",
+      "æ",
+      "s"
+     ]
+    },
+    {
+     "text": "grass",
+     "phonemes": [
+      "ɡ",
+      "ɹ",
+      "æ",
+      "s"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "fly",
+     "phonemes": [
+      "f",
+      "l",
+      "aɪ"
+     ]
+    },
+    {
+     "text": "fry",
+     "phonemes": [
+      "f",
+      "ɹ",
+      "aɪ"
+     ]
+    }
+   ]
+  ]
+ },
+ {
+  "id": "v",
+  "title": "V as in very",
+  "sound": "v",
+  "made": "Rest your top teeth on the inside of your bottom lip and buzz, with your voice on. The air squeezes out between teeth and lip.",
+  "slip": "Rounding the lips with no teeth gives \"w\" (wery). Closing both lips gives \"b\" (berry). Leaving the voice off gives \"f\", most often at the end of a word (have as \"haf\").",
+  "words": [
+   {
+    "text": "very",
+    "phonemes": [
+     "v",
+     "ɛ",
+     "ɹ",
+     "i"
+    ]
+   },
+   {
+    "text": "voice",
+    "phonemes": [
+     "v",
+     "ɔɪ",
+     "s"
+    ]
+   },
+   {
+    "text": "visit",
+    "phonemes": [
+     "v",
+     "ɪ",
+     "z",
+     "ɪ",
+     "t"
+    ]
+   },
+   {
+    "text": "seven",
+    "phonemes": [
+     "s",
+     "ɛ",
+     "v",
+     "ə",
+     "n"
+    ]
+   },
+   {
+    "text": "have",
+    "phonemes": [
+     "h",
+     "æ",
+     "v"
+    ]
+   },
+   {
+    "text": "love",
+    "phonemes": [
+     "l",
+     "ʌ",
+     "v"
+    ]
+   }
+  ],
+  "pairs": [
+   [
+    {
+     "text": "vest",
+     "phonemes": [
+      "v",
+      "ɛ",
+      "s",
+      "t"
+     ]
+    },
+    {
+     "text": "west",
+     "phonemes": [
+      "w",
+      "ɛ",
+      "s",
+      "t"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "vine",
+     "phonemes": [
+      "v",
+      "aɪ",
+      "n"
+     ]
+    },
+    {
+     "text": "wine",
+     "phonemes": [
+      "w",
+      "aɪ",
+      "n"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "van",
+     "phonemes": [
+      "v",
+      "æ",
+      "n"
+     ]
+    },
+    {
+     "text": "ban",
+     "phonemes": [
+      "b",
+      "æ",
+      "n"
+     ]
+    }
+   ]
+  ]
+ },
+ {
+  "id": "w",
+  "title": "W as in we",
+  "sound": "w",
+  "made": "Round your lips into a small circle, as for \"oo\", then open them straight into the vowel. Your teeth don't touch your lip at any point.",
+  "slip": "Letting the top teeth touch the bottom lip, which gives \"v\" (vater for water).",
+  "words": [
+   {
+    "text": "we",
+    "phonemes": [
+     "w",
+     "iː"
+    ]
+   },
+   {
+    "text": "water",
+    "phonemes": [
+     "w",
+     "ɔː",
+     "ɾ",
+     "ə",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "window",
+    "phonemes": [
+     "w",
+     "ɪ",
+     "n",
+     "d",
+     "oʊ"
+    ]
+   },
+   {
+    "text": "away",
+    "phonemes": [
+     "ɐ",
+     "w",
+     "eɪ"
+    ]
+   },
+   {
+    "text": "always",
+    "phonemes": [
+     "ɔː",
+     "l",
+     "w",
+     "eɪ",
+     "z"
+    ]
+   },
+   {
+    "text": "twelve",
+    "phonemes": [
+     "t",
+     "w",
+     "ɛ",
+     "l",
+     "v"
+    ]
+   }
+  ],
+  "pairs": [
+   [
+    {
+     "text": "west",
+     "phonemes": [
+      "w",
+      "ɛ",
+      "s",
+      "t"
+     ]
+    },
+    {
+     "text": "vest",
+     "phonemes": [
+      "v",
+      "ɛ",
+      "s",
+      "t"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "wet",
+     "phonemes": [
+      "w",
+      "ɛ",
+      "t"
+     ]
+    },
+    {
+     "text": "vet",
+     "phonemes": [
+      "v",
+      "ɛ",
+      "t"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "wine",
+     "phonemes": [
+      "w",
+      "aɪ",
+      "n"
+     ]
+    },
+    {
+     "text": "vine",
+     "phonemes": [
+      "v",
+      "aɪ",
+      "n"
+     ]
+    }
+   ]
+  ]
+ },
+ {
+  "id": "short-i",
+  "title": "Short i as in sit",
+  "sound": "ɪ",
+  "made": "A short, relaxed vowel. Your tongue is a little lower than for \"ee\", your lips are loose and your jaw drops slightly. It is over quickly.",
+  "slip": "Smiling and tensing, which turns it into the long \"ee\" (sit as \"seat\", ship as \"sheep\").",
+  "words": [
+   {
+    "text": "sit",
+    "phonemes": [
+     "s",
+     "ɪ",
+     "t"
+    ]
+   },
+   {
+    "text": "this",
+    "phonemes": [
+     "ð",
+     "ɪ",
+     "s"
+    ]
+   },
+   {
+    "text": "minute",
+    "phonemes": [
+     "m",
+     "ɪ",
+     "n",
+     "ɪ",
+     "t"
+    ]
+   },
+   {
+    "text": "big",
+    "phonemes": [
+     "b",
+     "ɪ",
+     "ɡ"
+    ]
+   },
+   {
+    "text": "fish",
+    "phonemes": [
+     "f",
+     "ɪ",
+     "ʃ"
+    ]
+   },
+   {
+    "text": "window",
+    "phonemes": [
+     "w",
+     "ɪ",
+     "n",
+     "d",
+     "oʊ"
+    ]
+   }
+  ],
+  "pairs": [
+   [
+    {
+     "text": "sit",
+     "phonemes": [
+      "s",
+      "ɪ",
+      "t"
+     ]
+    },
+    {
+     "text": "seat",
+     "phonemes": [
+      "s",
+      "iː",
+      "t"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "ship",
+     "phonemes": [
+      "ʃ",
+      "ɪ",
+      "p"
+     ]
+    },
+    {
+     "text": "sheep",
+     "phonemes": [
+      "ʃ",
+      "iː",
+      "p"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "fill",
+     "phonemes": [
+      "f",
+      "ɪ",
+      "l"
+     ]
+    },
+    {
+     "text": "feel",
+     "phonemes": [
+      "f",
+      "iː",
+      "l"
+     ]
+    }
+   ]
+  ]
+ },
+ {
+  "id": "long-ee",
+  "title": "Long ee as in seat",
+  "sound": "iː",
+  "made": "Spread your lips as if smiling, with your tongue high and forward and its muscles tense. Hold it longer than the short i.",
+  "slip": "Saying it short and relaxed, which turns it into the short i (seat as \"sit\", leave as \"live\").",
+  "words": [
+   {
+    "text": "see",
+    "phonemes": [
+     "s",
+     "iː"
+    ]
+   },
+   {
+    "text": "green",
+    "phonemes": [
+     "ɡ",
+     "ɹ",
+     "iː",
+     "n"
+    ]
+   },
+   {
+    "text": "leave",
+    "phonemes": [
+     "l",
+     "iː",
+     "v"
+    ]
+   },
+   {
+    "text": "please",
+    "phonemes": [
+     "p",
+     "l",
+     "iː",
+     "z"
+    ]
+   },
+   {
+    "text": "people",
+    "phonemes": [
+     "p",
+     "iː",
+     "p",
+     "ə",
+     "l"
+    ]
+   },
+   {
+    "text": "teacher",
+    "phonemes": [
+     "t",
+     "iː",
+     "tʃ",
+     "ə",
+     "ɹ"
+    ]
+   }
+  ],
+  "pairs": [
+   [
+    {
+     "text": "seat",
+     "phonemes": [
+      "s",
+      "iː",
+      "t"
+     ]
+    },
+    {
+     "text": "sit",
+     "phonemes": [
+      "s",
+      "ɪ",
+      "t"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "sheep",
+     "phonemes": [
+      "ʃ",
+      "iː",
+      "p"
+     ]
+    },
+    {
+     "text": "ship",
+     "phonemes": [
+      "ʃ",
+      "ɪ",
+      "p"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "heat",
+     "phonemes": [
+      "h",
+      "iː",
+      "t"
+     ]
+    },
+    {
+     "text": "hit",
+     "phonemes": [
+      "h",
+      "ɪ",
+      "t"
+     ]
+    }
+   ]
+  ]
+ },
+ {
+  "id": "cat",
+  "title": "The vowel in cat",
+  "sound": "æ",
+  "made": "Drop your jaw and spread your lips, with your tongue low and pushed forward, its tip behind your bottom teeth. It sits between \"eh\" and \"ah\", and is longer than you'd expect.",
+  "slip": "Not opening enough, which gives \"eh\" (bad as \"bed\"), or opening at the back of the mouth, which gives \"ah\" (hat as \"hot\").",
+  "words": [
+   {
+    "text": "cat",
+    "phonemes": [
+     "k",
+     "æ",
+     "t"
+    ]
+   },
+   {
+    "text": "black",
+    "phonemes": [
+     "b",
+     "l",
+     "æ",
+     "k"
+    ]
+   },
+   {
+    "text": "hand",
+    "phonemes": [
+     "h",
+     "æ",
+     "n",
+     "d"
+    ]
+   },
+   {
+    "text": "apple",
+    "phonemes": [
+     "æ",
+     "p",
+     "ə",
+     "l"
+    ]
+   },
+   {
+    "text": "happy",
+    "phonemes": [
+     "h",
+     "æ",
+     "p",
+     "i"
+    ]
+   },
+   {
+    "text": "family",
+    "phonemes": [
+     "f",
+     "æ",
+     "m",
+     "ɪ",
+     "l",
+     "i"
+    ]
+   }
+  ],
+  "pairs": [
+   [
+    {
+     "text": "bad",
+     "phonemes": [
+      "b",
+      "æ",
+      "d"
+     ]
+    },
+    {
+     "text": "bed",
+     "phonemes": [
+      "b",
+      "ɛ",
+      "d"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "man",
+     "phonemes": [
+      "m",
+      "æ",
+      "n"
+     ]
+    },
+    {
+     "text": "men",
+     "phonemes": [
+      "m",
+      "ɛ",
+      "n"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "hat",
+     "phonemes": [
+      "h",
+      "æ",
+      "t"
+     ]
+    },
+    {
+     "text": "hot",
+     "phonemes": [
+      "h",
+      "ɑː",
+      "t"
+     ]
+    }
+   ]
+  ]
+ },
+ {
+  "id": "cup",
+  "title": "The vowel in cup",
+  "sound": "ʌ",
+  "made": "A short \"uh\" with everything relaxed: mouth half open, tongue resting in the middle, lips neither spread nor rounded.",
+  "slip": "Opening wide, which gives \"ah\" (cup as \"cop\"), or rounding the lips into an \"o\" because of the spelling (come, mother, love).",
+  "words": [
+   {
+    "text": "cup",
+    "phonemes": [
+     "k",
+     "ʌ",
+     "p"
+    ]
+   },
+   {
+    "text": "lunch",
+    "phonemes": [
+     "l",
+     "ʌ",
+     "n",
+     "tʃ"
+    ]
+   },
+   {
+    "text": "mother",
+    "phonemes": [
+     "m",
+     "ʌ",
+     "ð",
+     "ə",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "come",
+    "phonemes": [
+     "k",
+     "ʌ",
+     "m"
+    ]
+   },
+   {
+    "text": "enough",
+    "phonemes": [
+     "ɪ",
+     "n",
+     "ʌ",
+     "f"
+    ]
+   },
+   {
+    "text": "Sunday",
+    "phonemes": [
+     "s",
+     "ʌ",
+     "n",
+     "d",
+     "eɪ"
+    ]
+   }
+  ],
+  "pairs": [
+   [
+    {
+     "text": "cup",
+     "phonemes": [
+      "k",
+      "ʌ",
+      "p"
+     ]
+    },
+    {
+     "text": "cop",
+     "phonemes": [
+      "k",
+      "ɑː",
+      "p"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "luck",
+     "phonemes": [
+      "l",
+      "ʌ",
+      "k"
+     ]
+    },
+    {
+     "text": "lock",
+     "phonemes": [
+      "l",
+      "ɑː",
+      "k"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "cut",
+     "phonemes": [
+      "k",
+      "ʌ",
+      "t"
+     ]
+    },
+    {
+     "text": "cat",
+     "phonemes": [
+      "k",
+      "æ",
+      "t"
+     ]
+    }
+   ]
+  ]
+ },
+ {
+  "id": "ay",
+  "title": "The glide in day",
+  "sound": "eɪ",
+  "made": "Two vowels run together. Start at \"eh\" with your mouth half open, then close your jaw and lift your tongue towards \"ee\". The first part is the longer one.",
+  "slip": "Holding one flat \"e\" and never gliding (late as \"let\").",
+  "words": [
+   {
+    "text": "day",
+    "phonemes": [
+     "d",
+     "eɪ"
+    ]
+   },
+   {
+    "text": "late",
+    "phonemes": [
+     "l",
+     "eɪ",
+     "t"
+    ]
+   },
+   {
+    "text": "train",
+    "phonemes": [
+     "t",
+     "ɹ",
+     "eɪ",
+     "n"
+    ]
+   },
+   {
+    "text": "make",
+    "phonemes": [
+     "m",
+     "eɪ",
+     "k"
+    ]
+   },
+   {
+    "text": "away",
+    "phonemes": [
+     "ɐ",
+     "w",
+     "eɪ"
+    ]
+   },
+   {
+    "text": "table",
+    "phonemes": [
+     "t",
+     "eɪ",
+     "b",
+     "ə",
+     "l"
+    ]
+   }
+  ],
+  "pairs": [
+   [
+    {
+     "text": "late",
+     "phonemes": [
+      "l",
+      "eɪ",
+      "t"
+     ]
+    },
+    {
+     "text": "let",
+     "phonemes": [
+      "l",
+      "ɛ",
+      "t"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "pain",
+     "phonemes": [
+      "p",
+      "eɪ",
+      "n"
+     ]
+    },
+    {
+     "text": "pen",
+     "phonemes": [
+      "p",
+      "ɛ",
+      "n"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "wait",
+     "phonemes": [
+      "w",
+      "eɪ",
+      "t"
+     ]
+    },
+    {
+     "text": "wet",
+     "phonemes": [
+      "w",
+      "ɛ",
+      "t"
+     ]
+    }
+   ]
+  ]
+ },
+ {
+  "id": "oh",
+  "title": "The glide in go",
+  "sound": "oʊ",
+  "made": "Two vowels run together. Start at \"oh\" with your lips loosely rounded, then round them tighter towards \"oo\" as your jaw closes.",
+  "slip": "Holding one flat \"o\" with the lips still, or opening it into \"aw\" (note as \"not\").",
+  "words": [
+   {
+    "text": "go",
+    "phonemes": [
+     "ɡ",
+     "oʊ"
+    ]
+   },
+   {
+    "text": "home",
+    "phonemes": [
+     "h",
+     "oʊ",
+     "m"
+    ]
+   },
+   {
+    "text": "phone",
+    "phonemes": [
+     "f",
+     "oʊ",
+     "n"
+    ]
+   },
+   {
+    "text": "slow",
+    "phonemes": [
+     "s",
+     "l",
+     "oʊ"
+    ]
+   },
+   {
+    "text": "window",
+    "phonemes": [
+     "w",
+     "ɪ",
+     "n",
+     "d",
+     "oʊ"
+    ]
+   },
+   {
+    "text": "open",
+    "phonemes": [
+     "oʊ",
+     "p",
+     "ə",
+     "n"
+    ]
+   }
+  ],
+  "pairs": [
+   [
+    {
+     "text": "note",
+     "phonemes": [
+      "n",
+      "oʊ",
+      "t"
+     ]
+    },
+    {
+     "text": "not",
+     "phonemes": [
+      "n",
+      "ɑː",
+      "t"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "hope",
+     "phonemes": [
+      "h",
+      "oʊ",
+      "p"
+     ]
+    },
+    {
+     "text": "hop",
+     "phonemes": [
+      "h",
+      "ɑː",
+      "p"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "coat",
+     "phonemes": [
+      "k",
+      "oʊ",
+      "t"
+     ]
+    },
+    {
+     "text": "cot",
+     "phonemes": [
+      "k",
+      "ɑː",
+      "t"
+     ]
+    }
+   ]
+  ]
+ },
+ {
+  "id": "flap-t",
+  "title": "The American T in water",
+  "sound": "ɾ",
+  "made": "Between two vowels, when the second is unstressed, Americans don't make a full T. The tip of the tongue flicks once against the ridge behind the top teeth, with the voice on, and it sounds like a very quick \"d\": water as \"wadder\", city as \"siddy\".",
+  "slip": "A crisp T with a puff of air (wa-ter), which sounds careful or British, or a rolled R.",
+  "words": [
+   {
+    "text": "water",
+    "phonemes": [
+     "w",
+     "ɔː",
+     "ɾ",
+     "ə",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "better",
+    "phonemes": [
+     "b",
+     "ɛ",
+     "ɾ",
+     "ə",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "city",
+    "phonemes": [
+     "s",
+     "ɪ",
+     "ɾ",
+     "i"
+    ]
+   },
+   {
+    "text": "little",
+    "phonemes": [
+     "l",
+     "ɪ",
+     "ɾ",
+     "ə",
+     "l"
+    ]
+   },
+   {
+    "text": "butter",
+    "phonemes": [
+     "b",
+     "ʌ",
+     "ɾ",
+     "ə",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "later",
+    "phonemes": [
+     "l",
+     "eɪ",
+     "ɾ",
+     "ə",
+     "ɹ"
+    ]
+   },
+   {
+    "text": "pretty",
+    "phonemes": [
+     "p",
+     "ɹ",
+     "ɪ",
+     "ɾ",
+     "i"
+    ]
+   },
+   {
+    "text": "meeting",
+    "phonemes": [
+     "m",
+     "iː",
+     "ɾ",
+     "ɪ",
+     "ŋ"
+    ]
+   },
+   {
+    "text": "bottle",
+    "phonemes": [
+     "b",
+     "ɑː",
+     "ɾ",
+     "ə",
+     "l"
+    ]
+   }
+  ],
+  "pairs": []
+ },
+ {
+  "id": "ng",
+  "title": "NG as in sing",
+  "sound": "ŋ",
+  "made": "Lift the back of your tongue against the soft roof of your mouth, as for \"g\", but let the air and your voice out through your nose. Hold it there; the tip of the tongue stays down.",
+  "slip": "Lifting the tip instead, which gives \"n\" (sing as \"sin\"), or letting go into a hard \"g\" or \"k\" at the end (sing-g).",
+  "words": [
+   {
+    "text": "sing",
+    "phonemes": [
+     "s",
+     "ɪ",
+     "ŋ"
+    ]
+   },
+   {
+    "text": "long",
+    "phonemes": [
+     "l",
+     "ɔ",
+     "ŋ"
+    ]
+   },
+   {
+    "text": "thing",
+    "phonemes": [
+     "θ",
+     "ɪ",
+     "ŋ"
+    ]
+   },
+   {
+    "text": "morning",
+    "phonemes": [
+     "m",
+     "ɔː",
+     "ɹ",
+     "n",
+     "ɪ",
+     "ŋ"
+    ]
+   },
+   {
+    "text": "young",
+    "phonemes": [
+     "j",
+     "ʌ",
+     "ŋ"
+    ]
+   },
+   {
+    "text": "bring",
+    "phonemes": [
+     "b",
+     "ɹ",
+     "ɪ",
+     "ŋ"
+    ]
+   }
+  ],
+  "pairs": [
+   [
+    {
+     "text": "sing",
+     "phonemes": [
+      "s",
+      "ɪ",
+      "ŋ"
+     ]
+    },
+    {
+     "text": "sin",
+     "phonemes": [
+      "s",
+      "ɪ",
+      "n"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "thing",
+     "phonemes": [
+      "θ",
+      "ɪ",
+      "ŋ"
+     ]
+    },
+    {
+     "text": "thin",
+     "phonemes": [
+      "θ",
+      "ɪ",
+      "n"
+     ]
+    }
+   ],
+   [
+    {
+     "text": "wing",
+     "phonemes": [
+      "w",
+      "ɪ",
+      "ŋ"
+     ]
+    },
+    {
+     "text": "win",
+     "phonemes": [
+      "w",
+      "ɪ",
+      "n"
+     ]
+    }
+   ]
+  ]
+ },
+ {
+  "id": "h",
+  "title": "H as in house",
+  "sound": "h",
+  "made": "Just breath. Open your mouth in the shape of the vowel that comes next and let air out before your voice starts. Nothing in the mouth or throat narrows.",
+  "slip": "Scraping it at the back of the mouth, as in the Spanish J or the German \"ach\", or dropping it (house as \"ouse\").",
+  "words": [
+   {
+    "text": "house",
+    "phonemes": [
+     "h",
+     "aʊ",
+     "s"
+    ]
+   },
+   {
+    "text": "happy",
+    "phonemes": [
+     "h",
+     "æ",
+     "p",
+     "i"
+    ]
+   },
+   {
+    "text": "hello",
+    "phonemes": [
+     "h",
+     "ə",
+     "l",
+     "oʊ"
+    ]
+   },
+   {
+    "text": "behind",
+    "phonemes": [
+     "b",
+     "ᵻ",
+     "h",
+     "aɪ",
+     "n",
+     "d"
+    ]
+   },
+   {
+    "text": "who",
+    "phonemes": [
+     "h",
+     "uː"
+    ]
+   },
+   {
+    "text": "help",
+    "phonemes": [
+     "h",
+     "ɛ",
+     "l",
+     "p"
+    ]
+   },
+   {
+    "text": "how",
+    "phonemes": [
+     "h",
+     "aʊ"
+    ]
+   },
+   {
+    "text": "hot",
+    "phonemes": [
+     "h",
+     "ɑː",
+     "t"
+    ]
+   },
+   {
+    "text": "ahead",
+    "phonemes": [
+     "ɐ",
+     "h",
+     "ɛ",
+     "d"
+    ]
+   }
+  ],
+  "pairs": []
+ }
+]

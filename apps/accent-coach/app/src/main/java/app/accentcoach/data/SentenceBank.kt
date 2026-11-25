@@ -1,12 +1,13 @@
 package app.accentcoach.data
 
 import android.content.Context
+import app.accentcoach.core.Lesson
 import app.accentcoach.core.Sentence
 import app.accentcoach.core.Word
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** The practice sentences and the recogniser's symbols, bundled in assets/. */
+/** The practice sentences, the sound lessons and the recogniser's symbols, bundled in assets/. */
 object SentenceBank {
 
     fun sentences(context: Context): List<Sentence> {
@@ -18,13 +19,35 @@ object SentenceBank {
                 id = s.getString("id"),
                 focus = s.getString("focus"),
                 text = s.getString("text"),
-                words = List(words.length()) { w ->
-                    val word = words.getJSONObject(w)
-                    val p = word.getJSONArray("phonemes")
-                    Word(word.getString("text"), List(p.length()) { p.getString(it) })
+                words = List(words.length()) { word(words.getJSONObject(it)) },
+            )
+        }
+    }
+
+    fun lessons(context: Context): List<Lesson> {
+        val arr = JSONArray(context.assets.open("lessons.json").bufferedReader().use { it.readText() })
+        return List(arr.length()) { i ->
+            val l = arr.getJSONObject(i)
+            val words = l.getJSONArray("words")
+            val pairs = l.getJSONArray("pairs")
+            Lesson(
+                id = l.getString("id"),
+                title = l.getString("title"),
+                sound = l.getString("sound"),
+                made = l.getString("made"),
+                slip = l.getString("slip"),
+                words = List(words.length()) { word(words.getJSONObject(it)) },
+                pairs = List(pairs.length()) {
+                    val pair = pairs.getJSONArray(it)
+                    word(pair.getJSONObject(0)) to word(pair.getJSONObject(1))
                 },
             )
         }
+    }
+
+    private fun word(json: JSONObject): Word {
+        val p = json.getJSONArray("phonemes")
+        return Word(json.getString("text"), List(p.length()) { p.getString(it) })
     }
 
     /** Symbols in the recogniser's output order (index → symbol). */

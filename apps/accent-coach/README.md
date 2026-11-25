@@ -3,7 +3,9 @@
 An Android app for practising a native **General American** English accent. Read a
 sentence aloud: the app writes down the sounds you actually made (in IPA), lines them
 up with how a native speaker says the sentence, and highlights the sounds that give
-away a non-native accent, with a tip for each.
+away a non-native accent, with a tip for each. It also teaches the hardest sounds one at
+a time, each with a lesson on how the sound is made and a drill of words, and keeps a
+streak of the days you practised.
 
 ## How it works
 
@@ -22,6 +24,40 @@ away a non-native accent, with a tip for each.
 
    You also get a score, a tip for every sound to work on, and buttons to play your
    own recording next to the native voice.
+
+### Sound lessons and drills
+
+The **Sounds** tab teaches before it tests. It has 15 lessons, one per sound: the two THs,
+the American R, L, V, W, short i, long ee, the cat and cup vowels, the "ay" and "oh"
+glides, the American T in *water*, NG and H.
+
+- **The lesson** says how the sound is made (where the tongue, lips and jaw go, and
+  whether the voice is on) and the slip most often made with it. Its words are listed
+  under it; tap one to hear it.
+- **The drill** is nine things to say: six words with the sound, then three pairs of words
+  that differ in that sound only (*think, sink*). The two lessons with no such pairs, the
+  American T and H, have nine words.
+- **Only the lesson's sound is judged.** A word is *native* when that sound was, whatever
+  happened to the rest of it; *close* when the sound was a near miss; *not yet* when it was
+  another sound or was left out. In a pair, the sound the two words differ in is judged in
+  both, so saying the same word twice doesn't pass.
+- **A word can be tried again**, and its last try is the one that counts.
+- **A lesson is learned** once a drill ends with three in four native (seven of nine).
+  The list shows a tick on the learned ones and the best result of each.
+
+### Streak
+
+A day counts once five recordings have been scored on it, sentences and drill words
+alike. A recording in which nothing was heard doesn't count. The card at the top shows:
+
+- how many days in a row have counted, up to today, or up to yesterday while today's five
+  aren't done yet;
+- today's recordings as a ring that closes at five;
+- the last seven days as dots: filled for a day that counted, tinted for one with some
+  practice.
+
+The days and the drills' results are kept in a small file on the phone
+(`files/progress.json`). They aren't backed up, and uninstalling the app clears them.
 
 ### The speech model
 
@@ -66,24 +102,29 @@ Comparison happens in `core/`:
   Look for sounds that keep coming up red.
 - **Only individual sounds are graded:** word stress, rhythm and intonation aren't
   graded yet.
+- **Single words are short:** a drill word gives the recogniser less to go on than a
+  sentence does, so it may mishear one more often. A word can be tried again.
 - **Speed:** the model is large. On a budget phone, expect a few seconds of analysis
   after each sentence, and the live **What I hear** line updates about once every
   couple of seconds.
-- **Untested on real voices:** it has only been tried with synthetic voices on a Mac,
-  not yet on a phone with real speech.
+- **Untested on real voices:** the sentences have only been tried with synthetic voices
+  on a Mac, not yet on a phone with real speech. The drills haven't been tried with any
+  voice: their judging is tested on written sounds only.
 
 ## Project layout
 
 ```
 accent-coach/
-├── core/    Pure Kotlin/JVM: IPA tokens, CTC decoding, alignment, grading, tips (unit-tested)
+├── core/    Pure Kotlin/JVM: IPA tokens, CTC decoding, alignment, grading, tips,
+│            drill judging, streak (unit-tested)
 ├── app/     Android app (Jetpack Compose)
 │   ├── speech/  Recording, playback, model download and sharing, ONNX recogniser
-│   ├── data/    Sentence and symbol loading from assets/
-│   └── ui/      Setup and practice screens
+│   ├── data/    Sentence, lesson and symbol loading from assets/; the progress file
+│   └── ui/      Setup, sentences, sounds and streak
 ├── tools/
 │   ├── sentences.txt       The practice sentences, by focus sound
-│   └── make_sentences.py   Builds assets/sentences.json with espeak-ng
+│   ├── lessons.txt         The sound lessons and the words of their drills
+│   └── make_sentences.py   Builds assets/sentences.json and lessons.json with espeak-ng
 └── apk/     Ready-to-install builds
 ```
 
@@ -93,14 +134,20 @@ Needs JDK 17 and the Android SDK (platform 35).
 
 ```bash
 cd apps/accent-coach
-./gradlew :core:test           # unit tests for the comparison logic
-./gradlew :app:assembleRelease # → app/build/outputs/apk/release/app-release.apk
+./gradlew :core:test             # unit tests for the comparison logic, the drills and the streak
+./gradlew :app:testDebugUnitTest # opens the screens on the JVM; pictures go to app/build/screens
+./gradlew :app:assembleRelease   # → app/build/outputs/apk/release/app-release.apk
 ```
+
+The screens test can't run the speech model, so it records nothing: where a screen shows
+a result, the test puts in the one the model would have led to.
 
 Builds are for 64-bit ARM phones only (`arm64-v8a`). Minimum Android version: 8.0 (API 26).
 
-To change the sentences, edit `tools/sentences.txt`, then run
-`python3 tools/make_sentences.py`. This needs `espeak-ng` (`brew install espeak-ng`).
+To change the sentences or the lessons, edit `tools/sentences.txt` or `tools/lessons.txt`,
+then run `python3 tools/make_sentences.py`. This needs `espeak-ng`
+(`brew install espeak-ng`). The script stops if a drill word doesn't have its lesson's
+sound, or if the two words of a pair differ in more than that sound.
 
 ## Updates
 

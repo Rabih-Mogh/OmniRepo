@@ -1,0 +1,97 @@
+# Sound lessons: one per sound, each with the words of its drill.
+# tools/make_sentences.py turns this into app/src/main/assets/lessons.json with the
+# native General American phonemes for every word.
+#
+# ## <id> | <title> | <the sound, in the recogniser's symbols>
+# made:  how the sound is made
+# slip:  the slip most often made with it
+# words: words with the sound, said one at a time
+# pairs: pairs of words that differ only in the sound (first word has it); optional
+
+## th | TH as in think | θ
+made: Put the tip of your tongue lightly between your teeth, or against the edge of the top ones, and blow. The air keeps flowing over the tongue; nothing stops it. Your voice is off: a hand on your throat feels no buzz.
+slip: Pressing the tongue on the ridge behind the teeth stops the air and gives "t" (tink). Keeping it behind the teeth gives "s" (sink). Using the lip gives "f" (fink).
+words: think, thank, three, thumb, bath, mouth
+pairs: think/sink, thin/tin, three/tree
+
+## th-voiced | TH as in this | ð
+made: The same place as the TH in think: the tip of your tongue between your teeth, air flowing over it. This time your voice is on, so a hand on your throat feels a buzz.
+slip: Pressing the tongue behind the teeth gives "d" (dis). Pulling it back gives "z" (zis). It comes in the commonest words (the, this, that, they), so it is worth getting right.
+words: this, that, they, mother, other, breathe
+pairs: then/den, they/day, breathe/breeze
+
+## r | American R | ɹ
+made: Pull your tongue back and up, with its sides against your upper back teeth, and round your lips a little. The tip touches nothing. The sound is held and smooth, and after a vowel (car, more) it is still said.
+slip: Letting the tip tap or trill against the roof of the mouth, making it in the throat, or leaving it out after a vowel. If the tip touches anything, it isn't the American R.
+words: red, right, sorry, very, car, more
+pairs: right/light, red/led, pray/play
+
+## l | L as in light | l
+made: Press the tip of your tongue on the ridge behind your top teeth and let your voice flow round the sides of the tongue. At the end of a word (feel, full) the back of the tongue also lifts, which makes the L darker; the tip still goes up.
+slip: Leaving the tip down, so that the L becomes an "r" or a "w" (feel as "fee-oo"), or tapping it so fast it can't be heard.
+words: light, yellow, please, feel, full, milk
+pairs: lake/rake, glass/grass, fly/fry
+
+## v | V as in very | v
+made: Rest your top teeth on the inside of your bottom lip and buzz, with your voice on. The air squeezes out between teeth and lip.
+slip: Rounding the lips with no teeth gives "w" (wery). Closing both lips gives "b" (berry). Leaving the voice off gives "f", most often at the end of a word (have as "haf").
+words: very, voice, visit, seven, have, love
+pairs: vest/west, vine/wine, van/ban
+
+## w | W as in we | w
+made: Round your lips into a small circle, as for "oo", then open them straight into the vowel. Your teeth don't touch your lip at any point.
+slip: Letting the top teeth touch the bottom lip, which gives "v" (vater for water).
+words: we, water, window, away, always, twelve
+pairs: west/vest, wet/vet, wine/vine
+
+## short-i | Short i as in sit | ɪ
+made: A short, relaxed vowel. Your tongue is a little lower than for "ee", your lips are loose and your jaw drops slightly. It is over quickly.
+slip: Smiling and tensing, which turns it into the long "ee" (sit as "seat", ship as "sheep").
+words: sit, this, minute, big, fish, window
+pairs: sit/seat, ship/sheep, fill/feel
+
+## long-ee | Long ee as in seat | iː
+made: Spread your lips as if smiling, with your tongue high and forward and its muscles tense. Hold it longer than the short i.
+slip: Saying it short and relaxed, which turns it into the short i (seat as "sit", leave as "live").
+words: see, green, leave, please, people, teacher
+pairs: seat/sit, sheep/ship, heat/hit
+
+## cat | The vowel in cat | æ
+made: Drop your jaw and spread your lips, with your tongue low and pushed forward, its tip behind your bottom teeth. It sits between "eh" and "ah", and is longer than you'd expect.
+slip: Not opening enough, which gives "eh" (bad as "bed"), or opening at the back of the mouth, which gives "ah" (hat as "hot").
+words: cat, black, hand, apple, happy, family
+pairs: bad/bed, man/men, hat/hot
+
+## cup | The vowel in cup | ʌ
+made: A short "uh" with everything relaxed: mouth half open, tongue resting in the middle, lips neither spread nor rounded.
+slip: Opening wide, which gives "ah" (cup as "cop"), or rounding the lips into an "o" because of the spelling (come, mother, love).
+words: cup, lunch, mother, come, enough, Sunday
+pairs: cup/cop, luck/lock, cut/cat
+
+## ay | The glide in day | eɪ
+made: Two vowels run together. Start at "eh" with your mouth half open, then close your jaw and lift your tongue towards "ee". The first part is the longer one.
+slip: Holding one flat "e" and never gliding (late as "let").
+words: day, late, train, make, away, table
+pairs: late/let, pain/pen, wait/wet
+
+## oh | The glide in go | oʊ
+made: Two vowels run together. Start at "oh" with your lips loosely rounded, then round them tighter towards "oo" as your jaw closes.
+slip: Holding one flat "o" with the lips still, or opening it into "aw" (note as "not").
+words: go, home, phone, slow, window, open
+pairs: note/not, hope/hop, coat/cot
+
+## flap-t | The American T in water | ɾ
+made: Between two vowels, when the second is unstressed, Americans don't make a full T. The tip of the tongue flicks once against the ridge behind the top teeth, with the voice on, and it sounds like a very quick "d": water as "wadder", city as "siddy".
+slip: A crisp T with a puff of air (wa-ter), which sounds careful or British, or a rolled R.
+words: water, better, city, little, butter, later, pretty, meeting, bottle
+
+## ng | NG as in sing | ŋ
+made: Lift the back of your tongue against the soft roof of your mouth, as for "g", but let the air and your voice out through your nose. Hold it there; the tip of the tongue stays down.
+slip: Lifting the tip instead, which gives "n" (sing as "sin"), or letting go into a hard "g" or "k" at the end (sing-g).
+words: sing, long, thing, morning, young, bring
+pairs: sing/sin, thing/thin, wing/win
+
+## h | H as in house | h
+made: Just breath. Open your mouth in the shape of the vowel that comes next and let air out before your voice starts. Nothing in the mouth or throat narrows.
+slip: Scraping it at the back of the mouth, as in the Spanish J or the German "ach", or dropping it (house as "ouse").
+words: house, happy, hello, behind, who, help, how, hot, ahead
