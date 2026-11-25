@@ -47,10 +47,12 @@ at the far end:
   by the panel's width and the panel comes in behind it, so nothing lies over anything.
   A cross at its head closes it, as do a tap on what is left of the page and Back. It
   holds what belongs to the whole app: a switch between light and dark (or **Auto**,
-  which follows the phone, as the app does until one is chosen), the **script** every
-  surah's verses are written in (see [Scripts](#scripts)), and the app's version
-  with **Check for updates**. What is turned to while reading (meanings, text size, the
-  tajweed colours) is in a surah's own menu. Under the version, **Copy a report** copies what the app
+  which follows the phone, as the app does until one is chosen), what every surah's
+  **page** is made of (its script, the language of the words' meanings, the translation
+  and the exegesis: see [What the page is made of](#what-the-page-is-made-of-script-word-meanings-translation-exegesis)),
+  and the app's version with **Check for updates**. What is turned to while reading
+  (meanings, text size, the tajweed colours) is in a surah's own menu, which has the
+  page's four choices too. Under the version, **Copy a report** copies what the app
   knows about how it is running on this phone: the phone's model and Android version,
   the room left on it, the speech model and engine, how many recordings are ready, queued
   or failed and why, the state of the background work, and the last lines of a small
@@ -615,19 +617,69 @@ its translation under it, and where it is from.
   of the surah is loaded, it is moved to that verse and waits for play.
 - They are kept in a file on the phone and nowhere else.
 
-### Scripts
+### What the page is made of: script, word meanings, translation, exegesis
 
-The words are fetched once in four spellings, and the first screen's menu chooses which is shown. The recitation is always lined up with the Uthmani spelling, whichever is shown.
+Four things about a surah's page are the reader's to choose, each from its own list: in
+the first screen's menu under **The page**, and in a surah's own menu without leaving it.
+A row for each says what is chosen now; a tap opens the list.
 
-| Script | What it is | Font |
+| | What there is to choose | What comes without a download |
 |---|---|---|
-| **Uthmani · Madinah mushaf** (the default) | The Uthmani spelling as the King Fahd Complex typesets it for the Madinah mushaf | KFGQPC Uthmanic Script HAFS, shipped in the app |
-| **Uthmani · Amiri hand** | The same spelling in a rounder hand | Amiri Quran, shipped in the app |
-| **IndoPak** | The spelling and pause marks of the mushafs of the Indian subcontinent | Fetched from Quran.com on first run; the script is offered once the font is on the phone |
-| **Everyday spelling** | Modern Arabic spelling (*imla'i*), fully vowelled | Amiri Quran |
+| **Script** | The four below | All but IndoPak |
+| **Word meanings in** | English, Urdu, Persian, Turkish, Indonesian, Bengali, Hindi, Tamil: the languages Quran.com has every word's meaning in | English |
+| **Translation** | Every translation Quran.com lists (126 in 69 languages when this was written), under their languages, the phone's own first; the list can be searched | Saheeh International |
+| **Exegesis (tafsir)** | Every exegesis Quran.com lists (20: Arabic, English, Urdu, Bengali, Russian, Kurdish) | None: none is chosen until the reader chooses one |
 
-Surahs kept by an earlier version of the app have only the Uthmani spelling; they are
-fetched again, quietly, the next time the app is open with a connection.
+- **Each one in a list says where it stands:** a tick on the one chosen; "With the app"
+  on what needs no download; its size and a bin on one that is on the phone (the bin
+  takes it off again; the one in use has none); a ring filling on the one being
+  downloaded; an hourglass on one waiting its turn; an arrow on one a tap will download.
+- **Choosing one that isn't on the phone downloads it, in the background, like every
+  other download** (`data/Extras.kt`, and a lane of its own in the background work beside
+  the sounds and the listening): a surah at a time from Quran.com, the surah being read
+  first, with its own line in the notification. It goes on with the app closed, carries
+  on where it stopped, waits for a connection when there is none, and is tried again
+  later if Quran.com won't answer. It goes on while the recordings' work is paused, too.
+- **The choice holds at once.** Until the surah being read has arrived (a moment: it is
+  first in line) the page shows what it has, and changes by itself when it comes: the
+  meanings and the translation that come with the surah's words, and for a script the
+  Madinah mushaf's, so no word is ever shown in a font that isn't for its spelling.
+- **A verse's exegesis** opens from the page-of-writing button beside the verse's number:
+  the chosen exegesis of that verse, in headings and paragraphs, read from the side its
+  language is written from. A verse explained together with the ones before it shows
+  theirs, and says so. Its name stands over it, and a tap there chooses another. If the
+  surah isn't on the phone yet it is fetched there and then. With none chosen, the
+  button offers the list.
+- Choosing a language for the words' meanings also turns the meanings on.
+- Searching the Quran still goes by the everyday spelling and the Saheeh International
+  translation, whatever is chosen for the page.
+
+The lists of translations and exegeses are asked of Quran.com the first time they are
+opened and kept, so they are there without a connection afterwards. Translations are
+kept without their footnote marks; an exegesis is kept as Quran.com gives it.
+
+#### Scripts
+
+The recitation is always lined up with the Uthmani spelling, whichever script is shown.
+
+| Script | What it is | Font | On the phone |
+|---|---|---|---|
+| **Uthmani · Madinah mushaf** (the default) | The Uthmani spelling as the King Fahd Complex typesets it for the Madinah mushaf | KFGQPC Uthmanic Script HAFS, shipped in the app | With the app |
+| **Uthmani · Amiri hand** | The same spelling in a rounder hand | Amiri Quran, which the app's own screens are set in | With the app |
+| **Everyday spelling** | Modern Arabic spelling (*imla'i*), fully vowelled | Amiri Quran | With the app: it is the spelling a search goes by, so every surah has it |
+| **IndoPak** | The spelling and pause marks of the mushafs of the Indian subcontinent | "AlQuran IndoPak by QuranWBW", from Quran.com | Downloaded when chosen: its spelling of every word, and its font |
+
+Up to version 1.68 every surah was fetched in all four spellings and the IndoPak font was
+fetched when the app first ran, whether or not that script was ever used. Now only what
+the default needs comes with a surah. Surahs fetched by those versions keep the IndoPak
+spelling they came with; the rest is downloaded if the script is chosen.
+
+**Not offered:** the Madinah mushaf exactly as printed, page by page (Quran.com's "V1",
+"V2" and tajweed "V4" fonts). Each is a font for every one of the 604 pages, 95 to 208 MB
+in the form a phone can read, and a word in them is one drawn shape, so the letter-by-
+letter light and the app's own tajweed colours could not be shown on it. Nor other
+readings than Hafs: Quran.com has no text of them, and the recordings are lined up with
+Hafs.
 
 ### Lining words up with the sound
 
@@ -962,7 +1014,7 @@ to four threads, with the same result.
 
 | What | From | Licence |
 |---|---|---|
-| Quran text (Uthmani, IndoPak and everyday spellings), word meanings, verse translation (Saheeh International) | [Quran.com](https://quran.com) API, fetched by the app and kept on the phone; not stored in this repo | Their own terms |
+| Quran text (Uthmani, IndoPak and everyday spellings), word meanings, and whichever translations and exegeses the reader chooses | [Quran.com](https://quran.com) API, fetched by the app and kept on the phone; not stored in this repo | Their own terms, and each translation's and exegesis's own |
 | Speech model, for the recordings and for the reader reciting | [HisnLabs Tajweed v2](https://huggingface.co/Hisnlabs/tajweed-v2), int8 ONNX, in [models/tajweed-v2](models/tajweed-v2) and fetched by the app. Its base is the encoder of tarteel-ai/whisper-base-ar-quran; its teacher was Quran Muaalem | Apache-2.0 ([text](licenses/Apache-2.0.txt)) |
 | How a recitation is compared with the verse | The rule engine published with that model (`imam.py`), written again in Kotlin | Apache-2.0 ([text](licenses/Apache-2.0.txt)) |
 | What each word should sound like (`tajweed_reference.bin`) | Written with [quran-transcript](https://github.com/obadx/quran-transcript), from the Tanzil Uthmani text it carries (Tanzil Project, tanzil.net) | MIT for quran-transcript; Creative Commons Attribution 3.0 for the Tanzil text ([both](licenses/QuranTranscript-MIT-Tanzil.txt)) |
@@ -970,7 +1022,7 @@ to four threads, with the same result.
 | Reading YouTube | [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor) | GPL-3.0 |
 | Font for the Madinah mushaf script | KFGQPC Uthmanic Script HAFS, King Fahd Glorious Quran Printing Complex | Free to use, copy and distribute; may not be sold or modified ([text](licenses/UthmanicHafs-KFGQPC.txt)) |
 | Font for the Amiri and everyday scripts, and the basmala | [Amiri Quran](https://github.com/aliftype/amiri) | SIL Open Font License ([text](licenses/AmiriQuran-OFL.txt)) |
-| Font for the IndoPak script | "AlQuran IndoPak by QuranWBW", fetched by the app from Quran.com on first run and kept on the phone; not stored in this repo. Used only if it is byte for byte the file the app was written against | None stated: their own terms |
+| Font for the IndoPak script | "AlQuran IndoPak by QuranWBW", fetched by the app from Quran.com when that script is chosen and kept on the phone; not stored in this repo. Used only if it is byte for byte the file the app was written against | None stated: their own terms |
 | Calligraphy of the surahs' names | Quran.com's surah-name font, fetched by the app on first run and kept on the phone; not stored in this repo. It is used only if it is byte for byte the file the app was written against | None stated: their own terms |
 | Font for the surahs' names until that is fetched | [Aref Ruqaa](https://github.com/alif-type/aref-ruqaa) | SIL Open Font License ([text](licenses/ArefRuqaa-OFL.txt)) |
 

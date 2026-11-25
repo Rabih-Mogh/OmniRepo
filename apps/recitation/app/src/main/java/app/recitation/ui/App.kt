@@ -53,6 +53,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.luminance
 import app.recitation.data.Appearance
 import app.recitation.data.IndoPakFont
+import app.recitation.data.Kind
+import app.recitation.data.Pack
 import app.recitation.data.Pin
 import app.recitation.data.Playlist
 import app.recitation.data.Script
@@ -86,11 +88,19 @@ fun App(model: AppModel, choices: Choices) {
     val surahNames by SurahNames.font.collectAsStateWithLifecycle()
     // The rules of recitation open over whatever is showing, which stays as it was underneath.
     var rules by rememberSaveable { mutableStateOf(false) }
-    CompositionLocalProvider(LocalSurahNames provides surahNames, LocalTajweedRules provides { rules = true }) {
+    // What the page is made of (script, word meanings, translation, exegesis) is chosen from
+    // lists that open over whatever is showing; so does a verse's exegesis.
+    var picking by remember { mutableStateOf<Kind?>(null) }
+    var explaining by remember { mutableStateOf<VerseRef?>(null) }
+    val choosing = remember(model.chosen, choices.script) { Choosing(model.chosen + (Kind.SCRIPT to Pack.of(choices.script))) { picking = it } }
+    val explain: (Int) -> Unit = { verse -> model.reading?.let { explaining = VerseRef(it.surah, verse) } }
+    CompositionLocalProvider(LocalSurahNames provides surahNames, LocalTajweedRules provides { rules = true }, LocalChoosing provides choosing, LocalExplain provides explain) {
         Screens(model, choices)
         AnimatedVisibility(rules, enter = fadeIn() + slideInVertically { it / 12 }, exit = fadeOut() + slideOutVertically { it / 12 }) {
             TajweedRulesPage(onBack = { rules = false })
         }
+        explaining?.let { verse -> ExegesisDialog(verse, model, onChoose = { picking = Kind.EXEGESIS }, onDismiss = { explaining = null }) }
+        picking?.let { kind -> PackPicker(kind, model, choices.script, choices::write, onMeanings = { choices.show(true) }, onDismiss = { picking = null }) }
     }
 }
 
@@ -251,7 +261,6 @@ private fun Screens(model: AppModel, choices: Choices) {
             menu = {
                 MenuContent(
                     appearance = choices.appearance, onAppearance = choices::look,
-                    script = choices.script, onScript = choices::write, withIndoPak = indopak != null,
                     footer = {
                         VersionFooter()
                         CopyReport()
@@ -399,7 +408,9 @@ private fun SurahScreen(
     var marking by remember(screen.number) { mutableStateOf<Int?>(null) }
     val page = Page(
         meanings, setMeanings, textScale, setTextScale,
-        choices.script, indopak, startVerse, marks, { marking = it }, choices.appearance, choices::look,
+        // The script chosen, where this surah can be shown in it: the Madinah mushaf's until its spelling and its font are here.
+        (model.reading?.script ?: choices.script).let { if (it == Script.INDOPAK && indopak == null) Script.MADINAH else it },
+        indopak, startVerse, marks, { marking = it }, choices.appearance, choices::look,
         choices.tajweed, choices::colour,
     )
     marking?.let { verse ->

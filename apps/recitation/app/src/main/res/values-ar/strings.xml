@@ -45,6 +45,7 @@
 
     <!-- Getting a recording ready -->
     <string name="preparing">تجهيز التلاوات</string>
+    <string name="step_chosen">جارٍ تنزيل ما اخترتَه للصفحة… %1$d%%</string>
     <string name="step_engine">جارٍ جلب محرّك الصوت… %1$d%%</string>
     <string name="step_tune">جارٍ إيجاد أسرع طريقة للاستماع على هذا الهاتف… %1$d%%</string>
     <string name="error_engine">تعذّر تشغيل محرّك الصوت على هذا الهاتف. (%1$s)</string>
@@ -551,4 +552,27 @@
     <string name="lesson_pair_7">العين من وسط الحلق، ويمكن إجراء صوتها قليلاً. والهمزة من أقصى الحلق: ينحبس الصوت معها انحباساً تاماً ولا يجري.</string>
     <string name="drill_hear_it">اسمع كيف ينطقها القارئ</string>
     <string name="madd_hear">اسمع مثالاً بصوت القارئ</string>
+    <!-- What the page is made of: chosen from lists, and fetched if not on the phone -->
+    <string name="choose_title">الصفحة</string>
+    <string name="choose_meanings">معاني الكلمات بـ</string>
+    <string name="choose_translation">الترجمة</string>
+    <string name="choose_exegesis">التفسير</string>
+    <string name="choose_none">بلا</string>
+    <string name="choose_search">ابحث بالاسم أو اللغة</string>
+    <string name="choose_no_list">تعذّر جلب القائمة: لا اتصال. يظهر ما على الهاتف فقط.</string>
+    <string name="choose_listing">جارٍ جلب القائمة…</string>
+    <string name="choose_chosen">المختار</string>
+    <string name="choose_in_app">مع التطبيق</string>
+    <string name="choose_delete">احذف %1$s من الهاتف</string>
+    <string name="choose_fetching">جارٍ التنزيل… %1$d%%</string>
+    <string name="choose_waiting">في انتظار التنزيل</string>
+    <string name="choose_to_fetch">ليس على الهاتف: يُنزَّل بنقرة</string>
+    <string name="verse_exegesis">تفسير الآية %1$d</string>
+    <string name="exegesis_of">%1$s · الآية %2$d</string>
+    <string name="exegesis_choose">اختر تفسيراً</string>
+    <string name="exegesis_none">لم يُختر تفسير بعد. اختر واحداً فيُنزَّل إلى الهاتف، وهذه السورة أولاً.</string>
+    <string name="exegesis_failed">تعذّر جلبه: تحقّق من الاتصال وافتح الآية من جديد.</string>
+    <string name="exegesis_fetching">جارٍ جلب تفسير هذه السورة…</string>
+    <string name="exegesis_with">مفسَّرة مع الآية %1$d</string>
+    <string name="exegesis_empty">ليس في هذا التفسير شيء عن هذه الآية.</string>
 </resources>

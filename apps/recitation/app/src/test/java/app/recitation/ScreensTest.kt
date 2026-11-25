@@ -149,7 +149,16 @@ import app.recitation.ui.SavedTab
 import app.recitation.ui.Plant
 import app.recitation.ui.StatsTab
 import app.recitation.ui.stageOf
-import app.recitation.ui.ScriptChooser
+import app.recitation.ui.Choosing
+import app.recitation.ui.ChoiceRows
+import app.recitation.ui.ExegesisContent
+import app.recitation.ui.LocalChoosing
+import app.recitation.ui.LocalExplain
+import app.recitation.ui.PackState
+import app.recitation.ui.PickerContent
+import app.recitation.data.Explained
+import app.recitation.data.Kind
+import app.recitation.data.Pack
 import app.recitation.ui.Status
 import app.recitation.ui.StatusActions
 import app.recitation.ui.TextSizeControls
@@ -1612,24 +1621,108 @@ class ScreensTest {
         compose.onNodeWithText(if (indopak != null) "اَلۡحَمۡدُ" else "ٱلۡحَمۡدُ", useUnmergedTree = true).assertIsDisplayed()
     }
 
+    private val hamidullah = Pack(Kind.TRANSLATION, "131", "Hamidullah", "french", "Muhammad Hamidullah")
+    private val maududi = Pack(Kind.TRANSLATION, "97", "Tafheem e Qur'an", "urdu", "Syed Abu Ali Maududi", rtl = true)
+    private val haleem = Pack(Kind.TRANSLATION, "85", "M.A.S. Abdel Haleem", "english", "Abdul Haleem")
+    private val jalalayn = Pack(Kind.TRANSLATION, "74", "Al-Jalalayn", "arabic", "Jalal ad-Din al-Mahalli")
+    private val ibnKathir = Pack(Kind.EXEGESIS, "169", "Ibn Kathir (Abridged)", "english", "Hafiz Ibn Kathir")
+
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
-    fun theScriptCanBeChosen() {
-        var chosen: Script? = null
-        show("en-day-script-chooser") { Column { ScriptChooser(Script.MADINAH, withIndoPak = true) { chosen = it } } }
+    fun whatThePageIsMadeOfIsChosenFromFourRows() {
+        var opened: Kind? = null
+        val chosen = mapOf(Kind.SCRIPT to Pack.of(Script.MADINAH), Kind.MEANINGS to Pack.ENGLISH, Kind.TRANSLATION to hamidullah, Kind.EXEGESIS to null)
+        show("en-day-choices") {
+            CompositionLocalProvider(LocalChoosing provides Choosing(chosen) { opened = it }) { Column(Modifier.padding(vertical = 12.dp)) { ChoiceRows() } }
+        }
+        // Each row says what is chosen now; no exegesis until one is.
         compose.onNodeWithText("Uthmani · Madinah mushaf").assertIsDisplayed()
-        compose.onNodeWithText("IndoPak").assertIsDisplayed()
-        compose.onNodeWithText("Everyday spelling").performClick()
-        assertTrue(chosen == Script.EVERYDAY)
+        compose.onNodeWithText("English").assertIsDisplayed()
+        compose.onNodeWithText("Hamidullah").assertIsDisplayed()
+        compose.onNodeWithText("None").assertIsDisplayed()
+        compose.onNodeWithText("Exegesis (tafsir)").performClick()
+        assertEquals(Kind.EXEGESIS, opened)
     }
 
     @Test
-    @Config(qualifiers = "ar-w411dp-h891dp-night-420dpi")
-    fun theIndoPakScriptIsOfferedOnlyOnceItsFontIsHere() {
-        show("ar-night-script-chooser") { Column { ScriptChooser(Script.MADINAH, withIndoPak = false) {} } }
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aTranslationIsChosenFromAListThatSaysWhereEachOneIs() {
+        var picked: Pack? = null
+        var deleted: Pack? = null
+        val states = mapOf(
+            Pack.SAHEEH.key to PackState.InApp, hamidullah.key to PackState.OnPhone(1_240_000), maududi.key to PackState.Fetching(0.4f),
+            haleem.key to PackState.Waiting, jalalayn.key to PackState.ToFetch,
+        )
+        show("en-day-pick-translation") {
+            PickerContent(
+                Kind.TRANSLATION, listOf(hamidullah, maududi, Pack.SAHEEH, haleem, jalalayn), listed = true, chosen = Pack.SAHEEH,
+                stateOf = { states.getValue(it.key) }, onPick = { picked = it }, onNone = null, onDelete = { deleted = it }, modifier = Modifier.padding(16.dp),
+            )
+        }
+        // Under their languages: the phone's own first, then Arabic, then the rest by name.
+        val tops = listOf("English", "Arabic", "French", "Urdu").map { compose.onNodeWithText(it).fetchSemanticsNode().boundsInRoot.top }
+        assertEquals(tops.sorted(), tops)
+        compose.onNodeWithText("With the app").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Chosen").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Downloading… 40%").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Waiting to be downloaded").assertIsDisplayed()
+        // One not on the phone is fetched by choosing it; one that is, and isn't in use, can be taken off.
+        compose.onNodeWithContentDescription("Not on the phone: a tap downloads it").assertIsDisplayed()
+        compose.onNodeWithText("Al-Jalalayn").performClick()
+        assertEquals(jalalayn, picked)
+        compose.onNodeWithContentDescription("Take Hamidullah off the phone").performClick()
+        assertEquals(hamidullah, deleted)
+    }
+
+    @Test
+    @Config(qualifiers = "ar-rLB-w411dp-h891dp-night-420dpi")
+    fun theScriptsInArabicByNightWithTheOneToBeFetched() {
+        var picked: Pack? = null
+        show("ar-night-pick-script") {
+            PickerContent(
+                Kind.SCRIPT, Pack.SCRIPTS, listed = true, chosen = Pack.of(Script.MADINAH),
+                stateOf = { if (it.inApp) PackState.InApp else PackState.ToFetch }, onPick = { picked = it }, onNone = null, onDelete = {}, modifier = Modifier.padding(16.dp),
+            )
+        }
         compose.onNodeWithText("عثماني · مصحف المدينة").assertIsDisplayed()
-        compose.onNodeWithText("الرسم الإملائي").assertIsDisplayed()
-        compose.onNodeWithText("إندوباك (شبه القارة الهندية)").assertDoesNotExist()
+        compose.onNodeWithText("إندوباك (شبه القارة الهندية)").performClick()
+        assertEquals(Pack.INDOPAK, picked)
+        // The IndoPak script is the one that has to be fetched.
+        assertEquals(1, compose.onAllNodesWithContentDescription("ليس على الهاتف: يُنزَّل بنقرة").fetchSemanticsNodes().size)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aVersesExegesisIsReadInPassagesUnderItsName() {
+        var choosing = false
+        val text = "<h2>The virtue of Ayat al-Kursi</h2><p>This is Ayat al-Kursi, and tremendous virtues have been associated with it<sup foot_note=1>1</sup>.</p><p>Imam Ahmad recorded that Ubayy bin Ka'b said the Prophet asked him about the greatest ayah in the Book of Allah.</p>"
+        show("en-day-exegesis") {
+            ExegesisContent(ibnKathir, 255, Explained(ibnKathir, 255, text), failed = false, onChoose = { choosing = true }, modifier = Modifier.padding(16.dp))
+        }
+        compose.onNodeWithText("The virtue of Ayat al-Kursi").assertIsDisplayed()
+        compose.onNodeWithText("This is Ayat al-Kursi, and tremendous virtues have been associated with it.").assertIsDisplayed()
+        // Which exegesis it is stands over it, and a tap there changes it.
+        compose.onNodeWithText("Ibn Kathir (Abridged)").performClick()
+        assertTrue(choosing)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun withNoExegesisChosenTheVerseOffersTheChoosingOfOne() {
+        var choosing = false
+        show("en-day-exegesis-none") { ExegesisContent(null, 2, null, failed = false, onChoose = { choosing = true }, modifier = Modifier.padding(16.dp)) }
+        compose.onNodeWithText("No exegesis has been chosen yet.", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Choose an exegesis").performClick()
+        assertTrue(choosing)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun everyVerseHasAButtonForItsExegesis() {
+        var asked = 0
+        show("en-day-reader-exegesis") { CompositionLocalProvider(LocalExplain provides { asked = it }) { Reader(7_500, playing = false) } }
+        compose.onNodeWithContentDescription("Exegesis of verse 2").performClick()
+        assertEquals(2, asked)
     }
 
     private val pinned = listOf(Pin("p1", "Reading", VerseRef(1, 2)), Pin("p2", "Memorising", VerseRef(2, 255)))
@@ -1833,12 +1926,15 @@ class ScreensTest {
     @Config(qualifiers = "en-rUS-w411dp-h891dp-night-420dpi")
     fun theMenuButtonOpensTheMenu() {
         var appearance: Appearance? = null
-        var script: Script? = null
+        var opened: Kind? = null
+        val chosen = mapOf(Kind.SCRIPT to Pack.of(Script.MADINAH), Kind.MEANINGS to Pack.ENGLISH, Kind.TRANSLATION to Pack.SAHEEH, Kind.EXEGESIS to null)
         compose.setContent {
             RecitationTheme {
-                HomeContent(0, {}, emptyList(), null, StatusActions(), recited = setOf(1), onSurah = {}, onOpen = {}, onAdd = {}, menu = {
-                    MenuContent(Appearance.AUTO, { appearance = it }, Script.MADINAH, { script = it }, withIndoPak = true) { Text("Version 1.41") }
-                })
+                CompositionLocalProvider(LocalChoosing provides Choosing(chosen) { opened = it }) {
+                    HomeContent(0, {}, emptyList(), null, StatusActions(), recited = setOf(1), onSurah = {}, onOpen = {}, onAdd = {}, menu = {
+                        MenuContent(Appearance.AUTO, { appearance = it }) { Text("Version 1.41") }
+                    })
+                }
             }
         }
         compose.onNodeWithContentDescription("Menu").performClick()
@@ -1849,10 +1945,11 @@ class ScreensTest {
         compose.onNodeWithText("Dark").performClick()
         assertTrue(appearance == Appearance.DARK)
         compose.onNodeWithText("Version 1.41").assertIsDisplayed()
-        // The script every surah is written in is chosen here, once for the whole app.
+        // What every surah's page is made of is chosen here, once for the whole app: each row opens its list.
         compose.onNodeWithText("Script").assertIsDisplayed()
-        compose.onNodeWithText("Everyday spelling").performClick()
-        assertTrue(script == Script.EVERYDAY)
+        compose.onNodeWithText("Saheeh International").assertIsDisplayed()
+        compose.onNodeWithText("Translation").performClick()
+        assertEquals(Kind.TRANSLATION, opened)
         // What is turned to while reading is in a surah's own menu, not here as well.
         compose.onNodeWithText("Word meanings").assertDoesNotExist()
         compose.onNodeWithText("Text size").assertDoesNotExist()

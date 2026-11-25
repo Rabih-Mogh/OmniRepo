@@ -34,10 +34,13 @@ class Verse(val words: List<Word>, val translation: String)
 class Hit(val at: VerseRef, val arabic: String, val translation: String)
 
 /**
- * The words of a surah in each script the app can show (see [Script]), each word's meaning
- * in English, and the verse's translation (Saheeh International), from Quran.com. A surah is fetched the
- * first time it is needed and kept on the phone from then on; the app also fetches the
- * rest quietly while it is open, so the whole Quran ends up readable offline.
+ * The words of a surah as the Madinah mushaf writes them and in everyday spelling (which
+ * is also what a search goes by), each word's meaning in English, and the verse's
+ * translation (Saheeh International), from Quran.com. A surah is fetched the first time
+ * it is needed and kept on the phone from then on; the app also fetches the rest quietly
+ * while it is open, so the whole Quran ends up readable offline. Anything else a reader
+ * chooses (another script's spelling, meanings in another language, another translation,
+ * an exegesis) is fetched when it is chosen: see [Extras].
  */
 class QuranStore(context: Context, private val api: String = API) {
 
@@ -137,7 +140,7 @@ class QuranStore(context: Context, private val api: String = API) {
         val out = JSONArray()
         var page = 1
         while (page > 0) {
-            val json = JSONObject(get("$api/verses/by_chapter/$surah?words=true&word_fields=text_uthmani,text_qpc_hafs,text_indopak,text_imlaei&translations=$SAHEEH_INTERNATIONAL&language=en&per_page=50&page=$page"))
+            val json = JSONObject(get("$api/verses/by_chapter/$surah?words=true&word_fields=text_uthmani,text_qpc_hafs,text_imlaei&translations=$SAHEEH_INTERNATIONAL&language=en&per_page=50&page=$page"))
             val verses = json.getJSONArray("verses")
             for (i in 0 until verses.length()) {
                 val verse = verses.getJSONObject(i)
@@ -149,7 +152,8 @@ class QuranStore(context: Context, private val api: String = API) {
                     if (word.getString("char_type_name") != "word") continue
                     words.put(
                         JSONArray().put(word.getString("text_uthmani")).put(word.optJSONObject("translation")?.optString("text").orEmpty())
-                            .put(text(word, "text_qpc_hafs")).put(text(word, "text_indopak")).put(text(word, "text_imlaei")),
+                            // The IndoPak spelling isn't fetched with the rest: it is fetched when that script is chosen (see Extras).
+                            .put(text(word, "text_qpc_hafs")).put("").put(text(word, "text_imlaei")),
                     )
                 }
                 val translation = verse.optJSONArray("translations")?.optJSONObject(0)?.optString("text").orEmpty()

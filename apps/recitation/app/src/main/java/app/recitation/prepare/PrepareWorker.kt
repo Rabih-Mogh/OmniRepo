@@ -30,6 +30,11 @@ import app.recitation.core.Recital
 import app.recitation.core.Repeat
 import app.recitation.core.Sketch
 import app.recitation.core.Stretch
+import app.recitation.data.Extras
+import app.recitation.data.Fetching
+import app.recitation.data.IndoPakFont
+import app.recitation.data.Pack
+import app.recitation.core.SURAHS
 import app.recitation.speech.Arriving
 import app.recitation.speech.AudioDecoder
 import app.recitation.speech.TajweedStore
@@ -141,7 +146,16 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
     private var shown = ""
 
     /** What each lane last put in the notification: the listening's line, and the fetching's under it. */
-    private val lines = arrayOfNulls<String>(2)
+    private val lines = arrayOfNulls<String>(3)
+
+    /** What the reader has chosen for the page and isn't on the phone yet (see [Extras]). */
+    private val extras = Extras.get(context)
+
+    /** What they chose couldn't be fetched in this run though there was a connection: it is given a while before the next try. */
+    @Volatile private var extrasFailed = false
+
+    /** Whether there is more of it to fetch that this run can fetch. */
+    private fun extrasToFetch() = extras.wanted.value.isNotEmpty() && !extrasFailed && online()
 
     /** YouTube has refused this phone during this run: no more is asked of it until a later one. */
     @Volatile private var refused = false
@@ -172,20 +186,28 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             fetchTajweed()
             val ended = coroutineScope {
                 val fetching = launch(Dispatchers.IO) { fetchSounds() }
+                val choosing = launch(Dispatchers.IO) { fetchExtras() }
                 try {
                     listenToAll()
                 } finally {
                     fetching.cancel()
+                    choosing.cancel()
                 }
             }
             if (ended != null) return ended
-            val left = library.playlists.value.sumOf { p -> p.tracks.count(::waits) }
+            // With the recordings paused, the run was for what the reader chose for the page alone.
+            val left = if (paused()) 0 else library.playlists.value.sumOf { p -> p.tracks.count(::waits) }
             val tajweedLeft = Settings.tajweedWanted(applicationContext)
+            // What the reader chose for the page and couldn't be fetched waits for a connection too,
+            // or a while if there was one and it didn't help.
+            val chosenLeft = extras.wanted.value.isNotEmpty()
+            if (chosenLeft) journal.note("${extras.wanted.value.size} of what was chosen for the page still to fetch")
+            val wait = if ((left > 0 && refused) || tajweedFailed || extrasFailed) REFUSED_WAIT_MINUTES else 0L
             if (mayListen()) {
                 // What is left needs something fetched: it is taken up when there is a connection
                 // again, and, if YouTube was refusing, not before it has had a while to relent.
                 journal.note("work done" + (if (left > 0) ", $left left waiting" + (if (refused) " on YouTube" else " for a connection") else "") + if (tajweedLeft) ", the tajweed model still to fetch" else "")
-                if (left > 0 || tajweedLeft) whenOnline(applicationContext, if ((left > 0 && refused) || tajweedFailed) REFUSED_WAIT_MINUTES else 0, byYouTube = left > 0 && refused)
+                if (left > 0 || tajweedLeft || chosenLeft) whenOnline(applicationContext, wait, byYouTube = left > 0 && refused)
             } else {
                 // The app is closed: what is left is listened to when it is opened again, or
                 // when the phone is charging and left alone. A connection is waited for only
@@ -193,8 +215,8 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                 // fetched has been.
                 journal.note("work done with the app closed" + if (left > 0) ", $left left to listen to" else "")
                 val couldFetch = online() && !refused
-                if ((left > 0 && !couldFetch) || (tajweedLeft && (!online() || tajweedFailed))) {
-                    whenOnline(applicationContext, if ((left > 0 && refused) || tajweedFailed) REFUSED_WAIT_MINUTES else 0, byYouTube = left > 0 && refused)
+                if ((left > 0 && !couldFetch) || (tajweedLeft && (!online() || tajweedFailed)) || chosenLeft) {
+                    whenOnline(applicationContext, wait, byYouTube = left > 0 && refused)
                 }
                 if (left > 0) whenUnused(applicationContext)
             }
@@ -223,7 +245,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             val track = next()
             if (track == null) {
                 // Nothing is being fetched or can be, and nothing arrived while that was looked into: that is all for this run.
-                if (fetchingId == null && nextToFetch() == null && next() == null) return null
+                if (fetchingId == null && nextToFetch() == null && next() == null && !extrasToFetch()) return null
                 // A sound is on its way: its recording is taken up when it is here.
                 _progress.value = null
                 notify(HEARING, null)
@@ -286,6 +308,59 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             } finally {
                 // Its files were deleted while it was being worked on: what was written since goes too.
                 if (library.timesForgotten(track.id) != forgotten) library.clear(track.id)
+            }
+        }
+    }
+
+    /**
+     * What the reader chose for the page (a script, word meanings in a language, a
+     * translation, an exegesis) and isn't on the phone: fetched a surah at a time, the one
+     * being read first, beside everything else and with a line of its own. Without a
+     * connection it waits; after a few failures with one, it is left for a later run.
+     */
+    private suspend fun fetchExtras() {
+        var attempt = 0
+        while (true) {
+            currentCoroutineContext().ensureActive()
+            val pack = extras.wanted.value.firstOrNull()
+            if (pack == null || !extrasToFetch()) {
+                extras.progress.value = null
+                notify(CHOSEN, null)
+                delay(IDLE_MS)
+                continue
+            }
+            try {
+                val surah = extras.missing(pack, Extras.reading)
+                if (surah == null) {
+                    // Every surah is here. A script's font is the last of it.
+                    if (pack == Pack.INDOPAK && !extras.complete(pack)) {
+                        IndoPakFont.load(applicationContext)
+                        if (!extras.complete(pack)) throw IOException("the script's font couldn't be fetched")
+                    }
+                    extras.drop(pack)
+                    journal.note("${pack.key}: all on the phone")
+                    attempt = 0
+                    continue
+                }
+                val fraction = extras.count(pack).toFloat() / SURAHS.size
+                extras.progress.value = Fetching(pack, fraction)
+                notify(CHOSEN, applicationContext.getString(R.string.step_chosen, (fraction * 100).toInt()))
+                extras.fetch(pack, surah)
+                attempt = 0
+                // One surah after another, not all at once: the service is asked no faster than a reader would.
+                delay(CHOSEN_GAP_MS)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (isStopped) return
+                if (!online()) continue
+                journal.note("${pack.key}: ${detail(e)}; try ${attempt + 1}")
+                if (++attempt >= ATTEMPTS || e !is IOException || isNoRoom(e)) {
+                    extrasFailed = true
+                    attempt = 0
+                } else {
+                    delay(attempt * 3_000L)
+                }
             }
         }
     }
@@ -376,10 +451,13 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
     }
 
     /** The recording to listen to next: the one the reader has open, if its sound is here; otherwise the first in line that has its sound. */
-    private fun next(): Track? = if (!mayListen()) null else Lanes.toHear(waiting(), preferred, online(), fetchingId)?.let(library::track)
+    private fun next(): Track? = if (!mayListen() || paused()) null else Lanes.toHear(waiting(), preferred, online(), fetchingId)?.let(library::track)
+
+    /** The reader paused the recordings' work; a run started since is for what they chose for the page, and leaves the recordings be. */
+    private fun paused() = Settings.paused(applicationContext)
 
     /** The recording whose sound is to be fetched next: the one the reader has open, if it has none; otherwise the first in line without. */
-    private fun nextToFetch(): Track? = Lanes.toFetch(waiting(), preferred, online(), refused)?.let(library::track)
+    private fun nextToFetch(): Track? = if (paused()) null else Lanes.toFetch(waiting(), preferred, online(), refused)?.let(library::track)
 
     private fun waits(track: Track) = track.wanted && (!track.ready || track.againFrom >= 0 || track.refresh) && track.error == null && track.surah > 0
 
@@ -945,6 +1023,11 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         /** The two lanes' places in the notification. */
         private const val HEARING = 0
         private const val FETCHING = 1
+                /** The line of the notification for what the reader chose for the page. */
+        private const val CHOSEN = 2
+
+        /** How long is left between one surah of it and the next, in ms. */
+        private const val CHOSEN_GAP_MS = 150L
 
         /** How often a lane with nothing to do looks for something, in ms. */
         private const val IDLE_MS = 1_000L

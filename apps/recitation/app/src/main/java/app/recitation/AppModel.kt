@@ -29,7 +29,12 @@ import app.recitation.data.Spot
 import app.recitation.data.Voice
 import kotlin.random.Random
 import app.recitation.data.Hit
+import app.recitation.data.Explained
+import app.recitation.data.Extras
 import app.recitation.data.IndoPakFont
+import app.recitation.data.Kind
+import app.recitation.data.Pack
+import app.recitation.data.Script
 import app.recitation.data.Library
 import app.recitation.data.Marks
 import app.recitation.data.Place
@@ -100,9 +105,12 @@ sealed interface Screen {
  * recording goes with it. The timings are given as the alignment made them and kept here
  * made finer: a time for every letter and vowel sign (see [Pointer]).
  */
-class Reading(val surah: Int, val verses: List<Verse>, val track: Track? = null, timings: Timings? = null) {
+class Reading(val surah: Int, val verses: List<Verse>, val track: Track? = null, timings: Timings? = null, val script: Script = Script.MADINAH) {
     private val words = verses.map { verse -> verse.words.map { it.arabic } }
     private val refined = timings?.let { Pointer.refine(words, it) }
+
+    /** The timings as they were given, for making this again with the verses otherwise dressed. */
+    internal val given: Timings? = timings
 
     val timings: Timings? = refined?.timings
 
@@ -129,6 +137,13 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     /** How long has been listened on each day, and which verses have been heard. */
     val stats = Stats.get(app)
     private val quran = QuranStore(app)
+
+    /** What the reader can choose for the page beyond what comes with the app, and the fetching of it. */
+    val extras = Extras.get(app)
+
+    /** What is chosen of each kind: script, word meanings, translation; and no exegesis until one is. */
+    var chosen by mutableStateOf(Kind.entries.associateWith { Settings.pack(app, it) })
+        private set
 
     var screen by mutableStateOf<Screen>(Screen.Home)
         private set
@@ -195,10 +210,21 @@ class AppModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
         }
+        // What was chosen and isn't all on the phone (a download cut short, or a choice made
+        // by an earlier version, which fetched every script with every surah) is asked for.
+        for (pack in chosen.values.filterNotNull()) extras.want(pack)
+        // The IndoPak font is read in only if that script is in use or on its way.
+        if (Settings.script(app) == Script.INDOPAK || extras.count(Pack.INDOPAK) > 0) viewModelScope.launch { IndoPakFont.load(app) }
+        // A surah of something chosen has just arrived: the page being read is shown with it.
+        viewModelScope.launch {
+            extras.arrived.collect { (pack, surah) ->
+                if (surah == reading?.surah && chosen[pack.kind]?.key == pack.key) redress()
+                if (pack == Pack.INDOPAK) IndoPakFont.load(app)
+            }
+        }
         carryOn()
         fetchTheRest()
         viewModelScope.launch { SurahNames.load(app) }
-        viewModelScope.launch { IndoPakFont.load(app) }
         // What the model the app listened with before left on the phone is of no use now: free it.
         viewModelScope.launch(Dispatchers.IO) { runCatching { TajweedStore.dropOld(app); library.dropOldHearing() } }
         // While the open recording is being listened to its word timings grow: show the latest.
@@ -207,7 +233,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
                 val open = reading
                 if (live != null && open?.track?.id == live.trackId && open.surah == live.surah) {
                     // Working out every letter's time and the rules takes a moment on a long surah.
-                    val latest = withContext(Dispatchers.Default) { Reading(open.surah, open.verses, open.track, live.timings) }
+                    val latest = withContext(Dispatchers.Default) { Reading(open.surah, open.verses, open.track, live.timings, open.script) }
                     if (reading === open) reading = latest
                 }
             }
@@ -475,7 +501,86 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 
     /** One verse's words and translation, for a list of kept verses; null if they can't be had. */
     suspend fun verse(verse: VerseRef): Verse? = withContext(Dispatchers.IO) {
-        runCatching { quran.surah(verse.surah).getOrNull(verse.verse - 1) }.getOrNull()
+        runCatching { dressed(verse.surah, quran.surah(verse.surah)).first.getOrNull(verse.verse - 1) }.getOrNull()
+    }
+
+    // ---- what the reader chooses for the page: script, word meanings, translation, exegesis
+
+    /**
+     * [verses] of [surah] as the reader has chosen to see them, and the script they are
+     * shown in: the one chosen, or the Madinah mushaf's for as long as the chosen one's
+     * spelling of this surah isn't on the phone.
+     */
+    private fun dressed(surah: Int, verses: List<Verse>): Pair<List<Verse>, Script> {
+        val script = Settings.script(getApplication())
+        // Surahs kept by versions that fetched every script with every surah have the IndoPak spelling in them.
+        val shown = if (script == Script.INDOPAK && !extras.has(Pack.INDOPAK, surah) && verses.none { verse -> verse.words.any { it.indopak != it.arabic } }) Script.MADINAH else script
+        return extras.dress(verses, surah, shown, chosen[Kind.MEANINGS] ?: Pack.ENGLISH, chosen[Kind.TRANSLATION] ?: Pack.SAHEEH) to shown
+    }
+
+    /** Shows the surah being read as it is chosen to be seen now: after a choice, or when what was chosen arrives. */
+    private fun redress() {
+        val open = reading ?: return
+        viewModelScope.launch {
+            val latest = withContext(Dispatchers.IO) {
+                runCatching {
+                    val (verses, script) = dressed(open.surah, quran.surah(open.surah))
+                    Reading(open.surah, verses, open.track, open.given, script)
+                }.getOrNull()
+            } ?: return@launch
+            if (reading === open) reading = latest
+        }
+    }
+
+    /**
+     * Chooses [pack] for the page. If it isn't all on the phone it is fetched by the
+     * background work, the surah being read first; until it is, the page shows what it
+     * has: the script, the meanings or the translation that come with the surah's words.
+     */
+    fun pick(pack: Pack) {
+        val app = getApplication<Application>()
+        Settings.setPack(app, pack)
+        chosen = chosen + (pack.kind to pack)
+        if (!extras.complete(pack)) {
+            extras.want(pack)
+            PrepareWorker.start(app)
+        }
+        redress()
+    }
+
+    /** Does without anything of [kind] beyond what comes with the app: no exegesis, or the script, meanings or translation it starts with. */
+    fun unpick(kind: Kind) {
+        val app = getApplication<Application>()
+        Settings.clearPack(app, kind)
+        chosen = chosen + (kind to Settings.pack(app, kind))
+        redress()
+    }
+
+    /** Takes [pack] off the phone. If it was the one chosen, the choice goes back to what the app starts with. */
+    fun forget(pack: Pack) {
+        viewModelScope.launch(Dispatchers.IO) {
+            extras.delete(pack)
+            withContext(Dispatchers.Main) { if (chosen[pack.kind]?.key == pack.key) unpick(pack.kind) }
+        }
+    }
+
+    /** What there is to choose of [kind]: Quran.com's list, or, when that can't be had, what is on the phone and what is chosen. The second is whether the list was had. */
+    suspend fun packs(kind: Kind): Pair<List<Pack>, Boolean> = withContext(Dispatchers.IO) {
+        runCatching { extras.catalogue(kind) to true }.getOrElse {
+            (listOfNotNull(Settings.pack(getApplication(), kind)) + extras.onPhone(kind)).distinctBy { it.key } to false
+        }
+    }
+
+    /**
+     * The chosen exegesis of [verse]: from the phone, or fetched this minute if its surah
+     * isn't there yet, since the reader is waiting for it. Null if it couldn't be fetched.
+     */
+    suspend fun explain(verse: VerseRef): Explained? = withContext(Dispatchers.IO) {
+        val pack = chosen[Kind.EXEGESIS] ?: return@withContext null
+        extras.explained(pack, verse.surah, verse.verse) ?: runCatching {
+            extras.fetch(pack, verse.surah)
+            extras.explained(pack, verse.surah, verse.verse)
+        }.getOrNull()
     }
 
     /** How much room the app's files take on the phone. */
@@ -536,9 +641,11 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val loaded = withContext(Dispatchers.IO) {
                 runCatching {
-                    val verses = quran.surah(surah)
+                    // Whatever is being fetched of what the reader chose has this surah fetched first.
+                    Extras.reading = surah
+                    val (verses, script) = dressed(surah, quran.surah(surah))
                     val timings = track?.let { runCatching { Timings.decode(library.timings(it.id, surah).readText()) }.getOrNull() }
-                    Reading(surah, verses, track.takeIf { timings != null }, timings)
+                    Reading(surah, verses, track.takeIf { timings != null }, timings, script)
                 }.getOrNull()
             }
             // The reader may have moved to another surah while this one was being fetched.
@@ -546,7 +653,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
             // What the listening has placed since the file was written, if it is this recording being listened to.
             val live = PrepareWorker.live.value?.takeIf { loaded?.track != null && it.trackId == loaded.track.id && it.surah == surah }
             reading = if (loaded != null && live != null) {
-                withContext(Dispatchers.Default) { Reading(surah, loaded.verses, loaded.track, live.timings) }
+                withContext(Dispatchers.Default) { Reading(surah, loaded.verses, loaded.track, live.timings, loaded.script) }
             } else {
                 loaded
             }
@@ -691,6 +798,8 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     fun carryOn() {
         val app = getApplication<Application>()
         if (!paused && (Settings.tajweedWanted(app) || library.playlists.value.any { p -> p.tracks.any(::waiting) })) PrepareWorker.start(app)
+        // What the reader chose for the page is fetched whether or not the recordings are paused.
+        else if (extras.wanted.value.isNotEmpty()) PrepareWorker.start(app)
     }
 
     /** The way a recording's words were placed (see [Timings.method]); the way it is done now if that can't be read, so it is left alone. */

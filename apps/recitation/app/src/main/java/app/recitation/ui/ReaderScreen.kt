@@ -975,6 +975,8 @@ private fun VerseBlock(
                 // What can be done with the verse, right beside its number: recite from it, keep it
                 // (pins and collections; the bookmark is filled once it is in a collection), and more.
                 if (onPlayFrom != null) VerseButton(AppIcons.Play, stringResource(R.string.verse_play_from), onClick = onPlayFrom)
+                // The verse's exegesis, in the one the reader has chosen (or the choosing of one).
+                LocalExplain.current?.let { explain -> VerseButton(AppIcons.Exegesis, stringResource(R.string.verse_exegesis, number)) { explain(number) } }
                 VerseButton(
                     if (saved) AppIcons.Bookmark else AppIcons.BookmarkOutline,
                     stringResource(if (saved) R.string.saved_mark else R.string.marks_open),
@@ -1105,7 +1107,8 @@ private fun VerseBlock(
         ) {
             Text(
                 verse.translation, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-                style = MaterialTheme.typography.bodyMedium.copy(textDirection = TextDirection.Ltr),
+                // From the side its own language is written from: a translation may be in any.
+                style = MaterialTheme.typography.bodyMedium.copy(textDirection = TextDirection.Content),
                 fontSize = 14.sp * textScale, lineHeight = 20.sp * textScale,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1750,34 +1753,6 @@ private fun hand(script: Script, indopak: FontFamily?): Hand = when (script) {
     Script.AMIRI -> Hand(script, QuranFont, 26.sp, 46.sp)
     Script.INDOPAK -> Hand(script, indopak ?: QuranFont, 27.sp, 54.sp)
     Script.EVERYDAY -> Hand(script, QuranFont, 26.sp, 46.sp)
-}
-
-/** The scripts the verses can be written in; the IndoPak one only once its font is on the phone ([withIndoPak]). Under its own heading unless the menu it is in gives it one ([titled]). */
-@Composable
-fun ScriptChooser(script: Script, withIndoPak: Boolean, titled: Boolean = true, onScript: (Script) -> Unit) {
-    Column(Modifier.padding(horizontal = 8.dp)) {
-        if (titled) Text(stringResource(R.string.script_title), Modifier.padding(horizontal = 8.dp, vertical = 4.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-        for (each in Script.entries) {
-            if (each == Script.INDOPAK && !withIndoPak) continue
-            Row(
-                Modifier.fillMaxWidth().selectable(selected = each == script, role = Role.RadioButton, onClick = { onScript(each) }).padding(end = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RadioButton(selected = each == script, onClick = null, modifier = Modifier.padding(10.dp))
-                Text(
-                    stringResource(
-                        when (each) {
-                            Script.MADINAH -> R.string.script_madinah
-                            Script.AMIRI -> R.string.script_amiri
-                            Script.INDOPAK -> R.string.script_indopak
-                            Script.EVERYDAY -> R.string.script_everyday
-                        },
-                    ),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-            }
-        }
-    }
 }
 
 /** What marks the verses of the open surah: the names of the pins on each verse (counted from 0), and the verses kept in a collection. */

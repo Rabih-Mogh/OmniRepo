@@ -42,6 +42,7 @@
 
     <!-- Getting a recording ready -->
     <string name="preparing">Getting recitations ready</string>
+    <string name="step_chosen">Downloading what you chose for the page… %1$d%%</string>
     <string name="step_engine">Getting the speech engine… %1$d%%</string>
     <string name="step_tune">Finding the fastest way to listen on this phone… %1$d%%</string>
     <string name="error_engine">The speech engine couldn\'t be started on this phone. (%1$s)</string>
@@ -544,4 +545,27 @@
     <string name="lesson_pair_7">ع is from the middle of the throat, squeezed, and its sound can be held a moment. ء is from the deepest part of the throat: the sound is shut off sharply and can\'t be held.</string>
     <string name="drill_hear_it">Hear how the reciter says it</string>
     <string name="madd_hear">Hear one recited</string>
+    <!-- What the page is made of: chosen from lists, and fetched if not on the phone -->
+    <string name="choose_title">The page</string>
+    <string name="choose_meanings">Word meanings in</string>
+    <string name="choose_translation">Translation</string>
+    <string name="choose_exegesis">Exegesis (tafsir)</string>
+    <string name="choose_none">None</string>
+    <string name="choose_search">Search by name or language</string>
+    <string name="choose_no_list">The list couldn\'t be fetched: no connection. Only what is on the phone is shown.</string>
+    <string name="choose_listing">Fetching the list…</string>
+    <string name="choose_chosen">Chosen</string>
+    <string name="choose_in_app">With the app</string>
+    <string name="choose_delete">Take %1$s off the phone</string>
+    <string name="choose_fetching">Downloading… %1$d%%</string>
+    <string name="choose_waiting">Waiting to be downloaded</string>
+    <string name="choose_to_fetch">Not on the phone: a tap downloads it</string>
+    <string name="verse_exegesis">Exegesis of verse %1$d</string>
+    <string name="exegesis_of">%1$s · verse %2$d</string>
+    <string name="exegesis_choose">Choose an exegesis</string>
+    <string name="exegesis_none">No exegesis has been chosen yet. Choose one and it is downloaded to the phone, this surah first.</string>
+    <string name="exegesis_failed">It couldn\'t be fetched: check the connection and open the verse again.</string>
+    <string name="exegesis_fetching">Fetching this surah\'s exegesis…</string>
+    <string name="exegesis_with">Explained together with verse %1$d</string>
+    <string name="exegesis_empty">This exegesis has nothing on this verse.</string>
 </resources>

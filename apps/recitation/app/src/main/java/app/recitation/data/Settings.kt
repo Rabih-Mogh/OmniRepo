@@ -39,6 +39,30 @@ object Settings {
 
     fun setScript(context: Context, script: Script) = store(context).edit().putString("script", script.key).apply()
 
+    /**
+     * What the reader has chosen of [kind] (see [Pack]): the script as above; word meanings
+     * in English and the Saheeh International translation until they choose others; and
+     * no exegesis until they choose one.
+     */
+    fun pack(context: Context, kind: Kind): Pack? = when (kind) {
+        Kind.SCRIPT -> Pack.of(script(context))
+        else -> store(context).getString("pack_${kind.key}", null)?.let { kept -> runCatching { Pack.of(org.json.JSONObject(kept)) }.getOrNull() }
+            ?: when (kind) {
+                Kind.MEANINGS -> Pack.ENGLISH
+                Kind.TRANSLATION -> Pack.SAHEEH
+                else -> null
+            }
+    }
+
+    fun setPack(context: Context, pack: Pack) {
+        if (pack.kind == Kind.SCRIPT) setScript(context, Script.of(pack.id)) else store(context).edit().putString("pack_${pack.kind.key}", pack.json().toString()).apply()
+    }
+
+    /** Back to what [kind] is until something is chosen. */
+    fun clearPack(context: Context, kind: Kind) {
+        if (kind == Kind.SCRIPT) setScript(context, Script.MADINAH) else store(context).edit().remove("pack_${kind.key}").apply()
+    }
+
     /** Whether letters are coloured by the rule of recitation they fall under. */
     fun tajweed(context: Context): Boolean = store(context).getBoolean("tajweed", true)
 

@@ -197,18 +197,15 @@ fun SearchResults(
 
 /**
  * What is in the first screen's menu: what belongs to the whole app. How it looks, light
- * or dark or as the phone is set; the script every surah's verses are written in (the
- * IndoPak one only once its font is on the phone, [withIndoPak]); and [footer], the app's
- * version, its updates and the report. What is turned to while reading is in a surah's
+ * or dark or as the phone is set; what every surah's page is made of (its script, the
+ * language of the words' meanings, the translation and the exegesis: see [ChoiceRows]);
+ * and [footer], the app's version, its updates and the report. What is turned to while reading is in a surah's
  * own menu (see [ReadingChoices]), which has the light and dark of it too.
  */
 @Composable
 fun MenuContent(
     appearance: Appearance = Appearance.AUTO,
     onAppearance: (Appearance) -> Unit = {},
-    script: Script = Script.MADINAH,
-    onScript: (Script) -> Unit = {},
-    withIndoPak: Boolean = false,
     footer: @Composable () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
@@ -217,8 +214,8 @@ fun MenuContent(
     Text(stringResource(R.string.appearance), Modifier.padding(horizontal = 24.dp).padding(bottom = 8.dp), style = MaterialTheme.typography.titleSmall, color = colors.onSurfaceVariant)
     AppearanceChoice(appearance, onAppearance)
     HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
-    Text(stringResource(R.string.script_title), Modifier.padding(horizontal = 24.dp).padding(bottom = 4.dp), style = MaterialTheme.typography.titleSmall, color = colors.onSurfaceVariant)
-    ScriptChooser(script, withIndoPak, titled = false, onScript = onScript)
+    Text(stringResource(R.string.choose_title), Modifier.padding(horizontal = 24.dp).padding(bottom = 4.dp), style = MaterialTheme.typography.titleSmall, color = colors.onSurfaceVariant)
+    Box(Modifier.padding(horizontal = 8.dp)) { ChoiceRows() }
     HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
     footer()
 }
@@ -268,6 +265,9 @@ fun ReadingChoices(
     onTajweed: (Boolean) -> Unit = {},
 ) {
     Column {
+        // What the page is made of: the same choices as in the first screen's menu, without leaving the surah.
+        ChoiceRows()
+        if (LocalChoosing.current != null) HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MaterialTheme.colorScheme.outlineVariant)
         Row(
             Modifier.fillMaxWidth().toggleable(value = meanings, role = Role.Switch, onValueChange = onMeanings).padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,

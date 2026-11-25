@@ -10,7 +10,16 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.testing.TestListenableWorkerBuilder
 import androidx.work.testing.WorkManagerTestInitHelper
+import app.recitation.core.SURAHS
+import app.recitation.data.Extras
+import app.recitation.data.Kind
 import app.recitation.data.Library
+import app.recitation.data.Pack
+import app.recitation.data.Settings
+import okhttp3.mockwebserver.Dispatcher
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.RecordedRequest
 import app.recitation.data.Playlist
 import app.recitation.data.Track
 import app.recitation.prepare.PrepareWorker
@@ -204,6 +213,49 @@ class PrepareLanesTest {
         run()
         assertNotNull("it was taken up", library.track("lanes-glance")!!.error)
         assertEquals(emptyList<WorkInfo>(), unused())
+    }
+
+    @Test
+    fun whatTheReaderChoseForThePageIsFetchedInTheBackgroundTheSurahBeingReadFirst() {
+        // A small server on this machine stands in for Quran.com: any surah's translation, a line a verse.
+        val asked = Collections.synchronizedList(ArrayList<Int>())
+        val server = MockWebServer().apply {
+            dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    val surah = request.requestUrl!!.queryParameter("chapter_number")!!.toInt()
+                    asked += surah
+                    return MockResponse().setBody(List(SURAHS[surah - 1].verses) { """{"text":"$surah:${it + 1}"}""" }.joinToString(",", """{"translations":[""", "]}"))
+                }
+            }
+            start()
+        }
+        val before = Extras.api
+        val french = Pack(Kind.TRANSLATION, "131", "Hamidullah", "french")
+        val extras = Extras.get(context)
+        // A recording waits too, and the reader has paused the recordings' work: it is left alone.
+        val library = library(Track("lanes-paused", "Paused", 60, 1, wanted = true))
+        standIn(File(library.audioPart("lanes-paused", "m4a").path.removeSuffix(".part")), 1_000)
+        try {
+            Extras.api = server.url("/").toString().trimEnd('/')
+            Extras.reading = 36
+            Settings.setPaused(context, true)
+            extras.want(french)
+            closeTheApp()
+            run()
+            assertTrue("all of it is on the phone", extras.complete(french))
+            assertEquals("each surah was asked for once, the one being read first", listOf(36) + (1..114).filter { it != 36 }, asked.toList())
+            assertEquals("2:255", extras.texts(french, 2)!![254])
+            assertEquals(emptyList<Pack>(), extras.wanted.value)
+            assertNull(extras.progress.value)
+            assertNull("the paused recording was not taken up", library.track("lanes-paused")!!.error)
+            assertEquals("and nothing is left waiting", emptyList<WorkInfo>(), unused())
+        } finally {
+            Extras.api = before
+            Extras.reading = 0
+            Settings.setPaused(context, false)
+            extras.delete(french)
+            server.shutdown()
+        }
     }
 
     @Test
