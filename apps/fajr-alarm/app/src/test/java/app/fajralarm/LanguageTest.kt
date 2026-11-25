@@ -62,31 +62,37 @@ class LanguageTest {
     }
 
     @Test
-    @Config(qualifiers = "ar-rLB-w411dp-h3200dp-420dpi")
+    @Config(qualifiers = "ar-rLB-w411dp-h4400dp-420dpi")
     fun mainScreenInArabic() {
         open<MainActivity>("ar-main") {
-            compose.onNodeWithText("منبّه الفجر").assertIsDisplayed()
+            compose.onNodeWithText("مواقيت الصلاة").assertIsDisplayed()
             compose.onNodeWithText("المنبّه القادم").assertIsDisplayed()
             compose.onNodeWithText("قبل الفجر بـ", substring = true).assertIsDisplayed()
             compose.onNodeWithText("الموقع الحالي", substring = true).assertIsDisplayed()
             compose.onNodeWithText("وأُوقف بحلّ المسألة الحسابية", substring = true).assertIsDisplayed()
+            compose.onNodeWithText("أوقات اليوم").assertIsDisplayed()
+            compose.onNodeWithText("الثلث الأخير من الليل").assertIsDisplayed()
+            compose.onNodeWithText("الصلاة الحالية على شاشة القفل").assertIsDisplayed()
             compose.onNodeWithText("جرّب المنبّه الآن").assertIsDisplayed()
-            assertTrue("the title starts from the right", startsFromTheRight("منبّه الفجر"))
+            assertTrue("the title starts from the right", startsFromTheRight("مواقيت الصلاة"))
         }
     }
 
     @Test
-    @Config(qualifiers = "en-rUS-w411dp-h3200dp-420dpi")
+    @Config(qualifiers = "en-rUS-w411dp-h4400dp-420dpi")
     fun mainScreenInEnglish() {
         open<MainActivity>("en-main") {
-            compose.onNodeWithText("Fajr Alarm").assertIsDisplayed()
+            compose.onNodeWithText("Prayer Times").assertIsDisplayed()
             compose.onNodeWithText("NEXT ALARM").assertIsDisplayed()
             compose.onNodeWithText("15 min before Fajr").assertIsDisplayed()
             compose.onNodeWithText("Current location: 33.8938, 35.5018").assertIsDisplayed()
             compose.onNodeWithText("and turned off by solving the sum at", substring = true).assertIsDisplayed()
             compose.onNodeWithText("+2 min").assertIsDisplayed()
+            compose.onNodeWithText("Last third of the night").assertIsDisplayed()
+            compose.onNodeWithText("Current prayer on the lock screen").assertIsDisplayed()
+            compose.onNodeWithText("Add the “All times” widget").assertIsDisplayed()
             compose.onNodeWithText("Test the alarm now").assertIsDisplayed()
-            assertTrue("the title starts from the left", !startsFromTheRight("Fajr Alarm"))
+            assertTrue("the title starts from the left", !startsFromTheRight("Prayer Times"))
         }
     }
 
@@ -95,6 +101,7 @@ class LanguageTest {
     fun methodListInArabic() {
         open<MainActivity>("ar-methods") {
             compose.onNodeWithText("الطريقة").performScrollTo().performClick()
+            compose.onNodeWithText("دار الفتوى – لبنان", substring = true).assertIsDisplayed()
             compose.onNodeWithText("أم القرى، مكة المكرمة", substring = true).assertIsDisplayed()
             compose.onNodeWithText("إغلاق").assertIsDisplayed()
         }

@@ -7,10 +7,15 @@ import androidx.annotation.StringRes
 import app.fajralarm.R
 import app.fajralarm.core.AlarmAnchor
 import app.fajralarm.core.AlarmSettings
+import app.fajralarm.core.AsrRule
 import app.fajralarm.core.CalculationMethod
 import app.fajralarm.core.DismissMission
 import app.fajralarm.core.HighLatitudeRule
+import app.fajralarm.core.PrayerTime
 import app.fajralarm.data.StopReason
+import java.time.Duration
+import java.time.ZonedDateTime
+import java.util.Date
 
 // The text for every settings value, in the phone's language. The values themselves
 // (in the core module and in storage) carry no text.
@@ -41,6 +46,7 @@ val DismissMission.summary: Int
 @get:StringRes
 val CalculationMethod.label: Int
     get() = when (this) {
+        CalculationMethod.DAR_AL_FATWA_LEBANON -> R.string.method_dar_al_fatwa
         CalculationMethod.MUSLIM_WORLD_LEAGUE -> R.string.method_mwl
         CalculationMethod.ISNA -> R.string.method_isna
         CalculationMethod.EGYPTIAN -> R.string.method_egyptian
@@ -65,6 +71,57 @@ val HighLatitudeRule.label: Int
         HighLatitudeRule.MIDDLE_OF_NIGHT -> R.string.high_latitude_middle
         HighLatitudeRule.NONE -> R.string.high_latitude_none
     }
+
+@get:StringRes
+val AsrRule.label: Int
+    get() = when (this) {
+        AsrRule.STANDARD -> R.string.asr_standard
+        AsrRule.HANAFI -> R.string.asr_hanafi
+    }
+
+@get:StringRes
+val PrayerTime.label: Int
+    get() = when (this) {
+        PrayerTime.FAJR -> R.string.anchor_fajr
+        PrayerTime.SUNRISE -> R.string.anchor_sunrise
+        PrayerTime.DUHA -> R.string.prayer_duha
+        PrayerTime.DHUHR -> R.string.prayer_dhuhr
+        PrayerTime.ASR -> R.string.prayer_asr
+        PrayerTime.MAGHRIB -> R.string.prayer_maghrib
+        PrayerTime.ISHA -> R.string.prayer_isha
+        PrayerTime.MIDNIGHT -> R.string.prayer_midnight
+        PrayerTime.LAST_THIRD -> R.string.prayer_last_third
+    }
+
+/** The name where there is little room, as in a widget. */
+@get:StringRes
+val PrayerTime.shortLabel: Int
+    get() = if (this == PrayerTime.LAST_THIRD) R.string.prayer_last_third_short else label
+
+/** What the notification says when this time arrives. */
+@get:StringRes
+val PrayerTime.alertText: Int
+    get() = when (this) {
+        PrayerTime.SUNRISE -> R.string.alert_sunrise
+        PrayerTime.DUHA -> R.string.alert_duha
+        PrayerTime.MIDNIGHT -> R.string.alert_midnight
+        PrayerTime.LAST_THIRD -> R.string.alert_last_third
+        else -> R.string.alert_pray
+    }
+
+/** A clock time the way the phone shows times, e.g. "4:31 PM" or "16:31". */
+fun ZonedDateTime.clockTime(context: Context): String =
+    android.text.format.DateFormat.getTimeFormat(context).format(Date.from(toInstant()))
+
+/** e.g. "1 h 12 min", "12 min". Rounded up, so it never says 0 min before the time has come. */
+fun Duration.describe(context: Context): String {
+    val minutes = (seconds + 59) / 60
+    return if (minutes >= 60) {
+        context.getString(R.string.duration_hours_minutes, minutes / 60, minutes % 60)
+    } else {
+        context.getString(R.string.duration_minutes, minutes)
+    }
+}
 
 /** The whole "Last alarm" sentence for an alarm that stopped this way. */
 @get:StringRes

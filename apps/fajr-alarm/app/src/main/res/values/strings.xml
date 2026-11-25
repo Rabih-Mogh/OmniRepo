@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Every text the app shows. Each one has an Arabic counterpart in values-ar/strings.xml. -->
 <resources>
-    <string name="app_name">Fajr Alarm</string>
+    <string name="app_name">Prayer Times</string>
 
     <!-- Notification channels, as listed in the phone's settings -->
     <string name="channel_ringing_name">Ringing alarm</string>
@@ -92,6 +92,8 @@
     <string name="method">Method</string>
     <!-- %1$s a method name below, %2$.1f its Fajr angle -->
     <string name="method_with_angle">%1$s (%2$.1f°)</string>
+    <string name="method_dar_al_fatwa">Dar al-Fatwa, Lebanon</string>
+    <string name="method_dar_al_fatwa_note">Lebanon\'s official Sunni timetable: Fajr at 19.5°, Isha at 17.5°, Maghrib 5 minutes after sunset, Dhuhr at solar noon, and a minute of caution on Fajr and Isha. It works from your own coordinates anywhere in Lebanon. Checked against the published Beirut times for one day only (25 Nov 2026); if a time is off, use the adjustments below.</string>
     <string name="method_mwl">Muslim World League</string>
     <string name="method_isna">ISNA (North America)</string>
     <string name="method_egyptian">Egyptian General Authority</string>
@@ -114,7 +116,9 @@
     <string name="high_latitude_none">None</string>
     <string name="fajr_adjustment">Fajr adjustment</string>
     <string name="minutes_short">min</string>
-    <string name="fajr_adjustment_hint">Use this to match your local mosque\'s timetable.</string>
+    <!-- %1$s a prayer -->
+    <string name="prayer_adjustment">%1$s adjustment</string>
+    <string name="fajr_adjustment_hint">Use these to match your local mosque\'s timetable.</string>
 
     <!-- Main screen: Sound & wake-up -->
     <string name="section_sound">Sound &amp; wake-up</string>
@@ -153,7 +157,7 @@
     <string name="warning_full_screen">Full-screen alarms are blocked; you\'ll only get a notification.</string>
     <string name="warning_overlay">The alarm screen can\'t open by itself; you\'d have to open the app. Allow display over other apps.</string>
     <string name="warning_battery">Battery optimisation is on, so the phone may put the alarm to sleep.</string>
-    <string name="samsung_tip">Samsung phones can put the alarm to sleep. In Settings → Battery and device care → Battery → Background usage limits, add Fajr Alarm to Never sleeping apps.</string>
+    <string name="samsung_tip">Samsung phones can put the alarm to sleep. In Settings → Battery and device care → Battery → Background usage limits, add Prayer Times to Never sleeping apps.</string>
     <string name="allow">Allow</string>
     <string name="fix">Fix</string>
     <string name="app_settings">App settings</string>
@@ -222,4 +226,63 @@
     <string name="update_channel">App updates</string>
     <string name="update_notice_installing">Installing the update…</string>
     <string name="update_notice_ready">The update is downloaded. Open the app to install it.</string>
+
+    <!-- Notification channels for the other prayers -->
+    <string name="channel_prayer_name">Prayer time notifications</string>
+    <string name="channel_prayer_description">A notification when a time you chose arrives</string>
+    <string name="channel_now_name">Current prayer</string>
+    <string name="channel_now_description">The current prayer and the time it has left, for the lock screen</string>
+
+    <!-- The times of the day -->
+    <string name="prayer_duha">Duha</string>
+    <string name="prayer_dhuhr">Dhuhr</string>
+    <string name="prayer_asr">Asr</string>
+    <string name="prayer_maghrib">Maghrib</string>
+    <string name="prayer_isha">Isha</string>
+    <string name="prayer_midnight">Midnight</string>
+    <string name="prayer_last_third">Last third of the night</string>
+    <string name="prayer_last_third_short">Last third</string>
+
+    <!-- Main screen: Times of the day. %1$s a time of the day, %2$s a clock time or a length of time -->
+    <string name="section_prayers">Times of the day</string>
+    <string name="time_left">%1$s left</string>
+    <string name="starts_in">in %1$s</string>
+    <string name="next_prayer">Next: %1$s %2$s</string>
+    <string name="duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="duration_minutes">%1$d min</string>
+    <string name="alert_at">Notify at %1$s</string>
+    <string name="alerts_hint">Tap a bell for a notification when that time arrives. It is a plain notification, not the alarm: Fajr has the alarm.</string>
+    <string name="optional_times_hint">Duha starts 15 minutes after sunrise. Midnight and the last third are measured from sunset to the next Fajr.</string>
+
+    <!-- A notification when a time arrives. %1$s the time of the day, %2$s the clock time -->
+    <string name="prayer_alert_title">%1$s · %2$s</string>
+    <string name="alert_pray">It\'s time to pray.</string>
+    <string name="alert_sunrise">The time for Fajr has ended.</string>
+    <string name="alert_duha">The time for the Duha prayer has started.</string>
+    <string name="alert_midnight">Half the night has passed.</string>
+    <string name="alert_last_third">The last third of the night has begun.</string>
+
+    <!-- Lock screen notification and widgets. %1$s a prayer, %2$s a clock time; a countdown follows "ends in" and "starts in" -->
+    <string name="section_lock_widgets">Lock screen &amp; widgets</string>
+    <string name="lock_screen_countdown">Current prayer on the lock screen</string>
+    <string name="lock_screen_countdown_hint">A silent notification with the current prayer and a live countdown of the time it has left. It stays on the lock screen and in the notification bar.</string>
+    <string name="now_ends_in">%1$s ends in</string>
+    <string name="now_starts_in">%1$s starts in</string>
+    <string name="now_until">%1$s until %2$s</string>
+    <string name="now_at">%1$s at %2$s</string>
+    <string name="widgets_intro">Two widgets for the home screen: every time of the day, and the current prayer with its countdown.</string>
+    <string name="widget_times_name">All times</string>
+    <string name="widget_times_description">Every prayer time of the day, the optional ones included</string>
+    <string name="widget_now_name">Current prayer</string>
+    <string name="widget_now_description">The current prayer and a countdown of the time it has left</string>
+    <string name="widget_add_times">Add the “All times” widget</string>
+    <string name="widget_add_now">Add the “Current prayer” widget</string>
+    <string name="widget_add_by_hand">Touch and hold an empty spot on the home screen, choose Widgets, then Prayer Times.</string>
+    <string name="widget_set_location">Open Prayer Times to set your location</string>
+
+    <!-- Main screen: Calculation, for the other prayers -->
+    <string name="isha_angle">Isha angle: %1$.1f°</string>
+    <string name="asr_rule">Asr</string>
+    <string name="asr_standard">Standard (Shafi\'i, Maliki, Hanbali)</string>
+    <string name="asr_hanafi">Hanafi</string>
 </resources>

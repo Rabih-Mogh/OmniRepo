@@ -1,38 +1,82 @@
 package app.fajralarm.core
 
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.asin
+import kotlin.math.atan
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.round
 import kotlin.math.roundToLong
 import kotlin.math.sin
+import kotlin.math.tan
 
-/** Fajr twilight angles used by the common calculation authorities. */
-enum class CalculationMethod(val fajrAngle: Double) {
-    MUSLIM_WORLD_LEAGUE(18.0),
-    ISNA(15.0),
-    EGYPTIAN(19.5),
-    UMM_AL_QURA(18.5),
-    KARACHI(18.0),
-    TEHRAN(17.7),
-    DUBAI(18.2),
-    GULF(19.5),
-    KUWAIT(18.0),
-    QATAR(18.0),
-    SINGAPORE(20.0),
-    TURKEY(18.0),
-    FRANCE_UOIF(12.0),
-    CUSTOM(18.0),
+/**
+ * Twilight angles used by the common calculation authorities: how far the sun is below
+ * the horizon at Fajr and at Isha.
+ */
+enum class CalculationMethod(
+    val fajrAngle: Double,
+    val ishaAngle: Double,
+    /** Isha this many minutes after Maghrib instead of by angle; 0 = by angle. */
+    val ishaMinutes: Int = 0,
+    /** Maghrib once the sun is this far below the horizon; 0 = at sunset. */
+    val maghribAngle: Double = 0.0,
+    /** Minutes the authority's timetable adds to what the sun gives, for the times it moves. */
+    val offsets: Map<PrayerTime, Int> = emptyMap(),
+) {
+    /**
+     * Lebanon's official Sunni timetable. Maghrib is 5 minutes after sunset; Fajr a minute
+     * early and Isha a minute late reproduce the published Beirut times for 25 Nov 2026,
+     * the one day they have been checked against.
+     */
+    DAR_AL_FATWA_LEBANON(
+        19.5, 17.5,
+        offsets = mapOf(PrayerTime.FAJR to -1, PrayerTime.MAGHRIB to 5, PrayerTime.ISHA to 1),
+    ),
+    MUSLIM_WORLD_LEAGUE(18.0, 17.0),
+    ISNA(15.0, 15.0),
+    EGYPTIAN(19.5, 17.5),
+    UMM_AL_QURA(18.5, 0.0, ishaMinutes = 90),
+    KARACHI(18.0, 18.0),
+    TEHRAN(17.7, 14.0, maghribAngle = 4.5),
+    DUBAI(18.2, 18.2),
+    GULF(19.5, 0.0, ishaMinutes = 90),
+    KUWAIT(18.0, 17.5),
+    QATAR(18.0, 0.0, ishaMinutes = 90),
+    SINGAPORE(20.0, 18.0),
+    TURKEY(18.0, 17.0),
+    FRANCE_UOIF(12.0, 12.0),
+    CUSTOM(18.0, 17.0),
+}
+
+/** When Asr starts: once an object's shadow is this many times its height longer than at noon. */
+enum class AsrRule(val shadow: Int) {
+    STANDARD(1),
+    HANAFI(2),
+}
+
+/** The times the app shows for a day, in the order they come. */
+enum class PrayerTime(val obligatory: Boolean) {
+    FAJR(true),
+    SUNRISE(false),
+    DUHA(false),
+    DHUHR(true),
+    ASR(true),
+    MAGHRIB(true),
+    ISHA(true),
+    MIDNIGHT(false),
+    LAST_THIRD(false),
 }
 
 /**
- * How to place Fajr when the sun never gets deep enough below the horizon
+ * How to place Fajr and Isha when the sun never gets deep enough below the horizon
  * (summer at high latitudes) or when the night is very short.
  */
 enum class HighLatitudeRule {
@@ -49,17 +93,59 @@ data class PrayerCalcParams(
     val highLatitudeRule: HighLatitudeRule = HighLatitudeRule.ANGLE_BASED,
     /** Manual correction added to Fajr, in minutes. */
     val fajrAdjustMinutes: Int = 0,
+    val ishaAngle: Double = 17.0,
+    /** Isha this many minutes after Maghrib instead of by angle; 0 = by angle. */
+    val ishaMinutes: Int = 0,
+    /** Maghrib once the sun is this far below the horizon; 0 = at sunset. */
+    val maghribAngle: Double = 0.0,
+    val asrRule: AsrRule = AsrRule.STANDARD,
+    /** Minutes added to Fajr, Sunrise, Dhuhr, Asr, Maghrib or Isha, on top of [fajrAdjustMinutes]. */
+    val adjustMinutes: Map<PrayerTime, Int> = emptyMap(),
 )
 
-/** Times for one local calendar day; null when they don't exist (polar day/night). */
+/** One time on one day. */
+data class PrayerMoment(val prayer: PrayerTime, val at: ZonedDateTime)
+
+/**
+ * Times for one local calendar day; null when they don't exist (polar day/night).
+ * [midnight] and [lastThird] belong to the night that starts at this day's sunset, so
+ * they usually fall on the next calendar date.
+ */
 data class DailyTimes(
     val date: LocalDate,
     val fajr: ZonedDateTime?,
     val sunrise: ZonedDateTime?,
-)
+    /** The start of the Duha prayer's time, once the sun has cleared the horizon. */
+    val duha: ZonedDateTime? = null,
+    val dhuhr: ZonedDateTime? = null,
+    val asr: ZonedDateTime? = null,
+    val maghrib: ZonedDateTime? = null,
+    val isha: ZonedDateTime? = null,
+    /** Halfway from sunset to the next Fajr. */
+    val midnight: ZonedDateTime? = null,
+    /** The start of the last third of the night, the time for the night prayer (Qiyam, Tahajjud). */
+    val lastThird: ZonedDateTime? = null,
+) {
+    fun at(prayer: PrayerTime): ZonedDateTime? = when (prayer) {
+        PrayerTime.FAJR -> fajr
+        PrayerTime.SUNRISE -> sunrise
+        PrayerTime.DUHA -> duha
+        PrayerTime.DHUHR -> dhuhr
+        PrayerTime.ASR -> asr
+        PrayerTime.MAGHRIB -> maghrib
+        PrayerTime.ISHA -> isha
+        PrayerTime.MIDNIGHT -> midnight
+        PrayerTime.LAST_THIRD -> lastThird
+    }
+
+    /** The day's times that exist. */
+    fun moments(): List<PrayerMoment> =
+        PrayerTime.values().mapNotNull { p -> at(p)?.let { PrayerMoment(p, it) } }
+}
 
 /**
- * Astronomical prayer-time calculation for Fajr and sunrise.
+ * Astronomical prayer-time calculation for the five prayers, sunrise and the optional
+ * times around them.
  *
  * Uses the standard low-precision solar position formulas (accurate to well
  * under a minute for prayer purposes) and refines each time by re-evaluating
@@ -69,7 +155,54 @@ object PrayerTimeCalculator {
 
     private const val SUNRISE_ANGLE = 0.833 // refraction + solar semi-diameter
 
+    /** The Duha prayer's time starts this long after sunrise. */
+    const val DUHA_AFTER_SUNRISE_MINUTES = 15L
+
     fun compute(date: LocalDate, zone: ZoneId, params: PrayerCalcParams): DailyTimes {
+        val day = solarDay(date, zone, params) ?: return DailyTimes(date, null, null)
+        fun adjusted(hours: Double, prayer: PrayerTime, from: SolarDay = day): ZonedDateTime? =
+            from.at(hours)?.plusMinutes((params.adjustMinutes[prayer] ?: 0).toLong())
+
+        val fajr = adjusted(day.fajr, PrayerTime.FAJR)?.plusMinutes(params.fajrAdjustMinutes.toLong())
+        val sunset = day.at(day.sunset)
+        // The night runs from sunset to the next day's Fajr.
+        val nextFajr = solarDay(date.plusDays(1), zone, params)
+            ?.let { adjusted(it.fajr, PrayerTime.FAJR, it) }?.plusMinutes(params.fajrAdjustMinutes.toLong())
+        val night = if (sunset != null && nextFajr != null) Duration.between(sunset, nextFajr) else null
+        val sunrise = adjusted(day.sunrise, PrayerTime.SUNRISE)
+        return DailyTimes(
+            date = date,
+            fajr = fajr,
+            sunrise = sunrise,
+            duha = sunrise?.plusMinutes(DUHA_AFTER_SUNRISE_MINUTES),
+            dhuhr = adjusted(day.noon, PrayerTime.DHUHR),
+            asr = adjusted(day.asr, PrayerTime.ASR),
+            maghrib = adjusted(day.maghrib, PrayerTime.MAGHRIB),
+            isha = adjusted(day.isha, PrayerTime.ISHA),
+            midnight = night?.let { sunset!!.plus(it.dividedBy(2)) },
+            lastThird = night?.let { sunset!!.plus(it.multipliedBy(2).dividedBy(3)) },
+        )
+    }
+
+    /** A day's times in local hours from [midnight]; NaN where one doesn't exist. */
+    private class SolarDay(
+        val midnight: Instant,
+        val zone: ZoneId,
+        val fajr: Double,
+        val sunrise: Double,
+        val noon: Double,
+        val asr: Double,
+        val sunset: Double,
+        val maghrib: Double,
+        val isha: Double,
+    ) {
+        fun at(hours: Double): ZonedDateTime? =
+            if (hours.isNaN()) null
+            else midnight.plusSeconds((hours * 3600.0).roundToLong()).atZone(zone)
+    }
+
+    /** Null in polar day or polar night, when there is no sunrise to hang the day on. */
+    private fun solarDay(date: LocalDate, zone: ZoneId, params: PrayerCalcParams): SolarDay? {
         // Work in local hours from local midnight, using the offset in force at noon.
         val offset = zone.rules.getOffset(date.atTime(12, 0))
         val offsetHours = offset.totalSeconds / 3600.0
@@ -84,37 +217,48 @@ object PrayerTimeCalculator {
         val rawLag = offsetHours - lng / 15.0
         val zoneLag = rawLag - 24.0 * round(rawLag / 24.0)
 
-        val sunrise = timeForAngle(jdBase, zoneLag, lat, SUNRISE_ANGLE, morning = true, estimate = 6.0)
-        val sunset = timeForAngle(jdBase, zoneLag, lat, SUNRISE_ANGLE, morning = false, estimate = 18.0)
-        var fajr = timeForAngle(jdBase, zoneLag, lat, params.fajrAngle, morning = true, estimate = 5.0)
+        fun below(angle: Double, morning: Boolean, estimate: Double) =
+            timeForAngle(jdBase, zoneLag, lat, morning, estimate) { angle }
 
-        if (sunrise.isNaN()) {
-            // Polar day or polar night: no meaningful Fajr/sunrise.
-            return DailyTimes(date, null, null)
+        val sunrise = below(SUNRISE_ANGLE, morning = true, estimate = 6.0)
+        val sunset = below(SUNRISE_ANGLE, morning = false, estimate = 18.0)
+        var fajr = below(params.fajrAngle, morning = true, estimate = 5.0)
+        if (sunrise.isNaN()) return null
+
+        var noon = 12.0 + zoneLag
+        repeat(2) { noon = solarNoon(jdBase, zoneLag, noon) }
+        // Asr: the sun is as high as makes a shadow `shadow` times an object's height
+        // longer than its shadow at noon.
+        val asr = timeForAngle(jdBase, zoneLag, lat, morning = false, estimate = 15.0) { decl ->
+            -dAtan(1.0 / (params.asrRule.shadow + dTan(abs(lat - decl))))
+        }
+        val maghrib = if (params.maghribAngle > 0.0) {
+            below(params.maghribAngle, morning = false, estimate = 18.3).takeUnless { it.isNaN() } ?: sunset
+        } else {
+            sunset
+        }
+        var isha = if (params.ishaMinutes > 0) {
+            maghrib + params.ishaMinutes / 60.0
+        } else {
+            below(params.ishaAngle, morning = false, estimate = 19.5)
         }
 
         if (params.highLatitudeRule != HighLatitudeRule.NONE && !sunset.isNaN()) {
             val night = 24.0 - (sunset - sunrise)
-            val portion = when (params.highLatitudeRule) {
-                HighLatitudeRule.ANGLE_BASED -> params.fajrAngle / 60.0
+            fun portion(angle: Double) = when (params.highLatitudeRule) {
+                HighLatitudeRule.ANGLE_BASED -> angle / 60.0
                 HighLatitudeRule.ONE_SEVENTH -> 1.0 / 7.0
                 HighLatitudeRule.MIDDLE_OF_NIGHT -> 0.5
                 HighLatitudeRule.NONE -> 0.0
             } * night
-            if (fajr.isNaN() || sunrise - fajr > portion) {
-                fajr = sunrise - portion
+            if (fajr.isNaN() || sunrise - fajr > portion(params.fajrAngle)) {
+                fajr = sunrise - portion(params.fajrAngle)
+            }
+            if (params.ishaMinutes == 0 && (isha.isNaN() || isha - sunset > portion(params.ishaAngle))) {
+                isha = sunset + portion(params.ishaAngle)
             }
         }
-
-        fun toZoned(hours: Double): ZonedDateTime? =
-            if (hours.isNaN()) null
-            else midnight.plusSeconds((hours * 3600.0).roundToLong()).atZone(zone)
-
-        return DailyTimes(
-            date = date,
-            fajr = toZoned(fajr)?.plusMinutes(params.fajrAdjustMinutes.toLong()),
-            sunrise = toZoned(sunrise),
-        )
+        return SolarDay(midnight, zone, fajr, sunrise, noon, asr, sunset, maghrib, isha)
     }
 
     /** Julian day at 0h UT of the given calendar date. */
@@ -155,14 +299,15 @@ object PrayerTimeCalculator {
     /**
      * Local time (hours from local midnight) when the sun is [angle] degrees below
      * the horizon, before ([morning]) or after solar noon. NaN if it never happens.
+     * [angle] is given the sun's declination, which the Asr angle depends on.
      */
     private fun timeForAngle(
         jdBase: Double,
         zoneLag: Double,
         lat: Double,
-        angle: Double,
         morning: Boolean,
         estimate: Double,
+        angle: (declination: Double) -> Double,
     ): Double {
         // Shift the generic estimate by the zone/longitude difference so the first
         // guess lands near the right part of the day.
@@ -170,7 +315,7 @@ object PrayerTimeCalculator {
         repeat(3) {
             val decl = sunPosition(jdBase + t / 24.0).declination
             val noon = solarNoon(jdBase, zoneLag, t)
-            val cosH = (-dSin(angle) - dSin(lat) * dSin(decl)) / (dCos(lat) * dCos(decl))
+            val cosH = (-dSin(angle(decl)) - dSin(lat) * dSin(decl)) / (dCos(lat) * dCos(decl))
             if (cosH < -1.0 || cosH > 1.0) return Double.NaN
             val h = dAcos(cosH) / 15.0
             t = if (morning) noon - h else noon + h
@@ -180,6 +325,8 @@ object PrayerTimeCalculator {
 
     private fun dSin(d: Double) = sin(Math.toRadians(d))
     private fun dCos(d: Double) = cos(Math.toRadians(d))
+    private fun dTan(d: Double) = tan(Math.toRadians(d))
+    private fun dAtan(x: Double) = Math.toDegrees(atan(x))
     private fun dAsin(x: Double) = Math.toDegrees(asin(x))
     private fun dAcos(x: Double) = Math.toDegrees(acos(x))
     private fun dAtan2(y: Double, x: Double) = Math.toDegrees(atan2(y, x))

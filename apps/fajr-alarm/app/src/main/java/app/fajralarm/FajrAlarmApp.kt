@@ -42,11 +42,31 @@ class FajrAlarmApp : Application() {
             getString(R.string.channel_status_name),
             NotificationManager.IMPORTANCE_LOW,
         ).apply { description = getString(R.string.channel_status_description) }
-        nm.createNotificationChannels(listOf(ringing, info))
+        // A time of the day arriving: the phone's own notification sound, not the alarm.
+        val prayer = NotificationChannel(
+            CHANNEL_PRAYER,
+            getString(R.string.channel_prayer_name),
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = getString(R.string.channel_prayer_description)
+            lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+        }
+        val now = NotificationChannel(
+            CHANNEL_NOW,
+            getString(R.string.channel_now_name),
+            NotificationManager.IMPORTANCE_LOW, // silent, and still shown on the lock screen
+        ).apply {
+            description = getString(R.string.channel_now_description)
+            setShowBadge(false)
+            lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+        }
+        nm.createNotificationChannels(listOf(ringing, info, prayer, now))
     }
 
     companion object {
         const val CHANNEL_ALARM = "fajr_alarm_ringing"
         const val CHANNEL_INFO = "fajr_alarm_info"
+        const val CHANNEL_PRAYER = "fajr_alarm_prayer"
+        const val CHANNEL_NOW = "fajr_alarm_now"
     }
 }

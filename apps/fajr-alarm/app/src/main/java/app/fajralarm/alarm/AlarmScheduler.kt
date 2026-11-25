@@ -8,6 +8,7 @@ import android.os.Build
 import app.fajralarm.core.AlarmPlanner
 import app.fajralarm.core.PlannedAlarm
 import app.fajralarm.data.SettingsStore
+import app.fajralarm.prayer.PrayerTicker
 import app.fajralarm.ui.MainActivity
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -31,6 +32,9 @@ object AlarmScheduler {
      * an alarm due in the next few seconds is never skipped.
      */
     fun reschedule(context: Context, afterFire: Boolean = false): PlannedAlarm? {
+        // Whatever calls for a fresh alarm (new settings, a reboot, a clock change) also
+        // moves the other prayers' times.
+        PrayerTicker.refresh(context)
         val store = SettingsStore(context)
         val settings = store.load()
         val am = context.getSystemService(AlarmManager::class.java)

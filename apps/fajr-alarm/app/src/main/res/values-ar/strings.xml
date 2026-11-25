@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Arabic, shown when the phone's language is Arabic. Same names and order as values/strings.xml. -->
 <resources>
-    <string name="app_name">منبّه الفجر</string>
+    <string name="app_name">مواقيت الصلاة</string>
 
     <!-- Notification channels, as listed in the phone's settings -->
     <string name="channel_ringing_name">رنين المنبّه</string>
@@ -100,6 +100,8 @@
     <string name="method">الطريقة</string>
     <!-- %1$s a method name below, %2$.1f its Fajr angle -->
     <string name="method_with_angle">%1$s (%2$.1f°)</string>
+    <string name="method_dar_al_fatwa">دار الفتوى – لبنان</string>
+    <string name="method_dar_al_fatwa_note">التقويم الرسمي لدار الفتوى في لبنان: الفجر عند 19.5°، العشاء عند 17.5°، المغرب بعد الغروب بخمس دقائق، الظهر عند الزوال، مع دقيقة احتياط في الفجر والعشاء. يُحسب من إحداثيات موقعك في أي مكان في لبنان. جرت مطابقته مع المواقيت المنشورة لبيروت ليوم واحد فقط (25 تشرين الثاني 2026)؛ إن اختلف وقت فاستعمل التعديلات أدناه.</string>
     <string name="method_mwl">رابطة العالم الإسلامي</string>
     <string name="method_isna">الجمعية الإسلامية لأمريكا الشمالية</string>
     <string name="method_egyptian">الهيئة المصرية العامة للمساحة</string>
@@ -122,7 +124,9 @@
     <string name="high_latitude_none">بدون</string>
     <string name="fajr_adjustment">تعديل وقت الفجر</string>
     <string name="minutes_short">د</string>
-    <string name="fajr_adjustment_hint">استخدمه لمطابقة توقيت مسجدك المحلي.</string>
+    <!-- %1$s a prayer -->
+    <string name="prayer_adjustment">تعديل وقت %1$s</string>
+    <string name="fajr_adjustment_hint">استخدمها لمطابقة توقيت مسجدك المحلي.</string>
 
     <!-- Main screen: Sound & wake-up -->
     <string name="section_sound">الصوت والإيقاظ</string>
@@ -165,7 +169,7 @@
     <string name="warning_full_screen">المنبّهات بملء الشاشة محظورة، وسيصلك إشعار فقط.</string>
     <string name="warning_overlay">شاشة المنبّه لا تستطيع أن تفتح تلقائياً، وستضطر لفتح التطبيق بنفسك. اسمح بالظهور فوق التطبيقات الأخرى.</string>
     <string name="warning_battery">تحسين البطارية مفعّل، وقد يوقف الهاتف المنبّه.</string>
-    <string name="samsung_tip">هواتف سامسونج قد توقف المنبّه في الخلفية. من الإعدادات ← البطارية والعناية بالجهاز ← البطارية ← حدود الاستخدام في الخلفية، أضف «منبّه الفجر» إلى التطبيقات التي لا تدخل في وضع السكون أبداً.</string>
+    <string name="samsung_tip">هواتف سامسونج قد توقف المنبّه في الخلفية. من الإعدادات ← البطارية والعناية بالجهاز ← البطارية ← حدود الاستخدام في الخلفية، أضف «مواقيت الصلاة» إلى التطبيقات التي لا تدخل في وضع السكون أبداً.</string>
     <string name="allow">سماح</string>
     <string name="fix">إصلاح</string>
     <string name="app_settings">إعدادات التطبيق</string>
@@ -238,4 +242,63 @@
     <string name="update_channel">تحديثات التطبيق</string>
     <string name="update_notice_installing">جارٍ تثبيت التحديث…</string>
     <string name="update_notice_ready">تم تنزيل التحديث. افتح التطبيق لتثبيته.</string>
+
+    <!-- Notification channels for the other prayers -->
+    <string name="channel_prayer_name">إشعارات المواقيت</string>
+    <string name="channel_prayer_description">إشعار عند دخول وقت اخترته</string>
+    <string name="channel_now_name">الصلاة الحالية</string>
+    <string name="channel_now_description">الصلاة الحالية والوقت المتبقي لها، لشاشة القفل</string>
+
+    <!-- The times of the day -->
+    <string name="prayer_duha">الضحى</string>
+    <string name="prayer_dhuhr">الظهر</string>
+    <string name="prayer_asr">العصر</string>
+    <string name="prayer_maghrib">المغرب</string>
+    <string name="prayer_isha">العشاء</string>
+    <string name="prayer_midnight">منتصف الليل</string>
+    <string name="prayer_last_third">الثلث الأخير من الليل</string>
+    <string name="prayer_last_third_short">الثلث الأخير</string>
+
+    <!-- Main screen: Times of the day. %1$s a time of the day, %2$s a clock time or a length of time -->
+    <string name="section_prayers">أوقات اليوم</string>
+    <string name="time_left">بقي %1$s</string>
+    <string name="starts_in">بعد %1$s</string>
+    <string name="next_prayer">التالية: %1$s %2$s</string>
+    <string name="duration_hours_minutes">%1$d س %2$d د</string>
+    <string name="duration_minutes">%1$d د</string>
+    <string name="alert_at">إشعار عند %1$s</string>
+    <string name="alerts_hint">اضغط على الجرس ليصلك إشعار عند دخول ذلك الوقت. هو إشعار عادي وليس المنبّه: المنبّه للفجر.</string>
+    <string name="optional_times_hint">يبدأ الضحى بعد الشروق بـ 15 دقيقة. يُحسب منتصف الليل والثلث الأخير من غروب الشمس إلى الفجر التالي.</string>
+
+    <!-- A notification when a time arrives. %1$s the time of the day, %2$s the clock time -->
+    <string name="prayer_alert_title">%1$s · %2$s</string>
+    <string name="alert_pray">حان وقت الصلاة.</string>
+    <string name="alert_sunrise">انتهى وقت الفجر.</string>
+    <string name="alert_duha">بدأ وقت صلاة الضحى.</string>
+    <string name="alert_midnight">انقضى نصف الليل.</string>
+    <string name="alert_last_third">بدأ الثلث الأخير من الليل.</string>
+
+    <!-- Lock screen notification and widgets. %1$s a prayer, %2$s a clock time; a countdown follows "ends in" and "starts in" -->
+    <string name="section_lock_widgets">شاشة القفل والأدوات</string>
+    <string name="lock_screen_countdown">الصلاة الحالية على شاشة القفل</string>
+    <string name="lock_screen_countdown_hint">إشعار صامت فيه الصلاة الحالية وعدّ تنازلي حيّ للوقت المتبقي لها. يبقى على شاشة القفل وفي شريط الإشعارات.</string>
+    <string name="now_ends_in">ينتهي وقت %1$s بعد</string>
+    <string name="now_starts_in">يدخل وقت %1$s بعد</string>
+    <string name="now_until">%1$s حتى %2$s</string>
+    <string name="now_at">%1$s عند %2$s</string>
+    <string name="widgets_intro">أداتان للشاشة الرئيسية: كل مواقيت اليوم، والصلاة الحالية مع العدّ التنازلي.</string>
+    <string name="widget_times_name">كل المواقيت</string>
+    <string name="widget_times_description">كل مواقيت اليوم، مع الأوقات الاختيارية</string>
+    <string name="widget_now_name">الصلاة الحالية</string>
+    <string name="widget_now_description">الصلاة الحالية وعدّ تنازلي للوقت المتبقي لها</string>
+    <string name="widget_add_times">إضافة أداة «كل المواقيت»</string>
+    <string name="widget_add_now">إضافة أداة «الصلاة الحالية»</string>
+    <string name="widget_add_by_hand">اضغط مطوّلاً على مكان فارغ في الشاشة الرئيسية، واختر «الأدوات» ثم «مواقيت الصلاة».</string>
+    <string name="widget_set_location">افتح مواقيت الصلاة لتحديد موقعك</string>
+
+    <!-- Main screen: Calculation, for the other prayers -->
+    <string name="isha_angle">زاوية العشاء: %1$.1f°</string>
+    <string name="asr_rule">العصر</string>
+    <string name="asr_standard">الجمهور (الشافعي، المالكي، الحنبلي)</string>
+    <string name="asr_hanafi">الحنفي</string>
 </resources>

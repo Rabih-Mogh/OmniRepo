@@ -26,8 +26,12 @@ data class AlarmSettings(
     val days: Set<DayOfWeek> = DayOfWeek.values().toSet(),
     val method: CalculationMethod = CalculationMethod.MUSLIM_WORLD_LEAGUE,
     val customFajrAngle: Double = 18.0,
+    val customIshaAngle: Double = 17.0,
+    val asrRule: AsrRule = AsrRule.STANDARD,
     val highLatitudeRule: HighLatitudeRule = HighLatitudeRule.ANGLE_BASED,
     val fajrAdjustMinutes: Int = 0,
+    /** The same manual correction for Dhuhr, Asr, Maghrib and Isha, in minutes. */
+    val adjustMinutes: Map<PrayerTime, Int> = emptyMap(),
     val latitude: Double? = null,
     val longitude: Double? = null,
     val locationLabel: String = "",
@@ -39,6 +43,10 @@ data class AlarmSettings(
     val snoozeMinutes: Int = 5,
     val maxSnoozes: Int = 3,
     val dismissMission: DismissMission = DismissMission.NONE,
+    /** The times that get a plain notification when they arrive. Fajr has the alarm instead. */
+    val alerts: Set<PrayerTime> = emptySet(),
+    /** Keep the current prayer and the time it has left in a notification, for the lock screen. */
+    val lockScreenCountdown: Boolean = false,
 ) {
     val hasLocation: Boolean get() = latitude != null && longitude != null
 
@@ -56,10 +64,22 @@ data class AlarmSettings(
     val fajrAngle: Double
         get() = if (method == CalculationMethod.CUSTOM) customFajrAngle else method.fajrAngle
 
+    val ishaAngle: Double
+        get() = if (method == CalculationMethod.CUSTOM) customIshaAngle else method.ishaAngle
+
     fun calcParams(): PrayerCalcParams? {
         val lat = latitude ?: return null
         val lng = longitude ?: return null
-        return PrayerCalcParams(lat, lng, fajrAngle, highLatitudeRule, fajrAdjustMinutes)
+        return PrayerCalcParams(
+            lat, lng, fajrAngle, highLatitudeRule, fajrAdjustMinutes,
+            ishaAngle = ishaAngle,
+            ishaMinutes = method.ishaMinutes,
+            maghribAngle = method.maghribAngle,
+            asrRule = asrRule,
+            // The method's own minutes, then yours on top.
+            adjustMinutes = (method.offsets.keys + adjustMinutes.keys)
+                .associateWith { (method.offsets[it] ?: 0) + (adjustMinutes[it] ?: 0) },
+        )
     }
 
     companion object {

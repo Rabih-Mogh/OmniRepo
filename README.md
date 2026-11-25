@@ -8,7 +8,7 @@ affect each other and can use different languages or toolchains.
 
 | App | What it is | Platform |
 |---|---|---|
-| [Fajr Alarm](apps/fajr-alarm/) | An alarm that rings relative to Fajr or sunrise, with missions (a sum, or finding a real sink) to turn it off | Android |
+| [Prayer Times](apps/fajr-alarm/) (was Fajr Alarm) | Every prayer time of the day, with widgets and a lock screen countdown, and an alarm that rings relative to Fajr or sunrise, with missions (a sum, or finding a real sink) to turn it off | Android |
 | [Accent Coach](apps/accent-coach/) | Read a sentence aloud and see the sounds you made next to a native American speaker's, with non-native sounds highlighted; lessons and drills on the hardest sounds, your own hard words, and a streak | Android |
 | [Recitation](apps/recitation/) | Listen to a recitation of the Quran from a YouTube playlist and follow it word by word, with each word's meaning and the word being recited lit up | Android |
 | [Safeguard](apps/safeguard/) | Daily allowances and closed hours for the apps and websites you choose, apps kept off the phone, websites and words closed in any browser; once locked it resists being loosened or uninstalled | Android |

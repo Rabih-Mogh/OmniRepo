@@ -83,8 +83,38 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.TIME_SET" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
                 <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
+        </receiver>
+
+        <!-- Wakes at each time of the day: the widgets, the lock screen notification, a notification for that time. -->
+        <receiver
+            android:name=".prayer.PrayerTickReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".widget.PrayerTimesWidget"
+            android:exported="true"
+            android:label="@string/widget_times_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_times_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.CurrentPrayerWidget"
+            android:exported="true"
+            android:label="@string/widget_now_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_current_info" />
         </receiver>
 
         <!-- Keeps an update downloading, with its progress in a notification, while the app isn't on screen. -->

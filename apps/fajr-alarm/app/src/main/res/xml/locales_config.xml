@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The languages offered under the phone's Settings → Apps → Fajr Alarm → Language (Android 13+). -->
+<!-- The languages offered under the phone's Settings → Apps → Prayer Times → Language (Android 13+). -->
 <locale-config xmlns:android="http://schemas.android.com/apk/res/android">
     <locale android:name="en" />
     <locale android:name="ar" />

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import app.fajralarm.core.AlarmSettings
 import app.fajralarm.core.DismissMission
+import app.fajralarm.core.PrayerTime
 import java.time.DayOfWeek
 
 /** Persists [AlarmSettings] and a little runtime state in SharedPreferences. */
@@ -21,8 +22,11 @@ class SettingsStore(context: Context) {
             days = daysFromMask(prefs.getInt(K_DAYS, maskFromDays(d.days))),
             method = enumOr(prefs.getString(K_METHOD, null), d.method),
             customFajrAngle = prefs.getFloat(K_CUSTOM_ANGLE, d.customFajrAngle.toFloat()).toDouble(),
+            customIshaAngle = prefs.getFloat(K_CUSTOM_ISHA, d.customIshaAngle.toFloat()).toDouble(),
+            asrRule = enumOr(prefs.getString(K_ASR, null), d.asrRule),
             highLatitudeRule = enumOr(prefs.getString(K_HIGH_LAT, null), d.highLatitudeRule),
             fajrAdjustMinutes = prefs.getInt(K_ADJUST, d.fajrAdjustMinutes),
+            adjustMinutes = ADJUSTABLE.associateWith { prefs.getInt(adjustKey(it), 0) }.filterValues { it != 0 },
             latitude = if (prefs.contains(K_LAT)) prefs.getString(K_LAT, null)?.toDoubleOrNull() else null,
             longitude = if (prefs.contains(K_LNG)) prefs.getString(K_LNG, null)?.toDoubleOrNull() else null,
             locationLabel = prefs.getString(K_LOCATION_LABEL, d.locationLabel) ?: "",
@@ -36,6 +40,9 @@ class SettingsStore(context: Context) {
                 // Earlier versions stored a simple "math challenge" on/off switch.
                 if (prefs.getBoolean(K_CHALLENGE, false)) DismissMission.MATH else d.dismissMission,
             ),
+            alerts = prefs.getStringSet(K_ALERTS, null)
+                ?.mapNotNull { n -> PrayerTime.values().firstOrNull { it.name == n } }?.toSet() ?: d.alerts,
+            lockScreenCountdown = prefs.getBoolean(K_LOCK_SCREEN, d.lockScreenCountdown),
         )
     }
 
@@ -47,8 +54,11 @@ class SettingsStore(context: Context) {
             putInt(K_DAYS, maskFromDays(s.days))
             putString(K_METHOD, s.method.name)
             putFloat(K_CUSTOM_ANGLE, s.customFajrAngle.toFloat())
+            putFloat(K_CUSTOM_ISHA, s.customIshaAngle.toFloat())
+            putString(K_ASR, s.asrRule.name)
             putString(K_HIGH_LAT, s.highLatitudeRule.name)
             putInt(K_ADJUST, s.fajrAdjustMinutes)
+            ADJUSTABLE.forEach { putInt(adjustKey(it), s.adjustMinutes[it] ?: 0) }
             if (s.latitude != null) putString(K_LAT, s.latitude.toString()) else remove(K_LAT)
             if (s.longitude != null) putString(K_LNG, s.longitude.toString()) else remove(K_LNG)
             putString(K_LOCATION_LABEL, s.locationLabel)
@@ -59,6 +69,8 @@ class SettingsStore(context: Context) {
             putInt(K_MAX_SNOOZES, s.maxSnoozes)
             putString(K_MISSION, s.dismissMission.name)
             remove(K_CHALLENGE)
+            putStringSet(K_ALERTS, s.alerts.map { it.name }.toSet())
+            putBoolean(K_LOCK_SCREEN, s.lockScreenCountdown)
         }.apply()
     }
 
@@ -76,6 +88,20 @@ class SettingsStore(context: Context) {
     var snoozeCount: Int
         get() = prefs.getInt(K_SNOOZE_COUNT, 0)
         set(value) = prefs.edit().putInt(K_SNOOZE_COUNT, value).apply()
+
+    /**
+     * The time of the day the app is waiting for, and when it comes (epoch millis), so a
+     * notification can be posted for it when it does. Null with nothing queued.
+     */
+    var awaitedPrayer: Pair<PrayerTime, Long>?
+        get() {
+            val prayer = prefs.getString(K_AWAITED, null)?.let { n -> PrayerTime.values().firstOrNull { it.name == n } }
+            return prayer?.let { it to prefs.getLong(K_AWAITED_AT, 0L) }
+        }
+        set(value) = prefs.edit().apply {
+            if (value == null) remove(K_AWAITED).remove(K_AWAITED_AT)
+            else putString(K_AWAITED, value.first.name).putLong(K_AWAITED_AT, value.second)
+        }.apply()
 
     /** The latest ringing, or null if the alarm has never rung. */
     fun lastAlarm(): LastAlarm? {
@@ -106,13 +132,19 @@ class SettingsStore(context: Context) {
     private fun daysFromMask(mask: Int): Set<DayOfWeek> =
         DayOfWeek.values().filter { mask and (1 shl (it.value - 1)) != 0 }.toSet()
 
+    private fun adjustKey(prayer: PrayerTime) = "adjust_" + prayer.name.lowercase()
+
     private companion object {
+        /** The prayers with a stored minute correction besides Fajr, which has [K_ADJUST]. */
+        val ADJUSTABLE = listOf(PrayerTime.DHUHR, PrayerTime.ASR, PrayerTime.MAGHRIB, PrayerTime.ISHA)
         const val K_ENABLED = "enabled"
         const val K_ANCHOR = "anchor"
         const val K_OFFSET = "offset_minutes"
         const val K_DAYS = "days_mask"
         const val K_METHOD = "method"
         const val K_CUSTOM_ANGLE = "custom_angle"
+        const val K_CUSTOM_ISHA = "custom_isha_angle"
+        const val K_ASR = "asr_rule"
         const val K_HIGH_LAT = "high_lat_rule"
         const val K_ADJUST = "fajr_adjust"
         const val K_LAT = "lat"
@@ -125,6 +157,10 @@ class SettingsStore(context: Context) {
         const val K_MAX_SNOOZES = "max_snoozes"
         const val K_CHALLENGE = "challenge" // legacy
         const val K_MISSION = "dismiss_mission"
+        const val K_ALERTS = "prayer_alerts"
+        const val K_LOCK_SCREEN = "lock_screen_countdown"
+        const val K_AWAITED = "awaited_prayer"
+        const val K_AWAITED_AT = "awaited_prayer_at"
         const val K_NEXT_AT = "next_alarm_at"
         const val K_SNOOZE_UNTIL = "snooze_until"
         const val K_SNOOZE_COUNT = "snooze_count"

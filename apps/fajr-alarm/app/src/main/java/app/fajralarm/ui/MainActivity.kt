@@ -1,6 +1,8 @@
 package app.fajralarm.ui
 
 import android.Manifest
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -92,9 +94,11 @@ import app.fajralarm.alarm.AlarmService
 import app.fajralarm.core.AlarmAnchor
 import app.fajralarm.core.AlarmPlanner
 import app.fajralarm.core.AlarmSettings
+import app.fajralarm.core.AsrRule
 import app.fajralarm.core.CalculationMethod
 import app.fajralarm.core.DismissMission
 import app.fajralarm.core.HighLatitudeRule
+import app.fajralarm.core.PrayerTime
 import app.fajralarm.core.PrayerTimeCalculator
 import app.fajralarm.core.parseCoordinate
 import app.fajralarm.data.LocationHelper
@@ -102,6 +106,8 @@ import app.fajralarm.data.SettingsStore
 import app.fajralarm.data.SinkProof
 import app.fajralarm.data.StopReason
 import app.fajralarm.data.appExitSince
+import app.fajralarm.widget.CurrentPrayerWidget
+import app.fajralarm.widget.PrayerTimesWidget
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
@@ -149,6 +155,14 @@ private fun SettingsScreen() {
 
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         resumeTick++
+    }
+    /** Asks for the notification permission if it is still missing; the setting is kept either way. */
+    fun askForNotifications() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            !NotificationManagerCompat.from(context).areNotificationsEnabled()
+        ) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
     var locating by remember { mutableStateOf(false) }
     val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -203,6 +217,11 @@ private fun SettingsScreen() {
                 notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
             update(settings.copy(enabled = on))
+        }
+
+        PrayerTimesCard(settings, resumeTick) { prayer, on ->
+            if (on) askForNotifications()
+            update(settings.copy(alerts = if (on) settings.alerts + prayer else settings.alerts - prayer))
         }
 
         LastAlarmCard(context, resumeTick)
@@ -306,6 +325,13 @@ private fun SettingsScreen() {
                     }
                 },
             ) { update(settings.copy(method = it)) }
+            if (settings.method == CalculationMethod.DAR_AL_FATWA_LEBANON) {
+                Text(
+                    stringResource(R.string.method_dar_al_fatwa_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
 
             if (settings.method == CalculationMethod.CUSTOM) {
                 Text(stringResource(R.string.fajr_angle, settings.customFajrAngle), style = MaterialTheme.typography.bodyMedium)
@@ -316,6 +342,23 @@ private fun SettingsScreen() {
                     valueRange = 10f..21f,
                 )
             }
+
+            if (settings.method == CalculationMethod.CUSTOM) {
+                Text(stringResource(R.string.isha_angle, settings.customIshaAngle), style = MaterialTheme.typography.bodyMedium)
+                Slider(
+                    value = settings.customIshaAngle.toFloat(),
+                    onValueChange = { settings = settings.copy(customIshaAngle = (it * 2).roundToInt() / 2.0) },
+                    onValueChangeFinished = { update(settings) },
+                    valueRange = 10f..21f,
+                )
+            }
+
+            ChoiceRow(
+                title = stringResource(R.string.asr_rule),
+                current = settings.asrRule,
+                options = AsrRule.values().toList(),
+                label = { stringResource(it.label) },
+            ) { update(settings.copy(asrRule = it)) }
 
             ChoiceRow(
                 title = stringResource(R.string.high_latitude_rule),
@@ -330,6 +373,14 @@ private fun SettingsScreen() {
                 suffix = stringResource(R.string.minutes_short),
                 range = -30..30,
             ) { update(settings.copy(fajrAdjustMinutes = it)) }
+            listOf(PrayerTime.DHUHR, PrayerTime.ASR, PrayerTime.MAGHRIB, PrayerTime.ISHA).forEach { prayer ->
+                Stepper(
+                    title = stringResource(R.string.prayer_adjustment, stringResource(prayer.label)),
+                    value = settings.adjustMinutes[prayer] ?: 0,
+                    suffix = stringResource(R.string.minutes_short),
+                    range = -30..30,
+                ) { update(settings.copy(adjustMinutes = settings.adjustMinutes + (prayer to it))) }
+            }
             Text(
                 stringResource(R.string.fajr_adjustment_hint),
                 style = MaterialTheme.typography.bodySmall,
@@ -425,6 +476,33 @@ private fun SettingsScreen() {
             }
         }
 
+        Section(stringResource(R.string.section_lock_widgets)) {
+            SwitchRow(
+                stringResource(R.string.lock_screen_countdown),
+                settings.lockScreenCountdown,
+                subtitle = stringResource(R.string.lock_screen_countdown_hint),
+            ) { on ->
+                if (on) askForNotifications()
+                update(settings.copy(lockScreenCountdown = on))
+            }
+            Text(
+                stringResource(R.string.widgets_intro),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            TextButton(onClick = { addWidget(context, PrayerTimesWidget::class.java) }) {
+                Text(stringResource(R.string.widget_add_times))
+            }
+            TextButton(onClick = { addWidget(context, CurrentPrayerWidget::class.java) }) {
+                Text(stringResource(R.string.widget_add_now))
+            }
+            Text(
+                stringResource(R.string.widget_add_by_hand),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
         OutlinedButton(
             onClick = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -444,6 +522,16 @@ private fun SettingsScreen() {
 
         VersionFooter()
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+/** Asks the home screen to place [widget]; where it can't, says how to add it by hand. */
+private fun addWidget(context: Context, widget: Class<*>) {
+    val manager = AppWidgetManager.getInstance(context)
+    if (manager == null || !manager.isRequestPinAppWidgetSupported ||
+        !manager.requestPinAppWidget(ComponentName(context, widget), null, null)
+    ) {
+        Toast.makeText(context, R.string.widget_add_by_hand, Toast.LENGTH_LONG).show()
     }
 }
 
@@ -618,7 +706,7 @@ private fun TimePill(label: String, value: String, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
+internal fun Section(title: String, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             title.uppercase(Locale.getDefault()),
