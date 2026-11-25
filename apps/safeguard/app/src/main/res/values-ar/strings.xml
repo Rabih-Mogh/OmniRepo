@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Arabic for every text in values/strings.xml. -->
+<resources>
+    <string name="app_name">الحارس</string>
+
+    <!-- What Android shows about the app in its own settings -->
+    <string name="watch_about">يرى «الحارس» التطبيق الظاهر أمامك، ويقرأ النص المعروض في المتصفحات ومتاجر التطبيقات وإعدادات الهاتف، ليغلق ما طلبت منه إغلاقه. لا يُحفظ شيء مما يراه ولا يغادر الهاتف.</string>
+    <string name="admin_about">يمنع إلغاء تثبيت «الحارس» ما دام هذا مفعّلاً. لا يستخدم أي صلاحية أخرى لمشرف الجهاز.</string>
+    <string name="admin_warning">يمكن إلغاء تثبيت «الحارس» بعد إيقاف هذا.</string>
+
+    <!-- Setting up -->
+    <string name="watch_off_title">«الحارس» لا يراقب</string>
+    <string name="watch_off_body">لن يُغلق شيء إلى أن يُشغَّل «الحارس» من إعدادات تسهيلات الاستخدام في الهاتف. إذا قال الهاتف إن الإعداد مقيَّد، فافتح صفحة معلومات التطبيق، واضغط على النقاط الثلاث في الأعلى واختر «السماح بالإعدادات المقيَّدة»، ثم حاول مجدداً.</string>
+    <string name="watch_open">فتح إعدادات تسهيلات الاستخدام</string>
+    <string name="watch_info">فتح صفحة معلومات التطبيق</string>
+    <string name="admin_off_title">يمكن إلغاء تثبيت «الحارس»</string>
+    <string name="admin_off_body">تطبيق مشرف الجهاز لا يمكن إلغاء تثبيته قبل إيقاف هذه الصفة، و«الحارس» المقفل يُبقي تلك الصفحة مغلقة.</string>
+    <string name="admin_allow">اجعله تطبيق مشرف الجهاز</string>
+    <string name="admin_stop">إيقاف صفة مشرف الجهاز</string>
+    <string name="installs_off_title">التحديثات تحتاج إلى إعداد</string>
+    <string name="installs_off_body">اسمح لـ«الحارس» بتثبيت تحديثاته الآن. بعد قفله تُغلق صفحة هذا الإعداد كغيرها من الصفحات المتعلقة به.</string>
+    <string name="installs_allow">السماح بالتحديثات</string>
+
+    <!-- Locking -->
+    <string name="lock_off_title">غير مقفل</string>
+    <string name="lock_off_body">كل تغيير يسري فوراً، ويمكن إيقاف «الحارس» أو إزالته. اقفله حين تصبح القوائم أدناه كما تريد.</string>
+    <string name="lock">قفل</string>
+    <string name="lock_confirm_title">قفل «الحارس»؟</string>
+    <string name="lock_confirm_body">بعد القفل، حذف أي شيء من القوائم أو تخفيف حدّ أو فتح القفل أو إيقاف «الحارس» أو إزالته يستغرق %1$s من وقت طلبك.</string>
+    <string name="lock_on_title">مقفل</string>
+    <string name="lock_on_body">الإضافة إلى القوائم تسري فوراً. أما حذف شيء منها أو تخفيف حدّ أو فتح القفل فيستغرق %1$s من وقت طلبك.</string>
+    <string name="unlock_ask">طلب فتح القفل</string>
+    <string name="wait_change">مدة الانتظار: %1$s</string>
+    <string name="wait_title">مدة الانتظار</string>
+    <string name="wait_about">المدة التي ينتظرها أي تغيير يخفّف شيئاً و«الحارس» مقفل. المدة الأطول تبدأ فوراً، والأقصر تنتظر انقضاء مدتك الحالية.</string>
+    <string name="cancel">إلغاء</string>
+    <plurals name="hours">
+        <item quantity="zero">%1$d ساعة</item>
+        <item quantity="one">ساعة واحدة</item>
+        <item quantity="two">ساعتين</item>
+        <item quantity="few">%1$d ساعات</item>
+        <item quantity="many">%1$d ساعة</item>
+        <item quantity="other">%1$d ساعة</item>
+    </plurals>
+    <plurals name="days">
+        <item quantity="zero">%1$d يوم</item>
+        <item quantity="one">يوماً واحداً</item>
+        <item quantity="two">يومين</item>
+        <item quantity="few">%1$d أيام</item>
+        <item quantity="many">%1$d يوماً</item>
+        <item quantity="other">%1$d يوم</item>
+    </plurals>
+
+    <!-- Changes that are waiting -->
+    <string name="waiting_title">قيد الانتظار</string>
+    <string name="waiting_in">بعد %1$s</string>
+    <string name="left_hm">%1$d س %2$d د</string>
+    <string name="left_m">%1$d د</string>
+    <string name="left_soon">أقل من دقيقة</string>
+    <string name="withdraw">سحب الطلب</string>
+    <string name="queued">يسري هذا بعد %1$s. تجده تحت «قيد الانتظار» إلى ذلك الحين.</string>
+    <string name="change_unlock">فتح قفل «الحارس»</string>
+    <string name="change_drop_site">إيقاف حظر %1$s</string>
+    <string name="change_drop_keyword">إيقاف حظر الكلمة «%1$s»</string>
+    <string name="change_drop_app">إيقاف حظر التطبيق %1$s</string>
+    <string name="change_drop_limit">إزالة الحدّ عن %1$s</string>
+    <string name="change_put_limit">تخفيف الحدّ على %1$s</string>
+    <string name="change_wait">تقصير مدة الانتظار إلى %1$s</string>
+
+    <!-- Time limits -->
+    <string name="limits_title">حدود الوقت</string>
+    <string name="limits_about">تطبيقات ومواقع تُفتح لمدة محددة كل يوم، وتبقى مغلقة في الساعات التي تحددها.</string>
+    <string name="limit_used">استُخدم %1$d من %2$d د اليوم</string>
+    <string name="limit_no_allowance">بلا حصة يومية</string>
+    <string name="limit_hours">مغلق %1$s، من %2$s إلى %3$s</string>
+    <string name="limit_hours_all_day">مغلق %1$s، طوال اليوم</string>
+    <string name="limit_no_hours">بلا ساعات إغلاق</string>
+    <string name="every_day">كل يوم</string>
+    <string name="comma">، </string>
+    <string name="limit_add">إضافة حدّ</string>
+    <string name="limit_new">حدّ جديد</string>
+    <string name="limit_name">الاسم</string>
+    <string name="limit_apps">التطبيقات</string>
+    <string name="limit_apps_none">لم تُختر تطبيقات</string>
+    <string name="limit_choose">اختيار التطبيقات</string>
+    <string name="limit_sites">المواقع</string>
+    <string name="limit_sites_about">تُحسب وتُغلق في أي متصفح. افصل بينها بفواصل.</string>
+    <string name="limit_allowance">الحصة اليومية</string>
+    <string name="limit_minutes">دقائق في اليوم</string>
+    <string name="limit_closed">ساعات الإغلاق</string>
+    <string name="limit_from">من %1$s</string>
+    <string name="limit_to">إلى %1$s</string>
+    <string name="limit_locked_note">«الحارس» مقفل: حفظ أي شيء أخفّ من الحالي يستغرق %1$s.</string>
+    <string name="save">حفظ</string>
+    <string name="remove">إزالة</string>
+    <string name="remove_item">إزالة %1$s</string>
+    <string name="done">تم</string>
+    <string name="search">بحث</string>
+    <string name="add">إضافة</string>
+    <string name="ok">حسناً</string>
+
+    <!-- The lists -->
+    <string name="apps_title">التطبيقات المحظورة</string>
+    <string name="apps_about">لا يمكن فتحها، وتُغلق صفحتها في متجر التطبيقات ونافذة التثبيت في أندرويد، فلا يمكن تثبيتها أيضاً. اختر تطبيقات موجودة على الهاتف، أو اكتب اسم تطبيق غير موجود كما يظهر في المتجر، مثل TikTok.</string>
+    <string name="apps_choose">اختيار من هذا الهاتف</string>
+    <string name="apps_hint">اسم التطبيق</string>
+    <string name="sites_title">المواقع المحظورة</string>
+    <string name="sites_about">تُغلق في أي متصفح مع كل ما يتبعها: example.com يشمل m.example.com أيضاً.</string>
+    <string name="sites_hint">example.com</string>
+    <string name="sites_error">هذا ليس عنوان موقع.</string>
+    <string name="keywords_title">الكلمات المحظورة</string>
+    <string name="keywords_about">تُغلق صفحة المتصفح التي تظهر فيها إحدى هذه الكلمات، في عنوانها أو في نصها.</string>
+    <string name="keywords_hint">كلمة أو عبارة</string>
+
+    <!-- The screen that comes up over what was closed -->
+    <string name="block_title">أغلقه «الحارس»</string>
+    <string name="why_hours">%1$s مغلق حتى %2$s.</string>
+    <string name="why_hours_always">%1$s مغلق في كل الساعات.</string>
+    <string name="why_spent">انتهت دقائق %1$s الـ%2$d لهذا اليوم. يُفتح مجدداً غداً.</string>
+    <string name="why_never">%1$s في قائمة التطبيقات المحظورة.</string>
+    <string name="why_site">%1$s في قائمة المواقع المحظورة.</string>
+    <string name="why_keyword">ظهرت في تلك الصفحة الكلمة «%1$s» التي حظرتها.</string>
+    <string name="why_guarded">«الحارس» مقفل، لذا فإن الإعدادات التي توقفه أو تزيله مغلقة. لتغيير ذلك افتح «الحارس» واطلب فتح القفل.</string>
+
+    <!-- App updates -->
+    <string name="close">إغلاق</string>
+    <string name="update_title">تحديث التطبيق</string>
+    <string name="update_later">لاحقاً</string>
+    <string name="update_hide">إخفاء</string>
+    <string name="update_interrupted">انقطع التنزيل. حاول مجدداً للمتابعة من حيث توقف.</string>
+    <string name="update_available">الإصدار %1$s متاح (%2$d ميغابايت).</string>
+    <string name="update">تحديث</string>
+    <string name="update_downloading">جارٍ تنزيل التحديث… %1$d%%</string>
+    <string name="update_installing">جارٍ التثبيت… سيُغلق التطبيق عند الانتهاء. افتحه مجدداً بعد ذلك.</string>
+    <string name="try_again">حاول مجدداً</string>
+    <string name="version">الإصدار %1$s</string>
+    <string name="check_for_updates">البحث عن تحديثات</string>
+    <string name="update_checking">جارٍ البحث…</string>
+    <string name="update_latest">لديك أحدث إصدار.</string>
+    <string name="update_check_failed">تعذّر البحث عن تحديثات. هل الهاتف متصل بالإنترنت؟</string>
+    <string name="update_failed">فشل التحديث.</string>
+    <string name="update_download_failed">فشل التنزيل (HTTP %1$d).</string>
+    <string name="update_mismatch">الملف الذي تم تنزيله لا يطابق الإصدار المنشور. حاول مجدداً بعد بضع دقائق.</string>
+    <string name="update_prompt_failed">تعذّر على أندرويد عرض نافذة التثبيت. أبقِ التطبيق مفتوحاً وحاول مجدداً.</string>
+    <string name="update_cancelled">تم إلغاء التحديث.</string>
+    <string name="update_refused">رفض أندرويد التحديث: %1$s</string>
+    <string name="update_no_reason">لم يُذكر السبب</string>
+    <string name="update_ready">تم تنزيل الإصدار %1$s وهو جاهز للتثبيت.</string>
+    <string name="update_install">تثبيت</string>
+    <string name="update_channel">تحديثات التطبيق</string>
+    <string name="update_notice_installing">جارٍ تثبيت التحديث…</string>
+    <string name="update_notice_ready">تم تنزيل التحديث. افتح التطبيق لتثبيته.</string>
+</resources>

@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Every text the app shows. Each one has an Arabic counterpart in values-ar/strings.xml. -->
+<resources>
+    <string name="app_name">Safeguard</string>
+
+    <!-- What Android shows about the app in its own settings -->
+    <string name="watch_about">Safeguard sees which app is in front, and reads the text on screen in browsers, app stores and the phone\'s settings, to close what you asked it to close. Nothing it sees is kept or leaves the phone.</string>
+    <string name="admin_about">Keeps Safeguard from being uninstalled while this is on. It uses no other device admin power.</string>
+    <string name="admin_warning">Safeguard can be uninstalled once this is off.</string>
+
+    <!-- Setting up -->
+    <string name="watch_off_title">Safeguard isn\'t watching</string>
+    <string name="watch_off_body">Nothing is closed until Safeguard is switched on under the phone\'s Accessibility settings. If the phone says the setting is restricted, open the app\'s info page, tap the three dots at the top and choose Allow restricted settings, then try again.</string>
+    <string name="watch_open">Open Accessibility settings</string>
+    <string name="watch_info">Open the app\'s info page</string>
+    <string name="admin_off_title">Safeguard can be uninstalled</string>
+    <string name="admin_off_body">A device admin app can\'t be uninstalled until that is switched off again, and a locked Safeguard keeps that page closed.</string>
+    <string name="admin_allow">Make it a device admin app</string>
+    <string name="admin_stop">Stop being a device admin app</string>
+    <string name="installs_off_title">Updates need a setting</string>
+    <string name="installs_off_body">Allow Safeguard to install its own updates now. Once it is locked, that settings page is closed like the others about it.</string>
+    <string name="installs_allow">Allow updates</string>
+
+    <!-- Locking -->
+    <string name="lock_off_title">Unlocked</string>
+    <string name="lock_off_body">Every change takes effect at once, and Safeguard can be switched off or removed. Lock it when the lists below are as you want them.</string>
+    <string name="lock">Lock</string>
+    <string name="lock_confirm_title">Lock Safeguard?</string>
+    <string name="lock_confirm_body">From then on, taking anything off the lists, loosening a limit, unlocking, switching Safeguard off or removing it takes %1$s from when you ask.</string>
+    <string name="lock_on_title">Locked</string>
+    <string name="lock_on_body">Adding to the lists is immediate. Taking anything off, loosening a limit or unlocking takes %1$s from when you ask.</string>
+    <string name="unlock_ask">Ask to unlock</string>
+    <string name="wait_change">Waiting period: %1$s</string>
+    <string name="wait_title">Waiting period</string>
+    <string name="wait_about">How long a change that loosens anything waits while Safeguard is locked. A longer period starts at once; a shorter one waits out the period you have now.</string>
+    <string name="cancel">Cancel</string>
+    <plurals name="hours">
+        <item quantity="one">%1$d hour</item>
+        <item quantity="other">%1$d hours</item>
+    </plurals>
+    <plurals name="days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+
+    <!-- Changes that are waiting -->
+    <string name="waiting_title">Waiting</string>
+    <string name="waiting_in">in %1$s</string>
+    <string name="left_hm">%1$d h %2$d min</string>
+    <string name="left_m">%1$d min</string>
+    <string name="left_soon">less than a minute</string>
+    <string name="withdraw">Withdraw</string>
+    <string name="queued">This takes effect in %1$s. It is listed under Waiting until then.</string>
+    <string name="change_unlock">Unlock Safeguard</string>
+    <string name="change_drop_site">Stop blocking %1$s</string>
+    <string name="change_drop_keyword">Stop blocking the word “%1$s”</string>
+    <string name="change_drop_app">Stop blocking the app %1$s</string>
+    <string name="change_drop_limit">Remove the limit on %1$s</string>
+    <string name="change_put_limit">Loosen the limit on %1$s</string>
+    <string name="change_wait">Shorten the waiting period to %1$s</string>
+
+    <!-- Time limits -->
+    <string name="limits_title">Time limits</string>
+    <string name="limits_about">Apps and websites that open for only so long each day, and stay closed during the hours you set.</string>
+    <string name="limit_used">%1$d of %2$d min used today</string>
+    <string name="limit_no_allowance">No daily allowance</string>
+    <string name="limit_hours">Closed %1$s, %2$s to %3$s</string>
+    <string name="limit_hours_all_day">Closed %1$s, all day</string>
+    <string name="limit_no_hours">No closed hours</string>
+    <string name="every_day">every day</string>
+    <string name="comma">, </string>
+    <string name="limit_add">Add a limit</string>
+    <string name="limit_new">New limit</string>
+    <string name="limit_name">Name</string>
+    <string name="limit_apps">Apps</string>
+    <string name="limit_apps_none">No apps chosen</string>
+    <string name="limit_choose">Choose apps</string>
+    <string name="limit_sites">Websites</string>
+    <string name="limit_sites_about">Counted and closed in any browser. Separate them with commas.</string>
+    <string name="limit_allowance">Daily allowance</string>
+    <string name="limit_minutes">Minutes a day</string>
+    <string name="limit_closed">Closed hours</string>
+    <string name="limit_from">From %1$s</string>
+    <string name="limit_to">To %1$s</string>
+    <string name="limit_locked_note">Safeguard is locked: saving anything looser than now takes %1$s.</string>
+    <string name="save">Save</string>
+    <string name="remove">Remove</string>
+    <string name="remove_item">Remove %1$s</string>
+    <string name="done">Done</string>
+    <string name="search">Search</string>
+    <string name="add">Add</string>
+    <string name="ok">OK</string>
+
+    <!-- The lists -->
+    <string name="apps_title">Blocked apps</string>
+    <string name="apps_about">These can\'t be opened, and their page in the app store and Android\'s install prompt are closed, so they can\'t be installed either. Choose apps that are on the phone, or type the name of one that isn\'t, as the store shows it, like TikTok.</string>
+    <string name="apps_choose">Choose from this phone</string>
+    <string name="apps_hint">App name</string>
+    <string name="sites_title">Blocked websites</string>
+    <string name="sites_about">Closed in any browser, with everything under them: example.com also covers m.example.com.</string>
+    <string name="sites_hint">example.com</string>
+    <string name="sites_error">That isn\'t a website address.</string>
+    <string name="keywords_title">Blocked words</string>
+    <string name="keywords_about">A browser page that shows one of these, in its address or its text, is closed.</string>
+    <string name="keywords_hint">Word or phrase</string>
+
+    <!-- The screen that comes up over what was closed -->
+    <string name="block_title">Closed by Safeguard</string>
+    <string name="why_hours">%1$s is closed until %2$s.</string>
+    <string name="why_hours_always">%1$s is closed at all hours.</string>
+    <string name="why_spent">Today\'s %2$d minutes of %1$s are used up. It opens again tomorrow.</string>
+    <string name="why_never">%1$s is on your list of blocked apps.</string>
+    <string name="why_site">%1$s is on your list of blocked websites.</string>
+    <string name="why_keyword">That page showed “%1$s”, a word you blocked.</string>
+    <string name="why_guarded">Safeguard is locked, so the settings that would switch it off or remove it are closed. To change that, open Safeguard and ask to unlock.</string>
+
+    <!-- App updates -->
+    <string name="close">Close</string>
+    <string name="update_title">App update</string>
+    <string name="update_later">Later</string>
+    <string name="update_hide">Hide</string>
+    <string name="update_interrupted">The download was interrupted. Try again to carry on from where it stopped.</string>
+    <string name="update_available">Version %1$s is available (%2$d MB).</string>
+    <string name="update">Update</string>
+    <string name="update_downloading">Downloading the update… %1$d%%</string>
+    <string name="update_installing">Installing… The app closes when it\'s done. Open it again afterwards.</string>
+    <string name="try_again">Try again</string>
+    <string name="version">Version %1$s</string>
+    <string name="check_for_updates">Check for updates</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_latest">You have the latest version.</string>
+    <string name="update_check_failed">Couldn\'t check for updates. Is the phone online?</string>
+    <string name="update_failed">The update failed.</string>
+    <string name="update_download_failed">Download failed (HTTP %1$d).</string>
+    <string name="update_mismatch">The download didn\'t match the published version. Try again in a few minutes.</string>
+    <string name="update_prompt_failed">Android couldn\'t show its install prompt. Keep the app open and try again.</string>
+    <string name="update_cancelled">The update was cancelled.</string>
+    <string name="update_refused">Android refused the update: %1$s</string>
+    <string name="update_no_reason">no reason given</string>
+    <string name="update_ready">Version %1$s is downloaded and ready to install.</string>
+    <string name="update_install">Install</string>
+    <string name="update_channel">App updates</string>
+    <string name="update_notice_installing">Installing the update…</string>
+    <string name="update_notice_ready">The update is downloaded. Open the app to install it.</string>
+</resources>
