@@ -1,0 +1,56 @@
+{
+  "format": 1,
+  "day": "2026-11-26",
+  "reels": [
+    {
+      "id": "2026-11-26-birthday",
+      "topic": "maths",
+      "tags": ["probability", "intuition"],
+      "kind": "idea",
+      "hook": "23 people in a room. Two share a birthday? It's a coin flip.",
+      "beats": ["You're not matching one birthday. You're matching any pair.", "23 people make 253 pairs."],
+      "takeaway": "Count the pairs, not the people.",
+      "visual": {"kind": "curve", "plot": "1 - exp(-x*(x-1)/730)", "x": [0, 60]},
+      "lesson": "2026-11-26-pairs"
+    },
+    {
+      "id": "2026-11-26-chip",
+      "topic": "computing",
+      "tags": ["chips"],
+      "kind": "news",
+      "hook": "A new chip does one thing well.",
+      "beats": ["It was announced this week."],
+      "takeaway": "Special-purpose chips keep winning.",
+      "visual": {"kind": "bars", "labels": ["Old", "New"], "values": [1, 3.5], "highlight": 1},
+      "source": {"title": "Example News", "url": "https://example.com/chip"}
+    },
+    {
+      "id": "2026-11-26-doors",
+      "topic": "maths",
+      "tags": ["probability"],
+      "kind": "puzzle",
+      "hook": "Three doors, one prize. The host opens an empty one. Switch?",
+      "beats": ["Your first pick was right one time in three."],
+      "takeaway": "Switch: it wins two times in three.",
+      "visual": {"kind": "dots", "total": 3, "lit": 2}
+    }
+  ],
+  "lessons": [
+    {
+      "id": "2026-11-26-pairs",
+      "topic": "maths",
+      "tags": ["probability"],
+      "title": "Counting pairs",
+      "summary": "Why coincidences are more common than they feel.",
+      "steps": [
+        {"kind": "read", "title": "Pairs grow fast", "text": "Each new person pairs with everyone already there.\nSo pairs pile up.", "visual": {"kind": "number", "value": 253, "suffix": " pairs"}},
+        {"kind": "choice", "text": "How many pairs do 4 people make?", "options": ["6", "4", "8"], "why": "3 + 2 + 1 = 6."},
+        {"kind": "order", "text": "Put these in order, fewest pairs first.", "items": ["5 people", "10 people", "23 people"], "why": "More people, more pairs."},
+        {"kind": "estimate", "text": "How many people for a 50% chance of a shared birthday?", "range": [2, 100], "step": 1, "answer": 23, "tolerance": 3, "unit": "people", "why": "23 people make 253 pairs."},
+        {"kind": "explore", "text": "Drag a until the curve passes through the dot.", "plot": "a*x*(x-1)/2", "x": [0, 10], "y": [0, 50],
+         "param": {"range": [0, 2], "step": 0.1, "start": 0.2}, "target": {"x": 10, "y": 45},
+         "show": [{"label": "Pairs among 10", "value": "a*45"}], "why": "With a = 1 the curve counts pairs: 10 people make 45."}
+      ]
+    }
+  ]
+}

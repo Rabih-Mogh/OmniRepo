@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Every text the app shows. Each one has an Arabic counterpart in values-ar/strings.xml.
+     The reels and lessons themselves come in packs and are in English. -->
+<resources>
+    <string name="app_name">Spark</string>
+
+    <!-- The first screen -->
+    <string name="welcome_title">What do you want to learn?</string>
+    <string name="welcome_body">Spark shows you short reels, learns which ones hold your attention, and turns the best into lessons you do, not just read. Write anything you\'d like to learn about. You can change the list at any time.</string>
+    <string name="welcome_start">Start</string>
+    <string name="wish_hint">A subject, a question, a skill</string>
+    <string name="add">Add</string>
+    <string name="remove_item">Remove %1$s</string>
+    <string name="back">Back</string>
+
+    <!-- Subjects and kinds of reel -->
+    <string name="topic_maths">Maths</string>
+    <string name="topic_science">Science</string>
+    <string name="topic_computing">Computing</string>
+    <string name="topic_ideas">Ideas</string>
+    <string name="kind_news">News</string>
+    <string name="kind_puzzle">Puzzle</string>
+
+    <!-- The feed -->
+    <string name="reel_reveal">Show the answer</string>
+    <string name="reel_like">Like</string>
+    <string name="reel_liked">Liked</string>
+    <string name="reel_less">Not for me</string>
+    <string name="reel_lesson">Take the lesson</string>
+    <string name="reel_lesson_done">Lesson finished</string>
+    <string name="reel_source">Source: %1$s</string>
+    <string name="feed_progress">%1$d/%2$d</string>
+    <string name="feed_you">Your progress and settings</string>
+    <string name="done_title">Done for today</string>
+    <string name="done_body">%1$d reels and a lesson: that\'s today\'s goal. Come back tomorrow, or swipe up if you want more.</string>
+    <string name="done_body_no_lesson">%1$d reels: that\'s today\'s goal. Come back tomorrow, or swipe up if you want more.</string>
+    <string name="done_lesson_title">One lesson to go</string>
+    <string name="done_lesson_body">You\'ve watched today\'s reels. Finish a lesson to complete the day.</string>
+    <string name="done_lesson_button">Take a lesson</string>
+    <string name="done_reels_title">Nearly there</string>
+    <plurals name="done_reels_body">
+        <item quantity="one">%1$d more reel completes today\'s goal.</item>
+        <item quantity="other">%1$d more reels complete today\'s goal.</item>
+    </plurals>
+    <string name="end_title">That\'s everything for now</string>
+    <string name="end_body">A new batch is prepared every morning. Tell Spark what you want to learn, and it will be in a coming one.</string>
+    <string name="end_wishes">What I want to learn</string>
+
+    <!-- A lesson -->
+    <string name="lesson_close">Close the lesson</string>
+    <string name="lesson_step">Step %1$d of %2$d</string>
+    <string name="lesson_check">Check</string>
+    <string name="lesson_continue">Continue</string>
+    <string name="lesson_finish">Finish</string>
+    <string name="lesson_skip">Skip</string>
+    <string name="lesson_right">Right</string>
+    <string name="lesson_wrong">Not quite</string>
+    <string name="lesson_answer">The answer is %1$s.</string>
+    <string name="lesson_order_hint">Tap them in order.</string>
+    <string name="lesson_order_right">The right order:</string>
+    <string name="lesson_hit">That\'s it</string>
+    <string name="lesson_done_title">Lesson finished</string>
+    <string name="lesson_done_score">%1$d of %2$d right first time</string>
+    <string name="lesson_done_back">Back to the feed</string>
+
+    <!-- The screen about you -->
+    <string name="you_streak">Streak</string>
+    <plurals name="days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <string name="you_today">Today</string>
+    <string name="you_today_reels">%1$d of %2$d reels</string>
+    <string name="you_lesson_done">Lesson done</string>
+    <string name="you_lesson_todo">Lesson to do</string>
+    <string name="you_lesson_none">No lesson left to take</string>
+    <string name="goal_title">Daily goal</string>
+    <string name="goal_about">Reels a day, with one lesson. After that the feed tells you you\'re done.</string>
+    <string name="goal_reels">%1$d reels</string>
+    <string name="wishes_title">What I want to learn</string>
+    <string name="wishes_about">Reels that match come first in your feed. To have new reels and lessons made for the list, send it.</string>
+    <string name="wishes_empty">Nothing yet.</string>
+    <string name="wishes_send">Send the list</string>
+    <string name="wishes_send_about">This opens a new issue on the app\'s GitHub repo, with your list and a summary of what has held your attention filled in. Submit it there, signed in as the repo\'s owner, and the next morning\'s batch uses it. The issue is public.</string>
+    <string name="wishes_send_failed">No app on this phone opens web pages.</string>
+    <string name="taste_title">What Spark has learned</string>
+    <string name="taste_about">How much each subject has held your attention so far. This is what orders your feed.</string>
+    <string name="taste_empty">Watch a few reels first.</string>
+    <string name="lessons_title">Lessons</string>
+    <string name="lessons_score">%1$d/%2$d</string>
+    <string name="library_title">Library</string>
+    <string name="library_count">%1$d reels and %2$d lessons, %3$d reels not seen yet.</string>
+    <string name="library_fetch">Look for new reels</string>
+    <string name="library_looking">Looking…</string>
+    <plurals name="library_found">
+        <item quantity="one">%1$d new reel.</item>
+        <item quantity="other">%1$d new reels.</item>
+    </plurals>
+    <string name="library_nothing">Nothing new. A batch arrives each morning.</string>
+    <string name="library_failed">Couldn\'t reach GitHub. Is the phone online?</string>
+
+    <!-- App updates -->
+    <string name="close">Close</string>
+    <string name="update_title">App update</string>
+    <string name="update_later">Later</string>
+    <string name="update_hide">Hide</string>
+    <string name="update_interrupted">The download was interrupted. Try again to carry on from where it stopped.</string>
+    <string name="update_available">Version %1$s is available (%2$d MB).</string>
+    <string name="update">Update</string>
+    <string name="update_downloading">Downloading the update… %1$d%%</string>
+    <string name="update_installing">Installing… The app closes when it\'s done. Open it again afterwards.</string>
+    <string name="try_again">Try again</string>
+    <string name="version">Version %1$s</string>
+    <string name="check_for_updates">Check for updates</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_latest">You have the latest version.</string>
+    <string name="update_check_failed">Couldn\'t check for updates. Is the phone online?</string>
+    <string name="update_failed">The update failed.</string>
+    <string name="update_download_failed">Download failed (HTTP %1$d).</string>
+    <string name="update_mismatch">The download didn\'t match the published version. Try again in a few minutes.</string>
+    <string name="update_prompt_failed">Android couldn\'t show its install prompt. Keep the app open and try again.</string>
+    <string name="update_cancelled">The update was cancelled.</string>
+    <string name="update_refused">Android refused the update: %1$s</string>
+    <string name="update_no_reason">no reason given</string>
+    <string name="update_ready">Version %1$s is downloaded and ready to install.</string>
+    <string name="update_install">Install</string>
+    <string name="update_channel">App updates</string>
+    <string name="update_notice_installing">Installing the update…</string>
+    <string name="update_notice_ready">The update is downloaded. Open the app to install it.</string>
+</resources>

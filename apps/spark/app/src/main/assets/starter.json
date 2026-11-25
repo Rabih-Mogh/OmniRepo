@@ -1,0 +1,1922 @@
+{
+  "format": 1,
+  "day": "2026-11-25",
+  "reels": [
+    {
+      "id": "2026-11-25-birthday",
+      "topic": "maths",
+      "tags": [
+        "probability",
+        "intuition"
+      ],
+      "kind": "idea",
+      "hook": "How many people before two of them probably share a birthday? Just 23.",
+      "beats": [
+        "With 23 people the chance of a shared birthday passes 50%. With 57 it passes 99%.",
+        "You're not looking for someone who matches you. Any two people matching will do.",
+        "23 people make 253 different pairs, and every pair is a chance."
+      ],
+      "takeaway": "Coincidences are counted in pairs, and pairs pile up far faster than people.",
+      "visual": {
+        "kind": "curve",
+        "plot": "1 - exp(-x*(x-1)/730)",
+        "x": [
+          0,
+          60
+        ]
+      }
+    },
+    {
+      "id": "2026-11-25-seventy-two",
+      "topic": "maths",
+      "tags": [
+        "compound growth",
+        "money",
+        "exponentials"
+      ],
+      "kind": "idea",
+      "hook": "At 7% a year, money doesn't take 14 years to double. It takes 10.",
+      "beats": [
+        "Each year's growth joins the pile, and next year the bigger pile grows.",
+        "A shortcut: divide 72 by the yearly rate in % to get the years to double. 72 ÷ 7 is about 10.",
+        "It works for anything that compounds: savings, prices, debt."
+      ],
+      "takeaway": "The rule of 72: the years something takes to double is about 72 divided by its growth rate in %.",
+      "visual": {
+        "kind": "curve",
+        "plot": "100*1.07^x",
+        "x": [
+          0,
+          40
+        ]
+      },
+      "lesson": "2026-11-25-doubling"
+    },
+    {
+      "id": "2026-11-25-false-alarm",
+      "topic": "maths",
+      "tags": [
+        "probability",
+        "base rates",
+        "medical tests"
+      ],
+      "kind": "idea",
+      "hook": "A 99% accurate test says you're ill. The chance you really are: about 9%.",
+      "beats": [
+        "Say 1 person in 1,000 has the disease, and the test is wrong 1% of the time.",
+        "Test 100,000 people. Of the 100 who are ill, 99 test positive.",
+        "Of the 99,900 who are healthy, 1% test positive too: 999 false alarms."
+      ],
+      "takeaway": "Only 99 of the 1,098 positives are real: about 1 in 11. When a condition is rare, most alarms are false alarms.",
+      "visual": {
+        "kind": "dots",
+        "total": 11,
+        "lit": 1
+      },
+      "lesson": "2026-11-25-base-rates"
+    },
+    {
+      "id": "2026-11-25-three-doors",
+      "topic": "maths",
+      "tags": [
+        "probability",
+        "puzzles"
+      ],
+      "kind": "puzzle",
+      "hook": "Three doors, one prize. You pick one. The host opens an empty one. Do you switch?",
+      "beats": [
+        "The host knows where the prize is, and always opens an empty door you didn't pick.",
+        "Two doors are left: yours and one other. It feels like 50:50."
+      ],
+      "takeaway": "Switch. Your first pick is right 1 time in 3. The other 2 times in 3 the host has shown you where the prize isn't, and switching wins.",
+      "visual": {
+        "kind": "dots",
+        "total": 3,
+        "lit": 1
+      }
+    },
+    {
+      "id": "2026-11-25-point-nine",
+      "topic": "maths",
+      "tags": [
+        "numbers",
+        "infinity",
+        "proof"
+      ],
+      "kind": "idea",
+      "hook": "0.999… isn't almost 1. It is exactly 1.",
+      "beats": [
+        "One third is 0.333… with the 3s going on for ever.",
+        "Multiply by 3. Three thirds make 1. Three times 0.333… is 0.999…",
+        "Still doubtful? Two different numbers always have another number between them. Nothing fits between 0.999… and 1."
+      ],
+      "takeaway": "0.999… and 1 are two ways of writing the same number, like 1/2 and 0.5.",
+      "visual": {
+        "kind": "chain",
+        "items": [
+          "1/3 = 0.333…",
+          "3 × 1/3 = 1",
+          "3 × 0.333… = 0.999…",
+          "So 1 = 0.999…"
+        ]
+      }
+    },
+    {
+      "id": "2026-11-25-same-hairs",
+      "topic": "maths",
+      "tags": [
+        "pigeonhole principle",
+        "logic",
+        "puzzles"
+      ],
+      "kind": "puzzle",
+      "hook": "In a city of two million people, do two have exactly the same number of hairs?",
+      "beats": [
+        "A typical head has about 100,000 hairs. Nobody has anywhere near a million.",
+        "You can't count anyone's hair. You don't need to."
+      ],
+      "takeaway": "Yes, for certain. There are fewer than a million possible hair counts and two million heads, so some count must be shared. That's the pigeonhole principle.",
+      "visual": {
+        "kind": "number",
+        "value": 100000,
+        "suffix": " hairs"
+      }
+    },
+    {
+      "id": "2026-11-25-fair-price",
+      "topic": "maths",
+      "tags": [
+        "expected value",
+        "probability",
+        "decisions"
+      ],
+      "kind": "idea",
+      "hook": "Roll a die, win that many coins. The fair price to play is a number you can't roll.",
+      "beats": [
+        "Each face comes up one time in six. Average them: (1 + 2 + 3 + 4 + 5 + 6) ÷ 6 = 3.5.",
+        "Pay less than 3.5 a go and you come out ahead in the long run. Pay more and you slowly lose.",
+        "That long-run average is the expected value. Insurers and casinos live on it."
+      ],
+      "takeaway": "Expected value: weigh each outcome by its chance and add them up. It tells you what a gamble is worth over many tries.",
+      "visual": {
+        "kind": "number",
+        "value": 3.5,
+        "decimals": 1,
+        "suffix": " coins"
+      }
+    },
+    {
+      "id": "2026-11-25-first-digit",
+      "topic": "maths",
+      "tags": [
+        "benford law",
+        "statistics",
+        "patterns"
+      ],
+      "kind": "idea",
+      "hook": "Populations, river lengths, bills: about 30% of the numbers start with a 1.",
+      "beats": [
+        "You'd expect each first digit, 1 to 9, about 11% of the time. In fact 1 leads about 30% of the time and 9 under 5%.",
+        "It happens when numbers spread over many sizes. Getting from 1 to 2 takes a doubling; from 8 to 9 only a 12.5% rise. Numbers linger at 1.",
+        "Auditors use it: made-up figures often fail the pattern."
+      ],
+      "takeaway": "Benford's law: in data that spans many scales, small first digits are far more common. Evenness would be the odd thing.",
+      "visual": {
+        "kind": "bars",
+        "labels": [
+          "1",
+          "2",
+          "3",
+          "5",
+          "7",
+          "9"
+        ],
+        "values": [
+          30.1,
+          17.6,
+          12.5,
+          7.9,
+          5.8,
+          4.6
+        ],
+        "highlight": 0
+      }
+    },
+    {
+      "id": "2026-11-25-both-groups",
+      "topic": "maths",
+      "tags": [
+        "simpson paradox",
+        "statistics",
+        "data"
+      ],
+      "kind": "idea",
+      "hook": "Treatment A won for small kidney stones and for large ones. Overall, B won.",
+      "beats": [
+        "In a well-known kidney-stone study, A beat B in both groups: 93% against 87%, and 73% against 69%.",
+        "But A was mostly given the hard cases, large stones. B mostly got the easy ones.",
+        "Pool everyone and B looks better, 83% to 78%, only because its patients were easier to treat."
+      ],
+      "takeaway": "Simpson's paradox: a trend in every group can flip when the groups are pooled. Ask who was in each group.",
+      "visual": {
+        "kind": "bars",
+        "labels": [
+          "A small",
+          "B small",
+          "A large",
+          "B large",
+          "A overall",
+          "B overall"
+        ],
+        "values": [
+          93,
+          87,
+          73,
+          69,
+          78,
+          83
+        ],
+        "highlight": 5
+      }
+    },
+    {
+      "id": "2026-11-25-shuffle",
+      "topic": "maths",
+      "tags": [
+        "combinatorics",
+        "big numbers",
+        "cards"
+      ],
+      "kind": "idea",
+      "hook": "Shuffle a deck well. That exact order has almost certainly never existed before.",
+      "beats": [
+        "The top card can be any of 52, the next any of 51, and so on: 52 × 51 × 50 × … × 1 orders.",
+        "That is about an 8 followed by 67 zeros.",
+        "A billion shuffles a second since the Big Bang would not have made a dent in them."
+      ],
+      "takeaway": "52 cards can be arranged in far more ways than there are atoms on Earth. Small sets hide enormous numbers.",
+      "visual": {
+        "kind": "number",
+        "value": 68,
+        "suffix": " digits"
+      }
+    },
+    {
+      "id": "2026-11-25-carbon-clock",
+      "topic": "science",
+      "tags": [
+        "half-life",
+        "radioactivity",
+        "dating"
+      ],
+      "kind": "idea",
+      "hook": "Every 5,730 years, half the carbon-14 in a dead thing is gone. That's a clock.",
+      "beats": [
+        "Living things keep topping up their carbon-14. At death the topping up stops.",
+        "After about 5,730 years half is left. After 11,460, a quarter. After 17,190, an eighth.",
+        "Measure how much remains in a bone or a seed and you can read off its age."
+      ],
+      "takeaway": "Half-life: the time for half of something to decay. It never changes, so what's left tells you how long it has been.",
+      "visual": {
+        "kind": "curve",
+        "plot": "100*0.5^(x/5730)",
+        "x": [
+          0,
+          30000
+        ]
+      },
+      "lesson": "2026-11-25-half-life"
+    },
+    {
+      "id": "2026-11-25-quarter-light",
+      "topic": "science",
+      "tags": [
+        "light",
+        "inverse-square law",
+        "geometry"
+      ],
+      "kind": "idea",
+      "hook": "Move twice as far from a lamp and you don't get half the light. You get a quarter.",
+      "beats": [
+        "Light spreads out in all directions, like the skin of a growing balloon.",
+        "Twice the distance: the same light covers four times the area. Three times the distance: nine times the area.",
+        "Sound, radio signals and gravity thin out by the same rule."
+      ],
+      "takeaway": "The inverse-square law: strength falls with the square of the distance. Double the distance, quarter the effect.",
+      "visual": {
+        "kind": "bars",
+        "labels": [
+          "1 m",
+          "2 m",
+          "3 m",
+          "4 m"
+        ],
+        "values": [
+          100,
+          25,
+          11.1,
+          6.25
+        ],
+        "highlight": 1
+      },
+      "lesson": "2026-11-25-inverse-square"
+    },
+    {
+      "id": "2026-11-25-blue-sky",
+      "topic": "science",
+      "tags": [
+        "light",
+        "atmosphere",
+        "scattering"
+      ],
+      "kind": "idea",
+      "hook": "Sunlight is white. So why is the sky blue and the sunset red? Same reason.",
+      "beats": [
+        "Air molecules scatter light, and they scatter short waves far more than long ones.",
+        "Blue light is scattered about 6 times more strongly than red, so blue reaches you from every part of the sky.",
+        "At sunset the light crosses much more air. The blue is scattered away, and red is what's left."
+      ],
+      "takeaway": "The sky is blue for the same reason sunsets are red: air scatters blue light sideways and lets red pass straight on.",
+      "visual": {
+        "kind": "bars",
+        "labels": [
+          "Red light",
+          "Blue light"
+        ],
+        "values": [
+          1,
+          5.9
+        ],
+        "highlight": 1
+      }
+    },
+    {
+      "id": "2026-11-25-top-speed",
+      "topic": "science",
+      "tags": [
+        "forces",
+        "air resistance",
+        "motion"
+      ],
+      "kind": "idea",
+      "hook": "A skydiver stops speeding up after about 15 seconds. Gravity hasn't switched off.",
+      "beats": [
+        "The faster you fall, the harder the air pushes back.",
+        "At about 200 km/h, belly down, the air's push equals your weight. The forces cancel, so the speed stops changing.",
+        "Open a parachute and the balance point drops to about 20 km/h."
+      ],
+      "takeaway": "Terminal velocity: the speed at which drag equals weight. Balanced forces don't mean no motion. They mean steady motion.",
+      "visual": {
+        "kind": "curve",
+        "plot": "200*(1-exp(-0.36*x))/(1+exp(-0.36*x))",
+        "x": [
+          0,
+          20
+        ]
+      }
+    },
+    {
+      "id": "2026-11-25-immune-memory",
+      "topic": "science",
+      "tags": [
+        "immunity",
+        "vaccines",
+        "biology"
+      ],
+      "kind": "idea",
+      "hook": "A vaccine doesn't fight the germ. It teaches your body to, before you ever meet it.",
+      "beats": [
+        "It shows your immune system a harmless piece, or a weakened form, of a germ.",
+        "Your body makes antibodies against it, and keeps memory cells that remember its shape.",
+        "If the real germ arrives later, those cells recognise it and respond far faster than a first meeting allows."
+      ],
+      "takeaway": "Vaccines give the immune system a safe rehearsal, so the real infection meets a prepared defence.",
+      "visual": {
+        "kind": "chain",
+        "items": [
+          "Harmless preview",
+          "Antibodies made",
+          "Memory cells kept",
+          "Fast defence later"
+        ]
+      }
+    },
+    {
+      "id": "2026-11-25-messy",
+      "topic": "science",
+      "tags": [
+        "entropy",
+        "probability",
+        "thermodynamics"
+      ],
+      "kind": "idea",
+      "hook": "Toss 100 coins. All heads: 1 way. Half heads: about 100 billion billion billion ways.",
+      "beats": [
+        "Nothing forbids 100 heads. It is just one arrangement among a vast crowd of mixed ones.",
+        "Air in a room is the same. Every molecule could gather in one corner, but spread-out arrangements outnumber that beyond imagining.",
+        "So left alone, things drift from rare arrangements to common ones: from order to disorder."
+      ],
+      "takeaway": "Entropy counts the ways a thing can be arranged. Disorder wins because there are so many more ways to be disordered.",
+      "visual": {
+        "kind": "curve",
+        "plot": "exp(-(x-50)^2/50)",
+        "x": [
+          0,
+          100
+        ]
+      }
+    },
+    {
+      "id": "2026-11-25-football-sun",
+      "topic": "science",
+      "tags": [
+        "solar system",
+        "scale",
+        "astronomy"
+      ],
+      "kind": "puzzle",
+      "hook": "Shrink the Sun to the size of a football. How far away is the Earth, and how big?",
+      "beats": [
+        "The Sun is about 1.4 million km across, and the Earth is about 150 million km from it.",
+        "The Earth itself is about 12,700 km across."
+      ],
+      "takeaway": "About 24 metres away and 2 millimetres wide: a peppercorn at the far end of a tennis court. The solar system is mostly empty space.",
+      "visual": {
+        "kind": "chain",
+        "items": [
+          "Sun: a football",
+          "Earth: how big?",
+          "Distance: how far?"
+        ]
+      }
+    },
+    {
+      "id": "2026-11-25-ice-floats",
+      "topic": "science",
+      "tags": [
+        "water",
+        "density",
+        "chemistry"
+      ],
+      "kind": "idea",
+      "hook": "Almost every solid sinks in its own liquid. Ice floats, and life depends on it.",
+      "beats": [
+        "As water freezes, its molecules lock into an open six-sided pattern that takes up about 9% more room.",
+        "More room for the same stuff means lower density. So ice floats, with about nine tenths of it under water.",
+        "Lakes freeze from the top down. The lid of ice insulates the water below, and fish survive the winter."
+      ],
+      "takeaway": "Water is densest at 4°C, not at freezing. That oddity keeps lakes and seas from freezing solid.",
+      "visual": {
+        "kind": "dots",
+        "total": 10,
+        "lit": 9
+      }
+    },
+    {
+      "id": "2026-11-25-rock-boat",
+      "topic": "science",
+      "tags": [
+        "buoyancy",
+        "physics",
+        "puzzles"
+      ],
+      "kind": "puzzle",
+      "hook": "You're in a boat on a pond. You drop a rock overboard. Does the pond rise or fall?",
+      "beats": [
+        "In the boat, the rock pushes aside its own weight of water.",
+        "On the bottom, it pushes aside only its own volume of water."
+      ],
+      "takeaway": "It falls, slightly. Rock is denser than water, so its weight in water takes up more room than the rock itself. Sunk, it displaces less."
+    },
+    {
+      "id": "2026-11-25-old-sunlight",
+      "topic": "science",
+      "tags": [
+        "light",
+        "speed of light",
+        "astronomy"
+      ],
+      "kind": "idea",
+      "hook": "The Sun you see is the Sun of 8 minutes ago. If it vanished, you wouldn't know yet.",
+      "beats": [
+        "Light is fast, about 300,000 km every second, but not instant.",
+        "The Sun is about 150 million km away. Divide, and the trip takes about 500 seconds.",
+        "Look further and you look further back. Light from the nearest other star left it over 4 years ago."
+      ],
+      "takeaway": "Looking out into space is looking back in time. Nothing you see in the sky is happening now.",
+      "visual": {
+        "kind": "number",
+        "value": 8.3,
+        "decimals": 1,
+        "suffix": " minutes"
+      }
+    },
+    {
+      "id": "2026-11-25-twenty-looks",
+      "topic": "computing",
+      "tags": [
+        "binary search",
+        "algorithms",
+        "logarithms"
+      ],
+      "kind": "idea",
+      "hook": "A million names in order. You can find any one of them in 20 looks.",
+      "beats": [
+        "Open the list in the middle. Is your name before or after? Throw the wrong half away.",
+        "Each look halves what's left: 1,000,000, then 500,000, then 250,000…",
+        "Twenty halvings take a million down to one."
+      ],
+      "takeaway": "Binary search: halve the problem with every step. Doubling the list costs just one more look.",
+      "visual": {
+        "kind": "curve",
+        "plot": "ln(x)/ln(2)",
+        "x": [
+          1,
+          1000000
+        ]
+      },
+      "lesson": "2026-11-25-halving"
+    },
+    {
+      "id": "2026-11-25-billions-of-dials",
+      "topic": "computing",
+      "tags": [
+        "neural networks",
+        "machine learning",
+        "ai"
+      ],
+      "kind": "idea",
+      "hook": "Open up an AI model and you won't find rules or facts. Just billions of numbers.",
+      "beats": [
+        "The numbers are called weights. Each is like a dial that shifts the model's output a little.",
+        "Training shows the model an example, measures how wrong its answer is, and nudges every dial to be less wrong.",
+        "Repeat over billions of examples. What the model knows is where the dials ended up."
+      ],
+      "takeaway": "A neural network learns by adjusting its weights to shrink its errors. Nobody writes its knowledge in by hand.",
+      "visual": {
+        "kind": "chain",
+        "items": [
+          "Make a guess",
+          "Measure the error",
+          "Nudge the weights",
+          "Repeat"
+        ]
+      },
+      "lesson": "2026-11-25-one-weight"
+    },
+    {
+      "id": "2026-11-25-next-token",
+      "topic": "computing",
+      "tags": [
+        "language models",
+        "tokens",
+        "ai"
+      ],
+      "kind": "idea",
+      "hook": "Every chatbot answer is built one word-piece at a time, by predicting what comes next.",
+      "beats": [
+        "Text is cut into tokens: short words or pieces of words. In English a token averages about three quarters of a word.",
+        "Given everything so far, the model gives every possible next token a probability.",
+        "One token is picked and added. Then the whole process runs again for the next."
+      ],
+      "takeaway": "A language model is a next-token predictor run in a loop. Fluent paragraphs come from that one step, repeated.",
+      "visual": {
+        "kind": "chain",
+        "items": [
+          "Read the text so far",
+          "Score every token",
+          "Pick one, add it",
+          "Go again"
+        ]
+      }
+    },
+    {
+      "id": "2026-11-25-point-three",
+      "topic": "computing",
+      "tags": [
+        "floating point",
+        "numbers",
+        "bugs"
+      ],
+      "kind": "idea",
+      "hook": "Ask a computer for 0.1 + 0.2. It answers 0.30000000000000004.",
+      "beats": [
+        "Computers store most numbers in binary, with a fixed number of digits.",
+        "In binary, 0.1 goes on for ever, the way 1/3 does in decimal. So it is stored slightly rounded.",
+        "Add two slightly rounded numbers and the tiny errors can show."
+      ],
+      "takeaway": "Decimals in a computer are close approximations. Don't test them for exact equality, and count money in whole cents.",
+      "visual": {
+        "kind": "chain",
+        "items": [
+          "0.1 + 0.2",
+          "rounded in binary",
+          "0.30000000000000004"
+        ]
+      }
+    },
+    {
+      "id": "2026-11-25-fingerprint",
+      "topic": "computing",
+      "tags": [
+        "hashing",
+        "security",
+        "cryptography"
+      ],
+      "kind": "idea",
+      "hook": "Change one comma in a novel and its digital fingerprint changes beyond recognition.",
+      "beats": [
+        "A hash function boils any file down to a short code of fixed size. SHA-256 always gives 256 bits.",
+        "The same file always gives the same code. Alter anything and about half the bits flip.",
+        "You can't run it backwards to get the file. That's why sites store hashes of passwords, not the passwords."
+      ],
+      "takeaway": "A hash is a fingerprint for data: quick to compute, practically impossible to reverse or to forge.",
+      "visual": {
+        "kind": "number",
+        "value": 256,
+        "suffix": " bits"
+      }
+    },
+    {
+      "id": "2026-11-25-open-padlock",
+      "topic": "computing",
+      "tags": [
+        "encryption",
+        "public key",
+        "security"
+      ],
+      "kind": "idea",
+      "hook": "How do you send a secret to a stranger while everyone listens? Hand out open padlocks.",
+      "beats": [
+        "You publish a public key: a lock anyone can snap shut. Only your private key opens it.",
+        "It rests on sums that are easy one way and hard the other. Multiplying two huge primes is quick; finding them from the product isn't.",
+        "Every https page you open starts with a trick like this."
+      ],
+      "takeaway": "Public-key encryption: one key locks, a different key unlocks. So the locking key can be shared with the whole world.",
+      "visual": {
+        "kind": "chain",
+        "items": [
+          "You share a lock",
+          "Anyone locks a message",
+          "Only your key opens it"
+        ]
+      }
+    },
+    {
+      "id": "2026-11-25-growth-rates",
+      "topic": "computing",
+      "tags": [
+        "big o",
+        "algorithms",
+        "scaling"
+      ],
+      "kind": "idea",
+      "hook": "Same job, 1,000 items. One method takes 10 steps. Another takes a million.",
+      "beats": [
+        "What matters is how the work grows as the data grows.",
+        "Halving search: about 10 steps. Checking each item: 1,000. Comparing every item with every item: 1,000,000.",
+        "Make the data 10 times bigger and those become about 13, then 10,000, then 100,000,000."
+      ],
+      "takeaway": "Big-O notation describes how work scales with size. A faster computer helps a little. A better growth rate helps enormously.",
+      "visual": {
+        "kind": "bars",
+        "labels": [
+          "log n",
+          "n",
+          "n log n",
+          "n squared"
+        ],
+        "values": [
+          10,
+          1000,
+          10000,
+          1000000
+        ],
+        "highlight": 3
+      }
+    },
+    {
+      "id": "2026-11-25-remember-it",
+      "topic": "computing",
+      "tags": [
+        "caching",
+        "performance",
+        "systems"
+      ],
+      "kind": "idea",
+      "hook": "Memory answers in about 100 nanoseconds. A server overseas takes a million times longer.",
+      "beats": [
+        "Fetching data from another continent takes roughly a tenth of a second.",
+        "So computers keep copies of recent answers close by. That copy is a cache.",
+        "Your browser, your phone's chips and nearly every big website lean on caches.",
+        "The hard part is knowing when a copy has gone stale."
+      ],
+      "takeaway": "Caching: keep what you'll need again somewhere fast. It trades some memory, and a risk of staleness, for a lot of speed.",
+      "visual": {
+        "kind": "number",
+        "value": 1000000,
+        "suffix": "× faster"
+      }
+    },
+    {
+      "id": "2026-11-25-ten-fingers",
+      "topic": "computing",
+      "tags": [
+        "binary",
+        "counting",
+        "puzzles"
+      ],
+      "kind": "puzzle",
+      "hook": "How high can you count on ten fingers? The answer isn't 10.",
+      "beats": [
+        "Let each finger be up or down, like a bit that is 1 or 0.",
+        "The first finger is worth 1, the next 2, then 4, then 8, doubling each time."
+      ],
+      "takeaway": "1,023. Ten fingers, each up or down, make 2 × 2 × … ten times = 1,024 patterns: every number from 0 to 1,023.",
+      "visual": {
+        "kind": "dots",
+        "total": 10,
+        "lit": 10
+      }
+    },
+    {
+      "id": "2026-11-25-four-words",
+      "topic": "computing",
+      "tags": [
+        "passwords",
+        "security",
+        "combinatorics"
+      ],
+      "kind": "puzzle",
+      "hook": "Which is harder to guess: 8 random letters, or 4 random everyday words?",
+      "beats": [
+        "8 lowercase letters: 26 choices, 8 times over. About 209 billion possibilities.",
+        "4 words picked at random from a list of 2,000: 2,000 choices, 4 times over."
+      ],
+      "takeaway": "The four words: 16 trillion possibilities, about 77 times more, and easier to remember. Length beats strangeness, if the words are truly random."
+    },
+    {
+      "id": "2026-11-25-fading",
+      "topic": "ideas",
+      "tags": [
+        "memory",
+        "spaced repetition",
+        "learning"
+      ],
+      "kind": "idea",
+      "hook": "Most forgetting happens in the first day. One short review slows the slide.",
+      "beats": [
+        "Memory doesn't fade evenly. It drops steeply at first, then levels off.",
+        "Each time you manage to recall something, the next drop is slower.",
+        "So reviews can spread out: after a day, a few days, a week, a month."
+      ],
+      "takeaway": "Spaced repetition: review just as you start to forget. A few short, spread-out recalls beat one long cram.",
+      "visual": {
+        "kind": "curve",
+        "plot": "100*exp(-x/3)",
+        "x": [
+          0,
+          14
+        ]
+      },
+      "lesson": "2026-11-25-forgetting"
+    },
+    {
+      "id": "2026-11-25-bad-film",
+      "topic": "ideas",
+      "tags": [
+        "sunk cost",
+        "decisions",
+        "biases"
+      ],
+      "kind": "idea",
+      "hook": "You've paid for the ticket. The film is terrible. Why is it so hard to walk out?",
+      "beats": [
+        "The money is gone whether you stay or leave. Only your next hour is still yours to spend.",
+        "Staying to get your money's worth spends that hour badly as well.",
+        "The same pull keeps people in failing projects and bad investments."
+      ],
+      "takeaway": "Sunk cost: what's spent can't be unspent. Choose by what happens next, not by what it cost to get here.",
+      "visual": {
+        "kind": "chain",
+        "items": [
+          "Money already spent",
+          "Same if you stay or go",
+          "So ignore it",
+          "Pick the better hour"
+        ]
+      },
+      "lesson": "2026-11-25-sunk-cost"
+    },
+    {
+      "id": "2026-11-25-opera-house",
+      "topic": "ideas",
+      "tags": [
+        "planning fallacy",
+        "estimation",
+        "projects"
+      ],
+      "kind": "idea",
+      "hook": "Planned: 4 years and 7 million dollars. Actual: 14 years and 102 million.",
+      "beats": [
+        "That was the Sydney Opera House. It is an extreme case of a normal thing.",
+        "We plan by imagining everything going right, and forget how such projects usually go.",
+        "The fix: ask how long similar jobs really took, yours or other people's, and start from that."
+      ],
+      "takeaway": "The planning fallacy: we underestimate our own tasks even when we know past ones overran. Trust the track record over the plan.",
+      "visual": {
+        "kind": "bars",
+        "labels": [
+          "Planned",
+          "Actual"
+        ],
+        "values": [
+          7,
+          102
+        ],
+        "highlight": 1
+      }
+    },
+    {
+      "id": "2026-11-25-habit-loop",
+      "topic": "ideas",
+      "tags": [
+        "habits",
+        "behaviour",
+        "routines"
+      ],
+      "kind": "idea",
+      "hook": "You don't decide to check your phone. A cue decides for you.",
+      "beats": [
+        "A habit is a loop: a cue triggers a routine, and the routine brings a reward.",
+        "Repeated enough, the loop runs without you choosing: a buzz, a reach, a little novelty.",
+        "Habits are hard to delete. It is often easier to keep the cue and the reward and swap the routine in the middle."
+      ],
+      "takeaway": "To change a habit, find its cue and its reward, then give the cue a different routine to trigger.",
+      "visual": {
+        "kind": "chain",
+        "items": [
+          "Cue",
+          "Routine",
+          "Reward",
+          "Repeat"
+        ]
+      }
+    },
+    {
+      "id": "2026-11-25-fill-the-time",
+      "topic": "ideas",
+      "tags": [
+        "parkinson law",
+        "time",
+        "productivity"
+      ],
+      "kind": "idea",
+      "hook": "Why does a job given a week take a week, and the same job given a day take a day?",
+      "beats": [
+        "Parkinson's law: work expands to fill the time available for it. It began as a joke in a 1955 essay.",
+        "With time to spare we polish, hesitate and find extra things to do. A near deadline strips the job to what matters.",
+        "It's a rule of thumb, not a law of nature. Some work can't be squeezed."
+      ],
+      "takeaway": "Set a shorter deadline than feels comfortable, and decide what done means before you start.",
+      "visual": {
+        "kind": "chain",
+        "items": [
+          "A week allowed",
+          "A week used",
+          "A day allowed",
+          "A day used"
+        ]
+      }
+    },
+    {
+      "id": "2026-11-25-vital-few",
+      "topic": "ideas",
+      "tags": [
+        "pareto principle",
+        "priorities",
+        "productivity"
+      ],
+      "kind": "idea",
+      "hook": "A fifth of the causes often bring four fifths of the results. Which fifth is yours?",
+      "beats": [
+        "In the 1890s the economist Vilfredo Pareto noticed that about 20% of Italians owned about 80% of the land.",
+        "The same lopsided shape turns up often: a few customers bring most sales, a few bugs cause most crashes.",
+        "The 80 and the 20 are rough. The point is that effort and results are rarely spread evenly."
+      ],
+      "takeaway": "The Pareto principle: a small share of causes drives most of the effect. Find that share before you spread yourself evenly.",
+      "visual": {
+        "kind": "dots",
+        "total": 10,
+        "lit": 2
+      }
+    },
+    {
+      "id": "2026-11-25-coin-flip-offer",
+      "topic": "ideas",
+      "tags": [
+        "loss aversion",
+        "decisions",
+        "biases"
+      ],
+      "kind": "idea",
+      "hook": "Heads you win 150, tails you lose 100. Most people say no to this coin flip.",
+      "beats": [
+        "On average the bet pays 25 a flip. Offered it once, most people still turn it down.",
+        "Losing 100 feels worse than winning 150 feels good. In many studies a loss weighs about twice as much as an equal gain.",
+        "It shows up as holding on to losing shares, and as refusing changes that would probably help."
+      ],
+      "takeaway": "Loss aversion: losses loom larger than gains. Before refusing a risk, ask whether you'd take it a hundred times over.",
+      "visual": {
+        "kind": "bars",
+        "labels": [
+          "Joy of +100",
+          "Pain of -100"
+        ],
+        "values": [
+          1,
+          2
+        ],
+        "highlight": 1
+      }
+    },
+    {
+      "id": "2026-11-25-first-number",
+      "topic": "ideas",
+      "tags": [
+        "anchoring",
+        "biases",
+        "negotiation"
+      ],
+      "kind": "idea",
+      "hook": "A wheel of numbers stops on 65. Now estimate a fact. Your estimate just went up.",
+      "beats": [
+        "In a classic 1974 experiment, people watched a rigged wheel stop on 10 or 65, then estimated the share of African countries in the UN.",
+        "The typical guess after seeing 10 was 25%. After seeing 65 it was 45%.",
+        "The number was plainly random, and it still pulled the estimates towards itself."
+      ],
+      "takeaway": "Anchoring: the first number you hear drags your judgement towards it. In a negotiation, notice who set the anchor.",
+      "visual": {
+        "kind": "bars",
+        "labels": [
+          "Wheel said 10",
+          "Wheel said 65"
+        ],
+        "values": [
+          25,
+          45
+        ],
+        "highlight": 1
+      }
+    },
+    {
+      "id": "2026-11-25-free-ticket",
+      "topic": "ideas",
+      "tags": [
+        "opportunity cost",
+        "economics",
+        "puzzles"
+      ],
+      "kind": "puzzle",
+      "hook": "You win a free ticket to a concert. What does going cost you? Not nothing.",
+      "beats": [
+        "Another show you like is on the same night. Its ticket costs 40, and to you it's worth 50.",
+        "You can go to only one, and the free ticket can't be sold."
+      ],
+      "takeaway": "10. Going means giving up a show worth 50 to you at a price of 40: a gain of 10 you don't get. That is the opportunity cost."
+    },
+    {
+      "id": "2026-11-25-bat-and-ball",
+      "topic": "ideas",
+      "tags": [
+        "thinking",
+        "intuition",
+        "puzzles"
+      ],
+      "kind": "puzzle",
+      "hook": "A bat and a ball cost 1.10 together. The bat costs 1.00 more. How much is the ball?",
+      "beats": [
+        "An answer jumps to mind at once. Check it before you trust it.",
+        "If the ball cost 0.10, the bat would cost 1.10 and the pair 1.20."
+      ],
+      "takeaway": "0.05. The bat is then 1.05 and the pair 1.10. The fast answer, 0.10, feels right and is wrong: a reason to check quick intuitions.",
+      "visual": {
+        "kind": "chain",
+        "items": [
+          "Bat + ball = 1.10",
+          "Bat = ball + 1.00",
+          "Ball = ?"
+        ]
+      }
+    }
+  ],
+  "lessons": [
+    {
+      "id": "2026-11-25-doubling",
+      "topic": "maths",
+      "tags": [
+        "compound growth",
+        "exponentials",
+        "money"
+      ],
+      "title": "The rule of 72",
+      "summary": "How long anything that grows by a percentage takes to double, and a shortcut for working it out in your head.",
+      "steps": [
+        {
+          "kind": "estimate",
+          "text": "100 grows by 7% a year, and each year's gain grows too. About how many years until it reaches 200?",
+          "range": [
+            1,
+            50
+          ],
+          "step": 1,
+          "answer": 10,
+          "tolerance": 1,
+          "unit": "years",
+          "why": "About 10 years, not the 14 you get from 100 ÷ 7. Each year's 7% is taken from a bigger pile than the last: 1.07 multiplied by itself 10 times is about 1.97."
+        },
+        {
+          "kind": "read",
+          "title": "Growth on growth",
+          "text": "Simple growth adds the same amount every year. Compound growth multiplies: after x years at 7%, 100 has become 100 × 1.07 × 1.07 × … x times.\nThe gains earn gains of their own, so the curve bends upward. Slow at first, then startling.",
+          "visual": {
+            "kind": "curve",
+            "plot": "100*1.07^x",
+            "x": [
+              0,
+              40
+            ]
+          }
+        },
+        {
+          "kind": "explore",
+          "text": "The curve shows 100 growing at a% a year for 12 years. Drag a until the money has doubled after exactly 10 years: the dot at 200.",
+          "plot": "100*(1+a/100)^x",
+          "x": [
+            0,
+            12
+          ],
+          "y": [
+            0,
+            350
+          ],
+          "param": {
+            "range": [
+              1,
+              10
+            ],
+            "step": 1,
+            "start": 2
+          },
+          "target": {
+            "x": 10,
+            "y": 200
+          },
+          "show": [
+            {
+              "label": "Years to double",
+              "value": "ln(2)/ln(1+a/100)"
+            },
+            {
+              "label": "72 ÷ a",
+              "value": "72/a"
+            }
+          ],
+          "why": "At about 7% the pile doubles in 10 years. Now compare the two numbers beside the picture: 72 ÷ a stays close to the true doubling time at every rate you try."
+        },
+        {
+          "kind": "choice",
+          "text": "The rule of 72: the years to double is about 72 ÷ the yearly rate in %. At 3% a year, how long does doubling take?",
+          "options": [
+            "About 24 years",
+            "About 33 years",
+            "About 36 years",
+            "About 72 years"
+          ],
+          "why": "72 ÷ 3 = 24. The exact answer is about 23.4 years. Dividing 100 by 3 gives 33 years, which forgets that growth compounds."
+        },
+        {
+          "kind": "order",
+          "text": "Each of these starts at 100. Put them in order of where they end up, smallest first.",
+          "items": [
+            "2% a year for 36 years",
+            "6% a year for 24 years",
+            "12% a year for 18 years",
+            "9% a year for 32 years"
+          ],
+          "why": "Count doublings with the rule of 72. 2% doubles every 36 years: once. 6% every 12 years: twice. 12% every 6 years: three times. 9% every 8 years: four times, about 16 times the start."
+        },
+        {
+          "kind": "estimate",
+          "text": "Prices rise 3% a year. After 48 years, about how many times higher are they?",
+          "range": [
+            1,
+            20
+          ],
+          "step": 1,
+          "answer": 4,
+          "tolerance": 0,
+          "unit": "times",
+          "why": "At 3%, prices double every 24 years. In 48 years they double twice: 2 × 2 = 4 times higher (the exact figure is about 4.1). Slow rates still add up over a lifetime."
+        },
+        {
+          "kind": "choice",
+          "text": "A debt grows 24% a year and nothing is paid off. Roughly how long until it has doubled?",
+          "options": [
+            "About 3 years",
+            "About 4 years",
+            "About 8 years",
+            "About 24 years"
+          ],
+          "why": "72 ÷ 24 = 3. The exact answer is about 3.2 years: the rule gets rougher at high rates. The message holds, though. Compounding works against you just as fast as it works for you."
+        }
+      ]
+    },
+    {
+      "id": "2026-11-25-base-rates",
+      "topic": "maths",
+      "tags": [
+        "probability",
+        "base rates",
+        "medical tests"
+      ],
+      "title": "The test says yes",
+      "summary": "Why a positive result from a very accurate test can still be probably wrong.",
+      "steps": [
+        {
+          "kind": "estimate",
+          "text": "A disease affects 1 person in 1,000. A test catches 99% of cases, and wrongly flags 1% of healthy people. You test positive. What is the chance you have the disease?",
+          "range": [
+            0,
+            100
+          ],
+          "step": 1,
+          "answer": 9,
+          "tolerance": 3,
+          "unit": "%",
+          "why": "About 9%. Most people guess close to 99%. The test is good, but the disease is so rare that false alarms from the huge healthy crowd swamp the real cases. Let's count them."
+        },
+        {
+          "kind": "read",
+          "title": "Count people, not percentages",
+          "text": "Imagine 100,000 people take the test.\n100 of them have the disease. The test catches 99.\n99,900 are healthy. The test wrongly flags 1% of them: 999 people.\nSo 1,098 people test positive, and only 99 of them are ill.",
+          "visual": {
+            "kind": "bars",
+            "labels": [
+              "True alarms",
+              "False alarms"
+            ],
+            "values": [
+              99,
+              999
+            ],
+            "highlight": 0
+          }
+        },
+        {
+          "kind": "choice",
+          "text": "So of everyone who tests positive, what share really has the disease?",
+          "options": [
+            "99 out of 1,098: about 9%",
+            "99 out of 100: 99%",
+            "999 out of 1,098: about 91%",
+            "100 out of 100,000: 0.1%"
+          ],
+          "why": "The positives are 99 true alarms plus 999 false ones, and 99 ÷ 1,098 is about 9%. The 99% figure answers a different question: if you are ill, will the test say so?"
+        },
+        {
+          "kind": "order",
+          "text": "Same test, different diseases. Order them by the chance that a positive result is real, lowest first.",
+          "items": [
+            "A disease 1 person in 10,000 has",
+            "A disease 1 person in 1,000 has",
+            "A disease 1 person in 100 has",
+            "A disease 1 person in 10 has"
+          ],
+          "why": "The rarer the condition, the more the false alarms outnumber the real ones. The chances are about 1%, 9%, 50% and 92%. How common the thing is to begin with, the base rate, matters as much as the test."
+        },
+        {
+          "kind": "explore",
+          "text": "x is how common a disease is, in %. The curve is the chance that a positive result is real. a is how often the test wrongly flags a healthy person, in %, and starts at 5. For a disease 1 person in 100 has, drag a until a positive is a coin flip: the dot.",
+          "plot": "100*0.99*x/(0.99*x+(a/100)*(100-x))",
+          "x": [
+            0,
+            5
+          ],
+          "y": [
+            0,
+            100
+          ],
+          "param": {
+            "range": [
+              0.2,
+              5
+            ],
+            "step": 0.2,
+            "start": 5
+          },
+          "target": {
+            "x": 1,
+            "y": 50
+          },
+          "show": [
+            {
+              "label": "Positive is real (%)",
+              "value": "100/(1+a)"
+            }
+          ],
+          "why": "With false alarms at 1%, a disease that 1 in 100 people have gives 50%: one true alarm for each false one. Push a lower and the whole curve lifts. Cutting false alarms matters most when the condition is rare."
+        },
+        {
+          "kind": "choice",
+          "text": "Back to the first test: your positive result means a 9% chance. A second, independent test of the same quality is positive too. Now the chance is about…",
+          "options": [
+            "91%",
+            "18%",
+            "9%: nothing has changed",
+            "99.99%"
+          ],
+          "why": "This time you start in a crowd where 9% are ill, not 0.1%. Of the 1,098 first positives, 98 of the 99 ill people test positive again, but only about 10 of the 999 healthy ones. 98 out of 108 is about 91%."
+        },
+        {
+          "kind": "read",
+          "title": "Before you trust a result",
+          "text": "Ask two questions.\nHow good is the test?\nHow common is the thing it looks for?\nA rare condition and a small false-alarm rate together still mean most alarms are false. This is why a positive screening result is normally followed by a second test."
+        }
+      ]
+    },
+    {
+      "id": "2026-11-25-half-life",
+      "topic": "science",
+      "tags": [
+        "half-life",
+        "radioactivity",
+        "exponentials"
+      ],
+      "title": "Half, and half again",
+      "summary": "How radioactive decay keeps perfect time, and how a bone can tell you its age.",
+      "steps": [
+        {
+          "kind": "choice",
+          "text": "A sample holds 800 unstable atoms. Half of them decay every 10 years. How many are left after 30 years?",
+          "options": [
+            "100",
+            "None: they ran out after 20 years",
+            "200",
+            "400"
+          ],
+          "why": "Three half-lives: 800 → 400 → 200 → 100. Each step removes half of what is left, not a fixed number, so the count shrinks ever more slowly instead of hitting zero."
+        },
+        {
+          "kind": "read",
+          "title": "What half-life means",
+          "text": "Nobody can say when one unstable atom will decay. But in a big crowd of them, the share that decays in a given time is always the same.\nThe time for half to go is the half-life. It doesn't depend on how much you start with, and ordinary heat, pressure and chemistry barely change it. That makes it a clock.",
+          "visual": {
+            "kind": "curve",
+            "plot": "100*0.5^(x/10)",
+            "x": [
+              0,
+              50
+            ]
+          }
+        },
+        {
+          "kind": "order",
+          "text": "Start with the same amount of four substances. After 60 years, which has the most left? Most first.",
+          "items": [
+            "Half-life of 120 years",
+            "Half-life of 60 years",
+            "Half-life of 30 years",
+            "Half-life of 6 years"
+          ],
+          "why": "A longer half-life means slower decay. After 60 years these have about 71%, 50%, 25% and 0.1% left: that's half a half-life, one, two and ten."
+        },
+        {
+          "kind": "estimate",
+          "text": "After how many half-lives is less than 1% of a sample left?",
+          "range": [
+            1,
+            30
+          ],
+          "step": 1,
+          "answer": 7,
+          "tolerance": 0,
+          "unit": "half-lives",
+          "why": "Halve 100% seven times: 50, 25, 12.5, 6.3, 3.1, 1.6, 0.8. It takes 7. Ten half-lives leave about a thousandth."
+        },
+        {
+          "kind": "explore",
+          "text": "The curve shows the percent of a sample left over 40 years. Its half-life is a years. A lab finds 25% left after 20 years: the dot. Drag a to find the half-life.",
+          "plot": "100*0.5^(x/a)",
+          "x": [
+            0,
+            40
+          ],
+          "y": [
+            0,
+            100
+          ],
+          "param": {
+            "range": [
+              2,
+              30
+            ],
+            "step": 2,
+            "start": 24
+          },
+          "target": {
+            "x": 20,
+            "y": 25
+          },
+          "show": [
+            {
+              "label": "Left after 20 years (%)",
+              "value": "100*0.5^(20/a)"
+            }
+          ],
+          "why": "25% is half of a half: two half-lives. If two half-lives take 20 years, one takes 10. Dating works the same way: measure what's left, and the known half-life tells you the time."
+        },
+        {
+          "kind": "choice",
+          "text": "Carbon-14 has a half-life of about 5,730 years. A bone holds a quarter of the carbon-14 a living animal has. About how old is it?",
+          "options": [
+            "About 11,500 years",
+            "About 5,700 years",
+            "About 23,000 years",
+            "About 1,400 years"
+          ],
+          "why": "A quarter left means two half-lives: 2 × 5,730 is about 11,500 years. Beyond about 50,000 years too little carbon-14 remains to measure well, so older things need slower clocks, such as uranium."
+        },
+        {
+          "kind": "choice",
+          "text": "A medicine has a half-life of 6 hours in the body. You take 200 mg. About how much is still in you a day later?",
+          "options": [
+            "12.5 mg",
+            "None",
+            "50 mg",
+            "25 mg"
+          ],
+          "why": "24 hours is four half-lives: 200 → 100 → 50 → 25 → 12.5 mg. The same halving rule describes how the body clears many medicines, and caffeine too."
+        }
+      ]
+    },
+    {
+      "id": "2026-11-25-inverse-square",
+      "topic": "science",
+      "tags": [
+        "light",
+        "inverse-square law",
+        "gravity"
+      ],
+      "title": "Twice as far, a quarter as bright",
+      "summary": "Why light, sound and gravity all fade with the square of the distance.",
+      "steps": [
+        {
+          "kind": "choice",
+          "text": "You're reading by a bare bulb 1 metre away. You move to 2 metres. How bright is the light on your page now?",
+          "options": [
+            "A quarter as bright",
+            "Half as bright",
+            "Just as bright",
+            "An eighth as bright"
+          ],
+          "why": "The light that fell on your page now spreads over a patch twice as wide and twice as tall. That's four times the area, so each bit of page gets a quarter of the light."
+        },
+        {
+          "kind": "read",
+          "title": "Light on a growing sphere",
+          "text": "A bare bulb sends light out in every direction. Picture it landing on the inside of a sphere around the bulb.\nThe amount of light is the same whatever the sphere's size. But a sphere's area is 4 × pi × radius × radius. Double the radius and the area is four times bigger, so every square centimetre gets a quarter as much.",
+          "visual": {
+            "kind": "bars",
+            "labels": [
+              "1 m",
+              "2 m",
+              "3 m",
+              "4 m"
+            ],
+            "values": [
+              100,
+              25,
+              11.1,
+              6.25
+            ],
+            "highlight": 1
+          }
+        },
+        {
+          "kind": "estimate",
+          "text": "At 1 metre a lamp puts 900 units of light on your page. How many units at 3 metres?",
+          "range": [
+            0,
+            900
+          ],
+          "step": 10,
+          "answer": 100,
+          "tolerance": 10,
+          "unit": "units",
+          "why": "Three times as far means 3 × 3 = 9 times the area, so 900 ÷ 9 = 100. Dividing by 3 gives 300, the most common slip. Brightness follows the square of the distance."
+        },
+        {
+          "kind": "explore",
+          "text": "A light meter reads 100% at 1 metre and 25% at 2 metres: the dot. The curve is 100 ÷ distance to the power a. Drag a until the curve fits the measurement.",
+          "plot": "100/x^a",
+          "x": [
+            1,
+            5
+          ],
+          "y": [
+            0,
+            100
+          ],
+          "param": {
+            "range": [
+              0,
+              4
+            ],
+            "step": 0.5,
+            "start": 0.5
+          },
+          "target": {
+            "x": 2,
+            "y": 25
+          },
+          "show": [
+            {
+              "label": "Brightness at 2 m (%)",
+              "value": "100/2^a"
+            },
+            {
+              "label": "Brightness at 3 m (%)",
+              "value": "100/3^a"
+            }
+          ],
+          "why": "Only a power of 2 fits: 100 ÷ (2 × 2) = 25. A power of 1 would give 50%, a power of 3 only 12.5%. The 2 comes from geometry: area grows with the square of the radius."
+        },
+        {
+          "kind": "order",
+          "text": "Four lamps of the same kind but different power. Order them by how bright they look from where you stand, brightest first.",
+          "items": [
+            "100 watts, 1 metre away",
+            "400 watts, 4 metres away",
+            "100 watts, 3 metres away",
+            "900 watts, 10 metres away"
+          ],
+          "why": "Divide power by distance squared: 100 ÷ 1 = 100, 400 ÷ 16 = 25, 100 ÷ 9 is about 11, and 900 ÷ 100 = 9. A lamp nine times stronger loses to a weak one that is close."
+        },
+        {
+          "kind": "choice",
+          "text": "Gravity obeys the same law. A spacecraft is twice as far from Earth's centre as you are, standing on the ground. How strong is Earth's pull on each kilogram of it, compared with each kilogram of you?",
+          "options": [
+            "A quarter as strong",
+            "Half as strong",
+            "Zero: there is no gravity in space",
+            "Just as strong"
+          ],
+          "why": "Twice as far from the centre, a quarter of the pull. Astronauts float because they are falling around the Earth, not because gravity has gone: at the height of the space station it is still about 90% as strong as on the ground."
+        },
+        {
+          "kind": "estimate",
+          "text": "Mars is about 1.5 times as far from the Sun as Earth is. How strong is sunlight there, as a percent of sunlight at Earth?",
+          "range": [
+            0,
+            100
+          ],
+          "step": 1,
+          "answer": 44,
+          "tolerance": 4,
+          "unit": "%",
+          "why": "1.5 × 1.5 = 2.25, and 100 ÷ 2.25 is about 44%. A solar panel on Mars needs more than twice the area to collect the same power."
+        }
+      ]
+    },
+    {
+      "id": "2026-11-25-one-weight",
+      "topic": "computing",
+      "tags": [
+        "neural networks",
+        "machine learning",
+        "gradient descent"
+      ],
+      "title": "Learning is turning a dial",
+      "summary": "Train the smallest possible model, a single weight, and see what learning means for a machine.",
+      "steps": [
+        {
+          "kind": "choice",
+          "text": "A language model can tell you that Paris is in France. Where inside the model is that knowledge kept?",
+          "options": [
+            "Spread across billions of numbers called weights",
+            "In a database of facts it looks up",
+            "In rules written by programmers",
+            "In saved copies of the pages it read"
+          ],
+          "why": "A trained model is one huge formula. What it has learned lives in the formula's adjustable numbers, its weights. To see how a number can hold knowledge, let's train a model that has just one."
+        },
+        {
+          "kind": "read",
+          "title": "A model with one dial",
+          "text": "Our model's job is to turn Celsius into Fahrenheit.\nIts formula is F = a × C + 32. The weight a is the only thing it can change, and it starts as a bad guess: a = 1.\nWe won't tell it the right value. We'll show it one true example and let the example do the teaching."
+        },
+        {
+          "kind": "choice",
+          "text": "The example: water boils at 100°C, which is 212°F. With a = 1, what does the model F = a × C + 32 predict for 100°C?",
+          "options": [
+            "132°F",
+            "212°F",
+            "100°F",
+            "232°F"
+          ],
+          "why": "1 × 100 + 32 = 132. The truth is 212, so the model is off by 80. That gap is called the error, or the loss. Training is nothing more than making it small."
+        },
+        {
+          "kind": "choice",
+          "text": "The prediction, 132, is too low. Which way should the weight a move?",
+          "options": [
+            "Up: a bigger a gives a bigger prediction",
+            "Down: a smaller a gives a bigger prediction",
+            "Either way: just try values at random"
+          ],
+          "why": "Raising a raises a × 100 + 32. Working out which direction lowers the error and stepping that way is called gradient descent. Real training does it for billions of weights at once."
+        },
+        {
+          "kind": "explore",
+          "text": "You are the training algorithm. The line is the model, F = a × C + 32. The dot is the example: 100°C is 212°F. Drag a until the error is zero.",
+          "plot": "a*x+32",
+          "x": [
+            0,
+            100
+          ],
+          "y": [
+            0,
+            350
+          ],
+          "param": {
+            "range": [
+              0,
+              3
+            ],
+            "step": 0.2,
+            "start": 1
+          },
+          "target": {
+            "x": 100,
+            "y": 212
+          },
+          "show": [
+            {
+              "label": "Prediction for 100°C",
+              "value": "a*100+32"
+            },
+            {
+              "label": "Error",
+              "value": "abs(a*100+32-212)"
+            }
+          ],
+          "why": "At a = 1.8 the error is zero, and 1.8 is the true conversion: F = 1.8 × C + 32. Nobody typed that rule in. An example pushed the weight there. That is what learning means for a model."
+        },
+        {
+          "kind": "estimate",
+          "text": "Your trained model is F = 1.8 × C + 32. It has never seen body temperature, 37°C. What does it predict, in °F?",
+          "range": [
+            50,
+            150
+          ],
+          "step": 1,
+          "answer": 98.6,
+          "tolerance": 2,
+          "unit": "°F",
+          "why": "1.8 × 37 + 32 = 98.6°F, which is right, though the model only ever saw boiling water. A well-set weight captures the pattern, not just the example. That is called generalising."
+        },
+        {
+          "kind": "order",
+          "text": "Put one round of training in order.",
+          "items": [
+            "Make a prediction with the current weights",
+            "Compare it with the true answer to get the error",
+            "Work out which way each weight should move",
+            "Nudge every weight a little that way"
+          ],
+          "why": "Predict, measure, find the direction, nudge. Repeat the loop over a vast number of examples and the weights settle where the errors are small."
+        },
+        {
+          "kind": "choice",
+          "text": "A large language model has billions of weights instead of one. How does its training differ from what you just did?",
+          "options": [
+            "Mostly in scale: it is the same predict, measure, nudge loop",
+            "Programmers set each weight by hand",
+            "It stores the right answers instead of adjusting weights",
+            "It learns without ever measuring an error"
+          ],
+          "why": "The loop is the same. A language model's examples are pieces of text, its prediction is the next word-piece, and its error is how unlikely it thought the real one was. Billions of small nudges later, the weights hold grammar, facts and style."
+        }
+      ]
+    },
+    {
+      "id": "2026-11-25-halving",
+      "topic": "computing",
+      "tags": [
+        "binary search",
+        "algorithms",
+        "logarithms"
+      ],
+      "title": "Twenty questions is enough",
+      "summary": "How halving finds one item among a million in about twenty looks.",
+      "steps": [
+        {
+          "kind": "choice",
+          "text": "I'm thinking of a number from 1 to 100. After each guess I'll say higher or lower. What is the best first guess?",
+          "options": [
+            "50",
+            "1",
+            "100",
+            "A hunch, like 37"
+          ],
+          "why": "50 splits the range in two, so whatever I answer, half the numbers are ruled out. Guess 1 and, unless you're lucky, you rule out a single number."
+        },
+        {
+          "kind": "estimate",
+          "text": "Keep halving like that. How many guesses do you need, at most, to be sure of finding any number from 1 to 100?",
+          "range": [
+            1,
+            100
+          ],
+          "step": 1,
+          "answer": 7,
+          "tolerance": 0,
+          "unit": "guesses",
+          "why": "7. Each guess halves what is left: 100, 50, 25, 13, 7, 4, 2, 1. Seven higher-or-lower answers can tell apart 2 × 2 × 2 × 2 × 2 × 2 × 2 = 128 things, and 128 is more than 100."
+        },
+        {
+          "kind": "order",
+          "text": "This method is called binary search. Put its steps in order.",
+          "items": [
+            "Look at the middle item of the sorted list",
+            "Compare it with the one you want",
+            "Throw away the half that can't contain it",
+            "Repeat on the half that is left"
+          ],
+          "why": "Middle, compare, discard, repeat. Each round costs one look and halves the problem. Dictionaries, contact lists and database indexes are all searched with this idea."
+        },
+        {
+          "kind": "read",
+          "title": "Doubling the list adds one look",
+          "text": "Run it backwards. One look settles a list of 1 item. Two looks handle 3 items, three looks handle 7, and ten looks handle 1,023.\nEvery extra look roughly doubles the size you can handle. So the number of looks grows with the logarithm of the list's size: very, very slowly.",
+          "visual": {
+            "kind": "curve",
+            "plot": "ln(x)/ln(2)",
+            "x": [
+              1,
+              1000
+            ]
+          }
+        },
+        {
+          "kind": "estimate",
+          "text": "A sorted list holds 1,000,000 names. How many looks do you need, at most, to find any one of them?",
+          "range": [
+            1,
+            500
+          ],
+          "step": 1,
+          "answer": 20,
+          "tolerance": 0,
+          "unit": "looks",
+          "why": "20. Ten halvings shrink about a thousand to one, since 2 multiplied by itself 10 times is 1,024. A million is a thousand thousands, so it takes twenty. Checking one by one could take a million looks."
+        },
+        {
+          "kind": "choice",
+          "text": "The list doubles to 2,000,000 names. How many more looks does binary search need?",
+          "options": [
+            "1 more",
+            "Twice as many",
+            "20 more",
+            "1,000,000 more"
+          ],
+          "why": "One extra halving undoes one doubling. Even a sorted list of all 8 billion people on Earth would need only 33 looks."
+        },
+        {
+          "kind": "choice",
+          "text": "What must be true of a list before binary search can work on it?",
+          "options": [
+            "It must be sorted",
+            "It must be short",
+            "It must have no repeated items",
+            "It must contain only numbers"
+          ],
+          "why": "Halving works only if looking at the middle item tells you which half to drop, and that needs order. It is why computers work so hard to keep data sorted or indexed: it turns a million looks into twenty."
+        }
+      ]
+    },
+    {
+      "id": "2026-11-25-forgetting",
+      "topic": "ideas",
+      "tags": [
+        "memory",
+        "spaced repetition",
+        "learning"
+      ],
+      "title": "Beat the forgetting curve",
+      "summary": "Why cramming fades, and how a few well-timed reviews make a memory last.",
+      "steps": [
+        {
+          "kind": "choice",
+          "text": "You have 3 hours to learn 40 foreign words that you want to keep for years. Which plan works best?",
+          "options": [
+            "Six half-hour sessions spread over several weeks",
+            "One 3-hour session today",
+            "Two 90-minute sessions today, morning and evening"
+          ],
+          "why": "The time is the same; the result is very different. The benefit of spreading study out is called the spacing effect, one of the most repeated findings in memory research. To see why, look at how forgetting behaves."
+        },
+        {
+          "kind": "estimate",
+          "text": "In the 1880s the psychologist Hermann Ebbinghaus memorised lists of nonsense syllables and tested himself later. After one day with no review, about what percent did he still hold?",
+          "range": [
+            0,
+            100
+          ],
+          "step": 1,
+          "answer": 34,
+          "tolerance": 10,
+          "unit": "%",
+          "why": "About a third, by his own measure. Nonsense syllables are an extreme case, and meaningful material fades more slowly. But the shape holds: the steepest loss comes first."
+        },
+        {
+          "kind": "read",
+          "title": "The forgetting curve",
+          "text": "Forgetting is steep at first, then levels off.\nA simple model of that shape: each day you lose the same fraction of what is left. How big that fraction is depends on how sturdy the memory is.\nIt is a rough sketch, not an exact law, but it explains a lot about how to study.",
+          "visual": {
+            "kind": "curve",
+            "plot": "100*exp(-x/3)",
+            "x": [
+              0,
+              14
+            ]
+          }
+        },
+        {
+          "kind": "explore",
+          "text": "The curve is how much you remember, in %, over 30 days. a is how sturdy the memory is. A fresh memory is flimsy: a starts at 2. Drag a until you would still hold 60% after 10 days: the dot.",
+          "plot": "100*exp(-x/a)",
+          "x": [
+            0,
+            30
+          ],
+          "y": [
+            0,
+            100
+          ],
+          "param": {
+            "range": [
+              2,
+              40
+            ],
+            "step": 2,
+            "start": 2
+          },
+          "target": {
+            "x": 10,
+            "y": 60
+          },
+          "show": [
+            {
+              "label": "Left after 10 days (%)",
+              "value": "100*exp(-10/a)"
+            },
+            {
+              "label": "Left after 30 days (%)",
+              "value": "100*exp(-30/a)"
+            }
+          ],
+          "why": "A sturdier memory is a flatter curve. Studying longer in one sitting barely moves a. What moves it is recalling the thing again after some forgetting has set in: each successful recall makes the next fall slower."
+        },
+        {
+          "kind": "choice",
+          "text": "When is the best moment to review something you learned today?",
+          "options": [
+            "When it has begun to fade but you can still just recall it",
+            "Straight away, while it is perfectly fresh",
+            "Only once it is completely forgotten",
+            "Whenever: the timing makes no difference"
+          ],
+          "why": "Reviewing at once is easy and adds little. Waiting until it's gone means learning it again from scratch. A little struggle to recall is the sign that a review is strengthening the memory."
+        },
+        {
+          "kind": "order",
+          "text": "Each good review makes a memory sturdier, so the next can wait longer. Arrange these gaps into a review schedule, first gap first.",
+          "items": [
+            "1 day",
+            "3 days",
+            "1 week",
+            "3 weeks",
+            "2 months"
+          ],
+          "why": "Each successful recall flattens the curve, so the gaps can grow. Five short reviews spread over about three months hold a memory far better than hours of cramming. Spaced-repetition flashcard apps do this scheduling for you."
+        },
+        {
+          "kind": "choice",
+          "text": "Which kind of review strengthens a memory most?",
+          "options": [
+            "Closing the book and trying to recall it",
+            "Reading the page again",
+            "Highlighting the key lines",
+            "Copying the notes out neatly"
+          ],
+          "why": "Pulling something out of memory strengthens it more than putting it in again. This is called the testing effect. Rereading feels smooth, and that ease misleads: familiar is not the same as remembered."
+        }
+      ]
+    },
+    {
+      "id": "2026-11-25-sunk-cost",
+      "topic": "ideas",
+      "tags": [
+        "sunk cost",
+        "decisions",
+        "biases"
+      ],
+      "title": "What's spent is spent",
+      "summary": "Why money and time that are already gone should not steer what you do next.",
+      "steps": [
+        {
+          "kind": "choice",
+          "text": "You paid 15 for a cinema ticket. Half an hour in, the film is dreadful and clearly won't improve. What is the sensible way to decide whether to stay?",
+          "options": [
+            "Ask which you'd enjoy more from now on: the film or leaving",
+            "Stay, or the 15 is wasted",
+            "Stay, because leaving admits a mistake",
+            "Leave only if you can get a refund"
+          ],
+          "why": "The 15 is gone whether you stay or go. Staying doesn't win it back. It only adds a wasted hour to a wasted ticket. The one thing still yours to choose is the next hour."
+        },
+        {
+          "kind": "read",
+          "title": "Sunk costs",
+          "text": "A sunk cost is money, time or effort that is already spent and can't be got back.\nBecause it is the same whichever way you choose, it can't make one choice better than another. Good decisions compare futures only.\nFeeling otherwise is so common that it has a name: the sunk cost fallacy.",
+          "visual": {
+            "kind": "chain",
+            "items": [
+              "Already spent",
+              "Same either way",
+              "Compare futures only"
+            ]
+          }
+        },
+        {
+          "kind": "estimate",
+          "text": "A firm has spent 9 million on a product. Finishing it costs 1 million more, and the finished product will bring in 3 million. In millions, how much better off is the firm if it finishes than if it stops now?",
+          "range": [
+            -10,
+            10
+          ],
+          "step": 1,
+          "answer": 2,
+          "tolerance": 0,
+          "unit": "million",
+          "why": "2 million better off. From here, finishing costs 1 and brings in 3. Counting the 9 gives 3 − 10 = −7, which looks like a reason to stop. But stopping doesn't return the 9: it leaves the firm at −9 instead of −7."
+        },
+        {
+          "kind": "choice",
+          "text": "Change one number. The finished product will bring in only 0.5 million. Finishing still costs 1 million, and 9 million is already spent. What should the firm do?",
+          "options": [
+            "Stop: finishing would lose another 0.5 million",
+            "Finish: 9 million is too much to walk away from",
+            "Finish: the product is 90% done",
+            "Spend more to improve the product first"
+          ],
+          "why": "Finishing now costs 1 to gain 0.5. Saying we've come too far to stop is the sunk cost talking. The 9 million argues for nothing, because it is gone on both paths."
+        },
+        {
+          "kind": "order",
+          "text": "Three projects, with amounts in millions. Rank them from the best to carry on with to the worst.",
+          "items": [
+            "Spent 9, needs 1 more, will bring in 5",
+            "Spent 0, needs 2, will bring in 4",
+            "Spent 20, needs 3 more, will bring in 2"
+          ],
+          "why": "Look only forward: 5 − 1 = +4, then 4 − 2 = +2, then 2 − 3 = −1. The project with 20 already in it is the only one not worth another penny."
+        },
+        {
+          "kind": "choice",
+          "text": "Why is it so hard to ignore what we have already spent?",
+          "options": [
+            "Quitting turns a possible loss into a certain one, and losses sting",
+            "We are bad at arithmetic",
+            "Past spending really does change which choice is best",
+            "Finishing what you start is always a virtue"
+          ],
+          "why": "While you carry on, the loss isn't final and you can still hope. Stopping makes it real, and people feel a loss more sharply than an equal gain. Not wanting to look wasteful adds to the pull."
+        },
+        {
+          "kind": "choice",
+          "text": "You're 300 pages into a 900-page book and not enjoying it. Which question cuts through the sunk cost?",
+          "options": [
+            "If I hadn't started it, would I begin at page 300 today?",
+            "How many hours have I already put in?",
+            "What will people think if I don't finish?",
+            "How much did the book cost?"
+          ],
+          "why": "Imagining a fresh start strips out what is already spent and leaves only the future. If the answer is no, stop. Stopping doesn't waste the pages you've read. They are read either way."
+        }
+      ]
+    }
+  ]
+}

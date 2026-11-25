@@ -1,0 +1,4 @@
+<resources>
+    <!-- What shows for a moment before the first screen is drawn; the same as the theme's background. -->
+    <color name="window">#FFFFF8F5</color>
+</resources>
