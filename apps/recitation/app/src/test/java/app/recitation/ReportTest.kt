@@ -55,30 +55,35 @@ class ReportTest {
     }
 
     @Test
-    fun theFastestNumberOfThreadsIsKeptAndNotSpinningIsPreferred() {
-        val (best, tried) = found(8, mapOf(Tuning(4, true) to 4.0f, Tuning(4, false) to 4.2f, Tuning(2, false) to 6.5f, Tuning(6, false) to 3.4f))
-        assertEquals(Tuning(6, spin = false), best)
-        assertEquals(listOf(Tuning(4, true), Tuning(4, false), Tuning(2, false), Tuning(6, false)), tried)
+    fun theFewestThreadsThatAreNearlyAsFastAreKeptAndNotSpinningIsPreferred() {
+        // Four threads are a little faster than two, not clearly: two it is, and the rest of the phone has the others.
+        val (best, tried) = found(8, mapOf(Tuning(2, true) to 4.0f, Tuning(2, false) to 4.1f, Tuning(4, false) to 3.6f))
+        assertEquals(Tuning(2, spin = false), best)
+        assertEquals(listOf(Tuning(2, true), Tuning(2, false), Tuning(4, false)), tried)
+        // Clearly faster on four: four.
+        assertEquals(Tuning(4, spin = false), found(8, mapOf(Tuning(2, true) to 4.0f, Tuning(2, false) to 4.1f, Tuning(4, false) to 2.5f)).first)
     }
 
     @Test
     fun spinningIsKeptWhereNotSpinningIsClearlySlower() {
-        val (best, _) = found(8, mapOf(Tuning(4, true) to 4.0f, Tuning(4, false) to 5.0f, Tuning(2, true) to 6.0f, Tuning(6, true) to 4.4f))
-        assertEquals(Tuning(4, spin = true), best)
+        val (best, _) = found(8, mapOf(Tuning(2, true) to 4.0f, Tuning(2, false) to 5.0f, Tuning(4, true) to 3.9f))
+        assertEquals(Tuning(2, spin = true), best)
     }
 
     @Test
-    fun aPhoneWithFewCoresIsNotTriedOnMoreThreadsThanItHas() {
-        val (best, tried) = found(4, mapOf(Tuning(4, true) to 4.0f, Tuning(4, false) to 4.0f, Tuning(2, false) to 3.0f))
-        assertEquals(Tuning(2, spin = false), best)
-        assertTrue(tried.none { it.threads == 6 })
+    fun itIsNeverTriedOnMoreThreadsThanHalfThePhonesCores() {
+        assertEquals(listOf(2), found(4, mapOf(Tuning(2, true) to 4.0f, Tuning(2, false) to 4.0f)).second.map { it.threads }.distinct())
+        assertEquals(listOf(2, 4), found(8, mapOf(Tuning(2, true) to 4.0f, Tuning(2, false) to 4.0f, Tuning(4, false) to 3.0f)).second.map { it.threads }.distinct())
+        val (best, tried) = found(12, mapOf(Tuning(2, true) to 6.0f, Tuning(2, false) to 6.0f, Tuning(4, false) to 3.5f, Tuning(6, false) to 2.0f))
+        assertEquals(listOf(2, 4, 6), tried.map { it.threads }.distinct())
+        assertEquals(Tuning(6, spin = false), best)
     }
 
     @Test
     fun whereTheEngineCannotBeTriedItIsRunAsBefore() {
         assertEquals(Tuning.USUAL, found(8, emptyMap()).first)
-        // Only not spinning fails: the fastest that does run.
-        assertEquals(Tuning(6, spin = true), found(8, mapOf(Tuning(4, true) to 4f, Tuning(2, true) to 5f, Tuning(6, true) to 3f)).first)
+        // Only not spinning fails: the gentlest that does run and is nearly the fastest.
+        assertEquals(Tuning(4, spin = true), found(8, mapOf(Tuning(2, true) to 5f, Tuning(4, true) to 3f)).first)
     }
 
     @Test
@@ -97,11 +102,13 @@ class ReportTest {
                 listOf(Track("report-a", "A", 60, 36, ready = true), Track("report-b", "B", 60, 2, error = "The phone's storage is full."), Track("report-c", "C", 60, 3, wanted = true)),
             ),
         )
+        // The library is one for all the tests: what others left failed in it would crowd this test's own out of the report.
+        Library.get(context).updateAll { if (it.id.startsWith("report-")) it else it.copy(error = null) }
         Tuning.keep(context, Tuning(6, spin = false))
         Journal.get(context).note("surah 36: 60 pieces at 0.91x")
 
         val report = Report.text(context)
-        for (line in listOf("Recitation: ", "Phone: ", "Android: ", "Cores: ", "Memory: ", "Battery saver: ", "Storage: ", "Speech model: not on the phone", "Work \"prepare-now\": none")) {
+        for (line in listOf("Recitation: ", "Phone: ", "Android: ", "Cores: ", "Memory: ", "Battery saver: ", "Storage: ", "Speech model: not on the phone", "Work \"prepare-now\": none", "Work \"prepare-unused\": ")) {
             assertTrue("\"$line\" is in:\n$report", line in report)
         }
         assertTrue(report, "run on 6 threads" in report)

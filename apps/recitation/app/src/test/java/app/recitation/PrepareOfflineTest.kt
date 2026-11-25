@@ -15,6 +15,7 @@ import app.recitation.prepare.PrepareWorker
 import app.recitation.speech.EngineStore
 import app.recitation.speech.TajweedStore
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -40,9 +41,14 @@ class PrepareOfflineTest {
         RandomAccessFile(file, "rw").use { it.setLength(bytes) }
     }
 
+    @After
+    fun closed() = PrepareWorker.seen(false)
+
     @Test
     fun withNoConnectionOnlyWhatIsOnThePhoneIsWorkedOn() {
         WorkManagerTestInitHelper.initializeTestWorkManager(context)
+        // The app is open: closed, nothing would be listened to.
+        PrepareWorker.seen(true)
         val connectivity = context.getSystemService(ConnectivityManager::class.java)
         shadowOf(connectivity).setActiveNetworkInfo(null)
         shadowOf(connectivity).setDefaultNetworkActive(false)

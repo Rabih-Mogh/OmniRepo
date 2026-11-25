@@ -23,6 +23,11 @@ object Mic {
     /** The microphone couldn't be opened: something else has it, or the phone refused. */
     class Unavailable : Exception()
 
+    private val listeners = java.util.concurrent.atomic.AtomicInteger()
+
+    /** Whether the microphone is being listened through now: the reader is reciting to the phone. */
+    val open: Boolean get() = listeners.get() > 0
+
     /**
      * The microphone's sound for as long as it is collected: a stretch at a time (about a
      * sixteenth of a second), as samples between -1 and 1. Letting go of it closes the
@@ -33,6 +38,7 @@ object Mic {
         val least = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
         if (least <= 0) throw Unavailable()
         val recorder = AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, maxOf(least, 8 * BLOCK))
+        listeners.incrementAndGet()
         try {
             if (recorder.state != AudioRecord.STATE_INITIALIZED) throw Unavailable()
             recorder.startRecording()
@@ -44,6 +50,7 @@ object Mic {
                 if (read > 0) emit(FloatArray(read) { block[it] / 32768f })
             }
         } finally {
+            listeners.decrementAndGet()
             runCatching { recorder.stop() }
             recorder.release()
         }

@@ -9,6 +9,10 @@ import java.util.Locale
  * they wait for their next piece of work (quicker to take it up, but the phone runs hotter,
  * and a hot phone slows itself down). Which is fastest differs from phone to phone, so the
  * app finds out by trying, once, before the first recording is listened to.
+ *
+ * Fastest isn't all: the listening shares the phone with whatever else is going on. So it
+ * is never tried on more threads than half the phone's cores, and of the ways tried the
+ * one with the fewest threads is taken unless more are clearly faster.
  */
 data class Tuning(val threads: Int, val spin: Boolean) {
 
@@ -16,27 +20,30 @@ data class Tuning(val threads: Int, val spin: Boolean) {
 
     companion object {
         /** What is used until anything else has been tried, and when nothing else can be. */
-        val USUAL = Tuning(4, spin = true)
+        val USUAL = Tuning(2, spin = false)
 
-        /** How many threads are worth trying on a phone with [cores] processor cores. */
-        fun threadsToTry(cores: Int): List<Int> = listOf(2, 4, 6).filter { it <= maxOf(USUAL.threads, cores) }
+        /** How many threads are worth trying on a phone with [cores] processor cores: up to half of them. */
+        fun threadsToTry(cores: Int): List<Int> = listOf(2, 4, 6).filter { it <= maxOf(USUAL.threads, cores / 2) }
 
         /**
-         * Finds the fastest way by trying. [time] runs a set piece of sound one way and says
-         * how long it took, in seconds, or null if the engine wouldn't run that way. [note]
-         * is told what was found.
+         * Finds the way to run it by trying. [time] runs a set piece of sound one way and
+         * says how long it took, in seconds, or null if the engine wouldn't run that way.
+         * [note] is told what was found.
          *
          * Not spinning is taken unless it is clearly slower: what it saves in heat shows
-         * over an hour of listening, not in a trial of a few seconds.
+         * over an hour of listening, not in a trial of a few seconds. And more threads are
+         * taken only if they are clearly faster than fewer.
          */
         fun find(cores: Int, time: (Tuning) -> Float?, note: (String) -> Unit = {}): Tuning {
             val took = LinkedHashMap<Tuning, Float>()
             fun tried(way: Tuning): Float? = time(way)?.also { took[way] = it }
-            val spinning = tried(USUAL)
-            val calm = tried(USUAL.copy(spin = false))
+            val spinning = tried(USUAL.copy(spin = true))
+            val calm = tried(USUAL)
             val spin = calm == null || (spinning != null && calm > spinning * SLOWER_BY)
             for (threads in threadsToTry(cores)) if (threads != USUAL.threads) tried(Tuning(threads, spin))
-            val best = took.filterKeys { it.spin == spin }.minByOrNull { it.value }?.key ?: USUAL
+            val ways = took.filterKeys { it.spin == spin }
+            val fastest = ways.values.minOrNull()
+            val best = if (fastest == null) USUAL else ways.filterValues { it <= fastest * NEARLY }.keys.minBy { it.threads }
             note("engine tried on $cores cores: " + took.entries.joinToString("; ") { "${it.key} ${String.format(Locale.US, "%.2f", it.value)} s" } + " -> $best")
             return best
         }
@@ -52,7 +59,10 @@ data class Tuning(val threads: Int, val spin: Boolean) {
             Settings.setTuning(context, "${tuning.threads},${if (tuning.spin) "spin" else "calm"},$FOR")
 
         /** What a trial holds for: the engine and the model it was made with. Another of either is tried afresh. */
-        private const val FOR = EngineStore.VERSION + "/tajweed-v2"
+        private const val FOR = EngineStore.VERSION + "/tajweed-v2/gentle"
+
+        /** How much slower than the fastest a way with fewer threads may be and still be taken. */
+        private const val NEARLY = 1.25f
 
         /** How much slower not spinning may be and still be taken. */
         private const val SLOWER_BY = 1.1f

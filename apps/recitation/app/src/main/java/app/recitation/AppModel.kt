@@ -195,8 +195,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
         }
-        // Recordings still waiting from last time (the app was closed, or the model couldn't be had): carry on.
-        if (!paused && (Settings.tajweedWanted(app) || library.playlists.value.any { p -> p.tracks.any { it.wanted && (!it.ready || it.againFrom >= 0 || it.refresh) } })) PrepareWorker.start(app)
+        carryOn()
         fetchTheRest()
         viewModelScope.launch { SurahNames.load(app) }
         viewModelScope.launch { IndoPakFont.load(app) }
@@ -656,7 +655,8 @@ class AppModel(app: Application) : AndroidViewModel(app) {
      * without being asked for. It keeps what it has until that is done.
      */
     private fun keepBusy() {
-        if (paused) return
+        // Only with the app on the screen: closed, the listening stops (see PrepareWorker).
+        if (paused || !PrepareWorker.watched) return
         viewModelScope.launch(Dispatchers.IO) {
             val tracks = library.playlists.value.flatMap { it.tracks }
             fun mayBeTakenUp(track: Track) = !track.wanted && !track.aside && track.error == null && track.surah in 1..SURAHS.size && library.audio(track.id) != null
@@ -664,12 +664,33 @@ class AppModel(app: Application) : AndroidViewModel(app) {
             if (more.isNotEmpty()) {
                 library.updateAll { if (it.id in more) it.copy(wanted = true) else it }
             } else {
+                // Some wait that could be listened to this minute, and nothing is at them: a run
+                // that ended as the app was being opened again. Started afresh.
+                if (tracks.any { waiting(it) && hearable(it) }) PrepareWorker.start(getApplication())
                 if (tracks.any { it.wanted }) return@launch
                 val old = tracks.firstOrNull { it.ready && mayBeTakenUp(it) && madeBy(it) < Timings.METHOD } ?: return@launch
                 library.update(old.id) { it.copy(wanted = true, refresh = true) }
             }
             if (!paused) PrepareWorker.start(getApplication())
         }
+    }
+
+    private fun waiting(track: Track) = track.wanted && track.error == null && (!track.ready || track.againFrom >= 0 || track.refresh)
+
+    /** Whether everything [track] needs to be listened to is on the phone. */
+    private fun hearable(track: Track): Boolean {
+        val app = getApplication<Application>()
+        return library.audio(track.id) != null && quran.has(track.surah) && TajweedStore(app).isReady && EngineStore(app).isReady
+    }
+
+    /**
+     * Recordings still waiting from last time (the app was closed, or the model couldn't be
+     * had) are carried on with: when the app starts, and every time it comes back to the
+     * screen, since the listening stops while it is away.
+     */
+    fun carryOn() {
+        val app = getApplication<Application>()
+        if (!paused && (Settings.tajweedWanted(app) || library.playlists.value.any { p -> p.tracks.any(::waiting) })) PrepareWorker.start(app)
     }
 
     /** The way a recording's words were placed (see [Timings.method]); the way it is done now if that can't be read, so it is left alone. */

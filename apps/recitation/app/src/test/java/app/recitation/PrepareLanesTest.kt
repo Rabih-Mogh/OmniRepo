@@ -5,6 +5,9 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.work.Data
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import androidx.work.testing.TestListenableWorkerBuilder
 import androidx.work.testing.WorkManagerTestInitHelper
 import app.recitation.data.Library
@@ -27,8 +30,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowNetworkCapabilities
+import org.robolectric.shadows.ShadowSystemClock
 import java.io.File
 import java.io.RandomAccessFile
+import java.time.Duration
 import java.util.Collections
 
 /**
@@ -80,6 +85,8 @@ class PrepareLanesTest {
 
     @Before
     fun online() {
+        // The app is open, unless a test closes it: closed, nothing is listened to.
+        PrepareWorker.seen(true)
         WorkManagerTestInitHelper.initializeTestWorkManager(context)
         val connectivity = context.getSystemService(ConnectivityManager::class.java)
         val capabilities = ShadowNetworkCapabilities.newInstance()
@@ -91,7 +98,16 @@ class PrepareLanesTest {
     fun restore() {
         PrepareWorker.sounds = real
         PrepareWorker.preferred = null
+        PrepareWorker.seen(false)
     }
+
+    /** Closes the app, and lets enough time go by for it to count as closed rather than glanced away from. */
+    private fun closeTheApp() {
+        PrepareWorker.seen(false)
+        ShadowSystemClock.advanceBy(Duration.ofSeconds(30))
+    }
+
+    private fun unused() = WorkManager.getInstance(context).getWorkInfosForUniqueWork(PrepareWorker.UNUSED_NAME).get()
 
     /** Runs the work to its end; a run that doesn't end is a failure, not a test that hangs. */
     private fun run() = runBlocking { withTimeout(120_000) { TestListenableWorkerBuilder<PrepareWorker>(context).build().doWork() } }
@@ -137,6 +153,57 @@ class PrepareLanesTest {
         }
         assertNull("nothing is left showing as being fetched", PrepareWorker.fetching.value)
         assertNull(PrepareWorker.progress.value)
+    }
+
+    @Test
+    fun withTheAppClosedSoundsAreStillFetchedButNothingIsListenedTo() {
+        val library = library(Track("lanes-closed-far", "Far", 60, 1, wanted = true), Track("lanes-closed-here", "Here", 60, 1, wanted = true))
+        standIn(File(library.audioPart("lanes-closed-here", "m4a").path.removeSuffix(".part")), 1_000)
+        val asked = Collections.synchronizedList(ArrayList<String>())
+        PrepareWorker.sounds = sounds(asked) { _, _ -> }
+        closeTheApp()
+        run()
+
+        assertEquals("the sound still to come was fetched", listOf("lanes-closed-far"), asked.filter { it in mine })
+        assertNotNull(library.audio("lanes-closed-far"))
+        for (id in mine) {
+            val track = library.track(id)!!
+            assertNull("$id was not taken up by the listening", track.error)
+            assertTrue("$id stays in the queue", track.wanted && !track.ready)
+        }
+        assertNull(PrepareWorker.progress.value)
+        // What is left is for when the phone is charging and nobody is using it; and no run is left asking for a connection it has.
+        val waiting = unused().single()
+        assertEquals(WorkInfo.State.ENQUEUED, waiting.state)
+        assertTrue("only while charging and unused", waiting.constraints.requiresCharging() && waiting.constraints.requiresDeviceIdle())
+        assertEquals(emptyList<WorkInfo.State>(), WorkManager.getInstance(context).getWorkInfosForUniqueWork(PrepareWorker.WAITING_NAME).get().map { it.state })
+    }
+
+    @Test
+    fun theRunForAPhoneChargingAndUnusedListensWithTheAppClosed() {
+        val library = library(Track("lanes-unused", "Unused", 60, 1, wanted = true))
+        standIn(File(library.audioPart("lanes-unused", "m4a").path.removeSuffix(".part")), 1_000)
+        PrepareWorker.sounds = sounds(Collections.synchronizedList(ArrayList())) { _, _ -> }
+        closeTheApp()
+        runBlocking {
+            withTimeout(120_000) {
+                TestListenableWorkerBuilder<PrepareWorker>(context).setInputData(Data.Builder().putBoolean("unattended", true).build()).build().doWork()
+            }
+        }
+        // The stand-in engine can't listen, so it fails: that it was taken up is the point.
+        assertNotNull("it was taken up", library.track("lanes-unused")!!.error)
+    }
+
+    @Test
+    fun aGlanceAwayFromTheAppDoesNotStopTheListening() {
+        val library = library(Track("lanes-glance", "Glance", 60, 1, wanted = true))
+        standIn(File(library.audioPart("lanes-glance", "m4a").path.removeSuffix(".part")), 1_000)
+        PrepareWorker.sounds = sounds(Collections.synchronizedList(ArrayList())) { _, _ -> }
+        // Off the screen this very moment: not yet long enough to count as closed.
+        PrepareWorker.seen(false)
+        run()
+        assertNotNull("it was taken up", library.track("lanes-glance")!!.error)
+        assertEquals(emptyList<WorkInfo>(), unused())
     }
 
     @Test

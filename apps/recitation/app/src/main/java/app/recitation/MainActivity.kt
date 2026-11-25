@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
 import app.recitation.data.Appearance
 import app.recitation.player.PlaybackService
+import app.recitation.prepare.PrepareWorker
 import app.recitation.ui.App
 import app.recitation.ui.Choices
 import app.recitation.ui.BandsBelow
@@ -30,6 +31,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Before anything is started: the listening goes on only while the app is on the screen.
+        PrepareWorker.seen(true)
         // The app draws its own bars behind the phone's status bar and navigation buttons.
         val clear = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
         enableEdgeToEdge(statusBarStyle = clear, navigationBarStyle = clear)
@@ -60,6 +63,18 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        PrepareWorker.seen(true)
+        model.carryOn()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Turned on its side, the app is back at once.
+        if (!isChangingConfigurations) PrepareWorker.seen(false)
     }
 
     override fun onNewIntent(intent: Intent) {

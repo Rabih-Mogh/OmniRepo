@@ -13,6 +13,7 @@ import android.os.PowerManager
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import androidx.work.Constraints
+import androidx.work.Data
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
@@ -42,6 +43,7 @@ import app.recitation.data.Track
 import app.recitation.data.isNoRoom
 import app.recitation.data.writeWhole
 import app.recitation.speech.Listener
+import app.recitation.speech.Mic
 import app.recitation.speech.EngineStore
 import app.recitation.speech.Tuning
 import app.recitation.yt.YouTube
@@ -113,6 +115,13 @@ internal interface Sounds {
  * they need on the phone are still listened to; the rest wait for the connection to come back.
  * The same goes when YouTube won't answer for a while: what is on the phone is worked on,
  * and the downloads are tried again later.
+ *
+ * The listening is the heavy part: it keeps the phone's processor busy for as long as it
+ * goes on. So it goes on only while the app is on the screen ([seen]), and holds still
+ * while the reader recites to the phone. With the app closed it stops at the end of the
+ * piece it is at, keeping what it has heard, and the run ends once the sounds are in. What
+ * is left is listened to when the app is opened again, or, unasked, in a run of its own
+ * that Android starts only while the phone is charging and not being used ([whenUnused]).
  */
 class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
@@ -120,6 +129,12 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
     private val library = Library.get(context)
     private val quran = QuranStore(context)
     private val model = TajweedStore(context)
+
+    /** A run Android started because the phone is charging and not in use: it listens with nobody watching. */
+    private val unattended = params.inputData.getBoolean(UNATTENDED, false)
+
+    /** Whether the listening may go on now: someone has the app open, or the phone is charging and left alone. */
+    private fun mayListen() = unattended || attended()
     private val engine = EngineStore(context)
     private val journal = Journal.get(context)
     private var listener: Listener? = null
@@ -164,12 +179,25 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                 }
             }
             if (ended != null) return ended
-            // What is left needs something fetched: it is taken up when there is a connection
-            // again, and, if YouTube was refusing, not before it has had a while to relent.
             val left = library.playlists.value.sumOf { p -> p.tracks.count(::waits) }
             val tajweedLeft = Settings.tajweedWanted(applicationContext)
-            journal.note("work done" + (if (left > 0) ", $left left waiting" + (if (refused) " on YouTube" else " for a connection") else "") + if (tajweedLeft) ", the tajweed model still to fetch" else "")
-            if (left > 0 || tajweedLeft) whenOnline(applicationContext, if ((left > 0 && refused) || tajweedFailed) REFUSED_WAIT_MINUTES else 0, byYouTube = left > 0 && refused)
+            if (mayListen()) {
+                // What is left needs something fetched: it is taken up when there is a connection
+                // again, and, if YouTube was refusing, not before it has had a while to relent.
+                journal.note("work done" + (if (left > 0) ", $left left waiting" + (if (refused) " on YouTube" else " for a connection") else "") + if (tajweedLeft) ", the tajweed model still to fetch" else "")
+                if (left > 0 || tajweedLeft) whenOnline(applicationContext, if ((left > 0 && refused) || tajweedFailed) REFUSED_WAIT_MINUTES else 0, byYouTube = left > 0 && refused)
+            } else {
+                // The app is closed: what is left is listened to when it is opened again, or
+                // when the phone is charging and left alone. A connection is waited for only
+                // if this run had none, or YouTube refused: with one, all that could be
+                // fetched has been.
+                journal.note("work done with the app closed" + if (left > 0) ", $left left to listen to" else "")
+                val couldFetch = online() && !refused
+                if ((left > 0 && !couldFetch) || (tajweedLeft && (!online() || tajweedFailed))) {
+                    whenOnline(applicationContext, if ((left > 0 && refused) || tajweedFailed) REFUSED_WAIT_MINUTES else 0, byYouTube = left > 0 && refused)
+                }
+                if (left > 0) whenUnused(applicationContext)
+            }
             return Result.success()
         } finally {
             _progress.value = null
@@ -348,7 +376,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
     }
 
     /** The recording to listen to next: the one the reader has open, if its sound is here; otherwise the first in line that has its sound. */
-    private fun next(): Track? = Lanes.toHear(waiting(), preferred, online(), fetchingId)?.let(library::track)
+    private fun next(): Track? = if (!mayListen()) null else Lanes.toHear(waiting(), preferred, online(), fetchingId)?.let(library::track)
 
     /** The recording whose sound is to be fetched next: the one the reader has open, if it has none; otherwise the first in line without. */
     private fun nextToFetch(): Track? = Lanes.toFetch(waiting(), preferred, online(), refused)?.let(library::track)
@@ -421,8 +449,14 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
     private suspend fun prepare(track: Track, forgotten: Int): Unit = coroutineScope {
         val id = track.id
         // Not if it was taken out of the queue, forgotten, or given another surah: what is being done is for this one.
-        fun wanted() = !isStopped && library.timesForgotten(id) == forgotten &&
+        // Nor with the app closed: the listening waits for it to be opened, or for the phone to be left charging.
+        fun wanted() = !isStopped && mayListen() && library.timesForgotten(id) == forgotten &&
             library.track(id)?.let { it.wanted && it.surah == track.surah } == true && !heardFirst.over(id)
+        // The reader reciting to the phone is listened to with the same engine, and comes first:
+        // the recording waits, between two of its pieces, until the microphone is let go of.
+        fun afterTheReader() {
+            while (Mic.open && !isStopped) Thread.sleep(MIC_WAIT_MS)
+        }
         fun mark(change: (Track) -> Track) = library.update(id) { if (it.surah == track.surah) change(it) else it }
         heardFirst.forget()
         // Nothing of what follows can be kept on a phone that is full.
@@ -552,6 +586,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             val heard = listener.listen(
                 audio, notes, ::wanted, onPiece = { _, _, _ -> }, onProgress = { report(Step.LISTEN, it) },
                 fromMs = span.first, untilMs = span.last,
+                next = { afterTheReader(); null },
             ) ?: throw Stopped()
             report(Step.ALIGN, 0f)
             val words = verses.subList(first, last + 1).map { verse -> verse.words.map { it.arabic } }
@@ -642,6 +677,7 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                     },
                     onProgress = { report(Step.LISTEN, it) },
                     next = { done ->
+                        afterTheReader()
                         val at = playing?.takeIf { it.trackId == id }?.ms?.div(Hearing.PIECE_MS)
                         // Nothing is being played, or what is has been heard in order already: on in
                         // order. Otherwise on from where the reader is, for as long as they stay:
@@ -878,6 +914,9 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
 
         /** The run that waits for a connection. It keeps the name the work had when all of it waited for one. */
         const val WAITING_NAME = "prepare"
+
+        /** The run that waits for the phone to be charging and not in use. */
+        const val UNUSED_NAME = "prepare-unused"
         private const val CHANNEL = "prepare"
         private const val NOTIFICATION_ID = 1
         private const val ATTEMPTS = 3
@@ -948,6 +987,34 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         /** Where a recording is being played: the listening goes there when it hasn't got that far. */
         @Volatile var playing: Playing? = null
 
+        /** Whether the app is on the screen. */
+        @Volatile var watched = false
+            private set
+
+        /** When the app last left the screen, by the phone's clock since it was started. */
+        @Volatile private var leftAt = Long.MIN_VALUE / 2
+
+        /**
+         * Says whether the app is on the screen: the listening goes on only while it is (see
+         * the class). Leaving it for a moment (a glance at another app, the phone turned on
+         * its side) doesn't stop the listening: only staying away does.
+         */
+        fun seen(onScreen: Boolean) {
+            if (watched && !onScreen) leftAt = SystemClock.elapsedRealtime()
+            watched = onScreen
+        }
+
+        private fun attended() = watched || SystemClock.elapsedRealtime() - leftAt < AWAY_MS
+
+        /** How long the app may be off the screen before the listening stops, in ms. */
+        private const val AWAY_MS = 10_000L
+
+        /** How often, while the reader recites to the phone, it is asked whether they are done, in ms. */
+        private const val MIC_WAIT_MS = 200L
+
+        /** In a run's data: that it was started because the phone is charging and not in use. */
+        private const val UNATTENDED = "unattended"
+
         /** How many ten-second pieces ahead of where it is being played a recording is listened to before the rest gets its turn: the reader comes first. */
         private const val AHEAD_PIECES = 30
 
@@ -988,9 +1055,23 @@ class PrepareWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             WorkManager.getInstance(context).enqueueUniqueWork(WAITING_NAME, ExistingWorkPolicy.REPLACE, request)
         }
 
+        /**
+         * Has what is left to listen to listened to while the phone is charging and nobody is
+         * using it (its screen has been off a while): Android starts the run then, and stops
+         * it the moment either is no longer so. It takes up where it stopped the next time.
+         */
+        private fun whenUnused(context: Context) {
+            val request = OneTimeWorkRequestBuilder<PrepareWorker>()
+                .setConstraints(Constraints.Builder().setRequiresCharging(true).setRequiresDeviceIdle(true).build())
+                .setInputData(Data.Builder().putBoolean(UNATTENDED, true).build())
+                .build()
+            WorkManager.getInstance(context).enqueueUniqueWork(UNUSED_NAME, ExistingWorkPolicy.KEEP, request)
+        }
+
         fun stop(context: Context) {
             WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
             WorkManager.getInstance(context).cancelUniqueWork(WAITING_NAME)
+            WorkManager.getInstance(context).cancelUniqueWork(UNUSED_NAME)
         }
 
         private fun createChannel(context: Context) {

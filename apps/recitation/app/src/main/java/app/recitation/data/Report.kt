@@ -54,7 +54,7 @@ object Report {
         }
         for (track in tracks.filter { it.error != null }.take(MOST_FAILURES)) append("  failed, surah ${track.surah}: ${track.error}\n")
 
-        for (name in listOf(PrepareWorker.WORK_NAME, PrepareWorker.WAITING_NAME)) {
+        for (name in listOf(PrepareWorker.WORK_NAME, PrepareWorker.WAITING_NAME, PrepareWorker.UNUSED_NAME)) {
             line("Work \"$name\"") {
                 WorkManager.getInstance(context).getWorkInfosForUniqueWork(name).get().joinToString("; ") {
                     "${it.state}, attempt ${it.runAttemptCount}, stop reason ${it.stopReason}" + if (it.tags.contains(PrepareWorker.REFUSED_TAG)) ", waiting on YouTube" else ""

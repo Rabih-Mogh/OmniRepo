@@ -119,8 +119,22 @@ phone and nowhere else.
    - lines the surah's words up with what the model heard.
 
    This runs in the background with its progress in a notification, and the rest of the
-   app stays usable meanwhile. Listening is the slow step: expect it to take roughly as
-   long as the recording, once.
+   app stays usable meanwhile. Listening is the heavy step: while it goes on it keeps the
+   phone's processor busy.
+   - **The listening goes on only while the app is on the screen.** Closed, or left for
+     more than ten seconds, it stops at the end of the ten seconds of sound it is at and
+     keeps what it has heard; the sounds still to come go on downloading, which costs the
+     phone next to nothing, and then the work ends. What is left is listened to when the
+     app is opened again, from where it stopped. Left unopened, it is also listened to,
+     unasked, **while the phone is charging and nobody is using it** (its screen off for a
+     while): Android starts that run by itself and stops it the moment the phone is
+     unplugged or picked up. So a long playlist is ready by morning without the phone
+     ever being slowed while it is in the hand.
+   - **It gives way to everything else.** The engine runs at a low priority, one step
+     above Android's own for background work, so the screen, the playing and any other
+     app get the processor first; it uses at most half the phone's cores, and fewer
+     unless more are clearly faster; and it holds still while the reader recites to the
+     phone, so that the checking of their recitation has the engine to itself.
    - **A recording can be played before it is ready.** As soon as its sound is
      downloaded it has a play button. The listening carries on meanwhile, and words light
      up as far as it has got; the player says how far. Past that point the recitation
@@ -874,13 +888,15 @@ already prepared, don't need the engine.
 
 How fast the engine listens depends on how many threads it is run on and on whether
 those spin while they wait for work, and which is fastest differs from phone to phone.
-So before the first recording is listened to, the app tries: four seconds of sound on 4
-threads spinning and not, then on 2 and on 6 threads ("Finding the fastest way to listen
-on this phone…", under a minute, once). Not spinning is taken unless it is more than a
-tenth slower, since it keeps the phone cooler and a hot phone slows itself down; then
-the fastest number of threads. What was found is kept for that version of the engine and
-written in the journal, so the report shows it. Where the engine can't be tried, it is
-run as before, on 4 threads.
+So before the first recording is listened to, the app tries: eleven seconds of sound on 2
+threads spinning and not, then on 4 threads if the phone has eight cores or more, and on
+6 if it has twelve ("Finding the fastest way to listen on this phone…", once). Not
+spinning is taken unless it is more than a tenth slower, since it keeps the phone cooler
+and a hot phone slows itself down. Then the fewest threads that are within a quarter of
+the fastest: the listening shares the phone with everything else, and is never run on
+more than half its cores. What was found is kept for that version of the engine and of
+the model and written in the journal, so the report shows it. Where the engine can't be
+tried, it is run on 2 threads.
 
 ## How accurate it is
 
@@ -918,6 +934,10 @@ to four threads, with the same result.
   Android itself and have only been compiled. That includes starting the engine from the
   app's storage rather than from inside its package. If the engine won't start on a phone,
   the recording being prepared says so, with Android's own wording.
+  Two things about the listening rest on how Android behaves and could only be checked
+  on a phone: that the engine's own threads take the low priority of the thread that
+  makes them, and when exactly Android counts the phone as charging and unused and
+  starts the run for that.
 - **One surah per video.** A video with several surahs, part of a surah, or verses
   repeated (as in prayer) won't line up; the app will usually say it doesn't match.
 - **Old or echoing recordings** are heard less clearly and line up less tightly.

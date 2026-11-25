@@ -2,17 +2,26 @@ package app.recitation.speech
 
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
+import android.os.Process
 import app.recitation.core.Heard
 import app.recitation.core.Hearing
 import app.recitation.core.Span
 import app.recitation.core.SpeechModel
 import java.io.File
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Executors
 
 /**
  * The speech model listening to a recording, run with ONNX Runtime: the same small model
  * that checks a reader's own recitation (see [TajweedStore]). It writes down the sounds
  * actually made, in the Quran phonetic script, rather than guessing words, which is what
  * lining a known text up with a recording needs. [tuning] says how the engine is run.
+ *
+ * It is run gently. The engine is opened and run on a thread of this class's own, set
+ * just short of the priority Android gives background work; the threads the engine makes
+ * for itself are made by that one and take after it. So whatever else the phone is doing
+ * (the app's own screens, the playing, another app) gets the processor first, and the
+ * listening takes what is left: all of it on a phone lying idle.
  */
 class Listener(model: File, tuning: Tuning = Tuning.USUAL) : SpeechModel, AutoCloseable {
 
@@ -23,11 +32,24 @@ class Listener(model: File, tuning: Tuning = Tuning.USUAL) : SpeechModel, AutoCl
         if (!tuning.spin) addConfigEntry("session.intra_op.allow_spinning", "0")
         setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
     }
-    private val session: OrtSession = env.createSession(model.path, options)
+    private val gently = Executors.newSingleThreadExecutor { work ->
+        Thread({
+            // In tests off a phone there is no such thing to set.
+            runCatching { Process.setThreadPriority(GENTLE) }
+            work.run()
+        }, "listener")
+    }
+    private val session: OrtSession = onItsThread { env.createSession(model.path, options) }
     private val hearing = Hearing(this)
 
     /** The model's scores for every 20 ms of [samples], from their start: a stretch of a recording as it is, with nothing put before or after it. */
-    override fun run(samples: FloatArray): FloatArray = session.scores(env, samples)
+    override fun run(samples: FloatArray): FloatArray = onItsThread { session.scores(env, samples) }
+
+    private fun <T> onItsThread(work: () -> T): T = try {
+        gently.submit(work).get()
+    } catch (e: ExecutionException) {
+        throw e.cause ?: e
+    }
 
     /** Listens to a downloaded recording; see [Hearing.listen]. */
     fun listen(
@@ -51,5 +73,11 @@ class Listener(model: File, tuning: Tuning = Tuning.USUAL) : SpeechModel, AutoCl
     override fun close() {
         session.close()
         options.close()
+        gently.shutdown()
+    }
+
+    private companion object {
+        /** One step above background work: low enough to give way to everything on the screen, without being kept to the phone's slow cores as background work is. */
+        const val GENTLE = Process.THREAD_PRIORITY_BACKGROUND + Process.THREAD_PRIORITY_MORE_FAVORABLE
     }
 }
