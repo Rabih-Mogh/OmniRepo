@@ -240,8 +240,8 @@
     <string name="prayer_maghrib">Maghrib</string>
     <string name="prayer_isha">Isha</string>
     <string name="prayer_midnight">Midnight</string>
-    <string name="prayer_last_third">Last third of the night</string>
-    <string name="prayer_last_third_short">Last third</string>
+    <string name="prayer_last_third">Qiyam (last third)</string>
+    <string name="prayer_last_third_short">Qiyam</string>
 
     <!-- Main screen: Times of the day. %1$s a time of the day, %2$s a clock time or a length of time -->
     <string name="section_prayers">Times of the day</string>
@@ -252,7 +252,13 @@
     <string name="duration_minutes">%1$d min</string>
     <string name="alert_at">Notify at %1$s</string>
     <string name="alerts_hint">Tap a bell for a notification when that time arrives. It is a plain notification, not the alarm: Fajr has the alarm.</string>
-    <string name="optional_times_hint">Duha starts 15 minutes after sunrise. Midnight and the last third are measured from sunset to the next Fajr.</string>
+    <string name="optional_times_hint">Duha starts 15 minutes after sunrise. Midnight and the last third of the night are measured from sunset to the next Fajr.</string>
+    <!-- The shape before each prayer in the list and in the widgets: what it stands for, read out by a screen reader -->
+    <string name="mark_obligatory">Obligatory</string>
+    <string name="mark_nafl">Nafl</string>
+    <string name="nafl_hint">A dot marks an obligatory prayer and a ring a voluntary one (nafl): Duha, until 10 minutes before Dhuhr, and Qiyam, the night prayer, from the last third of the night until Fajr. Sunrise and midnight are not prayers.</string>
+    <!-- Under a prayer's start in the list: when its time runs out. %1$s a clock time -->
+    <string name="until_time">until %1$s</string>
 
     <!-- A notification when a time arrives. %1$s the time of the day, %2$s the clock time -->
     <string name="prayer_alert_title">%1$s · %2$s</string>
@@ -260,7 +266,7 @@
     <string name="alert_sunrise">The time for Fajr has ended.</string>
     <string name="alert_duha">The time for the Duha prayer has started.</string>
     <string name="alert_midnight">Half the night has passed.</string>
-    <string name="alert_last_third">The last third of the night has begun.</string>
+    <string name="alert_last_third">The last third of the night has begun: the time for Qiyam.</string>
 
     <!-- Lock screen notification and widgets. %1$s a prayer, %2$s a clock time; a countdown follows "ends in" and "starts in" -->
     <string name="section_lock_widgets">Lock screen &amp; widgets</string>

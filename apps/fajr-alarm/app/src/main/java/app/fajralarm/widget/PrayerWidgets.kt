@@ -63,7 +63,8 @@ object PrayerWidgets {
 
     // "All times", by height: under 250dp the nine times sit in two columns, from
     // 250dp in one. 170dp adds the prayer after the current one, 330dp the alarm and the method.
-    // A one-column table 290dp wide also says when each prayer ends.
+    // In one column each prayer has its start and its end: as "4:52 – 6:20", or from
+    // 290dp wide in two columns of clock times with AM and PM.
     private const val NEXT_LINE_HEIGHT = 170f
     private const val ONE_COLUMN_HEIGHT = 250f
     private const val FOOTER_HEIGHT = 330f
@@ -75,7 +76,8 @@ object PrayerWidgets {
     )
 
     // "Current prayer": the next prayer from 70dp tall, the date from 110dp, then the
-    // table: in two columns where it is 220dp wide, in one from 290dp tall.
+    // table: in two columns where it is 220dp wide, in one from 290dp tall. In one
+    // column it has the prayers' ends too where it is 220dp wide.
     private const val CURRENT_NEXT_HEIGHT = 70f
     private const val CURRENT_DATE_HEIGHT = 110f
     private const val CURRENT_TABLE_HEIGHT = 190f
@@ -171,7 +173,11 @@ object PrayerWidgets {
             fillTable(
                 context, state, settings,
                 oneColumn = oneColumn,
-                ends = oneColumn && size.width >= ENDS_WIDTH,
+                times = when {
+                    !oneColumn -> Times.START_SHORT
+                    size.width >= ENDS_WIDTH -> Times.COLUMNS
+                    else -> Times.RANGE
+                },
                 textSp = when {
                     footer -> 15f
                     oneColumn || size.height >= NEXT_LINE_HEIGHT -> 13f
@@ -206,7 +212,15 @@ object PrayerWidgets {
             setTextViewText(R.id.widget_next, text.next)
             setTextViewText(R.id.widget_date, state.day.date.format(dayFormat()))
             if (table) {
-                fillTable(context, state, settings, oneColumn, ends = false, textSp = if (oneColumn) 13f else 12f)
+                fillTable(
+                    context, state, settings, oneColumn,
+                    times = when {
+                        !oneColumn -> Times.START_SHORT
+                        size.width >= CURRENT_TABLE_WIDTH -> Times.RANGE
+                        else -> Times.START
+                    },
+                    textSp = if (oneColumn) 13f else 12f,
+                )
             } else {
                 clearTable()
             }
@@ -220,22 +234,38 @@ object PrayerWidgets {
         removeAllViews(R.id.table_end)
     }
 
+    /** How much of a time's clock times a row of the table has room for. */
+    private enum class Times {
+        /** When it starts, cut to "4:31". */
+        START_SHORT,
+
+        /** When it starts, with AM or PM. */
+        START,
+
+        /** When a prayer starts and ends, as "4:52 – 6:20". */
+        RANGE,
+
+        /** The start and the end with AM or PM, each in a column under a heading. */
+        COLUMNS,
+    }
+
     /**
      * Fills the table with the times of the listed day, in the order they come. In two
-     * columns they read down the first and then down the second, with clock times cut
-     * to "4:31" to fit. In one column there is room for AM and PM and for a bell beside
-     * the times that notify, and with [ends] for a column of when each prayer ends.
+     * columns they read down the first and then down the second. In one column there is
+     * room for a bell beside the times that notify, and for when each prayer ends.
+     * Each prayer has a shape before its name: a dot if it is obligatory, a ring if it is voluntary.
      */
     private fun RemoteViews.fillTable(
         context: Context,
         state: PrayerNow,
         settings: AlarmSettings,
         oneColumn: Boolean,
-        ends: Boolean,
+        times: Times,
         textSp: Float,
     ) {
         clearTable()
         show(R.id.table_end, !oneColumn)
+        val ends = times == Times.COLUMNS
         val layout = if (ends) R.layout.widget_times_row_wide else R.layout.widget_times_row
         fun row(name: String, time: String, end: String, size: Float, nameColor: Int, timeColor: Int, endColor: Int) =
             RemoteViews(context.packageName, layout).apply {
@@ -267,16 +297,32 @@ object PrayerWidgets {
             val passed = !isMarked && moment.at.isBefore(state.nextEvent.at)
             val faded = if (passed) R.color.widget_passed else null
             val onGold = if (isMarked) R.color.widget_on_gold else null
+            val end = state.dayEnds[moment.prayer]
             val cell = row(
                 name = context.getString(moment.prayer.shortLabel),
-                time = if (oneColumn) moment.at.clockTime(context) else moment.at.shortClockTime(context),
-                end = state.dayEnds[moment.prayer]?.clockTime(context).orEmpty(),
+                time = when (times) {
+                    Times.START_SHORT -> moment.at.shortClockTime(context)
+                    Times.RANGE -> listOfNotNull(moment.at, end).joinToString(" – ") { it.shortClockTime(context) }
+                    Times.START, Times.COLUMNS -> moment.at.clockTime(context)
+                },
+                end = end?.clockTime(context).orEmpty(),
                 size = textSp,
                 nameColor = onGold ?: faded ?: if (moment.prayer.obligatory) R.color.widget_text else R.color.widget_muted,
                 timeColor = onGold ?: faded ?: R.color.widget_text,
                 endColor = onGold ?: faded ?: R.color.widget_muted,
             ).apply {
                 if (isMarked) setInt(R.id.row, "setBackgroundResource", R.drawable.widget_cell_current)
+                val mark = when {
+                    moment.prayer.nafl -> if (passed) R.drawable.widget_mark_ring_passed else R.drawable.widget_mark_ring
+                    !moment.prayer.obligatory -> null
+                    isMarked -> R.drawable.widget_mark_dot_current
+                    passed -> R.drawable.widget_mark_dot_passed
+                    else -> R.drawable.widget_mark_dot
+                }
+                if (mark != null) {
+                    setViewVisibility(R.id.row_mark, View.VISIBLE)
+                    setImageViewResource(R.id.row_mark, mark)
+                }
                 if (oneColumn && moment.prayer in settings.alerts) {
                     setViewVisibility(R.id.row_bell, View.VISIBLE)
                     setInt(R.id.row_bell, "setColorFilter", context.getColor(onGold ?: faded ?: R.color.widget_muted))
@@ -305,7 +351,7 @@ object PrayerWidgets {
         return "$alarmText · ${context.getString(settings.method.label)}"
     }
 
-    /** A clock time without AM or PM, e.g. "4:31": two columns of them have to fit side by side. */
+    /** A clock time without AM or PM, e.g. "4:31", for where two of them have to fit side by side. */
     private fun ZonedDateTime.shortClockTime(context: Context): String {
         val locale = Locale.getDefault()
         val pattern = if (DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm"

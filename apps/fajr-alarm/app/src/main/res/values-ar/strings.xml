@@ -256,8 +256,8 @@
     <string name="prayer_maghrib">المغرب</string>
     <string name="prayer_isha">العشاء</string>
     <string name="prayer_midnight">منتصف الليل</string>
-    <string name="prayer_last_third">الثلث الأخير من الليل</string>
-    <string name="prayer_last_third_short">الثلث الأخير</string>
+    <string name="prayer_last_third">قيام الليل (الثلث الأخير)</string>
+    <string name="prayer_last_third_short">قيام الليل</string>
 
     <!-- Main screen: Times of the day. %1$s a time of the day, %2$s a clock time or a length of time -->
     <string name="section_prayers">أوقات اليوم</string>
@@ -269,6 +269,12 @@
     <string name="alert_at">إشعار عند %1$s</string>
     <string name="alerts_hint">اضغط على الجرس ليصلك إشعار عند دخول ذلك الوقت. هو إشعار عادي وليس المنبّه: المنبّه للفجر.</string>
     <string name="optional_times_hint">يبدأ الضحى بعد الشروق بـ 15 دقيقة. يُحسب منتصف الليل والثلث الأخير من غروب الشمس إلى الفجر التالي.</string>
+    <!-- The shape before each prayer in the list and in the widgets: what it stands for, read out by a screen reader -->
+    <string name="mark_obligatory">فريضة</string>
+    <string name="mark_nafl">نافلة</string>
+    <string name="nafl_hint">النقطة تدلّ على الفريضة والحلقة على النافلة: الضحى، حتى ما قبل الظهر بـ 10 دقائق، وقيام الليل، من الثلث الأخير من الليل حتى الفجر. الشروق ومنتصف الليل ليسا صلاتين.</string>
+    <!-- Under a prayer's start in the list: when its time runs out. %1$s a clock time -->
+    <string name="until_time">حتى %1$s</string>
 
     <!-- A notification when a time arrives. %1$s the time of the day, %2$s the clock time -->
     <string name="prayer_alert_title">%1$s · %2$s</string>
@@ -276,7 +282,7 @@
     <string name="alert_sunrise">انتهى وقت الفجر.</string>
     <string name="alert_duha">بدأ وقت صلاة الضحى.</string>
     <string name="alert_midnight">انقضى نصف الليل.</string>
-    <string name="alert_last_third">بدأ الثلث الأخير من الليل.</string>
+    <string name="alert_last_third">بدأ الثلث الأخير من الليل: وقت قيام الليل.</string>
 
     <!-- Lock screen notification and widgets. %1$s a prayer, %2$s a clock time; a countdown follows "ends in" and "starts in" -->
     <string name="section_lock_widgets">شاشة القفل والأدوات</string>

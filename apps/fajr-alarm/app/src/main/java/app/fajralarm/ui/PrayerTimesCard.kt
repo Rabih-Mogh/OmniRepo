@@ -1,6 +1,7 @@
 package app.fajralarm.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,8 +50,9 @@ import java.util.Locale
 import kotlinx.coroutines.delay
 
 /**
- * The day's times: which prayer it is and how long it has left, then every time with a
- * bell that turns its notification on. Shows nothing until a location is set.
+ * The day's times: which prayer it is and how long it has left, then every time with
+ * when it starts and ends and a bell that turns its notification on. Shows nothing
+ * until a location is set.
  */
 @Composable
 internal fun PrayerTimesCard(settings: AlarmSettings, tick: Int, onAlertChange: (PrayerTime, Boolean) -> Unit) {
@@ -119,20 +121,30 @@ internal fun PrayerTimesCard(settings: AlarmSettings, tick: Int, onAlertChange: 
                         else -> MaterialTheme.colorScheme.onSurfaceVariant
                     }
                     val weight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal
+                    PrayerMark(moment.prayer, color, Modifier.alpha(if (passed) 0.6f else 1f))
                     Text(
                         stringResource(moment.prayer.label),
-                        Modifier.weight(1f).alpha(if (passed) 0.6f else 1f),
+                        Modifier.weight(1f).padding(start = 10.dp, end = 8.dp).alpha(if (passed) 0.6f else 1f),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = weight,
                         color = color,
                     )
-                    Text(
-                        moment.at.clockTime(context),
-                        Modifier.alpha(if (passed) 0.6f else 1f),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = weight,
-                        color = color,
-                    )
+                    // When it starts, and under that when its time runs out. Sunrise and midnight are single moments.
+                    Column(Modifier.alpha(if (passed) 0.6f else 1f), horizontalAlignment = Alignment.End) {
+                        Text(
+                            moment.at.clockTime(context),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = weight,
+                            color = color,
+                        )
+                        state.dayEnds[moment.prayer]?.let { end ->
+                            Text(
+                                stringResource(R.string.until_time, end.clockTime(context)),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isCurrent) color else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                     if (moment.prayer == PrayerTime.FAJR) {
                         // Fajr has the alarm, so no bell.
                         Spacer(Modifier.size(44.dp))
@@ -155,7 +167,36 @@ internal fun PrayerTimesCard(settings: AlarmSettings, tick: Int, onAlertChange: 
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Text(
+            stringResource(R.string.nafl_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
+}
+
+/**
+ * The shape before a time's name: a dot for an obligatory prayer and a ring for a
+ * voluntary one. Sunrise and midnight are not prayers and keep the gap.
+ */
+@Composable
+private fun PrayerMark(prayer: PrayerTime, color: Color, modifier: Modifier = Modifier) {
+    val description = when {
+        prayer.obligatory -> stringResource(R.string.mark_obligatory)
+        prayer.nafl -> stringResource(R.string.mark_nafl)
+        else -> null
+    }
+    val shape = when {
+        prayer.obligatory -> Modifier.background(color, CircleShape)
+        prayer.nafl -> Modifier.border(1.5.dp, MaterialTheme.colorScheme.tertiary, CircleShape)
+        else -> Modifier
+    }
+    Box(
+        modifier
+            .size(8.dp)
+            .then(shape)
+            .then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier),
+    )
 }
 
 /** A bell that is gold when on and struck through when off. */

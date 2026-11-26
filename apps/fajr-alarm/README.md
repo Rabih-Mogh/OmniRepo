@@ -14,7 +14,7 @@ and update address keep the old name, so installed copies update as before.
 - **Recalculated daily**: after each alarm the next one is computed fresh, and again after a reboot, app update, clock change or timezone change.
 - **On by default**: a fresh install has the alarm switched on, so it rings from the first Fajr after you set your location.
 - **Pick which days it rings.**
-- **Every prayer time of the day**: Fajr, Dhuhr, Asr, Maghrib and Isha, with sunrise and the optional times (Duha, midnight, the last third of the night). The main screen says which prayer it is and how long it has left. See [Prayer times, widgets and the lock screen](#prayer-times-widgets-and-the-lock-screen).
+- **Every prayer time of the day**: Fajr, Dhuhr, Asr, Maghrib and Isha, with sunrise and the optional times (Duha, midnight, and Qiyam in the last third of the night). The main screen says which prayer it is and how long it has left. See [Prayer times, widgets and the lock screen](#prayer-times-widgets-and-the-lock-screen).
 - **A notification for any of those times**, if you want one: a plain notification with the phone's notification sound, never the alarm or a mission. Off until you tap a time's bell.
 - **Two home screen widgets**: every time of the day as a table, and the current prayer with a live countdown. Both show more when made bigger.
 - **The current prayer on the lock screen**: a silent notification that counts down the time it has left.
@@ -57,17 +57,17 @@ How it works and its limits:
 
 ## Prayer times, widgets and the lock screen
 
-**The times.** The **Times of the day** card lists the day from Fajr to the last third of the night, with the current prayer marked and the time it has left.
+**The times.** The **Times of the day** card lists the day from Fajr to Qiyam, the night prayer, with the current prayer marked and the time it has left. Each prayer, obligatory or voluntary, has a shape before its name, when it starts and, under that, when its time runs out. The shape is a dot for the five obligatory prayers and a ring for the two voluntary ones (nafl), Duha and Qiyam. Sunrise and midnight are not prayers: they have no shape and are single moments with no end.
 
 | Time | How it is worked out |
 |---|---|
 | Fajr, Isha | The sun at the method's angle below the horizon. Umm al-Qura, Gulf and Qatar put Isha 90 minutes after Maghrib instead (Umm al-Qura's 120 minutes in Ramadan is not applied). The high-latitude rule applies to both |
 | Sunrise, Maghrib | The sun's upper edge on the horizon. The Tehran method puts Maghrib at 4.5° below it |
-| Duha | 15 minutes after sunrise: the start of the Duha prayer's time, which runs until shortly before Dhuhr |
+| Duha | 15 minutes after sunrise: the start of the Duha prayer's time, which is taken to run until 10 minutes before Dhuhr |
 | Dhuhr | Solar noon, with no minutes added |
 | Asr | When a shadow is longer than at noon by the object's height (standard), or by twice its height (Hanafi) |
 | Midnight | Halfway from sunset to the next Fajr |
-| Last third of the night | Two thirds of the way from sunset to the next Fajr: the time for the night prayer (Qiyam, Tahajjud) |
+| Qiyam (last third) | Two thirds of the way from sunset to the next Fajr, where the last third of the night begins: the time for the night prayer (Qiyam, Tahajjud), until that Fajr |
 
 A prayer's time is taken to end when the next prayer starts. Fajr ends at sunrise, and Isha is counted until the next Fajr. Between sunrise and Dhuhr no prayer is current, and the app counts down to Dhuhr instead. Midnight and the last third usually fall after 12 at night, so they are listed with the day whose night they belong to; the list moves on to the next day once the last third has begun.
 
@@ -81,13 +81,15 @@ Both show more when you make them bigger (touch and hold the widget, then drag i
 
 | "All times" at least | Shows |
 |---|---|
-| 110 dp tall | The table in two columns, read down the first and then the second. Clock times are shown without AM/PM to fit |
+| 110 dp tall | The table in two columns, read down the first and then the second, with each time's start. Clock times are shown without AM/PM to fit |
 | 170 dp tall | Also the prayer that comes after the current one |
-| 250 dp tall | The table in one column, with AM/PM, and a bell beside the times that send a notification |
-| 250 dp tall and 290 dp wide | Also a second column of clock times: when each of the five prayers ends |
+| 250 dp tall | The table in one column, each prayer with its start and end as "4:52 – 6:20", and a bell beside the times that send a notification |
+| 250 dp tall and 290 dp wide | The start and the end in columns of their own, **Begins** and **Ends**, with AM/PM |
 | 330 dp tall | Also a bottom line with the next alarm and the calculation method |
 
-**Current prayer** adds the date at 110 dp tall, the table in two columns at 190 dp tall and 220 dp wide, and the table in one column at 290 dp tall and 160 dp wide. How many cells that is depends on the phone: two cells are usually 150 to 220 dp tall.
+In both widgets, at every size, each prayer has the same shape before its name as in the app: a dot if it is obligatory, a pink ring if it is voluntary.
+
+**Current prayer** adds the date at 110 dp tall, the table in two columns at 190 dp tall and 220 dp wide, and the table in one column at 290 dp tall and 160 dp wide (with the prayers' ends from 220 dp wide). How many cells that is depends on the phone: two cells are usually 150 to 220 dp tall.
 
 On Android 12 and later the app hands the home screen a drawing for each of these sizes and the home screen shows the biggest one that fits, so resizing costs nothing. A home screen that doesn't do that tells the app the new size, and the widget is drawn again once.
 

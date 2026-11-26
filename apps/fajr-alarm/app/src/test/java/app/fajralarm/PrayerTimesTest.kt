@@ -11,10 +11,16 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Chronometer
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -98,10 +104,17 @@ class PrayerTimesTest {
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.waitForIdle()
             compose.onNodeWithText("TIMES OF THE DAY").assertIsDisplayed()
-            listOf("Duha", "Dhuhr", "Asr", "Maghrib", "Isha", "Midnight", "Last third of the night").forEach {
+            listOf("Duha", "Dhuhr", "Asr", "Maghrib", "Isha", "Midnight", "Qiyam (last third)").forEach {
                 // "Asr" is also the name of a calculation setting further down.
                 compose.onAllNodesWithText(it).onFirst().assertIsDisplayed()
             }
+            // Each prayer has its shape, a dot or a ring, and says when its time runs out.
+            compose.onAllNodesWithContentDescription("Obligatory").assertCountEquals(5)
+            compose.onAllNodesWithContentDescription("Nafl").assertCountEquals(2)
+            val endTime = SemanticsMatcher("starts with \"until\"") { node ->
+                node.config.getOrNull(SemanticsProperties.Text)?.any { it.text.startsWith("until ") } == true
+            }
+            compose.onAllNodes(endTime).assertCountEquals(7)
             // Fajr has the alarm, not a bell.
             compose.onNodeWithContentDescription("Notify at Fajr").assertDoesNotExist()
 
@@ -197,17 +210,26 @@ class PrayerTimesTest {
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun `the prayer times widget is a table of all nine times with the current prayer marked`() {
         val state = now()
-        val names = listOf("Fajr", "Sunrise", "Duha", "Dhuhr", "Asr", "Maghrib", "Isha", "Midnight", "Last third")
+        val names = listOf("Fajr", "Sunrise", "Duha", "Dhuhr", "Asr", "Maghrib", "Isha", "Midnight", "Qiyam")
 
         // Four cells by two: the table in two columns, read down the first and then the second.
         val small = PrayerWidgets.timesViews(app, state, beirut, size(300, 150)).apply(app, FrameLayout(app))
-        assertEquals(names.take(5), rows(small, R.id.table_start).map { it.text(R.id.row_name) })
-        assertEquals(names.drop(5) + "", rows(small, R.id.table_end).map { it.text(R.id.row_name) })
+        assertEquals(names.take(5), rows(small, R.id.table_start).map { it.name() })
+        assertEquals(names.drop(5) + "", rows(small, R.id.table_end).map { it.name() })
         assertTrue(texts(small).first().let { it.endsWith(" ends in") || it.endsWith(" starts in") })
         assertEquals("one prayer is marked", 1, rows(small).count { it.background != null })
         assertEquals(View.GONE, small.findViewById<View>(R.id.widget_next).visibility)
         assertEquals(View.GONE, small.findViewById<View>(R.id.widget_footer).visibility)
         assertTrue("no room for AM and PM", rows(small).none { it.text(R.id.row_time).endsWith("M") })
+        // Each prayer has its shape before its name: a dot if obligatory, a ring if voluntary.
+        assertEquals(
+            mapOf(
+                "dot" to listOf("Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"),
+                "ring" to listOf("Duha", "Qiyam"),
+                "none" to listOf("Sunrise", "Midnight", ""),
+            ),
+            rows(small).groupBy({ it.mark() }, { it.name() }),
+        )
         picture("widget-times", small, 300, 150)
 
         // A little taller: the next prayer under the countdown.
@@ -217,16 +239,24 @@ class PrayerTimesTest {
         assertEquals(state.current != null, medium.findViewById<View>(R.id.widget_next).visibility == View.VISIBLE)
         picture("widget-times-medium", medium, 300, 200)
 
-        // Taller still: one column, with AM and PM, and a bell beside the times that notify.
+        // Taller still: one column, each prayer with its start and end, and a bell beside the times that notify.
         val belled = beirut.copy(alerts = setOf(PrayerTime.DHUHR, PrayerTime.MIDNIGHT))
         val tall = PrayerWidgets.timesViews(app, state, belled, size(250, 270)).apply(app, FrameLayout(app))
-        assertEquals(names, rows(tall, R.id.table_start).map { it.text(R.id.row_name) })
+        assertEquals(names, rows(tall, R.id.table_start).map { it.name() })
         assertEquals(View.GONE, tall.findViewById<View>(R.id.table_end).visibility)
         assertEquals(1, rows(tall).count { it.background != null })
-        assertTrue(rows(tall).all { it.text(R.id.row_time).endsWith("M") })
+        val ranges = rows(tall).associate { it.name() to it.text(R.id.row_time) }
+        assertEquals(
+            "every prayer has a start and an end, sunrise and midnight one moment",
+            setOf("Sunrise", "Midnight"), ranges.filterValues { " – " !in it }.keys,
+        )
+        assertEquals("Fajr ends at sunrise", ranges.getValue("Sunrise"), ranges.getValue("Fajr").substringAfter(" – "))
+        assertEquals("Asr starts when Dhuhr ends", ranges.getValue("Asr").substringBefore(" – "), ranges.getValue("Dhuhr").substringAfter(" – "))
+        assertEquals("Qiyam ends at Fajr, as Isha does", ranges.getValue("Isha").substringAfter(" – "), ranges.getValue("Qiyam").substringAfter(" – "))
+        assertEquals(listOf("Duha", "Qiyam"), rows(tall).filter { it.mark() == "ring" }.map { it.name() })
         assertEquals(
             listOf("Dhuhr", "Midnight"),
-            rows(tall).filter { it.findViewById<View>(R.id.row_bell).visibility == View.VISIBLE }.map { it.text(R.id.row_name) },
+            rows(tall).filter { it.findViewById<View>(R.id.row_bell).visibility == View.VISIBLE }.map { it.name() },
         )
         assertEquals(View.GONE, tall.findViewById<View>(R.id.widget_footer).visibility)
         picture("widget-times-tall", tall, 250, 270)
@@ -235,13 +265,16 @@ class PrayerTimesTest {
         val full = PrayerWidgets.timesViews(app, state, belled, size(330, 350)).apply(app, FrameLayout(app))
         val table = rows(full, R.id.table_start)
         assertEquals(listOf("", "Begins", "Ends"), listOf(R.id.row_name, R.id.row_time, R.id.row_ends).map { table.first().text(it) })
-        assertEquals(names, table.drop(1).map { it.text(R.id.row_name) })
-        val ends = table.drop(1).associate { it.text(R.id.row_name) to it.text(R.id.row_ends) }
+        assertEquals(names, table.drop(1).map { it.name() })
+        val ends = table.drop(1).associate { it.name() to it.text(R.id.row_ends) }
         assertEquals("Fajr ends at sunrise", table[2].text(R.id.row_time), ends["Fajr"])
         assertEquals("Dhuhr ends at Asr", table[5].text(R.id.row_time), ends["Dhuhr"])
         assertEquals("Maghrib ends at Isha", table[7].text(R.id.row_time), ends["Maghrib"])
         assertTrue("Isha ends at the next Fajr", ends.getValue("Isha").endsWith("AM"))
-        assertEquals("the optional times have no end", listOf("", "", "", ""), listOf("Sunrise", "Duha", "Midnight", "Last third").map(ends::getValue))
+        assertEquals("sunrise and midnight are single moments", listOf("", ""), listOf("Sunrise", "Midnight").map(ends::getValue))
+        assertTrue("Duha ends before noon", ends.getValue("Duha").endsWith("AM"))
+        assertEquals("Qiyam ends at the next Fajr", ends.getValue("Isha"), ends.getValue("Qiyam"))
+        assertEquals(listOf("none", "dot", "none", "ring"), table.take(4).map { it.mark() })
         val footer = full.findViewById<TextView>(R.id.widget_footer)
         assertEquals(View.VISIBLE, footer.visibility)
         assertTrue(footer.text.toString(), footer.text.startsWith("Alarm: ") && footer.text.endsWith(" · Muslim World League"))
@@ -250,27 +283,27 @@ class PrayerTimesTest {
         // In the afternoon Asr is gold, what came before it is faded, and Maghrib is named as next.
         fun drawn(hour: Int, minute: Int = 0) =
             PrayerWidgets.timesViews(app, at(hour, minute), beirut, size(300, 200)).apply(app, FrameLayout(app))
-        fun View.faded() = findViewById<TextView>(R.id.row_name).currentTextColor == app.getColor(R.color.widget_passed)
+        fun View.faded() = nameColor() == app.getColor(R.color.widget_passed)
         val afternoon = drawn(15)
-        assertEquals(listOf("Asr"), rows(afternoon).filter { it.background != null }.map { it.text(R.id.row_name) })
-        assertEquals(listOf("Fajr", "Sunrise", "Duha", "Dhuhr"), rows(afternoon).filter { it.faded() }.map { it.text(R.id.row_name) })
+        assertEquals(listOf("Asr"), rows(afternoon).filter { it.background != null }.map { it.name() })
+        assertEquals(listOf("Fajr", "Sunrise", "Duha", "Dhuhr"), rows(afternoon).filter { it.faded() }.map { it.name() })
         assertEquals(View.VISIBLE, afternoon.findViewById<View>(R.id.widget_next).visibility)
         assertTrue(afternoon.text(R.id.widget_next).startsWith("Next: Maghrib "))
         // In the morning no prayer is current: Dhuhr is gold and the headline already names it.
         val morning = drawn(9)
         assertEquals("Dhuhr starts in", morning.text(R.id.widget_headline))
-        assertEquals(listOf("Dhuhr"), rows(morning).filter { it.background != null }.map { it.text(R.id.row_name) })
+        assertEquals(listOf("Dhuhr"), rows(morning).filter { it.background != null }.map { it.name() })
         assertEquals(View.GONE, morning.findViewById<View>(R.id.widget_next).visibility)
         // Late at night the table is already the new day's: Fajr is gold and nothing has passed.
         val night = drawn(3, 30)
         assertEquals("Isha ends in", night.text(R.id.widget_headline))
-        assertEquals(listOf("Fajr"), rows(night).filter { it.background != null }.map { it.text(R.id.row_name) })
+        assertEquals(listOf("Fajr"), rows(night).filter { it.background != null }.map { it.name() })
         assertTrue(rows(night).none { it.faded() })
 
         // Every size the home screen is offered draws all nine times.
         PrayerWidgets.TIMES_SIZES.forEach { size ->
             val view = PrayerWidgets.timesViews(app, state, beirut, size).apply(app, FrameLayout(app))
-            assertTrue("$size", texts(view).containsAll(names))
+            assertEquals("$size", names, rows(view).map { it.name() }.filter { it.isNotEmpty() })
         }
 
         picture(
@@ -323,14 +356,16 @@ class PrayerTimesTest {
     @Test
     @Config(qualifiers = "ar-rLB-w411dp-h891dp-420dpi")
     fun `the widgets speak Arabic and say so when there is no location`() {
-        val names = listOf("الفجر", "الشروق", "الضحى", "الظهر", "العصر", "المغرب", "العشاء", "منتصف الليل", "الثلث الأخير")
+        val names = listOf("الفجر", "الشروق", "الضحى", "الظهر", "العصر", "المغرب", "العشاء", "منتصف الليل", "قيام الليل")
         val view = PrayerWidgets.timesViews(app, now(), beirut, size(300, 150)).apply(app, FrameLayout(app))
-        assertEquals(names.take(5), rows(view, R.id.table_start).map { it.text(R.id.row_name) })
-        assertEquals(names.drop(5) + "", rows(view, R.id.table_end).map { it.text(R.id.row_name) })
+        assertEquals(names.take(5), rows(view, R.id.table_start).map { it.name() })
+        assertEquals(names.drop(5) + "", rows(view, R.id.table_end).map { it.name() })
         picture("ar-widget-times", view, 300, 150)
 
         val full = PrayerWidgets.timesViews(app, now(), beirut, size(330, 350)).apply(app, FrameLayout(app))
-        assertTrue(texts(full).containsAll(names + listOf("البداية", "النهاية")))
+        assertEquals(names, rows(full).drop(1).map { it.name() })
+        assertTrue(texts(full).containsAll(listOf("البداية", "النهاية")))
+        assertEquals(listOf("الضحى", "قيام الليل"), rows(full).filter { it.mark() == "ring" }.map { it.name() })
         assertTrue(full.findViewById<TextView>(R.id.widget_footer).text.startsWith("المنبّه: "))
         picture("ar-widget-times-full", full, 330, 350)
 
@@ -388,7 +423,7 @@ class PrayerTimesTest {
         assertTrue(PrayerWidgets.choosesSize(listed))
         manager.updateAppWidgetOptions(id, listed)
         PrayerTicker.refresh(app)
-        assertTrue(texts(widgets.getViewFor(id)).containsAll(listOf("Fajr", "Last third")))
+        assertTrue(texts(widgets.getViewFor(id)).containsAll(listOf("Fajr", "Qiyam")))
     }
 
     private fun size(width: Int, height: Int) = SizeF(width.toFloat(), height.toFloat())
@@ -400,6 +435,22 @@ class PrayerTimesTest {
             .flatMap { group -> (0 until group.childCount).map(group::getChildAt) }
 
     private fun View.text(id: Int) = findViewById<TextView>(id).text.toString()
+
+    private fun View.name() = text(R.id.row_name)
+
+    /** The shape before a row's name: "dot" for an obligatory prayer, "ring" for a voluntary one, else "none". */
+    private val rings = setOf(R.drawable.widget_mark_ring, R.drawable.widget_mark_ring_passed)
+
+    private fun View.mark(): String {
+        val mark = findViewById<ImageView>(R.id.row_mark)
+        return when {
+            mark.visibility != View.VISIBLE -> "none"
+            shadowOf(mark.drawable).createdFromResId in rings -> "ring"
+            else -> "dot"
+        }
+    }
+
+    private fun View.nameColor() = findViewById<TextView>(R.id.row_name).currentTextColor
 
     /** Saves a picture of [view] at [widthDp] x [heightDp] to app/build/screens. */
     private fun picture(name: String, view: View, widthDp: Int, heightDp: Int) {

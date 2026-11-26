@@ -73,6 +73,13 @@ enum class PrayerTime(val obligatory: Boolean) {
     ISHA(true),
     MIDNIGHT(false),
     LAST_THIRD(false),
+    ;
+
+    /**
+     * The start of a voluntary prayer's time: Duha, and the night prayer in the last
+     * third. Sunrise and midnight are not: they only mark where a prayer's time ends.
+     */
+    val nafl: Boolean get() = this == DUHA || this == LAST_THIRD
 }
 
 /**

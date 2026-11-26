@@ -9,6 +9,16 @@
     android:orientation="horizontal"
     android:paddingHorizontal="6dp">
 
+    <!-- A dot for an obligatory prayer, a ring for a voluntary one; kept as a gap before sunrise and midnight. -->
+    <ImageView
+        android:id="@+id/row_mark"
+        android:layout_width="7dp"
+        android:layout_height="7dp"
+        android:layout_marginEnd="5dp"
+        android:importantForAccessibility="no"
+        android:src="@drawable/widget_mark_dot"
+        android:visibility="invisible" />
+
     <TextView
         android:id="@+id/row_name"
         android:layout_width="0dp"

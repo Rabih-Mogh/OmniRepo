@@ -270,15 +270,23 @@ class PrayerClockTest {
     }
 
     @Test
+    fun duhaAndTheLastThirdAreTheVoluntaryPrayers() {
+        assertEquals(listOf(PrayerTime.DUHA, PrayerTime.LAST_THIRD), PrayerTime.values().filter { it.nafl })
+        assertTrue(PrayerTime.values().none { it.nafl && it.obligatory })
+    }
+
+    @Test
     fun theDayListsWhenEachPrayerEnds() {
         val tomorrow = PrayerTimeCalculator.compute(date.plusDays(1), zone, params)
         assertEquals(
             mapOf(
                 PrayerTime.FAJR to today.sunrise,
+                PrayerTime.DUHA to today.dhuhr!!.minusMinutes(10),
                 PrayerTime.DHUHR to today.asr,
                 PrayerTime.ASR to today.maghrib,
                 PrayerTime.MAGHRIB to today.isha,
                 PrayerTime.ISHA to tomorrow.fajr,
+                PrayerTime.LAST_THIRD to tomorrow.fajr,
             ),
             at(15).dayEnds,
         )
