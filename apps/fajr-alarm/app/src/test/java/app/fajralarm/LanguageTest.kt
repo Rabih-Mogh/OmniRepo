@@ -6,6 +6,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -65,25 +67,30 @@ class LanguageTest {
     @Config(qualifiers = "ar-rLB-w411dp-h4400dp-420dpi")
     fun mainScreenInArabic() {
         open<MainActivity>("ar-main") {
-            // The first page: the day's prayers, with the settings folded up to a line each.
+            // The first page: the moon, then the day's prayers.
             compose.onNodeWithText("مواقيت الصلاة").assertIsDisplayed()
+            compose.onNodeWithText("القمر").assertIsDisplayed()
             compose.onNodeWithText("أوقات اليوم").assertIsDisplayed()
             compose.onNodeWithText("الإمساك").assertIsDisplayed()
             compose.onNodeWithText("قيام الليل (الثلث الأخير)").assertIsDisplayed()
-            compose.onNodeWithText("القمر").assertIsDisplayed()
-            compose.onNodeWithText("الموقع الحالي", substring = true).assertIsDisplayed()
-            compose.onNodeWithText("شاشة القفل والأدوات").performClick()
-            compose.onNodeWithText("الصلاة الحالية على شاشة القفل").assertIsDisplayed()
             assertTrue("the title starts from the right", startsFromTheRight("مواقيت الصلاة"))
         }
         open<MainActivity>("ar-fajr") {
-            // The second page: the alarm for Fajr.
-            compose.onNodeWithText("منبّه الفجر").performClick()
+            // The alarm for Fajr has a page of its own, reached from the side menu.
+            goTo("منبّه الفجر")
             compose.onNodeWithText("المنبّه القادم").assertIsDisplayed()
             compose.onNodeWithText("قبل الفجر بـ", substring = true).assertIsDisplayed()
             compose.onNodeWithText("وأُوقف بحلّ المسألة الحسابية", substring = true).assertIsDisplayed()
             compose.onNodeWithText("جرّب المنبّه الآن").assertIsDisplayed()
             compose.onNodeWithText("أوقات اليوم").assertDoesNotExist()
+        }
+        open<MainActivity>("ar-widgets") {
+            goTo("شاشة القفل والأدوات")
+            compose.onNodeWithText("الصلاة الحالية على شاشة القفل").assertIsDisplayed()
+        }
+        open<MainActivity>("ar-location") {
+            goTo("الموقع")
+            compose.onNodeWithText("الموقع الحالي", substring = true).assertIsDisplayed()
         }
     }
 
@@ -91,31 +98,25 @@ class LanguageTest {
     @Config(qualifiers = "en-rUS-w411dp-h4400dp-420dpi")
     fun mainScreenInEnglish() {
         open<MainActivity>("en-main") {
-            // The first page: the day's prayers, with the settings folded up to a line each.
+            // The first page: the moon at the top, then the day's prayers. No settings here.
             compose.onNodeWithText("Prayer Times").assertIsDisplayed()
             compose.onNodeWithText("Imsak").assertIsDisplayed()
             compose.onNodeWithText("Shuruq").assertIsDisplayed()
             compose.onNodeWithText("Qiyam (last third)").assertIsDisplayed()
-            compose.onNodeWithText("MOON").assertIsDisplayed()
-            compose.onNodeWithText("Current location: 33.8938, 35.5018").assertIsDisplayed()
-            compose.onNodeWithText("Use my current location").assertDoesNotExist()
-            compose.onNodeWithText("Fajr +2").assertDoesNotExist()
-            // A folded section opens when tapped, and the adjustments inside it open in turn.
-            compose.onNodeWithText("CALCULATION").performClick()
-            compose.onNodeWithText("Fajr +2").assertIsDisplayed()
-            compose.onNodeWithText("Minute adjustments").performClick()
-            compose.onNodeWithText("+2 min").assertIsDisplayed()
-            compose.onNodeWithText("Imsak before Fajr").assertIsDisplayed()
-            compose.onNodeWithText("LOCK SCREEN & WIDGETS").performClick()
-            compose.onNodeWithText("Current prayer on the lock screen").assertIsDisplayed()
-            compose.onNodeWithText("Add the “All times” widget").assertIsDisplayed()
-            compose.onNodeWithText("See-through, for the wallpaper to show").assertIsDisplayed()
+            assertTrue("the moon comes before the times", top("MOON") < top("TIMES OF THE DAY"))
             compose.onNodeWithText("NEXT ALARM").assertDoesNotExist()
+            compose.onNodeWithText("Use my current location").assertDoesNotExist()
+            compose.onNodeWithText("Method").assertDoesNotExist()
             assertTrue("the title starts from the left", !startsFromTheRight("Prayer Times"))
+            // The side menu lists the other pages.
+            compose.onNodeWithContentDescription("Menu").performClick()
+            listOf("Prayers", "Fajr alarm", "Location", "Calculation", "Lock screen & widgets").forEach {
+                compose.onNodeWithText(it).assertIsDisplayed()
+            }
         }
         open<MainActivity>("en-fajr") {
-            // The second page: the alarm for Fajr.
-            compose.onNodeWithText("Fajr alarm").performClick()
+            // The alarm for Fajr: its settings are folded up to a line each and open when tapped.
+            goTo("Fajr alarm")
             compose.onNodeWithText("NEXT ALARM").assertIsDisplayed()
             compose.onNodeWithText("15 min before Fajr").assertIsDisplayed()
             compose.onNodeWithText("and turned off by solving the sum at", substring = true).assertIsDisplayed()
@@ -125,13 +126,33 @@ class LanguageTest {
             compose.onNodeWithText("ALARM").performClick()
             compose.onNodeWithText("Ring relative to").assertIsDisplayed()
         }
+        open<MainActivity>("en-location") {
+            goTo("Location")
+            compose.onNodeWithText("Current location: 33.8938, 35.5018").assertIsDisplayed()
+            compose.onNodeWithText("Use my current location").assertIsDisplayed()
+        }
+        open<MainActivity>("en-calculation") {
+            // The adjustments inside the page open in turn.
+            goTo("Calculation")
+            compose.onNodeWithText("Method").assertIsDisplayed()
+            compose.onNodeWithText("Imsak before Fajr").assertIsDisplayed()
+            compose.onNodeWithText("Fajr +2").assertIsDisplayed()
+            compose.onNodeWithText("Minute adjustments").performClick()
+            compose.onNodeWithText("+2 min").assertIsDisplayed()
+        }
+        open<MainActivity>("en-widgets") {
+            goTo("Lock screen & widgets")
+            compose.onNodeWithText("Current prayer on the lock screen").assertIsDisplayed()
+            compose.onNodeWithText("Add the “All times” widget").assertIsDisplayed()
+            compose.onNodeWithText("See-through, for the wallpaper to show").assertIsDisplayed()
+        }
     }
 
     @Test
     @Config(qualifiers = "ar-rLB-w411dp-h891dp-420dpi")
     fun methodListInArabic() {
         open<MainActivity>("ar-methods") {
-            compose.onNodeWithText("الحساب").performScrollTo().performClick()
+            goTo("الحساب")
             compose.onNodeWithText("الطريقة").performScrollTo().performClick()
             compose.onNodeWithText("دار الفتوى – لبنان", substring = true).assertIsDisplayed()
             compose.onNodeWithText("أم القرى، مكة المكرمة", substring = true).assertIsDisplayed()
@@ -169,6 +190,16 @@ class LanguageTest {
             captureScreenRoboImage("build/screens/$picture.png")
         }
     }
+
+    /** Opens the side menu and goes to the page called [page]. */
+    private fun goTo(page: String) {
+        compose.onNode(hasContentDescription("Menu") or hasContentDescription("القائمة")).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(page).performClick()
+        compose.waitForIdle()
+    }
+
+    private fun top(text: String): Float = compose.onNodeWithText(text).fetchSemanticsNode().boundsInRoot.top
 
     private fun startsFromTheRight(text: String): Boolean {
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot

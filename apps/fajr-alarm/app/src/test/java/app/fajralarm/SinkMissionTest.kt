@@ -4,7 +4,10 @@ import android.app.Application
 import android.os.Looper
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ActivityScenario
@@ -174,7 +177,10 @@ class SinkMissionTest {
         sunriseIn(300)
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.waitForIdle()
-            compose.onNodeWithText("Fajr alarm").performClick()
+            compose.onNodeWithContentDescription("Menu").performClick()
+            compose.waitForIdle()
+            compose.onNodeWithText("Fajr alarm").performSemanticsAction(SemanticsActions.OnClick)
+            compose.waitForIdle()
             compose.onNodeWithText("SOUND & WAKE-UP").performScrollTo().performClick()
             compose.onNodeWithText("Max snoozes").assertExists()
             compose.onNodeWithText("TO TURN THE ALARM OFF").performScrollTo().performClick()

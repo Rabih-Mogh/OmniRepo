@@ -1,6 +1,9 @@
 package app.fajralarm.ui
 
 import android.Manifest
+import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
+import kotlinx.coroutines.launch
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
@@ -46,6 +49,7 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -54,9 +58,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.Tab
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -70,6 +79,8 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -105,6 +116,7 @@ import app.fajralarm.core.AlarmSettings
 import app.fajralarm.core.AsrEnd
 import app.fajralarm.core.AsrRule
 import app.fajralarm.core.IshaEnd
+import app.fajralarm.core.LockScreenCountdown
 import app.fajralarm.core.WidgetColors
 import app.fajralarm.core.WidgetTheme
 import app.fajralarm.core.CalculationMethod
@@ -146,7 +158,14 @@ class MainActivity : ComponentActivity() {
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-private const val PAGE_PRAYERS = 0
+/** The app's pages, in the order the side menu lists them. */
+private enum class Page(@StringRes val title: Int) {
+    PRAYERS(R.string.tab_prayers),
+    FAJR_ALARM(R.string.tab_fajr_alarm),
+    LOCATION(R.string.section_location),
+    CALCULATION(R.string.section_calculation),
+    WIDGETS(R.string.section_lock_widgets),
+}
 
 @Composable
 private fun SettingsScreen() {
@@ -198,389 +217,466 @@ private fun SettingsScreen() {
         update(settings.copy(soundUri = uri?.toString()))
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .safeDrawingPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+    // The pages are reached from the side menu, behind the button at the top. The app opens on the prayers.
+    var page by rememberSaveable { mutableStateOf(Page.PRAYERS) }
+    val drawer = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    val scroll = rememberScrollState()
+    LaunchedEffect(page) { scroll.scrollTo(0) }
+    // Back closes the menu, then returns to the prayers, then leaves the app.
+    BackHandler(enabled = drawer.isOpen || page != Page.PRAYERS) {
+        if (drawer.isOpen) scope.launch { drawer.close() } else page = Page.PRAYERS
+    }
+
+    ModalNavigationDrawer(
+        drawerState = drawer,
+        drawerContent = {
+            ModalDrawerSheet {
+                Spacer(Modifier.height(24.dp))
+                Page.values().forEach { item ->
+                    NavigationDrawerItem(
+                        label = { Text(stringResource(item.title)) },
+                        selected = item == page,
+                        onClick = {
+                            page = item
+                            scope.launch { drawer.close() }
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                    )
+                }
+            }
+        },
     ) {
-        Text(
-            stringResource(R.string.app_name),
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 4.dp),
-        )
-
-        UpdateDialog()
-
-        // resumeTick makes this re-read permission state whenever we return to the screen.
-        PermissionWarnings(context, resumeTick, onRequestNotifications = {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        })
-
-        // Two pages: the day's prayers, and the alarm that wakes you for Fajr. The settings
-        // on each are folded up to a line that says what is set.
-        var page by rememberSaveable { mutableIntStateOf(PAGE_PRAYERS) }
-        TabRow(selectedTabIndex = page, containerColor = Color.Transparent) {
-            listOf(R.string.tab_prayers, R.string.tab_fajr_alarm).forEachIndexed { index, title ->
-                Tab(selected = page == index, onClick = { page = index }, text = { Text(stringResource(title)) })
-            }
-        }
-
-        if (page == PAGE_PRAYERS) {
-            PrayerTimesCard(
-                settings, resumeTick,
-                onFullScreenChange = { on ->
-                    if (on) askForNotifications()
-                    update(settings.copy(fullScreenAlerts = on))
-                },
-                onAlertSoundChange = { update(settings.copy(alertSound = it)) },
-            ) { prayer, on ->
-                if (on) askForNotifications()
-                update(settings.copy(alerts = if (on) settings.alerts + prayer else settings.alerts - prayer))
-            }
-
-            MoonCard(settings.latitude, resumeTick)
-
-            val locationText = if (settings.hasLocation) {
-                stringResource(
-                    R.string.location_value,
-                    settings.locationName(context),
-                    "%.4f, %.4f".format(Locale.US, settings.latitude, settings.longitude).leftToRight(),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .verticalScroll(scroll)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                IconButton(onClick = { scope.launch { drawer.open() } }) {
+                    Icon(Icons.Rounded.Menu, contentDescription = stringResource(R.string.menu))
+                }
+                Text(
+                    stringResource(if (page == Page.PRAYERS) R.string.app_name else page.title),
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.padding(start = 4.dp),
                 )
-            } else {
-                stringResource(R.string.location_none)
             }
-            Section(stringResource(R.string.section_location), summary = locationText) {
-                Text(locationText, style = MaterialTheme.typography.bodyMedium)
-                FilledTonalButton(
-                    enabled = !locating,
-                    onClick = {
-                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
-                            == PackageManager.PERMISSION_GRANTED
+
+            UpdateDialog()
+
+            // What can stop the alarm or a notification: on the two pages that depend on it.
+            // resumeTick makes this re-read permission state whenever we return to the screen.
+            if (page == Page.PRAYERS || page == Page.FAJR_ALARM) {
+                PermissionWarnings(context, resumeTick, onRequestNotifications = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                })
+            }
+
+            when (page) {
+                Page.PRAYERS -> {
+                    MoonCard(settings.latitude, resumeTick)
+
+                    PrayerTimesCard(settings, resumeTick) { prayer, alert ->
+                        if (alert != null) askForNotifications()
+                        update(settings.copy(alerts = if (alert != null) settings.alerts + (prayer to alert) else settings.alerts - prayer))
+                    }
+                }
+
+                // The alarm that wakes you for Fajr. Its settings are folded up to a line that says what is set.
+                Page.FAJR_ALARM -> {
+                    SummaryCard(context, settings, resumeTick) { on ->
+                        if (on && !settings.hasLocation) {
+                            Toast.makeText(context, R.string.toast_set_location_first, Toast.LENGTH_SHORT).show()
+                        }
+                        if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                            !NotificationManagerCompat.from(context).areNotificationsEnabled()
                         ) {
-                            locating = true
-                            fetchLocation(context) { lat, lng ->
-                                locating = false
-                                if (lat != null && lng != null) {
-                                    update(settings.copy(latitude = lat, longitude = lng, locationLabel = LOCATION_CURRENT))
+                            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                        update(settings.copy(enabled = on))
+                    }
+
+                    LastAlarmCard(context, resumeTick)
+
+                    Section(stringResource(R.string.section_alarm), summary = settings.describeOffset(context)) {
+                        Text(stringResource(R.string.ring_relative_to), style = MaterialTheme.typography.labelLarge)
+                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                            val anchors = AlarmAnchor.values()
+                            anchors.forEachIndexed { i, a ->
+                                SegmentedButton(
+                                    selected = settings.anchor == a,
+                                    onClick = { update(settings.copy(anchor = a)) },
+                                    shape = SegmentedButtonDefaults.itemShape(i, anchors.size),
+                                ) { Text(stringResource(a.label)) }
+                            }
+                        }
+
+                        Text(
+                            settings.describeOffset(context),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                        Slider(
+                            value = settings.offsetMinutes.toFloat(),
+                            onValueChange = { v ->
+                                val snapped = (v / 5f).roundToInt() * 5
+                                if (snapped != settings.offsetMinutes) settings = settings.copy(offsetMinutes = snapped)
+                            },
+                            onValueChangeFinished = { update(settings) },
+                            valueRange = -120f..60f,
+                        )
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(
+                                stringResource(R.string.offset_earliest),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                stringResource(R.string.offset_latest),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+
+                        Text(stringResource(R.string.days), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+                        DayPicker(settings.days) { update(settings.copy(days = it)) }
+                    }
+
+                    val soundName = remember(settings.soundUri) { soundTitle(context, settings.soundUri) }
+                    val snoozeLabel: @Composable (Int) -> String =
+                        { if (it == 0) stringResource(R.string.snooze_off) else pluralStringResource(R.plurals.minutes, it, it) }
+                    Section(
+                        stringResource(R.string.section_sound),
+                        summary = "$soundName · ${stringResource(R.string.snooze)}: ${snoozeLabel(settings.snoozeMinutes)}",
+                    ) {
+                        val pickerTitle = stringResource(R.string.sound_picker_title)
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
+                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, pickerTitle)
+                                        .putExtra(
+                                            RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
+                                            settings.soundUri?.let(Uri::parse)
+                                                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
+                                        )
+                                    soundPicker.launch(intent)
+                                }
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(stringResource(R.string.alarm_sound), style = MaterialTheme.typography.bodyLarge)
+                            ValueWithChevron(soundName)
+                        }
+                        SwitchRow(stringResource(R.string.vibrate), settings.vibrate) { update(settings.copy(vibrate = it)) }
+                        SwitchRow(stringResource(R.string.gentle_start), settings.gradualVolume) { update(settings.copy(gradualVolume = it)) }
+
+                        ChoiceRow(
+                            title = stringResource(R.string.snooze),
+                            current = settings.snoozeMinutes,
+                            options = listOf(0, 3, 5, 10, 15),
+                            label = snoozeLabel,
+                        ) { update(settings.copy(snoozeMinutes = it)) }
+                        if (settings.snoozeMinutes > 0) {
+                            Stepper(stringResource(R.string.max_snoozes), settings.maxSnoozes, "", 1..10) { update(settings.copy(maxSnoozes = it)) }
+                        }
+                    }
+
+                    Section(stringResource(R.string.section_turn_off), summary = stringResource(settings.dismissMission.label)) {
+                        ChoiceRow(
+                            title = stringResource(R.string.mission),
+                            current = settings.dismissMission,
+                            options = DismissMission.values().toList(),
+                            label = { stringResource(it.label) },
+                        ) { mission ->
+                            update(settings.copy(dismissMission = mission))
+                            // The test screen asks for the camera, which the mission can't work without.
+                            if (mission == DismissMission.SINK_PHOTO &&
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+                            ) {
+                                context.startActivity(Intent(context, SinkSetupActivity::class.java))
+                            }
+                        }
+                        Text(
+                            stringResource(settings.dismissMission.summary),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+
+                        if (settings.dismissMission == DismissMission.SINK_PHOTO) {
+                            val cameraOk = remember(resumeTick) {
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                            }
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Text(stringResource(R.string.sink_no_photos), Modifier.weight(1f))
+                                TextButton(onClick = { context.startActivity(Intent(context, SinkSetupActivity::class.java)) }) {
+                                    Text(stringResource(R.string.test_it))
                                 }
                             }
-                        } else {
-                            locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-                        }
-                    },
-                ) {
-                    Icon(Icons.Rounded.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(if (locating) R.string.locating else R.string.use_current_location))
-                }
-
-                ManualLocation(settings) { lat, lng ->
-                    update(settings.copy(latitude = lat, longitude = lng, locationLabel = LOCATION_MANUAL))
-                }
-            }
-
-            val methodLabel: @Composable (CalculationMethod) -> String = { m ->
-                if (m == CalculationMethod.CUSTOM) {
-                    stringResource(m.label)
-                } else {
-                    stringResource(R.string.method_with_angle, stringResource(m.label), m.fajrAngle)
-                }
-            }
-            Section(stringResource(R.string.section_calculation), summary = methodLabel(settings.method)) {
-                ChoiceRow(
-                    title = stringResource(R.string.method),
-                    current = settings.method,
-                    options = CalculationMethod.values().toList(),
-                    label = methodLabel,
-                ) { update(settings.copy(method = it)) }
-                if (settings.method == CalculationMethod.DAR_AL_FATWA_LEBANON) {
-                    Text(
-                        stringResource(R.string.method_dar_al_fatwa_note),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                if (settings.method == CalculationMethod.CUSTOM) {
-                    Text(stringResource(R.string.fajr_angle, settings.customFajrAngle), style = MaterialTheme.typography.bodyMedium)
-                    Slider(
-                        value = settings.customFajrAngle.toFloat(),
-                        onValueChange = { settings = settings.copy(customFajrAngle = (it * 2).roundToInt() / 2.0) },
-                        onValueChangeFinished = { update(settings) },
-                        valueRange = 10f..21f,
-                    )
-                }
-
-                if (settings.method == CalculationMethod.CUSTOM) {
-                    Text(stringResource(R.string.isha_angle, settings.customIshaAngle), style = MaterialTheme.typography.bodyMedium)
-                    Slider(
-                        value = settings.customIshaAngle.toFloat(),
-                        onValueChange = { settings = settings.copy(customIshaAngle = (it * 2).roundToInt() / 2.0) },
-                        onValueChangeFinished = { update(settings) },
-                        valueRange = 10f..21f,
-                    )
-                }
-
-                ChoiceRow(
-                    title = stringResource(R.string.asr_rule),
-                    current = settings.asrRule,
-                    options = AsrRule.values().toList(),
-                    label = { stringResource(it.label) },
-                ) { update(settings.copy(asrRule = it)) }
-
-                ChoiceRow(
-                    title = stringResource(R.string.asr_end),
-                    current = settings.asrEnd,
-                    options = AsrEnd.values().toList(),
-                    label = { stringResource(it.label) },
-                ) { update(settings.copy(asrEnd = it)) }
-
-                ChoiceRow(
-                    title = stringResource(R.string.isha_end),
-                    current = settings.ishaEnd,
-                    options = IshaEnd.values().toList(),
-                    label = { stringResource(it.label) },
-                ) { update(settings.copy(ishaEnd = it)) }
-                Text(
-                    stringResource(R.string.ends_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                ChoiceRow(
-                    title = stringResource(R.string.high_latitude_rule),
-                    current = settings.highLatitudeRule,
-                    options = HighLatitudeRule.values().toList(),
-                    label = { stringResource(it.label) },
-                ) { update(settings.copy(highLatitudeRule = it)) }
-
-                Stepper(
-                    title = stringResource(R.string.imsak_minutes),
-                    value = settings.imsakMinutes,
-                    suffix = stringResource(R.string.minutes_short),
-                    range = 0..30,
-                ) { update(settings.copy(imsakMinutes = it)) }
-                Text(
-                    stringResource(R.string.imsak_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                // The minutes that are not zero, e.g. "Fajr +2, Maghrib -1".
-                val adjusted = (listOf(PrayerTime.FAJR to settings.fajrAdjustMinutes) + settings.adjustMinutes.toList())
-                    .filter { it.second != 0 }
-                    .map { (prayer, minutes) -> stringResource(prayer.label) + " " + "%+d".format(Locale.US, minutes).leftToRight() }
-                Fold(
-                    stringResource(R.string.adjustments_title),
-                    summary = adjusted.joinToString().ifEmpty { stringResource(R.string.adjustments_none) },
-                ) {
-                    Stepper(
-                        title = stringResource(R.string.fajr_adjustment),
-                        value = settings.fajrAdjustMinutes,
-                        suffix = stringResource(R.string.minutes_short),
-                        range = -30..30,
-                    ) { update(settings.copy(fajrAdjustMinutes = it)) }
-                    listOf(PrayerTime.DHUHR, PrayerTime.ASR, PrayerTime.MAGHRIB, PrayerTime.ISHA).forEach { prayer ->
-                        Stepper(
-                            title = stringResource(R.string.prayer_adjustment, stringResource(prayer.label)),
-                            value = settings.adjustMinutes[prayer] ?: 0,
-                            suffix = stringResource(R.string.minutes_short),
-                            range = -30..30,
-                        ) { update(settings.copy(adjustMinutes = settings.adjustMinutes + (prayer to it))) }
-                    }
-                    Text(
-                        stringResource(R.string.fajr_adjustment_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
-            Section(stringResource(R.string.section_lock_widgets), summary = stringResource(settings.widgetTheme.label)) {
-                SwitchRow(
-                    stringResource(R.string.lock_screen_countdown),
-                    settings.lockScreenCountdown,
-                    subtitle = stringResource(R.string.lock_screen_countdown_hint),
-                ) { on ->
-                    if (on) askForNotifications()
-                    update(settings.copy(lockScreenCountdown = on))
-                }
-                Text(
-                    stringResource(R.string.widgets_intro),
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-                ChoiceRow(
-                    title = stringResource(R.string.widget_theme),
-                    current = settings.widgetTheme,
-                    options = WidgetTheme.values().toList(),
-                    label = { stringResource(it.label) },
-                ) { update(settings.copy(widgetTheme = it)) }
-                if (settings.widgetTheme == WidgetTheme.CUSTOM) {
-                    WidgetColorPicker(settings.widgetColors) { update(settings.copy(widgetColors = it)) }
-                }
-                TextButton(onClick = { addWidget(context, PrayerTimesWidget::class.java) }) {
-                    Text(stringResource(R.string.widget_add_times))
-                }
-                TextButton(onClick = { addWidget(context, CurrentPrayerWidget::class.java) }) {
-                    Text(stringResource(R.string.widget_add_now))
-                }
-                Text(
-                    stringResource(R.string.widget_add_by_hand),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        } else {
-            SummaryCard(context, settings, resumeTick) { on ->
-                if (on && !settings.hasLocation) {
-                    Toast.makeText(context, R.string.toast_set_location_first, Toast.LENGTH_SHORT).show()
-                }
-                if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                    !NotificationManagerCompat.from(context).areNotificationsEnabled()
-                ) {
-                    notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-                update(settings.copy(enabled = on))
-            }
-
-            LastAlarmCard(context, resumeTick)
-
-            Section(stringResource(R.string.section_alarm), summary = settings.describeOffset(context)) {
-                Text(stringResource(R.string.ring_relative_to), style = MaterialTheme.typography.labelLarge)
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    val anchors = AlarmAnchor.values()
-                    anchors.forEachIndexed { i, a ->
-                        SegmentedButton(
-                            selected = settings.anchor == a,
-                            onClick = { update(settings.copy(anchor = a)) },
-                            shape = SegmentedButtonDefaults.itemShape(i, anchors.size),
-                        ) { Text(stringResource(a.label)) }
-                    }
-                }
-
-                Text(
-                    settings.describeOffset(context),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-                Slider(
-                    value = settings.offsetMinutes.toFloat(),
-                    onValueChange = { v ->
-                        val snapped = (v / 5f).roundToInt() * 5
-                        if (snapped != settings.offsetMinutes) settings = settings.copy(offsetMinutes = snapped)
-                    },
-                    onValueChangeFinished = { update(settings) },
-                    valueRange = -120f..60f,
-                )
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(
-                        stringResource(R.string.offset_earliest),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        stringResource(R.string.offset_latest),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                Text(stringResource(R.string.days), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
-                DayPicker(settings.days) { update(settings.copy(days = it)) }
-            }
-
-            val soundName = remember(settings.soundUri) { soundTitle(context, settings.soundUri) }
-            val snoozeLabel: @Composable (Int) -> String =
-                { if (it == 0) stringResource(R.string.snooze_off) else pluralStringResource(R.plurals.minutes, it, it) }
-            Section(
-                stringResource(R.string.section_sound),
-                summary = "$soundName · ${stringResource(R.string.snooze)}: ${snoozeLabel(settings.snoozeMinutes)}",
-            ) {
-                val pickerTitle = stringResource(R.string.sound_picker_title)
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
-                                .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
-                                .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                                .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
-                                .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, pickerTitle)
-                                .putExtra(
-                                    RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
-                                    settings.soundUri?.let(Uri::parse)
-                                        ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
+                            if (!cameraOk) {
+                                Text(
+                                    stringResource(R.string.camera_off_falls_back),
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall,
                                 )
-                            soundPicker.launch(intent)
+                            }
+                            if (settings.snoozeMinutes > 0) {
+                                Text(
+                                    stringResource(R.string.sink_snooze_sunrise),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
-                        .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(stringResource(R.string.alarm_sound), style = MaterialTheme.typography.bodyLarge)
-                    ValueWithChevron(soundName)
-                }
-                SwitchRow(stringResource(R.string.vibrate), settings.vibrate) { update(settings.copy(vibrate = it)) }
-                SwitchRow(stringResource(R.string.gentle_start), settings.gradualVolume) { update(settings.copy(gradualVolume = it)) }
+                    }
 
-                ChoiceRow(
-                    title = stringResource(R.string.snooze),
-                    current = settings.snoozeMinutes,
-                    options = listOf(0, 3, 5, 10, 15),
-                    label = snoozeLabel,
-                ) { update(settings.copy(snoozeMinutes = it)) }
-                if (settings.snoozeMinutes > 0) {
-                    Stepper(stringResource(R.string.max_snoozes), settings.maxSnoozes, "", 1..10) { update(settings.copy(maxSnoozes = it)) }
-                }
-            }
-
-            Section(stringResource(R.string.section_turn_off), summary = stringResource(settings.dismissMission.label)) {
-                ChoiceRow(
-                    title = stringResource(R.string.mission),
-                    current = settings.dismissMission,
-                    options = DismissMission.values().toList(),
-                    label = { stringResource(it.label) },
-                ) { mission ->
-                    update(settings.copy(dismissMission = mission))
-                    // The test screen asks for the camera, which the mission can't work without.
-                    if (mission == DismissMission.SINK_PHOTO &&
-                        ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+                    OutlinedButton(
+                        onClick = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                !NotificationManagerCompat.from(context).areNotificationsEnabled()
+                            ) {
+                                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                ContextCompat.startForegroundService(context, AlarmService.startIntent(context))
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
                     ) {
-                        context.startActivity(Intent(context, SinkSetupActivity::class.java))
+                        Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.test_alarm_now))
                     }
                 }
-                Text(
-                    stringResource(settings.dismissMission.summary),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
 
-                if (settings.dismissMission == DismissMission.SINK_PHOTO) {
-                    val cameraOk = remember(resumeTick) {
-                        ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                Page.LOCATION -> {
+                    val locationText = if (settings.hasLocation) {
+                        stringResource(
+                            R.string.location_value,
+                            settings.locationName(context),
+                            "%.4f, %.4f".format(Locale.US, settings.latitude, settings.longitude).leftToRight(),
+                        )
+                    } else {
+                        stringResource(R.string.location_none)
                     }
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.sink_no_photos), Modifier.weight(1f))
-                        TextButton(onClick = { context.startActivity(Intent(context, SinkSetupActivity::class.java)) }) {
-                            Text(stringResource(R.string.test_it))
+                    Section(title = null) {
+                        Text(locationText, style = MaterialTheme.typography.bodyMedium)
+                        FilledTonalButton(
+                            enabled = !locating,
+                            onClick = {
+                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
+                                    == PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    locating = true
+                                    fetchLocation(context) { lat, lng ->
+                                        locating = false
+                                        if (lat != null && lng != null) {
+                                            update(settings.copy(latitude = lat, longitude = lng, locationLabel = LOCATION_CURRENT))
+                                        }
+                                    }
+                                } else {
+                                    locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                                }
+                            },
+                        ) {
+                            Icon(Icons.Rounded.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(if (locating) R.string.locating else R.string.use_current_location))
+                        }
+
+                        ManualLocation(settings) { lat, lng ->
+                            update(settings.copy(latitude = lat, longitude = lng, locationLabel = LOCATION_MANUAL))
                         }
                     }
-                    if (!cameraOk) {
-                        Text(
-                            stringResource(R.string.camera_off_falls_back),
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                }
+
+                Page.CALCULATION -> {
+                    val methodLabel: @Composable (CalculationMethod) -> String = { m ->
+                        if (m == CalculationMethod.CUSTOM) {
+                            stringResource(m.label)
+                        } else {
+                            stringResource(R.string.method_with_angle, stringResource(m.label), m.fajrAngle)
+                        }
                     }
-                    if (settings.snoozeMinutes > 0) {
+                    Section(title = null) {
+                        ChoiceRow(
+                            title = stringResource(R.string.method),
+                            current = settings.method,
+                            options = CalculationMethod.values().toList(),
+                            label = methodLabel,
+                        ) { update(settings.copy(method = it)) }
+                        if (settings.method == CalculationMethod.DAR_AL_FATWA_LEBANON) {
+                            Text(
+                                stringResource(R.string.method_dar_al_fatwa_note),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+
+                        if (settings.method == CalculationMethod.CUSTOM) {
+                            Text(stringResource(R.string.fajr_angle, settings.customFajrAngle), style = MaterialTheme.typography.bodyMedium)
+                            Slider(
+                                value = settings.customFajrAngle.toFloat(),
+                                onValueChange = { settings = settings.copy(customFajrAngle = (it * 2).roundToInt() / 2.0) },
+                                onValueChangeFinished = { update(settings) },
+                                valueRange = 10f..21f,
+                            )
+                        }
+
+                        if (settings.method == CalculationMethod.CUSTOM) {
+                            Text(stringResource(R.string.isha_angle, settings.customIshaAngle), style = MaterialTheme.typography.bodyMedium)
+                            Slider(
+                                value = settings.customIshaAngle.toFloat(),
+                                onValueChange = { settings = settings.copy(customIshaAngle = (it * 2).roundToInt() / 2.0) },
+                                onValueChangeFinished = { update(settings) },
+                                valueRange = 10f..21f,
+                            )
+                        }
+
+                        ChoiceRow(
+                            title = stringResource(R.string.asr_rule),
+                            current = settings.asrRule,
+                            options = AsrRule.values().toList(),
+                            label = { stringResource(it.label) },
+                        ) { update(settings.copy(asrRule = it)) }
+
+                        ChoiceRow(
+                            title = stringResource(R.string.asr_end),
+                            current = settings.asrEnd,
+                            options = AsrEnd.values().toList(),
+                            label = { stringResource(it.label) },
+                        ) { update(settings.copy(asrEnd = it)) }
+
+                        ChoiceRow(
+                            title = stringResource(R.string.isha_end),
+                            current = settings.ishaEnd,
+                            options = IshaEnd.values().toList(),
+                            label = { stringResource(it.label) },
+                        ) { update(settings.copy(ishaEnd = it)) }
                         Text(
-                            stringResource(R.string.sink_snooze_sunrise),
+                            stringResource(R.string.ends_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+
+                        ChoiceRow(
+                            title = stringResource(R.string.high_latitude_rule),
+                            current = settings.highLatitudeRule,
+                            options = HighLatitudeRule.values().toList(),
+                            label = { stringResource(it.label) },
+                        ) { update(settings.copy(highLatitudeRule = it)) }
+
+                        Stepper(
+                            title = stringResource(R.string.imsak_minutes),
+                            value = settings.imsakMinutes,
+                            suffix = stringResource(R.string.minutes_short),
+                            range = 0..30,
+                        ) { update(settings.copy(imsakMinutes = it)) }
+                        Text(
+                            stringResource(R.string.imsak_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+
+                        // The minutes that are not zero, e.g. "Fajr +2, Maghrib -1".
+                        val adjusted = (listOf(PrayerTime.FAJR to settings.fajrAdjustMinutes) + settings.adjustMinutes.toList())
+                            .filter { it.second != 0 }
+                            .map { (prayer, minutes) -> stringResource(prayer.label) + " " + "%+d".format(Locale.US, minutes).leftToRight() }
+                        Fold(
+                            stringResource(R.string.adjustments_title),
+                            summary = adjusted.joinToString().ifEmpty { stringResource(R.string.adjustments_none) },
+                        ) {
+                            Stepper(
+                                title = stringResource(R.string.fajr_adjustment),
+                                value = settings.fajrAdjustMinutes,
+                                suffix = stringResource(R.string.minutes_short),
+                                range = -30..30,
+                            ) { update(settings.copy(fajrAdjustMinutes = it)) }
+                            listOf(PrayerTime.DHUHR, PrayerTime.ASR, PrayerTime.MAGHRIB, PrayerTime.ISHA).forEach { prayer ->
+                                Stepper(
+                                    title = stringResource(R.string.prayer_adjustment, stringResource(prayer.label)),
+                                    value = settings.adjustMinutes[prayer] ?: 0,
+                                    suffix = stringResource(R.string.minutes_short),
+                                    range = -30..30,
+                                ) { update(settings.copy(adjustMinutes = settings.adjustMinutes + (prayer to it))) }
+                            }
+                            Text(
+                                stringResource(R.string.fajr_adjustment_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
+                Page.WIDGETS -> {
+                    Section(title = null) {
+                        ChoiceRow(
+                            title = stringResource(R.string.lock_screen_countdown),
+                            current = settings.lockScreenCountdown,
+                            options = LockScreenCountdown.values().toList(),
+                            label = { stringResource(it.label) },
+                        ) { choice ->
+                            if (choice != LockScreenCountdown.OFF) askForNotifications()
+                            update(settings.copy(lockScreenCountdown = choice))
+                        }
+                        Text(
+                            stringResource(R.string.lock_screen_countdown_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            stringResource(R.string.widgets_intro),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                        ChoiceRow(
+                            title = stringResource(R.string.widget_theme),
+                            current = settings.widgetTheme,
+                            options = WidgetTheme.values().toList(),
+                            label = { stringResource(it.label) },
+                        ) { update(settings.copy(widgetTheme = it)) }
+                        if (settings.widgetTheme == WidgetTheme.CUSTOM) {
+                            WidgetColorPicker(settings.widgetColors) { update(settings.copy(widgetColors = it)) }
+                        }
+                        // Which times the widgets' table lists.
+                        Text(
+                            stringResource(R.string.widget_times),
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                        PrayerTime.values().toList().chunked(3).forEach { times ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                times.forEach { time ->
+                                    val shown = time in settings.widgetTimes
+                                    FilterChip(
+                                        selected = shown,
+                                        onClick = {
+                                            update(settings.copy(widgetTimes = if (shown) settings.widgetTimes - time else settings.widgetTimes + time))
+                                        },
+                                        label = { Text(stringResource(time.shortLabel)) },
+                                    )
+                                }
+                            }
+                        }
+                        TextButton(onClick = { addWidget(context, PrayerTimesWidget::class.java) }) {
+                            Text(stringResource(R.string.widget_add_times))
+                        }
+                        TextButton(onClick = { addWidget(context, CurrentPrayerWidget::class.java) }) {
+                            Text(stringResource(R.string.widget_add_now))
+                        }
+                        Text(
+                            stringResource(R.string.widget_add_by_hand),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -588,26 +684,9 @@ private fun SettingsScreen() {
                 }
             }
 
-            OutlinedButton(
-                onClick = {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                        !NotificationManagerCompat.from(context).areNotificationsEnabled()
-                    ) {
-                        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    } else {
-                        ContextCompat.startForegroundService(context, AlarmService.startIntent(context))
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-            ) {
-                Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.test_alarm_now))
-            }
+            VersionFooter()
+            Spacer(Modifier.height(24.dp))
         }
-
-        VersionFooter()
-        Spacer(Modifier.height(24.dp))
     }
 }
 
@@ -792,14 +871,15 @@ private fun TimePill(label: String, value: String, modifier: Modifier = Modifier
 }
 
 /**
- * A titled card. With a [summary] it starts folded up to that one line and opens when
- * tapped, so the screen stays short until a setting is wanted.
+ * A card, under its title if it has one. With a [summary] it starts folded up to that
+ * one line and opens when tapped, so the page stays short until a setting is wanted.
  */
 @Composable
-internal fun Section(title: String, summary: String? = null, content: @Composable () -> Unit) {
+internal fun Section(title: String?, summary: String? = null, content: @Composable () -> Unit) {
     var open by rememberSaveable(title) { mutableStateOf(summary == null) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
+        // A page of its own already has its name at the top.
+        if (title != null) Row(
             Modifier
                 .fillMaxWidth()
                 .padding(top = 12.dp)

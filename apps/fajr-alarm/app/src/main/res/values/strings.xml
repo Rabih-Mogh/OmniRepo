@@ -253,14 +253,12 @@
     <!-- Main screen: Times of the day. %1$s a time of the day, %2$s a clock time or a length of time -->
     <string name="section_prayers">Times of the day</string>
     <string name="times_about">About these times</string>
-    <string name="full_screen_alerts">Full-screen alert</string>
-    <string name="full_screen_alerts_hint">When a time with its bell on arrives, show it on a black screen with its clock time, over the lock screen too. On a phone in use it is a banner. Off: a plain notification.</string>
     <string name="prayer_alert_dismiss">OK</string>
-    <string name="alert_sound">Alert sound</string>
     <string name="alert_sound_sound">Sound</string>
     <string name="alert_sound_vibrate">Vibration only</string>
-    <string name="alert_sound_silent">Neither: it only shows</string>
-    <!-- Main screen: the two pages -->
+    <string name="alert_sound_silent">Silent</string>
+    <!-- The side menu and the pages it leads to; the settings pages are named by their section_ strings -->
+    <string name="menu">Menu</string>
     <string name="tab_prayers">Prayers</string>
     <string name="tab_fajr_alarm">Fajr alarm</string>
     <!-- Main screen: Moon. %1$d a percentage or a day number, %1$s a phase and %2$s a date -->
@@ -279,14 +277,17 @@
     <string name="time_left">%1$s left</string>
     <string name="starts_in">in %1$s</string>
     <string name="next_prayer">Next: %1$s %2$s</string>
-    <!-- A countdown follows each of these three -->
+    <!-- A countdown follows it -->
     <string name="next_prayer_in">Next: %1$s in</string>
-    <string name="row_ends_in">ends in</string>
-    <string name="row_starts_in">starts in</string>
     <string name="duration_hours_minutes">%1$d h %2$d min</string>
     <string name="duration_minutes">%1$d min</string>
     <string name="alert_at">Notify at %1$s</string>
-    <string name="alerts_hint">Tap a bell for a notification when that time arrives. It is a plain notification, not the alarm: Fajr has the alarm.</string>
+    <string name="alerts_hint">Tap the icon beside a time to choose what the phone does when it arrives: nothing, a notification or a full-screen notice, and with a sound, a vibration or silently. The full-screen notice is black with the clock time, over the lock screen too; on a phone in use it is a banner. None of this is the alarm: Fajr has the alarm.</string>
+    <!-- What the phone does at a time, chosen from the icon beside it -->
+    <string name="alert_none">Nothing</string>
+    <string name="alert_notification">Notification</string>
+    <string name="alert_full_screen">Full-screen notice</string>
+    <string name="alert_alarm">The alarm rings</string>
     <string name="optional_times_hint">Duha starts 15 minutes after sunrise. Midnight and the last third of the night are measured from sunset to the next Fajr.</string>
     <!-- The icon before each prayer in the list: what kind of prayer it is, read out by a screen reader -->
     <string name="mark_obligatory">Obligatory</string>
@@ -307,7 +308,10 @@
     <!-- Lock screen notification and widgets. %1$s a prayer, %2$s a clock time; a countdown follows "ends in" and "starts in" -->
     <string name="section_lock_widgets">Lock screen &amp; widgets</string>
     <string name="lock_screen_countdown">Current prayer on the lock screen</string>
-    <string name="lock_screen_countdown_hint">A silent notification with the current prayer and a live countdown of the time it has left. It stays on the lock screen and in the notification bar.</string>
+    <string name="lock_screen_countdown_hint">A silent notification with the current prayer and a live countdown of the time it has left. It stays on the lock screen and in the notification bar, all the time or only for the last 15 minutes before the prayer\'s time runs out.</string>
+    <string name="lock_notice_off">Off</string>
+    <string name="lock_notice_always">Always</string>
+    <string name="lock_notice_ending">Only the last 15 minutes before the next prayer</string>
     <string name="now_ends_in">%1$s ends in</string>
     <string name="now_starts_in">%1$s starts in</string>
     <string name="now_until">%1$s until %2$s</string>
@@ -321,6 +325,7 @@
     <string name="widget_add_now">Add the “Current prayer” widget</string>
     <string name="widget_add_by_hand">Touch and hold an empty spot on the home screen, choose Widgets, then Prayer Times.</string>
     <string name="widget_set_location">Open Prayer Times to set your location</string>
+    <string name="widget_times">Times in the widgets</string>
     <string name="widget_theme">Widget colours</string>
     <string name="widget_theme_night">Night: the app\'s blue and gold</string>
     <string name="widget_theme_black">Black</string>

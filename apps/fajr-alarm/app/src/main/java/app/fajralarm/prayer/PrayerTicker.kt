@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import app.fajralarm.alarm.AlarmScheduler
+import app.fajralarm.core.LockScreenCountdown
 import app.fajralarm.core.PrayerClock
 import app.fajralarm.core.PrayerMoment
 import app.fajralarm.data.SettingsStore
@@ -19,8 +20,8 @@ import java.time.ZonedDateTime
  * notification for the times that asked for one. Nothing runs in between: an alarm is
  * queued for the next time that matters, and the app sleeps until then.
  *
- * The phone is only woken for a time whose bell is on, or for every time while the
- * lock screen notification is up. Widgets alone never wake it: their alarm waits until
+ * The phone is only woken for a time whose bell is on, to put the lock screen
+ * notification up, or for every time while it is up. Widgets alone never wake it: their alarm waits until
  * the phone is awake anyway, which is before anyone can look at a home screen.
  */
 object PrayerTicker {
@@ -35,20 +36,19 @@ object PrayerTicker {
      * Brings everything up to date and queues the next wake-up. Safe to call at any
      * moment: when a time arrives, and whenever the settings, the clock or the widgets change.
      */
-    fun refresh(context: Context) {
+    fun refresh(context: Context, nowMillis: Long = System.currentTimeMillis()) {
         val store = SettingsStore(context)
         val settings = store.load()
         val zone = ZoneId.systemDefault()
-        val nowMillis = System.currentTimeMillis()
 
         // The time that was being waited for has come: say so, once.
         store.awaitedPrayer?.let { (prayer, at) ->
             if (at <= nowMillis) {
                 store.awaitedPrayer = null
-                if (prayer in settings.alerts && nowMillis - at < ALERT_GRACE_MS) {
+                val alert = settings.alerts[prayer]
+                if (alert != null && nowMillis - at < ALERT_GRACE_MS) {
                     PrayerNotifications.alert(
-                        context, PrayerMoment(prayer, Instant.ofEpochMilli(at).atZone(zone)),
-                        settings.fullScreenAlerts, settings.alertSound,
+                        context, PrayerMoment(prayer, Instant.ofEpochMilli(at).atZone(zone)), alert.fullScreen, alert.sound,
                     )
                 }
             }
@@ -63,14 +63,24 @@ object PrayerTicker {
         // What is on show goes out of date at the next time of the day, or sooner where
         // a prayer is counted down to an end chosen inside its time.
         val changeAt = state?.nextChange?.toInstant()?.toEpochMilli()
-        val wakeAt = listOfNotNull(nextAlert?.at?.toInstant()?.toEpochMilli(), changeAt.takeIf { settings.lockScreenCountdown })
-            .minOrNull()
+        // The lock screen notice is up all the time, or only from a few minutes before the
+        // countdown runs out. While it is up the phone is woken to change it; before
+        // that, to put it up.
+        val noticeFrom = when (settings.lockScreenCountdown) {
+            LockScreenCountdown.OFF -> null
+            LockScreenCountdown.ALWAYS -> Long.MIN_VALUE
+            LockScreenCountdown.ENDING -> state?.let { it.currentEnds ?: it.next.at }
+                ?.minusMinutes(LockScreenCountdown.ENDING_MINUTES)?.toInstant()?.toEpochMilli()
+        }
+        val noticeUp = noticeFrom != null && nowMillis >= noticeFrom
+        val noticeWake = if (noticeUp) changeAt else noticeFrom
+        val wakeAt = listOfNotNull(nextAlert?.at?.toInstant()?.toEpochMilli(), noticeWake).minOrNull()
         val redrawAt = changeAt?.takeIf { it != wakeAt && PrayerWidgets.anyPlaced(context) }
         queue(context, REQ_WAKE, AlarmManager.RTC_WAKEUP, wakeAt)
         queue(context, REQ_REDRAW, AlarmManager.RTC, redrawAt)
 
         PrayerWidgets.update(context, state, settings)
-        PrayerNotifications.showCurrent(context, state.takeIf { settings.lockScreenCountdown })
+        PrayerNotifications.showCurrent(context, state.takeIf { noticeUp })
     }
 
     /** Sets the alarm [request] for [at], or clears it when [at] is null. */

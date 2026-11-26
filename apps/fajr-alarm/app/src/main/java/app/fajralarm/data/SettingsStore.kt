@@ -3,7 +3,10 @@ package app.fajralarm.data
 import android.content.Context
 import android.content.SharedPreferences
 import app.fajralarm.core.AlarmSettings
+import app.fajralarm.core.AlertSound
 import app.fajralarm.core.DismissMission
+import app.fajralarm.core.LockScreenCountdown
+import app.fajralarm.core.PrayerAlert
 import app.fajralarm.core.PrayerTime
 import app.fajralarm.core.WidgetColors
 import java.time.DayOfWeek
@@ -44,12 +47,26 @@ class SettingsStore(context: Context) {
                 // Earlier versions stored a simple "math challenge" on/off switch.
                 if (prefs.getBoolean(K_CHALLENGE, false)) DismissMission.MATH else d.dismissMission,
             ),
-            alerts = prefs.getStringSet(K_ALERTS, null)
-                ?.mapNotNull { n -> PrayerTime.values().firstOrNull { it.name == n } }?.toSet() ?: d.alerts,
-            fullScreenAlerts = prefs.getBoolean(K_FULL_SCREEN_ALERTS, d.fullScreenAlerts),
-            alertSound = enumOr(prefs.getString(K_ALERT_SOUND, null), d.alertSound),
-            lockScreenCountdown = prefs.getBoolean(K_LOCK_SCREEN, d.lockScreenCountdown),
+            alerts = prefs.getStringSet(K_ALERTS, null).orEmpty()
+                .mapNotNull { n -> PrayerTime.values().firstOrNull { it.name == n } }
+                .associateWith { prayer ->
+                    // Version 1.75 had one switch and one sound for all of them; they stand in where a time has none of its own.
+                    PrayerAlert(
+                        fullScreen = prefs.getBoolean(K_ALERT_FULL + prayer.name, prefs.getBoolean(K_FULL_SCREEN_ALERTS, false)),
+                        sound = enumOr(
+                            prefs.getString(K_ALERT_SOUND_OF + prayer.name, null),
+                            enumOr(prefs.getString(K_ALERT_SOUND, null), AlertSound.SOUND),
+                        ),
+                    )
+                },
+            lockScreenCountdown = enumOr(
+                prefs.getString(K_LOCK_NOTICE, null),
+                // Earlier versions stored it as an on/off switch.
+                if (prefs.getBoolean(K_LOCK_SCREEN, false)) LockScreenCountdown.ALWAYS else d.lockScreenCountdown,
+            ),
             widgetTheme = enumOr(prefs.getString(K_WIDGET_THEME, null), d.widgetTheme),
+            widgetTimes = prefs.getStringSet(K_WIDGET_TIMES, null)
+                ?.mapNotNull { n -> PrayerTime.values().firstOrNull { it.name == n } }?.toSet() ?: d.widgetTimes,
             widgetColors = WidgetColors(
                 background = prefs.getInt(K_WIDGET_BACKGROUND, d.widgetColors.background),
                 backgroundOpacity = prefs.getInt(K_WIDGET_OPACITY, d.widgetColors.backgroundOpacity),
@@ -85,10 +102,22 @@ class SettingsStore(context: Context) {
             putInt(K_MAX_SNOOZES, s.maxSnoozes)
             putString(K_MISSION, s.dismissMission.name)
             remove(K_CHALLENGE)
-            putStringSet(K_ALERTS, s.alerts.map { it.name }.toSet())
-            putBoolean(K_FULL_SCREEN_ALERTS, s.fullScreenAlerts)
-            putString(K_ALERT_SOUND, s.alertSound.name)
-            putBoolean(K_LOCK_SCREEN, s.lockScreenCountdown)
+            putStringSet(K_ALERTS, s.alerts.keys.map { it.name }.toSet())
+            PrayerTime.values().forEach { prayer ->
+                val alert = s.alerts[prayer]
+                if (alert != null) {
+                    putBoolean(K_ALERT_FULL + prayer.name, alert.fullScreen)
+                    putString(K_ALERT_SOUND_OF + prayer.name, alert.sound.name)
+                } else {
+                    remove(K_ALERT_FULL + prayer.name)
+                    remove(K_ALERT_SOUND_OF + prayer.name)
+                }
+            }
+            remove(K_FULL_SCREEN_ALERTS)
+            remove(K_ALERT_SOUND)
+            putStringSet(K_WIDGET_TIMES, s.widgetTimes.map { it.name }.toSet())
+            putString(K_LOCK_NOTICE, s.lockScreenCountdown.name)
+            remove(K_LOCK_SCREEN)
             putString(K_WIDGET_THEME, s.widgetTheme.name)
             putInt(K_WIDGET_BACKGROUND, s.widgetColors.background)
             putInt(K_WIDGET_OPACITY, s.widgetColors.backgroundOpacity)
@@ -189,9 +218,13 @@ class SettingsStore(context: Context) {
         const val K_CHALLENGE = "challenge" // legacy
         const val K_MISSION = "dismiss_mission"
         const val K_ALERTS = "prayer_alerts"
-        const val K_LOCK_SCREEN = "lock_screen_countdown"
-        const val K_FULL_SCREEN_ALERTS = "full_screen_alerts"
-        const val K_ALERT_SOUND = "alert_sound"
+        const val K_LOCK_SCREEN = "lock_screen_countdown" // legacy
+        const val K_LOCK_NOTICE = "lock_screen_notice"
+        const val K_FULL_SCREEN_ALERTS = "full_screen_alerts" // legacy: one switch for every time
+        const val K_ALERT_SOUND = "alert_sound" // legacy: one sound for every time
+        const val K_ALERT_FULL = "alert_full_" // + the time's name
+        const val K_ALERT_SOUND_OF = "alert_sound_" // + the time's name
+        const val K_WIDGET_TIMES = "widget_times"
         const val K_AWAITED = "awaited_prayer"
         const val K_AWAITED_AT = "awaited_prayer_at"
         const val K_NEXT_AT = "next_alarm_at"

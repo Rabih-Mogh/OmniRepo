@@ -15,7 +15,9 @@ import app.fajralarm.core.CalculationMethod
 import app.fajralarm.core.DismissMission
 import app.fajralarm.core.HighLatitudeRule
 import app.fajralarm.core.IshaEnd
+import app.fajralarm.core.LockScreenCountdown
 import app.fajralarm.core.MoonPhaseName
+import app.fajralarm.core.PrayerAlert
 import app.fajralarm.core.PrayerTime
 import app.fajralarm.core.WidgetTheme
 import app.fajralarm.data.StopReason
@@ -141,6 +143,24 @@ val IshaEnd.label: Int
         IshaEnd.FAJR -> R.string.isha_end_fajr
         IshaEnd.MIDNIGHT -> R.string.isha_end_midnight
         IshaEnd.FIRST_THIRD -> R.string.isha_end_first_third
+    }
+
+@get:StringRes
+val LockScreenCountdown.label: Int
+    get() = when (this) {
+        LockScreenCountdown.OFF -> R.string.lock_notice_off
+        LockScreenCountdown.ALWAYS -> R.string.lock_notice_always
+        LockScreenCountdown.ENDING -> R.string.lock_notice_ending
+    }
+
+/** The picture for what the phone does at a time: nothing when [this] is null. */
+@get:DrawableRes
+val PrayerAlert?.soundIcon: Int
+    get() = when (this?.sound) {
+        null -> R.drawable.ic_alert_off
+        AlertSound.SOUND -> R.drawable.ic_alert_sound
+        AlertSound.VIBRATE -> R.drawable.ic_alert_vibrate
+        AlertSound.SILENT -> R.drawable.ic_alert_silent
     }
 
 @get:StringRes

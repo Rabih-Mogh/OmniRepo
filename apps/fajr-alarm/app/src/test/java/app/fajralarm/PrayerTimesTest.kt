@@ -5,6 +5,7 @@ import android.app.Application
 import android.app.Notification
 import android.app.NotificationManager
 import android.appwidget.AppWidgetManager
+import android.content.Context
 import android.os.Bundle
 import android.util.SizeF
 import android.view.View
@@ -17,6 +18,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
@@ -34,6 +36,8 @@ import app.fajralarm.core.AlarmSettings
 import app.fajralarm.core.AlertSound
 import app.fajralarm.core.AsrEnd
 import app.fajralarm.core.IshaEnd
+import app.fajralarm.core.LockScreenCountdown
+import app.fajralarm.core.PrayerAlert
 import app.fajralarm.core.PrayerClock
 import app.fajralarm.core.PrayerMoment
 import app.fajralarm.core.PrayerNow
@@ -107,7 +111,7 @@ class PrayerTimesTest {
     }
 
     @Test
-    fun `the main screen lists every time of the day and a bell turns its notification on`() {
+    fun `the main screen lists every time of the day and its icon sets what the phone does`() {
         store.save(beirut)
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.waitForIdle()
@@ -124,19 +128,48 @@ class PrayerTimesTest {
                 node.config.getOrNull(SemanticsProperties.Text)?.any { it.text.startsWith("until ") } == true
             }
             compose.onAllNodes(endTime).assertCountEquals(7)
-            // The switch for full-screen alerts is under the list.
-            compose.onNodeWithText("Full-screen alert").performScrollTo().performClick()
-            compose.waitForIdle()
-            assertTrue(store.load().fullScreenAlerts)
-            // Fajr has the alarm, not a bell.
+            // Fajr has the alarm, not a notice of its own: its icon says the alarm rings.
             compose.onNodeWithContentDescription("Notify at Fajr").assertDoesNotExist()
+            compose.onNodeWithContentDescription("The alarm rings").assertIsDisplayed()
 
-            compose.onNodeWithContentDescription("Notify at Dhuhr").performScrollTo().performClick()
+            // The icon beside a time opens the choice of what the phone does when it arrives.
+            fun choose(what: String) {
+                compose.onNodeWithText(what).performClick()
+                compose.waitForIdle()
+            }
+            val dhuhr = compose.onNodeWithContentDescription("Notify at Dhuhr")
+            dhuhr.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Nothing"))
+            dhuhr.performScrollTo().performClick()
             compose.waitForIdle()
-            assertEquals(setOf(PrayerTime.DHUHR), store.load().alerts)
-            compose.onNodeWithContentDescription("Notify at Dhuhr").performClick()
+            listOf("Nothing", "Notification", "Full-screen notice", "Sound", "Vibration only", "Silent").forEach {
+                compose.onNodeWithText(it).assertIsDisplayed()
+            }
+            choose("Notification")
+            assertEquals(mapOf(PrayerTime.DHUHR to PrayerAlert(fullScreen = false, sound = AlertSound.SOUND)), store.load().alerts)
+            // The menu stays open, so the sound and the kind of notice are set in one go.
+            choose("Vibration only")
+            choose("Full-screen notice")
+            assertEquals(mapOf(PrayerTime.DHUHR to PrayerAlert(fullScreen = true, sound = AlertSound.VIBRATE)), store.load().alerts)
+            dhuhr.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Full-screen notice, Vibration only"))
+            captureScreenRoboImage("build/screens/en-alert-menu.png")
+            choose("Nothing")
+            assertEquals(emptyMap<PrayerTime, PrayerAlert>(), store.load().alerts)
+            compose.onNodeWithText("Vibration only").assertDoesNotExist()
+
+            // A few set, for the picture.
+            store.save(
+                beirut.copy(
+                    alerts = mapOf(
+                        PrayerTime.DHUHR to PrayerAlert(),
+                        PrayerTime.ASR to PrayerAlert(sound = AlertSound.VIBRATE),
+                        PrayerTime.MAGHRIB to PrayerAlert(fullScreen = true),
+                        PrayerTime.ISHA to PrayerAlert(fullScreen = true, sound = AlertSound.SILENT),
+                    ),
+                ),
+            )
+        }
+        ActivityScenario.launch(MainActivity::class.java).use {
             compose.waitForIdle()
-            assertEquals(emptySet<PrayerTime>(), store.load().alerts)
             captureScreenRoboImage("build/screens/en-prayers.png")
         }
     }
@@ -154,7 +187,7 @@ class PrayerTimesTest {
     fun `the phone is woken only for the time whose bell is on`() {
         // The third time from now: two others come before it and get no alarm at all.
         val belled = now().upcoming[2]
-        store.save(beirut.copy(alerts = setOf(belled.prayer)))
+        store.save(beirut.copy(alerts = bells(belled.prayer)))
         PrayerTicker.refresh(app)
         assertEquals(belled.prayer to belled.millis(), store.awaitedPrayer)
         assertEquals(listOf(belled.millis() to true), queued())
@@ -162,7 +195,7 @@ class PrayerTimesTest {
 
     @Test
     fun `a bell queues the next time of the day and it gets its notification when it comes`() {
-        store.save(beirut.copy(alerts = PrayerTime.values().toSet()))
+        store.save(beirut.copy(alerts = bells(*PrayerTime.values())))
         PrayerTicker.refresh(app)
         val next = now().nextEvent
         assertEquals(next.prayer to next.millis(), store.awaitedPrayer)
@@ -181,26 +214,56 @@ class PrayerTimesTest {
     }
 
     @Test
+    fun `the lock screen notice can be kept for the last quarter of an hour only`() {
+        store.save(beirut.copy(lockScreenCountdown = LockScreenCountdown.ENDING))
+        // What the countdown runs to right now: the end of the current prayer, or the start of the next one.
+        val target = now().let { it.currentEnds ?: it.next.at }.toInstant().toEpochMilli()
+        fun minutesBefore(minutes: Long) = target - minutes * 60_000
+
+        // Twenty minutes before: nothing is up, and the phone will be woken to put it up at fifteen.
+        PrayerTicker.refresh(app, minutesBefore(20))
+        assertTrue(notifications.none { it.channelId == FajrAlarmApp.CHANNEL_NOW })
+        assertEquals(listOf(minutesBefore(15) to true), queued())
+
+        // Nine minutes before: it is up, silent, counting down to that moment.
+        PrayerTicker.refresh(app, minutesBefore(9))
+        val notice = notifications.single { it.channelId == FajrAlarmApp.CHANNEL_NOW }
+        assertTrue(notice.extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN))
+        assertTrue("counts down to $target, was ${notice.`when`}", abs(notice.`when` - target) < 2_000)
+        assertEquals("woken when it runs out, to take it down", listOf(target to true), queued())
+
+        // Once that prayer's time is over it comes down until the next one is ending.
+        PrayerTicker.refresh(app, target + 60_000)
+        assertTrue(notifications.none { it.channelId == FajrAlarmApp.CHANNEL_NOW })
+
+        // An on/off switch saved by an earlier version still means "always".
+        app.getSharedPreferences("fajr_alarm", Context.MODE_PRIVATE).edit()
+            .remove("lock_screen_notice").putBoolean("lock_screen_countdown", true).apply()
+        assertEquals(LockScreenCountdown.ALWAYS, store.load().lockScreenCountdown)
+    }
+
+    @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
     fun `with full-screen alerts on a time opens over the whole screen`() {
-        store.save(beirut.copy(alerts = setOf(PrayerTime.ASR)))
-        store.awaitedPrayer = PrayerTime.ASR to System.currentTimeMillis() - 1_000
-        PrayerTicker.refresh(app)
+        fun arrive(alert: PrayerAlert, prayer: PrayerTime = PrayerTime.ASR) {
+            store.save(beirut.copy(alerts = mapOf(PrayerTime.ASR to alert, PrayerTime.MAGHRIB to PrayerAlert())))
+            store.awaitedPrayer = prayer to System.currentTimeMillis() - 1_000
+            PrayerTicker.refresh(app)
+        }
+        arrive(PrayerAlert())
         assertNull("a plain notification by default", notifications.single().fullScreenIntent)
 
-        store.save(beirut.copy(alerts = setOf(PrayerTime.ASR), fullScreenAlerts = true))
-        val came = System.currentTimeMillis() - 1_000
-        store.awaitedPrayer = PrayerTime.ASR to came
-        PrayerTicker.refresh(app)
+        arrive(PrayerAlert(fullScreen = true))
         val alert = notifications.single { it.channelId == FajrAlarmApp.CHANNEL_PRAYER }
         val screen = shadowOf(alert.fullScreenIntent).savedIntent
         assertEquals(PrayerAlertActivity::class.java.name, screen.component?.className)
+        // Each time has its own: Maghrib, set to a plain notification, stays one.
+        arrive(PrayerAlert(fullScreen = true), PrayerTime.MAGHRIB)
+        assertNull(notifications.single().fullScreenIntent)
 
         // It is heard the way it was set: by sound, by vibration, or not at all.
         fun channelFor(sound: AlertSound): String {
-            store.save(beirut.copy(alerts = setOf(PrayerTime.ASR), fullScreenAlerts = true, alertSound = sound))
-            store.awaitedPrayer = PrayerTime.ASR to System.currentTimeMillis() - 1_000
-            PrayerTicker.refresh(app)
+            arrive(PrayerAlert(fullScreen = true, sound = sound))
             return notifications.single { it.fullScreenIntent != null }.channelId
         }
         val manager = app.getSystemService(NotificationManager::class.java)
@@ -216,7 +279,18 @@ class PrayerTimesTest {
             assertFalse(it.shouldVibrate())
             assertEquals("still able to open over the lock screen", NotificationManager.IMPORTANCE_HIGH, it.importance)
         }
-        assertEquals(AlertSound.SILENT, store.load().alertSound)
+        assertEquals(PrayerAlert(fullScreen = true, sound = AlertSound.SILENT), store.load().alerts[PrayerTime.ASR])
+
+        // Version 1.75 kept one switch and one sound for every time: they carry over to each bell.
+        app.getSharedPreferences("fajr_alarm", Context.MODE_PRIVATE).edit().clear()
+            .putString("lat", "33.8938").putString("lng", "35.5018")
+            .putStringSet("prayer_alerts", setOf("DHUHR", "ISHA"))
+            .putBoolean("full_screen_alerts", true).putString("alert_sound", "VIBRATE").apply()
+        assertEquals(
+            mapOf(PrayerTime.DHUHR to PrayerAlert(true, AlertSound.VIBRATE), PrayerTime.ISHA to PrayerAlert(true, AlertSound.VIBRATE)),
+            store.load().alerts,
+        )
+        arrive(PrayerAlert(fullScreen = true))
 
         // The screen names the prayer and its time, and answering it takes the notification down too.
         ActivityScenario.launch<PrayerAlertActivity>(screen).use { scenario ->
@@ -233,7 +307,7 @@ class PrayerTimesTest {
 
     @Test
     fun `a time with its bell off, or one that came long ago, gets no notification`() {
-        store.save(beirut.copy(alerts = setOf(PrayerTime.DHUHR)))
+        store.save(beirut.copy(alerts = bells(PrayerTime.DHUHR)))
         store.awaitedPrayer = PrayerTime.ASR to System.currentTimeMillis() - 1_000
         PrayerTicker.refresh(app)
         assertTrue(notifications.isEmpty())
@@ -245,7 +319,7 @@ class PrayerTimesTest {
 
     @Test
     fun `the lock screen notice counts down to the end of the current prayer`() {
-        store.save(beirut.copy(lockScreenCountdown = true))
+        store.save(beirut.copy(lockScreenCountdown = LockScreenCountdown.ALWAYS))
         PrayerTicker.refresh(app)
         val state = now()
         val target = (state.currentEnds ?: state.next.at).toInstant().toEpochMilli()
@@ -272,6 +346,12 @@ class PrayerTimesTest {
 
     private val names = listOf("Imsak", "Fajr", "Shuruq", "Duha", "Dhuhr", "Asr", "Maghrib", "Isha", "Midnight", "Qiyam")
 
+    /** These times with their bell on: a plain notification with its sound. */
+    private fun bells(vararg times: PrayerTime) = times.associateWith { PrayerAlert() }
+
+    /** Whether a row of the table shows the time left beside the name. */
+    private fun View.counts() = findViewById<View>(R.id.row_left)?.visibility == View.VISIBLE
+
     private fun palette(theme: WidgetTheme) = WidgetPalette.of(beirut.copy(widgetTheme = theme))
 
     /** Whether a row of the table is the highlighted one. */
@@ -282,7 +362,7 @@ class PrayerTimesTest {
 
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
-    fun `the prayer times widget is a table of all nine times with the current prayer marked`() {
+    fun `the prayer times widget is a table of the day's times with the current prayer marked`() {
         val afternoon = at(15, 0)
         val night = WidgetPalette.of(beirut)
 
@@ -299,7 +379,13 @@ class PrayerTimesTest {
         assertEquals(View.GONE, small.findViewById<View>(R.id.widget_next_line).visibility)
         assertEquals(View.GONE, small.findViewById<View>(R.id.widget_footer).visibility)
         assertTrue("no room for AM and PM", rows(small).none { it.text(R.id.row_time).endsWith("M") })
-        assertTrue("nor for a countdown in the row", rows(small).none { it.findViewById<View>(R.id.row_countdown) != null })
+        // The gold row has the time left beside the name; in a row this tight it takes the clock time's place.
+        rows(small).single { it.gold() }.let {
+            assertTrue(it.counts())
+            assertTrue(it.findViewById<View>(R.id.row_countdown) is Chronometer)
+            assertEquals("", it.text(R.id.row_time))
+        }
+        assertEquals("only the gold row counts down", 1, rows(small).count { it.counts() })
         // Each prayer has its icon before its name; Imsak, Shuruq and midnight, which are not prayers, have none.
         assertEquals(
             mapOf(
@@ -310,25 +396,26 @@ class PrayerTimesTest {
             rows(small).associate { it.name() to it.icon() },
         )
 
-        // Four cells by two: the current prayer's row is twice as tall and counts down to its end.
-        val counting = times(afternoon, 300, 150)
-        val gold = rows(counting).single { it.gold() }
-        assertEquals("Asr", gold.name())
-        assertEquals("ends in", gold.text(R.id.row_count_label))
-        assertTrue(gold.findViewById<View>(R.id.row_countdown) is Chronometer)
-        assertEquals("only the gold row counts down", 1, rows(counting).count { it.findViewById<View>(R.id.row_countdown) != null })
-        assertEquals("an empty row keeps the columns level", names.take(5) + "", rows(counting, R.id.table_start).map { it.name() })
-        assertEquals(names.drop(5), rows(counting, R.id.table_end).map { it.name() })
-        // With no prayer current the gold row is the next one, counting down to its start.
+        // With room to spare the clock time stays beside it.
+        val roomy = times(afternoon, 350, 150)
+        rows(roomy).single { it.gold() }.let {
+            assertEquals("Asr", it.name())
+            assertTrue(it.counts())
+            assertTrue(it.text(R.id.row_time).isNotEmpty())
+        }
+        // With no prayer current the gold row is the next one. Tight, it keeps its clock time and the
+        // headline does the counting; with room it counts down as well.
         val morning = times(at(9, 0), 300, 150)
         assertEquals("Dhuhr starts in", morning.text(R.id.widget_headline))
         rows(morning).single { it.gold() }.let {
             assertEquals("Dhuhr", it.name())
-            assertEquals("starts in", it.text(R.id.row_count_label))
+            assertFalse(it.counts())
+            assertTrue(it.text(R.id.row_time).isNotEmpty())
         }
-        // There the gold row is in the first column, so the second gets the empty row.
+        assertTrue(rows(times(at(9, 0), 350, 150)).single { it.gold() }.counts())
+        // Every row is one line tall again, so the columns are level without any filling.
         assertEquals(names.take(5), rows(morning, R.id.table_start).map { it.name() })
-        assertEquals(names.drop(5) + "", rows(morning, R.id.table_end).map { it.name() })
+        assertEquals(names.drop(5), rows(morning, R.id.table_end).map { it.name() })
         // Late at night the table is already the new day's: Fajr is gold and nothing has passed.
         val late = times(at(3, 30), 300, 150)
         assertEquals("Isha ends in", late.text(R.id.widget_headline))
@@ -348,22 +435,26 @@ class PrayerTimesTest {
         assertEquals("Asr shown ending before Maghrib", View.VISIBLE, nextLine(at(15, 0, yellow), yellow))
 
         // Taller still: one column, each prayer with its start and end, and a bell beside the times that notify.
-        val belled = beirut.copy(alerts = setOf(PrayerTime.DHUHR, PrayerTime.MIDNIGHT))
+        val belled = beirut.copy(alerts = mapOf(PrayerTime.DHUHR to PrayerAlert(), PrayerTime.MIDNIGHT to PrayerAlert(fullScreen = true, sound = AlertSound.VIBRATE), PrayerTime.DUHA to PrayerAlert(sound = AlertSound.VIBRATE)))
         val tall = times(afternoon, 250, 270, belled)
         assertEquals(names, rows(tall, R.id.table_start).map { it.name() })
         assertEquals(View.GONE, tall.findViewById<View>(R.id.table_end).visibility)
-        assertEquals("ends in", rows(tall).single { it.gold() }.text(R.id.row_count_label))
+        assertTrue("tight: the time left takes the range's place", rows(tall).single { it.gold() }.let { it.counts() && it.text(R.id.row_time) == "" })
+        assertTrue(rows(times(afternoon, 280, 270, belled)).single { it.gold() }.let { it.counts() && " – " in it.text(R.id.row_time) })
         val ranges = rows(tall).associate { it.name() to it.text(R.id.row_time) }
         assertEquals(
-            "every prayer has a start and an end; Imsak, Shuruq and midnight are one moment",
-            setOf("Imsak", "Shuruq", "Midnight"), ranges.filterValues { " – " !in it }.keys,
+            "every prayer has a start and an end; Imsak, Shuruq and midnight are one moment, and Asr shows its time left",
+            setOf("Imsak", "Shuruq", "Midnight", "Asr"), ranges.filterValues { " – " !in it }.keys,
         )
         assertEquals("Fajr ends at sunrise", ranges.getValue("Shuruq"), ranges.getValue("Fajr").substringAfter(" – "))
-        assertEquals("Asr starts when Dhuhr ends", ranges.getValue("Asr").substringBefore(" – "), ranges.getValue("Dhuhr").substringAfter(" – "))
+        assertEquals("Maghrib starts when Asr... ends: Isha starts when Maghrib ends", ranges.getValue("Isha").substringBefore(" – "), ranges.getValue("Maghrib").substringAfter(" – "))
         assertEquals("Qiyam ends at Fajr, as Isha does", ranges.getValue("Isha").substringAfter(" – "), ranges.getValue("Qiyam").substringAfter(" – "))
+        // Beside each time that does something, the icon of what: a bell, a shaking phone, or the four corners of the screen.
         assertEquals(
-            listOf("Dhuhr", "Midnight"),
-            rows(tall).filter { it.findViewById<View>(R.id.row_bell).visibility == View.VISIBLE }.map { it.name() },
+            mapOf("Duha" to "ic_alert_vibrate", "Dhuhr" to "ic_alert_sound", "Midnight" to "ic_alert_screen"),
+            rows(tall).filter { it.findViewById<View>(R.id.row_bell).visibility == View.VISIBLE }.associate {
+                it.name() to app.resources.getResourceEntryName(shadowOf(it.findViewById<ImageView>(R.id.row_bell).drawable).createdFromResId)
+            },
         )
         assertEquals(View.GONE, tall.findViewById<View>(R.id.widget_footer).visibility)
 
@@ -392,7 +483,22 @@ class PrayerTimesTest {
         assertTrue("Isha no longer ends at Fajr: $chosen", chosen["Isha"] != ends["Isha"] && chosen["Isha"] != "")
         assertEquals("the others are as they were", ends - "Asr" - "Isha", chosen - "Asr" - "Isha")
 
-        // Every size the home screen is offered draws all nine times.
+        // Only the times chosen for the widgets are listed, in two columns as even as they come.
+        val five = beirut.copy(widgetTimes = setOf(PrayerTime.FAJR, PrayerTime.DHUHR, PrayerTime.ASR, PrayerTime.MAGHRIB, PrayerTime.ISHA))
+        val fewer = times(afternoon, 300, 150, five)
+        assertEquals(listOf("Fajr", "Dhuhr", "Asr"), rows(fewer, R.id.table_start).map { it.name() })
+        assertEquals(listOf("Maghrib", "Isha", ""), rows(fewer, R.id.table_end).map { it.name() })
+        assertEquals("Asr", rows(fewer).single { it.gold() }.name())
+        val noAsr = times(afternoon, 300, 150, five.copy(widgetTimes = five.widgetTimes - PrayerTime.ASR))
+        assertEquals("the current prayer isn't listed: the next one is gold", "Maghrib", rows(noAsr).single { it.gold() }.name())
+        assertEquals("the headline still names the current one", "Asr ends in", noAsr.text(R.id.widget_headline))
+        val obligatoryOff = times(afternoon, 300, 150, beirut.copy(widgetTimes = setOf(PrayerTime.SUNRISE, PrayerTime.MIDNIGHT)))
+        assertTrue("neither is listed: no gold row", rows(obligatoryOff).none { it.gold() })
+        assertTrue(rows(times(afternoon, 300, 150, beirut.copy(widgetTimes = emptySet()))).isEmpty())
+        store.save(five)
+        assertEquals(five.widgetTimes, store.load().widgetTimes)
+
+        // Every size the home screen is offered draws all the times.
         PrayerWidgets.TIMES_SIZES.forEach { size ->
             val view = PrayerWidgets.timesViews(app, afternoon, beirut, size).apply(app, FrameLayout(app))
             assertEquals("$size", names, rows(view).map { it.name() }.filter { it.isNotEmpty() })
@@ -400,6 +506,8 @@ class PrayerTimesTest {
 
         // Pictures of this moment, so that the countdowns in them make sense.
         picture("widget-times", times(now(), 300, 150), 300, 150)
+        picture("widget-times-wide", times(now(), 350, 150, belled), 350, 150)
+        picture("widget-times-five", times(now(), 300, 150, five), 300, 150)
         picture("widget-times-medium", times(now(), 300, 200), 300, 200)
         picture("widget-times-tall", times(now(), 250, 270, belled), 250, 270)
         picture("widget-times-full", times(now(), 330, 350, belled), 330, 350)
@@ -430,6 +538,7 @@ class PrayerTimesTest {
             val gold = rows(view).single { it.gold() }
             assertEquals("$theme gold row", palette.onGold.light, gold.nameColor())
             assertEquals("$theme gold row countdown", palette.onGold.light, gold.color(R.id.row_countdown))
+            assertTrue(gold.counts())
             assertEquals("$theme passed", palette.passed.light, rows(view).first().nameColor())
             assertEquals("$theme to come", palette.text.light, rows(view).single { it.name() == "Maghrib" }.nameColor())
             picture("widget-theme-${theme.name.lowercase()}", times(now(), 300, 200, beirut.copy(widgetTheme = theme)), 300, 200)
@@ -458,12 +567,11 @@ class PrayerTimesTest {
         assertEquals("the others stay as they are", palette(WidgetTheme.LIGHT).text.light, drawn(WidgetTheme.LIGHT).color(R.id.widget_countdown))
 
         // The choice is kept.
-        store.save(mine.copy(asrEnd = AsrEnd.SUN_YELLOWS, ishaEnd = IshaEnd.MIDNIGHT, imsakMinutes = 15, fullScreenAlerts = true))
+        store.save(mine.copy(asrEnd = AsrEnd.SUN_YELLOWS, ishaEnd = IshaEnd.MIDNIGHT, imsakMinutes = 15))
         store.load().let {
             assertEquals(WidgetTheme.CUSTOM, it.widgetTheme)
             assertEquals(mine.widgetColors, it.widgetColors)
             assertEquals(15, it.imsakMinutes)
-            assertTrue(it.fullScreenAlerts)
             assertEquals(AsrEnd.SUN_YELLOWS, it.asrEnd)
             assertEquals(IshaEnd.MIDNIGHT, it.ishaEnd)
         }
@@ -502,7 +610,7 @@ class PrayerTimesTest {
         assertTrue(wide.shows(R.id.widget_table) && wide.shows(R.id.table_end) && wide.shows(R.id.widget_next))
         assertEquals(5, rows(wide, R.id.table_start).size)
         assertEquals(5, rows(wide, R.id.table_end).size)
-        assertTrue("the big countdown is enough", rows(wide).none { it.findViewById<View>(R.id.row_countdown) != null })
+        assertTrue("the big countdown is enough", rows(wide).none { it.counts() })
         assertFalse("the headline already names the next prayer", draw(330, 200, at(9, 0)).shows(R.id.widget_next))
 
         val tall = draw(200, 320)
@@ -525,9 +633,9 @@ class PrayerTimesTest {
     fun `the widgets speak Arabic and say so when there is no location`() {
         val arabic = listOf("الإمساك", "الفجر", "الشروق", "الضحى", "الظهر", "العصر", "المغرب", "العشاء", "منتصف الليل", "قيام الليل")
         val view = times(at(15, 0), 300, 150)
-        assertEquals(arabic.take(5) + "", rows(view, R.id.table_start).map { it.name() })
+        assertEquals(arabic.take(5), rows(view, R.id.table_start).map { it.name() })
         assertEquals(arabic.drop(5), rows(view, R.id.table_end).map { it.name() })
-        assertEquals("ينتهي بعد", rows(view).single { it.gold() }.text(R.id.row_count_label))
+        assertTrue(rows(view).single { it.gold() }.counts())
         picture("ar-widget-times", times(now(), 300, 150), 300, 150)
 
         val full = times(at(15, 0), 330, 350)

@@ -26,6 +26,7 @@ import app.fajralarm.ui.clockTime
 import app.fajralarm.ui.icon
 import app.fajralarm.ui.label
 import app.fajralarm.ui.shortLabel
+import app.fajralarm.ui.soundIcon
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DecimalStyle
@@ -64,21 +65,24 @@ object PrayerWidgets {
     private const val REQ_OPEN = 23
 
     // "All times", by height: under 250dp the ten times sit in two columns, from
-    // 250dp in one. 140dp adds a countdown inside the current prayer's row, 170dp a
-    // countdown to the next prayer where the current one ends before it starts (Fajr, or
-    // an end chosen in the settings), 330dp the alarm and the method.
-    // In one column each prayer has its start and its end: as "4:52 – 6:20", or from
-    // 290dp wide in two columns of clock times with AM and PM.
-    private const val ROW_COUNTDOWN_HEIGHT = 140f
+    // 250dp in one. 170dp adds a countdown to the next prayer where the current one ends
+    // before it starts (Fajr, or an end chosen in the settings), 330dp the alarm and the
+    // method. In one column each prayer has its start and its end: as "4:52 – 6:20", or
+    // from 330dp wide in two columns of clock times with AM and PM.
+    //
+    // By width: the gold row has the time left beside the prayer's name. Where the
+    // widget is narrower than ROOMY_* that takes the place of the row's clock time.
     private const val NEXT_LINE_HEIGHT = 170f
     private const val ONE_COLUMN_HEIGHT = 250f
     private const val FOOTER_HEIGHT = 330f
-    private const val ENDS_WIDTH = 290f
-    internal val TIMES_SIZES = listOf(
-        SizeF(220f, 110f), SizeF(220f, ROW_COUNTDOWN_HEIGHT), SizeF(220f, NEXT_LINE_HEIGHT),
-        SizeF(220f, ONE_COLUMN_HEIGHT), SizeF(ENDS_WIDTH, ONE_COLUMN_HEIGHT),
-        SizeF(220f, FOOTER_HEIGHT), SizeF(ENDS_WIDTH, FOOTER_HEIGHT),
-    )
+    private const val ROOMY_TWO_COLUMNS = 340f
+    private const val ROOMY_ONE_COLUMN = 270f
+    private const val ENDS_WIDTH = 330f
+    internal val TIMES_SIZES = listOf(110f, NEXT_LINE_HEIGHT).flatMap { height ->
+        listOf(220f, ROOMY_TWO_COLUMNS).map { SizeF(it, height) }
+    } + listOf(ONE_COLUMN_HEIGHT, FOOTER_HEIGHT).flatMap { height ->
+        listOf(220f, ROOMY_ONE_COLUMN, ENDS_WIDTH).map { SizeF(it, height) }
+    }
 
     // "Current prayer": one cell holds the prayer's name and the countdown. From 110dp
     // wide the headline is a sentence, with the next prayer from 70dp tall and the date
@@ -198,7 +202,8 @@ object PrayerWidgets {
                     size.width >= ENDS_WIDTH -> Times.COLUMNS
                     else -> Times.RANGE
                 },
-                countdown = text.takeIf { size.height >= ROW_COUNTDOWN_HEIGHT },
+                countdown = text,
+                roomy = size.width >= if (oneColumn) ROOMY_ONE_COLUMN else ROOMY_TWO_COLUMNS,
                 textSp = when {
                     footer -> 15f
                     oneColumn || size.height >= NEXT_LINE_HEIGHT -> 13f
@@ -265,6 +270,7 @@ object PrayerWidgets {
                     },
                     // The big countdown is right above the table.
                     countdown = null,
+                    roomy = false,
                     textSp = if (oneColumn) 13f else 12f,
                 )
             } else {
@@ -325,7 +331,10 @@ object PrayerWidgets {
      * columns they read down the first and then down the second. In one column there is
      * room for a bell beside the times that notify, and for when each prayer ends.
      * Each prayer has its icon before its name, pink for a voluntary one. With
-     * [countdown] the gold row is twice as tall and counts down under the prayer's name.
+     * [countdown] the gold row has the time left right after the name, behind an
+     * hourglass. Unless the row is [roomy] that takes the place of its clock time while
+     * the prayer is the current one; where the gold row is the next prayer its clock
+     * time stays and the headline does the counting.
      */
     private fun RemoteViews.fillTable(
         context: Context,
@@ -335,14 +344,14 @@ object PrayerWidgets {
         oneColumn: Boolean,
         times: Times,
         countdown: CurrentPrayerText?,
+        roomy: Boolean,
         textSp: Float,
     ) {
         clearTable()
         show(R.id.table_end, !oneColumn)
         val ends = times == Times.COLUMNS
-        val plain = if (ends) R.layout.widget_times_row_wide else R.layout.widget_times_row
-        val tall = if (ends) R.layout.widget_times_row_current_wide else R.layout.widget_times_row_current
-        fun row(layout: Int, name: String, time: String, end: String, size: Float, nameTone: Tone, timeTone: Tone, endTone: Tone) =
+        val layout = if (ends) R.layout.widget_times_row_wide else R.layout.widget_times_row
+        fun row(name: String, time: String, end: String, size: Float, nameTone: Tone, timeTone: Tone, endTone: Tone) =
             RemoteViews(context.packageName, layout).apply {
                 setTextViewText(R.id.row_name, name)
                 setTextViewText(R.id.row_time, time)
@@ -357,17 +366,16 @@ object PrayerWidgets {
             val heading = palette.muted
             addView(
                 R.id.table_start,
-                row(plain, "", context.getString(R.string.widget_begins), context.getString(R.string.widget_ends), 11f, heading, heading, heading),
+                row("", context.getString(R.string.widget_begins), context.getString(R.string.widget_ends), 11f, heading, heading, heading),
             )
         }
 
-        // The gold row is the prayer whose time it is. With none, or late at night
-        // when it is still last evening's Isha, it is the next prayer.
-        val moments = state.day.moments()
-        val marked = state.current?.takeIf { it in moments } ?: state.next
+        // Only the times chosen for the widgets. The gold row is the prayer whose time it
+        // is. With none, when it isn't listed, or late at night when it is still last
+        // evening's Isha, it is the next prayer; if that isn't listed either there is no gold row.
+        val moments = state.day.moments().filter { it.prayer in settings.widgetTimes }
+        val marked = state.current?.takeIf { it in moments } ?: state.next.takeIf { it in moments }
         val firstColumn = if (oneColumn) moments.size else (moments.size + 1) / 2
-        // How many rows' height each column has used: the gold row with a countdown takes two.
-        val used = intArrayOf(0, 0)
         moments.forEachIndexed { index, moment ->
             val isMarked = moment == marked
             // Everything before the next time of the day has been and gone.
@@ -375,11 +383,12 @@ object PrayerWidgets {
             val faded = palette.passed.takeIf { passed }
             val onGold = palette.onGold.takeIf { isMarked }
             val end = state.dayEnds[moment.prayer]
-            val counting = isMarked && countdown != null
+            // The time left sits beside the name: always where there is room for it and the
+            // clock time; in a tight row only while the prayer is the current one.
+            val counting = isMarked && countdown != null && (roomy || moment == state.current)
             val cell = row(
-                layout = if (counting) tall else plain,
                 name = context.getString(moment.prayer.shortLabel),
-                time = when (times) {
+                time = if (counting && !roomy) "" else when (times) {
                     Times.START_SHORT -> moment.at.shortClockTime(context)
                     Times.RANGE -> listOfNotNull(moment.at, end).joinToString(" – ") { it.shortClockTime(context) }
                     Times.START, Times.COLUMNS -> moment.at.clockTime(context)
@@ -403,29 +412,26 @@ object PrayerWidgets {
                     }
                     paint(context, R.id.row_mark, TINT, tone)
                 }
-                if (oneColumn && moment.prayer in settings.alerts) {
+                // What the phone does when it arrives: over the whole screen, or else how it is heard.
+                val alert = settings.alerts[moment.prayer]
+                if (oneColumn && alert != null) {
                     setViewVisibility(R.id.row_bell, View.VISIBLE)
+                    setImageViewResource(R.id.row_bell, if (alert.fullScreen) R.drawable.ic_alert_screen else alert.soundIcon)
                     paint(context, R.id.row_bell, TINT, onGold ?: faded ?: palette.muted)
                 }
                 if (counting && countdown != null) {
-                    setTextViewText(
-                        R.id.row_count_label,
-                        context.getString(if (state.current == moment) R.string.row_ends_in else R.string.row_starts_in),
-                    )
+                    setViewVisibility(R.id.row_left, View.VISIBLE)
                     setCountdown(R.id.row_countdown, countdown.countsDownTo)
-                    paint(context, R.id.row_count_label, TEXT, palette.onGold)
+                    paint(context, R.id.row_left_icon, TINT, palette.onGold)
                     paint(context, R.id.row_countdown, TEXT, palette.onGold)
                 }
             }
-            val column = if (index < firstColumn) 0 else 1
-            used[column] += if (counting) 2 else 1
-            addView(if (column == 0) R.id.table_start else R.id.table_end, cell)
+            addView(if (index < firstColumn) R.id.table_start else R.id.table_end, cell)
         }
-        // Empty rows under the shorter column keep the two columns' rows level.
+        // An empty row under the shorter column keeps the two columns' rows level.
         if (!oneColumn) {
-            val shorter = if (used[0] < used[1]) R.id.table_start else R.id.table_end
-            repeat(kotlin.math.abs(used[0] - used[1])) {
-                addView(shorter, RemoteViews(context.packageName, plain))
+            repeat(2 * firstColumn - moments.size) {
+                addView(R.id.table_end, RemoteViews(context.packageName, layout))
             }
         }
     }

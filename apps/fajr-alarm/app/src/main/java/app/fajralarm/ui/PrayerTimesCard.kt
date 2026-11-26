@@ -1,6 +1,16 @@
 package app.fajralarm.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.stateDescription
+import app.fajralarm.core.PrayerAlert
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,10 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,10 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -56,13 +60,7 @@ import kotlinx.coroutines.delay
  * until a location is set.
  */
 @Composable
-internal fun PrayerTimesCard(
-    settings: AlarmSettings,
-    tick: Int,
-    onFullScreenChange: (Boolean) -> Unit,
-    onAlertSoundChange: (AlertSound) -> Unit,
-    onAlertChange: (PrayerTime, Boolean) -> Unit,
-) {
+internal fun PrayerTimesCard(settings: AlarmSettings, tick: Int, onAlertChange: (PrayerTime, PrayerAlert?) -> Unit) {
     val context = LocalContext.current
     val params = settings.calcParams() ?: return
     var now by remember(tick) { mutableStateOf(ZonedDateTime.now()) }
@@ -153,30 +151,26 @@ internal fun PrayerTimesCard(
                         }
                     }
                     if (moment.prayer == PrayerTime.FAJR) {
-                        // Fajr has the alarm, so no bell.
-                        Spacer(Modifier.size(44.dp))
+                        // Fajr has the alarm instead: its icon says so while the alarm is on.
+                        Box(Modifier.height(44.dp).widthIn(min = 56.dp).padding(horizontal = 6.dp), contentAlignment = Alignment.CenterEnd) {
+                            if (settings.enabled) {
+                                Icon(
+                                    painterResource(R.drawable.ic_alert_alarm),
+                                    contentDescription = stringResource(R.string.alert_alarm),
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                        }
                     } else {
-                        Bell(
-                            on = moment.prayer in settings.alerts,
+                        AlertButton(
+                            alert = settings.alerts[moment.prayer],
                             description = stringResource(R.string.alert_at, stringResource(moment.prayer.label)),
                         ) { onAlertChange(moment.prayer, it) }
                     }
                 }
             }
         }
-        SwitchRow(
-            stringResource(R.string.full_screen_alerts),
-            settings.fullScreenAlerts,
-            subtitle = stringResource(R.string.full_screen_alerts_hint),
-            onChange = onFullScreenChange,
-        )
-        ChoiceRow(
-            title = stringResource(R.string.alert_sound),
-            current = settings.alertSound,
-            options = AlertSound.values().toList(),
-            label = { stringResource(it.label) },
-            onSelect = onAlertSoundChange,
-        )
         // What the bells, the optional times and the icons mean: there when wanted, out of the way otherwise.
         Fold(stringResource(R.string.times_about)) {
             for (hint in listOf(R.string.alerts_hint, R.string.optional_times_hint, R.string.nafl_hint)) {
@@ -209,36 +203,74 @@ private fun PrayerMark(prayer: PrayerTime, color: Color, modifier: Modifier = Mo
     }
 }
 
-/** A bell that is gold when on and struck through when off. */
+/**
+ * What the phone does when a time arrives, shown as icons and set from the menu behind
+ * them. A struck bell is nothing. Otherwise four corners if it takes the whole screen,
+ * then a bell, a shaking phone or a bell in outline for sound, vibration or silence.
+ */
 @Composable
-private fun Bell(on: Boolean, description: String, onChange: (Boolean) -> Unit) {
-    val tint = if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-    Box(
-        Modifier
-            .size(44.dp)
-            .clip(CircleShape)
-            .toggleable(value = on, role = Role.Switch, onValueChange = onChange)
-            .semantics { contentDescription = description },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            Icons.Rounded.Notifications,
-            contentDescription = null,
-            tint = tint,
-            modifier = Modifier
-                .size(22.dp)
-                .drawWithContent {
-                    drawContent()
-                    if (!on) {
-                        drawLine(
-                            tint,
-                            Offset(size.width * 0.1f, size.height * 0.1f),
-                            Offset(size.width * 0.9f, size.height * 0.9f),
-                            strokeWidth = 2.dp.toPx(),
-                            cap = StrokeCap.Round,
-                        )
-                    }
-                },
-        )
+private fun AlertButton(alert: PrayerAlert?, description: String, onChange: (PrayerAlert?) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val state = if (alert == null) {
+        stringResource(R.string.alert_none)
+    } else {
+        stringResource(if (alert.fullScreen) R.string.alert_full_screen else R.string.alert_notification) +
+            ", " + stringResource(alert.sound.label)
     }
+    Box {
+        Row(
+            Modifier
+                .height(44.dp)
+                .widthIn(min = 56.dp)
+                .clip(MaterialTheme.shapes.small)
+                .clickable(role = Role.Button) { open = true }
+                .semantics {
+                    contentDescription = description
+                    stateDescription = state
+                }
+                .padding(horizontal = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+        ) {
+            val tint = if (alert != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+            if (alert?.fullScreen == true) {
+                Icon(painterResource(R.drawable.ic_alert_screen), contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+            }
+            Icon(painterResource(alert.soundIcon), contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+        }
+        // Left open after a choice, so that the kind of notice and its sound can be set in one go.
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            AlertChoice(R.drawable.ic_alert_off, R.string.alert_none, alert == null) {
+                onChange(null)
+                open = false
+            }
+            HorizontalDivider()
+            AlertChoice(R.drawable.ic_alert_banner, R.string.alert_notification, alert?.fullScreen == false) {
+                onChange((alert ?: PrayerAlert()).copy(fullScreen = false))
+            }
+            AlertChoice(R.drawable.ic_alert_screen, R.string.alert_full_screen, alert?.fullScreen == true) {
+                onChange((alert ?: PrayerAlert()).copy(fullScreen = true))
+            }
+            HorizontalDivider()
+            AlertSound.values().forEach { sound ->
+                AlertChoice(PrayerAlert(sound = sound).soundIcon, sound.label, alert?.sound == sound) {
+                    onChange((alert ?: PrayerAlert()).copy(sound = sound))
+                }
+            }
+        }
+    }
+}
+
+/** One line of the menu: its icon, what it does, and a tick when it is the one chosen. */
+@Composable
+private fun AlertChoice(icon: Int, label: Int, chosen: Boolean, onClick: () -> Unit) {
+    DropdownMenuItem(
+        text = { Text(stringResource(label)) },
+        onClick = onClick,
+        leadingIcon = { Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(20.dp)) },
+        trailingIcon = {
+            if (chosen) Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        },
+        modifier = Modifier.semantics { selected = chosen },
+    )
 }

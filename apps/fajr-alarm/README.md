@@ -14,8 +14,8 @@ and update address keep the old name, so installed copies update as before.
 - **Recalculated daily**: after each alarm the next one is computed fresh, and again after a reboot, app update, clock change or timezone change.
 - **On by default**: a fresh install has the alarm switched on, so it rings from the first Fajr after you set your location.
 - **Pick which days it rings.**
-- **Every prayer time of the day**: Fajr, Dhuhr, Asr, Maghrib and Isha, with Imsak, Shuruq (sunrise) and the optional times (Duha, midnight, and Qiyam in the last third of the night). The **Prayers** page says which prayer it is and how long it has left. See [Prayer times, widgets and the lock screen](#prayer-times-widgets-and-the-lock-screen).
-- **A notification for any of those times**, if you want one: a plain notification with the phone's notification sound, never the alarm or a mission. Off until you tap a time's bell.
+- **Every prayer time of the day**: Fajr, Dhuhr, Asr, Maghrib and Isha, with Imsak, Shuruq (sunrise) and the optional times (Duha, midnight, and Qiyam in the last third of the night). The first page says which prayer it is and how long it has left. See [Prayer times, widgets and the lock screen](#prayer-times-widgets-and-the-lock-screen).
+- **A notice for any of those times**, if you want one: a notification or a black full-screen notice, with a sound, a vibration or silently, set per time from the icon beside it. Never the alarm or a mission. Off until you set one.
 - **Two home screen widgets**: every time of the day as a table, and the current prayer with a live countdown. Both show more when made bigger.
 - **The current prayer on the lock screen**: a silent notification that counts down the time it has left.
 - **Location** from the device (coarse, no Google Play services needed) or typed in manually.
@@ -57,9 +57,9 @@ How it works and its limits:
 
 ## Prayer times, widgets and the lock screen
 
-**Two pages.** The app opens on **Prayers**: the day's times, the moon, and the settings for location, calculation and widgets. **Fajr alarm** has the next alarm, the last one, and the settings for the alarm, its sound and its mission. On both, each group of settings is folded up to one line that says what is set, and opens when tapped.
+**Pages.** The app opens on the prayers: the moon at the top, then the day's times. The button at the top left opens a side menu with the other pages: **Fajr alarm** (the next alarm, the last one, and the settings for the alarm, its sound and its mission, each folded up to a line that says what is set), **Location**, **Calculation** and **Lock screen & widgets**. Back returns to the prayers.
 
-**The times.** The **Times of the day** card lists the day from Imsak to Qiyam, the night prayer, with the current prayer marked and the time it has left. Each prayer, obligatory or voluntary, has its icon before its name, when it starts and, under that, when its time runs out. The icons of the two voluntary prayers (nafl), Duha and Qiyam, are pink. Imsak, Shuruq (sunrise) and midnight are not prayers: they have no icon and are single moments with no end. What the bells and icons mean is under **About these times**.
+**The times.** The **Times of the day** card lists the day from Imsak to Qiyam, the night prayer, with the current prayer marked and the time it has left. Each prayer, obligatory or voluntary, has its icon before its name, when it starts and, under that, when its time runs out. The icons of the two voluntary prayers (nafl), Duha and Qiyam, are pink. Imsak, Shuruq (sunrise) and midnight are not prayers: they have no icon and are single moments with no end. What the icons mean is under **About these times**.
 
 | Time | How it is worked out |
 |---|---|
@@ -83,28 +83,42 @@ A prayer's time is taken to end when the next prayer starts. Fajr ends at sunris
 
 The prayer stays the current one until its time is really over: the countdown runs to the chosen end first and then to Maghrib or Fajr. With Hanafi Asr, which starts when the shadow is twice as long, that choice for the end falls back to Maghrib. The 20 minutes for the yellowing sun is an approximation of mine, and so is which school each choice is labelled with: check them with a scholar you trust. When Asr starts is the separate **Asr** setting.
 
-**Notifications.** Each time except Fajr has a bell. With the bell on, a notification is posted when that time arrives, using the phone's notification sound. It is not the alarm: nothing rings on the alarm stream, there is no mission, and it goes away on its own after an hour. Fajr has no bell because it has the alarm. A notification that would be more than 10 minutes late (the phone was off) is skipped. Which sound plays is set in the phone's settings for the app, under the **Prayer time notifications** category.
+**What the phone does at each time.** Beside every time except Fajr is an icon that shows what the phone will do when it arrives, and opens the choice when tapped:
 
-**Full-screen alert.** With **Full-screen alert** on, under the list, a time whose bell is on also opens over the whole screen, lock screen included. The screen is black with a few pale marks, like a phone's always-on clock: the prayer's icon and name, its clock time large and thin, the date, and an **OK** button. On a phone that is unlocked and in use Android shows a banner instead. It is still not the alarm: there is no mission. It needs the same "full-screen" permission as the alarm, which the warnings at the top ask for.
+| Icon | Meaning |
+|---|---|
+| A bell struck through | Nothing |
+| A bell | A notification with the phone's notification sound |
+| A phone with lines either side | Vibration only |
+| A bell in outline | Silent: it only shows |
+| Four corners, before one of the three above | A full-screen notice instead of a plain notification |
+| An alarm clock, on Fajr | The alarm rings (while it is on); Fajr has no notice of its own |
 
-**Alert sound.** **Alert sound**, under the same list, sets how a time's notification is heard, full-screen or plain: the phone's notification sound, vibration only, or neither. Android fixes a notification category's sound when the category is first made, so each choice has a category of its own under the phone's settings for the app.
+Each time has its own setting. The menu has two groups, **Notification** or **Full-screen notice**, and **Sound**, **Vibration only** or **Silent**, and stays open so both can be set in one go; **Nothing** turns the time off. None of it is the alarm: nothing rings on the alarm stream, there is no mission, and the notification goes away on its own after an hour. One that would be more than 10 minutes late (the phone was off) is skipped.
+
+**Full-screen notice.** It opens over the whole screen, lock screen included. The screen is black with a few pale marks, like a phone's always-on clock: the prayer's icon and name, its clock time large and thin, the date, and an **OK** button. On a phone that is unlocked and in use Android shows a banner instead. It needs the same "full-screen" permission as the alarm, which the warnings at the top ask for.
+
+Android fixes a notification category's sound when the category is first made, so sound, vibration and silence each have a category of their own under the phone's settings for the app. Which sound plays is set there, under **Prayer time notifications**.
 
 **The moon.** The **Moon** card draws tonight's moon as it looks, with its phase, how much of it is lit and the day of its cycle, and the dates of the next new moon, first quarter, full moon and last quarter. It is worked out on the phone from low-precision positions of the sun and the moon; the tests hold the four phases of January 2024 to within 90 minutes of the almanac. South of the equator the moon is drawn mirrored. The day count is from the astronomical new moon and can differ by a day from the Hijri date, which goes by sighting.
 
 **Widgets.** Add them from **Lock screen & widgets** in the app, or by touching and holding the home screen and choosing Widgets.
-- **All times** (4 × 2 to begin with): the current prayer with a countdown and the date, over a table of the ten times in the order they come. The current prayer's row is gold, with a countdown of its own to the prayer's end, and the times that have passed are faded.
+- **All times** (4 × 2 to begin with): the current prayer with a countdown and the date, over a table of the day's times in the order they come. The current prayer's row is gold, with the time left beside its name, and the times that have passed are faded.
 - **Current prayer** (2 × 1 to begin with): the current prayer, the countdown, and the next prayer's time. It shrinks to one cell, with just the prayer's name over the countdown.
 
 Both show more when you make them bigger (touch and hold the widget, then drag its edges):
 
 | "All times" at least | Shows |
 |---|---|
-| 110 dp tall | The table in two columns of five, read down the first and then the second, with each time's start. Clock times are shown without AM/PM to fit |
-| 140 dp tall | The gold row is twice as tall and counts down under the prayer's name: "ends in" for the current prayer, or "starts in" where the gold row is the next one |
+| 110 dp tall | The table in two columns, read down the first and then the second, with each time's start. Clock times are shown without AM/PM to fit |
 | 170 dp tall | Also a second countdown, to the next prayer, when the current one ends before it starts: Fajr, which ends at sunrise, or an end chosen in the settings |
-| 250 dp tall | The table in one column, each prayer with its start and end as "4:52 – 6:20", and a bell beside the times that send a notification |
-| 250 dp tall and 290 dp wide | The start and the end in columns of their own, **Begins** and **Ends**, with AM/PM |
+| 250 dp tall | The table in one column, each prayer with its start and end as "4:52 – 6:20", and beside each time the icon of what the phone does when it arrives |
+| 250 dp tall and 330 dp wide | The start and the end in columns of their own, **Begins** and **Ends**, with AM/PM |
 | 330 dp tall | Also a bottom line with the next alarm and the calculation method |
+
+**The time left.** The gold row has an hourglass and a live countdown right after the prayer's name. Where the widget is wide enough (340 dp in two columns, 270 dp in one) the row keeps its clock time as well. Narrower than that, the countdown takes the clock time's place while the prayer is the current one; when the gold row is the next prayer, it keeps its clock time and the line at the top does the counting.
+
+**Which times.** **Lock screen & widgets → Times in the widgets** chooses the times both widgets list; they fill two columns as evenly as they come. If the current prayer isn't among them the next one is gold, and the line at the top still names the current one.
 
 In both widgets, at every size, each prayer has the same icon before its name as in the app, pink for a voluntary prayer.
 
@@ -118,14 +132,14 @@ The countdown ticks by itself, every second. Tapping a widget opens the app.
 
 **Lock screen.** Samsung's own lock screen widgets (the small ones under the clock, added by touching and holding the lock screen) only take Samsung's apps: there is no way for another app to appear in that list, so Prayer Times can't be added there. Two things come close:
 - Samsung's **Good Lock** app with its **LockStar** module puts any home screen widget on the lock screen, where the phone has it. The **Current prayer** widget at one cell, or two cells wide, with the **See-through** colours is made for that. This has not been tried.
-- **Current prayer on the lock screen** keeps a silent notification up with the prayer's name and a live countdown. On Samsung phones the lock screen shows notifications as icons until you choose **Settings → Lock screen → Notifications → Cards** (the wording varies by version). From Android 14 the notification can be swiped away; it comes back at the next prayer.
+- **Current prayer on the lock screen** keeps a silent notification up with the prayer's name and a live countdown: **Always**, or **Only the last 15 minutes before the next prayer**, when it goes up 15 minutes before the current prayer's time runs out (or before the next prayer starts, when none is current) and comes down when it does. On Samsung phones the lock screen shows notifications as icons until you choose **Settings → Lock screen → Notifications → Cards** (the wording varies by version). From Android 14 the notification can be swiped away; it comes back at the next prayer.
 
 Both widgets are also marked as allowed on the lock screen for the devices whose Android takes widgets there, such as tablets from Android 15; that has not been tried either.
 
-**How it stays current, and what it costs the phone.** Nothing runs between prayer times: no service, no timer, no network. The app queues an alarm for the next time that matters (the next time of the day, or the end chosen for the current prayer if that comes first) and is asleep until it fires; then it posts that time's notification if its bell is on, redraws the widgets and the lock screen notification, and queues the next one.
-- With nothing switched on (no bell, no widget, no lock screen notification) nothing is queued at all.
-- A bell wakes the phone once, at that time.
-- The lock screen notification wakes it at each of the ten times of the day, so it is right the moment the screen lights up.
+**How it stays current, and what it costs the phone.** Nothing runs between prayer times: no service, no timer, no network. The app queues an alarm for the next time that matters (the next time of the day, or the end chosen for the current prayer if that comes first) and is asleep until it fires; then it posts that time's notification if it is set to have one, redraws the widgets and the lock screen notification, and queues the next one.
+- With nothing switched on (no time set to do anything, no widget, no lock screen notification) nothing is queued at all.
+- A time set to do something wakes the phone once, at that time.
+- The lock screen notification, set to Always, wakes it at each of the ten times of the day, so it is right the moment the screen lights up. Set to the last 15 minutes, it wakes it twice for each prayer: to put the notification up and to take it down.
 - Widgets never wake the phone. Their alarm waits until the phone is awake anyway, and the countdown inside them is drawn by Android, not by the app.
 - The widgets don't use Android's periodic widget refresh, which would wake the phone on a timer.
 

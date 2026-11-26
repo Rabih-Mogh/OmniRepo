@@ -269,14 +269,12 @@
     <!-- Main screen: Times of the day. %1$s a time of the day, %2$s a clock time or a length of time -->
     <string name="section_prayers">أوقات اليوم</string>
     <string name="times_about">عن هذه الأوقات</string>
-    <string name="full_screen_alerts">تنبيه بملء الشاشة</string>
-    <string name="full_screen_alerts_hint">عند دخول وقت جرسه مفعّل، يظهر على شاشة سوداء مع ساعته، فوق شاشة القفل أيضاً. وإذا كان الهاتف قيد الاستعمال يظهر شريطاً. عند الإيقاف: إشعار عادي.</string>
     <string name="prayer_alert_dismiss">حسناً</string>
-    <string name="alert_sound">صوت التنبيه</string>
     <string name="alert_sound_sound">صوت</string>
     <string name="alert_sound_vibrate">اهتزاز فقط</string>
-    <string name="alert_sound_silent">لا شيء: يظهر فقط</string>
-    <!-- Main screen: the two pages -->
+    <string name="alert_sound_silent">صامت</string>
+    <!-- The side menu and the pages it leads to; the settings pages are named by their section_ strings -->
+    <string name="menu">القائمة</string>
     <string name="tab_prayers">الصلوات</string>
     <string name="tab_fajr_alarm">منبّه الفجر</string>
     <!-- Main screen: Moon. %1$d a percentage or a day number, %1$s a phase and %2$s a date -->
@@ -295,14 +293,17 @@
     <string name="time_left">بقي %1$s</string>
     <string name="starts_in">بعد %1$s</string>
     <string name="next_prayer">التالية: %1$s %2$s</string>
-    <!-- A countdown follows each of these three -->
+    <!-- A countdown follows it -->
     <string name="next_prayer_in">التالية: %1$s بعد</string>
-    <string name="row_ends_in">ينتهي بعد</string>
-    <string name="row_starts_in">يدخل بعد</string>
     <string name="duration_hours_minutes">%1$d س %2$d د</string>
     <string name="duration_minutes">%1$d د</string>
     <string name="alert_at">إشعار عند %1$s</string>
-    <string name="alerts_hint">اضغط على الجرس ليصلك إشعار عند دخول ذلك الوقت. هو إشعار عادي وليس المنبّه: المنبّه للفجر.</string>
+    <string name="alerts_hint">اضغط على الأيقونة بجانب الوقت لتختار ما يفعله الهاتف عند دخوله: لا شيء، أو إشعار، أو تنبيه بملء الشاشة، مع صوت أو اهتزاز أو بصمت. التنبيه بملء الشاشة أسود مع الساعة ويظهر فوق شاشة القفل أيضاً، وإذا كان الهاتف قيد الاستعمال يظهر شريطاً. هذا كله ليس المنبّه: المنبّه للفجر.</string>
+    <!-- What the phone does at a time, chosen from the icon beside it -->
+    <string name="alert_none">لا شيء</string>
+    <string name="alert_notification">إشعار</string>
+    <string name="alert_full_screen">تنبيه بملء الشاشة</string>
+    <string name="alert_alarm">يرنّ المنبّه</string>
     <string name="optional_times_hint">يبدأ الضحى بعد الشروق بـ 15 دقيقة. يُحسب منتصف الليل والثلث الأخير من غروب الشمس إلى الفجر التالي.</string>
     <!-- The icon before each prayer in the list: what kind of prayer it is, read out by a screen reader -->
     <string name="mark_obligatory">فريضة</string>
@@ -323,7 +324,10 @@
     <!-- Lock screen notification and widgets. %1$s a prayer, %2$s a clock time; a countdown follows "ends in" and "starts in" -->
     <string name="section_lock_widgets">شاشة القفل والأدوات</string>
     <string name="lock_screen_countdown">الصلاة الحالية على شاشة القفل</string>
-    <string name="lock_screen_countdown_hint">إشعار صامت فيه الصلاة الحالية وعدّ تنازلي حيّ للوقت المتبقي لها. يبقى على شاشة القفل وفي شريط الإشعارات.</string>
+    <string name="lock_screen_countdown_hint">إشعار صامت فيه الصلاة الحالية وعدّ تنازلي حيّ للوقت المتبقي لها. يبقى على شاشة القفل وفي شريط الإشعارات، دائماً أو في آخر 15 دقيقة فقط قبل انتهاء وقت الصلاة.</string>
+    <string name="lock_notice_off">متوقف</string>
+    <string name="lock_notice_always">دائماً</string>
+    <string name="lock_notice_ending">آخر 15 دقيقة فقط قبل الصلاة التالية</string>
     <string name="now_ends_in">ينتهي وقت %1$s بعد</string>
     <string name="now_starts_in">يدخل وقت %1$s بعد</string>
     <string name="now_until">%1$s حتى %2$s</string>
@@ -337,6 +341,7 @@
     <string name="widget_add_now">إضافة أداة «الصلاة الحالية»</string>
     <string name="widget_add_by_hand">اضغط مطوّلاً على مكان فارغ في الشاشة الرئيسية، واختر «الأدوات» ثم «مواقيت الصلاة».</string>
     <string name="widget_set_location">افتح مواقيت الصلاة لتحديد موقعك</string>
+    <string name="widget_times">الأوقات في الأدوات</string>
     <string name="widget_theme">ألوان الأدوات</string>
     <string name="widget_theme_night">ليلي: أزرق التطبيق وذهبيّه</string>
     <string name="widget_theme_black">أسود</string>

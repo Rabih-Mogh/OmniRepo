@@ -11,6 +11,27 @@ enum class DismissMission {
     SINK_PHOTO,
 }
 
+/** When the silent notification with the current prayer's countdown is up. */
+enum class LockScreenCountdown {
+    OFF,
+    ALWAYS,
+
+    /** Only for the last [ENDING_MINUTES] before the prayer's time runs out, or before the next prayer starts. */
+    ENDING,
+    ;
+
+    companion object {
+        const val ENDING_MINUTES = 15L
+    }
+}
+
+/** What the phone does when a time arrives. */
+data class PrayerAlert(
+    /** Shown over the whole screen, lock screen included, rather than as a plain notification. */
+    val fullScreen: Boolean = false,
+    val sound: AlertSound = AlertSound.SOUND,
+)
+
 /** How a prayer time's notification makes itself heard. */
 enum class AlertSound {
     /** The phone's notification sound. */
@@ -84,17 +105,15 @@ data class AlarmSettings(
     val snoozeMinutes: Int = 5,
     val maxSnoozes: Int = 3,
     val dismissMission: DismissMission = DismissMission.NONE,
-    /** The times that get a plain notification when they arrive. Fajr has the alarm instead. */
-    val alerts: Set<PrayerTime> = emptySet(),
-    /** Show a time's notification over the whole screen, lock screen included, rather than as a plain one. */
-    val fullScreenAlerts: Boolean = false,
-    /** What a time's notification does besides showing. */
-    val alertSound: AlertSound = AlertSound.SOUND,
-    /** Keep the current prayer and the time it has left in a notification, for the lock screen. */
-    val lockScreenCountdown: Boolean = false,
+    /** What the phone does when each time arrives; a time that isn't here does nothing. Fajr has the alarm instead. */
+    val alerts: Map<PrayerTime, PrayerAlert> = emptyMap(),
+    /** Keep the current prayer and the time it has left in a silent notification, for the lock screen. */
+    val lockScreenCountdown: LockScreenCountdown = LockScreenCountdown.OFF,
     val widgetTheme: WidgetTheme = WidgetTheme.GLASS,
     /** The colours of [WidgetTheme.CUSTOM]. */
     val widgetColors: WidgetColors = WidgetColors(),
+    /** The times the widgets' table lists. */
+    val widgetTimes: Set<PrayerTime> = PrayerTime.values().toSet(),
 ) {
     val hasLocation: Boolean get() = latitude != null && longitude != null
 
