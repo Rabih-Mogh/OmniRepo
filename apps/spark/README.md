@@ -18,13 +18,28 @@ what you asked to learn and what has held you, is prepared every morning.
 - **Lessons**: five to eight steps each. Besides reading, a step can ask you to pick an
   answer, put things in order, guess a number on a slider, or drag a curve until it passes
   through a point. Each is marked on the first answer and then explains itself.
+  - **A guess first**: every lesson opens by asking, before it explains anything.
+  - **Your answer against the right one**: a guess on the slider stays where you put it
+    while the answer travels out from it to where it belongs; things put in order move to
+    their right places, still wearing the numbers you gave them; a wrong pick shakes and
+    the right one swells.
+  - **What was wrong with your pick**: every wrong option has its own explanation, shown
+    when you pick it, before the reason the right one is right.
 - **What I want to learn**: a list you write in the app. Reels that match it come first,
   and sending the list has reels and lessons made for it in a coming batch.
 - **A daily goal, then a gentle stop**: 5, 10, 15 or 20 reels and one lesson a day. Once
   you reach it the feed says you're done for today, with your streak. Swiping past it
   carries on.
+- **A forgiving streak**: a day counts towards the streak once you watch 3 reels or finish
+  a lesson, well short of the goal. One missed day in a week is let go without a word; a
+  second ends the streak, and nothing announces it.
 - **A new batch every morning**: about 15 reels and 2 lessons, a third of them news from
   the last few days. See [Where the reels come from](#where-the-reels-come-from).
+- **Little sounds**: a chime and a tap of vibration for a right answer, a softer one for a
+  wrong one, and others for a pick, a puzzle's answer, a finished lesson and the day's goal.
+  The app makes the sounds itself, so no sound file ships with it. They play at the media
+  volume, keep quiet while the phone is on silent or vibrate, and can be turned off on the
+  screen behind the streak pill.
 - **English and Arabic**: the app follows the phone's language. The reels and lessons
   themselves are in English for now.
 - **Light**: no account, no ads, no analytics. What it learns about you stays on the
@@ -77,6 +92,8 @@ in the background, isn't counted as attention.
   and the screens are tested on a computer (see below). How the swiping and the animations
   feel on a real phone is only known from running it there.
 - The reels are text and drawings, not video.
+- The sounds are checked for their shape (length, loudness, rising or falling) and for when
+  they play. How they sound on a phone's speaker is only known from listening there.
 - The feed is only as good as the packs. If the morning run doesn't happen (the computer
   is off), there is no new batch that day, and when every reel has been seen the feed says so.
 - A model writes the packs. They are checked for form by a program and for sense by the
@@ -88,10 +105,10 @@ in the background, isn't counted as attention.
 
 ```
 spark/
-├── core/      Pure Kotlin/JVM: the pack format and its checker, formulas, the feed's ordering, the day's goal and streak (unit-tested)
+├── core/      Pure Kotlin/JVM: the pack format and its checker, formulas, the feed's ordering, the day's goal and the streak, the sounds (unit-tested)
 ├── app/       Android app (Kotlin, Jetpack Compose, Material 3)
 │   ├── data/    The library of packs (starter and fetched) and what is remembered about the user
-│   ├── ui/      The feed and its reels, the lesson screen, the screen about you, the first screen
+│   ├── ui/      The feed and its reels, the lesson screen, the screen about you, the first screen, playing the sounds
 │   ├── update/  The self-updater
 │   └── src/main/assets/starter.json  The starter pack
 └── content/   GENERATE.md: how to write, check and publish a pack
@@ -103,8 +120,8 @@ Requirements: Android Studio (Ladybug or newer) or the Android SDK with platform
 
 ```bash
 cd apps/spark
-./gradlew :core:test              # the pack reader, formulas, the feed's ordering, the goal and streak (no Android SDK needed)
-./gradlew :app:testDebugUnitTest  # the feed walked through, a lesson taken, fetching packs from a stand-in server, storage, every starter reel on a small phone, the updater, and the screens in English and Arabic (pictures in app/build/screens)
+./gradlew :core:test              # the pack reader, formulas, the feed's ordering, the goal and streak, the sounds' shape (no Android SDK needed)
+./gradlew :app:testDebugUnitTest  # the feed walked through, a lesson taken, fetching packs from a stand-in server, storage, when the sounds play, every starter reel on a small phone, the updater, and the screens in English and Arabic (pictures in app/build/screens)
 ./gradlew :app:assembleDebug      # → app/build/outputs/apk/debug/app-debug.apk
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```

@@ -37,11 +37,13 @@ class PacksTest {
         assertEquals(Visual.Dots(3, 2), pack.reels[2].visual)
 
         val steps = pack.lessons.single().steps
-        assertEquals(Visual.Number(253.0, 0, "", "pairs"), assertIs<Step.Read>(steps[0]).visual)
-        // The right answer is the first option as written; the rest are the wrong ones.
-        val choice = assertIs<Step.Choice>(steps[1])
+        // The right answer is the first option as written; the rest are the wrong ones, each with what is wrong with it.
+        val choice = assertIs<Step.Choice>(steps[0])
         assertEquals("6", choice.right)
         assertEquals(listOf("4", "8"), choice.wrong)
+        assertEquals("That counts every person twice.", choice.mistake("8"))
+        assertNull(choice.mistake("6"))
+        assertEquals(Visual.Number(253.0, 0, "", "pairs"), assertIs<Step.Read>(steps[1]).visual)
         assertEquals(3, assertIs<Step.Order>(steps[2]).items.size)
         assertEquals(23.0, assertIs<Step.Estimate>(steps[3]).answer)
         val explore = assertIs<Step.Explore>(steps[4])
@@ -118,6 +120,8 @@ class PacksTest {
     fun `what a step needs is checked`() {
         assertProblem(with("\"options\": [\"6\", \"4\", \"8\"]", "\"options\": [\"6\", \"4\", \"6\"]"), "two options are the same")
         assertProblem(with("\"options\": [\"6\", \"4\", \"8\"]", "\"options\": [\"6\"]"), "\"options\" must be a list of 2 to 4")
+        assertProblem(with("\"options\": [\"6\", \"4\", \"8\"]", "\"options\": [\"6\", \"4\"]"), "one line for each wrong option, in the options' order: 1, not 2")
+        assertProblem(with("\"mistakes\": [\"That counts the people, not the pairs.\", \"That counts every person twice.\"], ", ""), "\"mistakes\" must be a list of 1 to 3")
         assertProblem(with("\"range\": [2, 100], \"step\": 1", "\"range\": [100, 2], \"step\": 1"), "the lower one first")
         assertProblem(with("\"range\": [2, 100], \"step\": 1, \"answer\": 23, \"tolerance\": 3", "\"range\": [2, 100], \"step\": 10, \"answer\": 27, \"tolerance\": 1"), "no stop of the slider")
         assertProblem(with("\"target\": {\"x\": 10, \"y\": 45}", "\"target\": {\"x\": 10, \"y\": 9}"), "already passes through the target")
@@ -133,6 +137,18 @@ class PacksTest {
         assertNull(Packs.index("""{"format": 2, "packs": ["2026-11-26"]}"""))
         assertNull(Packs.index("""{"format": 1}"""))
         assertNull(Packs.index("<html>Not found</html>"))
+    }
+
+    @Test
+    fun `a lesson has to open with a guess`() {
+        val read = """{"kind": "read", "text": "Just read."}"""
+        val ask = """{"kind": "order", "text": "Smallest first.", "items": ["1", "2", "3"], "why": "Counting."}"""
+        fun reading(steps: String) = Packs.read(
+            """{"format": 1, "day": "2026-11-26", "reels": [], "lessons": [{"id": "2026-11-26-told", "topic": "maths", "tags": ["x1"], "title": "Told", "summary": "Telling first.", "steps": [$steps]}]}""",
+        )
+        assertProblem(reading("$read, $ask, $read"), "2026-11-26-told: a lesson opens with a guess")
+        assertTrue(reading("$read, $ask, $read").pack!!.lessons.isEmpty())
+        assertEquals(1, reading("$ask, $read, $read").pack!!.lessons.size)
     }
 
     @Test

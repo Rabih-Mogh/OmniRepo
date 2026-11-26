@@ -57,8 +57,20 @@ sealed interface Step {
 
     data class Read(override val text: String, val title: String?, val visual: Visual?) : Step
 
-    /** One of [wrong] and [right], shown in a shuffled order. */
-    data class Choice(override val text: String, val right: String, val wrong: List<String>, val why: String) : Step
+    /**
+     * One of [wrong] and [right], shown in a shuffled order. [mistakes] says what is wrong
+     * with each of [wrong], in the same order.
+     */
+    data class Choice(
+        override val text: String,
+        val right: String,
+        val wrong: List<String>,
+        val mistakes: List<String>,
+        val why: String,
+    ) : Step {
+        /** What is wrong with [option], or null when it is the right one. */
+        fun mistake(option: String): String? = mistakes.getOrNull(wrong.indexOf(option))
+    }
 
     /** [items] in their right order; they are shown shuffled. */
     data class Order(override val text: String, val items: List<String>, val why: String) : Step
@@ -209,6 +221,10 @@ object Packs {
         val id = id(f, day, ids)
         val steps = f.children("steps", 3..10).map(::step)
         if (steps.isNotEmpty() && steps.all { it is Step.Read }) f.wrong("a lesson needs a step that asks for something")
+        // A guess comes first: an explanation lands better on someone who has already said what they think.
+        if (steps.firstOrNull().let { it is Step.Read || it is Step.Explore }) {
+            f.wrong("a lesson opens with a guess: its first step must be a choice, an estimate or an order")
+        }
         val lesson = Lesson(
             id = id,
             day = day.toEpochDay(),
@@ -281,7 +297,12 @@ object Packs {
         "choice" -> {
             val options = f.texts("options", 2..4, 90)
             if (options.distinct().size != options.size) f.wrong("two options are the same")
-            Step.Choice(f.text("text", 300), options.firstOrNull().orEmpty(), options.drop(1), f.text("why", 300))
+            // Each wrong option says what is wrong with it, so the feedback answers the mistake that was made.
+            val mistakes = f.texts("mistakes", 1..3, 200)
+            if (options.isNotEmpty() && mistakes.isNotEmpty() && mistakes.size != options.size - 1) {
+                f.wrong("\"mistakes\" needs one line for each wrong option, in the options' order: ${options.size - 1}, not ${mistakes.size}")
+            }
+            Step.Choice(f.text("text", 300), options.firstOrNull().orEmpty(), options.drop(1), mistakes, f.text("why", 300))
         }
         "order" -> {
             val items = f.texts("items", 3..5, 70)

@@ -43,8 +43,9 @@
       "title": "Counting pairs",
       "summary": "Why coincidences are more common than they feel.",
       "steps": [
+        {"kind": "choice", "text": "How many pairs do 4 people make?", "options": ["6", "4", "8"],
+         "mistakes": ["That counts the people, not the pairs.", "That counts every person twice."], "why": "3 + 2 + 1 = 6."},
         {"kind": "read", "title": "Pairs grow fast", "text": "Each new person pairs with everyone already there.\nSo pairs pile up.", "visual": {"kind": "number", "value": 253, "suffix": " pairs"}},
-        {"kind": "choice", "text": "How many pairs do 4 people make?", "options": ["6", "4", "8"], "why": "3 + 2 + 1 = 6."},
         {"kind": "order", "text": "Put these in order, fewest pairs first.", "items": ["5 people", "10 people", "23 people"], "why": "More people, more pairs."},
         {"kind": "estimate", "text": "How many people for a 50% chance of a shared birthday?", "range": [2, 100], "step": 1, "answer": 23, "tolerance": 3, "unit": "people", "why": "23 people make 253 pairs."},
         {"kind": "explore", "text": "Drag a until the curve passes through the dot.", "plot": "a*x*(x-1)/2", "x": [0, 10], "y": [0, 50],

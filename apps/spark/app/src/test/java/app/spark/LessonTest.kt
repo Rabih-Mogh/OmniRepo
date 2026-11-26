@@ -57,17 +57,18 @@ class LessonTest {
     @Test
     fun `every step answered right`() {
         open()
-        compose.onNodeWithText("Pairs grow fast").assertIsDisplayed()
-        compose.onNodeWithText("253 pairs").assertIsDisplayed()
-        picture("read")
-        tap("Continue")
-
+        // The lesson opens by asking.
         compose.onNodeWithText("Check").assertIsNotEnabled()
         tap("6")
         tap("Check")
         compose.onNodeWithText("Right").assertIsDisplayed()
         compose.onNodeWithText("3 + 2 + 1 = 6.").assertIsDisplayed()
         picture("choice")
+        tap("Continue")
+
+        compose.onNodeWithText("Pairs grow fast").assertIsDisplayed()
+        compose.onNodeWithText("253 pairs").assertIsDisplayed()
+        picture("read")
         tap("Continue")
 
         tap("5 people")
@@ -107,12 +108,16 @@ class LessonTest {
     @Test
     fun `every step answered wrong`() {
         open()
-        tap("Continue")
-
+        // A wrong pick is told what was wrong with it, then why the right one is right.
+        tap("4")
         tap("8")
         tap("Check")
         compose.onNodeWithText("Not quite").assertIsDisplayed()
+        compose.onNodeWithText("That counts every person twice.").assertIsDisplayed()
+        compose.onNodeWithText("That counts the people, not the pairs.").assertDoesNotExist()
         compose.onNodeWithText("3 + 2 + 1 = 6.").assertIsDisplayed()
+        picture("choice-wrong")
+        tap("Continue")
         tap("Continue")
 
         // Picked, taken back, and picked again in the wrong order.
@@ -146,6 +151,8 @@ class LessonTest {
     @Test
     fun `closing a lesson early gives no score`() {
         open()
+        tap("6")
+        tap("Check")
         tap("Continue")
         compose.onNode(androidx.compose.ui.test.hasContentDescription("Close the lesson")).performClick()
         assertEquals(true, closed)

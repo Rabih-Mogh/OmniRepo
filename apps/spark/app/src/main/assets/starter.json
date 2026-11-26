@@ -1093,6 +1093,11 @@
             "About 36 years",
             "About 72 years"
           ],
+          "mistakes": [
+            "That is 100 ÷ 3: the time to double if the same 3 were added every year. Compounding gets there sooner.",
+            "That is the answer at 2% a year: 72 ÷ 2. Here the rate is 3%.",
+            "72 years is the doubling time at 1% a year. Divide 72 by the rate: 72 ÷ 3."
+          ],
           "why": "72 ÷ 3 = 24. The exact answer is about 23.4 years. Dividing 100 by 3 gives 33 years, which forgets that growth compounds."
         },
         {
@@ -1127,6 +1132,11 @@
             "About 4 years",
             "About 8 years",
             "About 24 years"
+          ],
+          "mistakes": [
+            "Simple interest would need about 4 years: 100 ÷ 24. Each year's interest earns interest too, which brings it down to about 3.",
+            "8 years is the doubling time at about 9% a year. At 24% it is 72 ÷ 24.",
+            "24 is the rate, not the time. The rule divides 72 by the rate: 72 ÷ 24."
           ],
           "why": "72 ÷ 24 = 3. The exact answer is about 3.2 years: the rule gets rougher at high rates. The message holds, though. Compounding works against you just as fast as it works for you."
         }
@@ -1182,6 +1192,11 @@
             "999 out of 1,098: about 91%",
             "100 out of 100,000: 0.1%"
           ],
+          "mistakes": [
+            "That is the share of ill people the test catches. The question runs the other way: of the people it flags, how many are ill?",
+            "Those 999 are the healthy people flagged by mistake. 91% is the share of positives that are false alarms.",
+            "That is how common the disease was before anyone was tested. A positive result does raise your chance, to about 9%."
+          ],
           "why": "The positives are 99 true alarms plus 999 false ones, and 99 ÷ 1,098 is about 9%. The 99% figure answers a different question: if you are ill, will the test say so?"
         },
         {
@@ -1236,6 +1251,11 @@
             "9%: nothing has changed",
             "99.99%"
           ],
+          "mistakes": [
+            "The chances don't add. The second test sifts a group in which 9% are already ill, and it clears almost all of the healthy ones.",
+            "An independent second test is new evidence. A healthy person has only a 1% chance of being flagged again.",
+            "That would need every false alarm to vanish. About 10 of the 999 healthy people are flagged twice, next to 98 who are ill."
+          ],
           "why": "This time you start in a crowd where 9% are ill, not 0.1%. Of the 1,098 first positives, 98 of the 99 ill people test positive again, but only about 10 of the 999 healthy ones. 98 out of 108 is about 91%."
         },
         {
@@ -1264,6 +1284,11 @@
             "None: they ran out after 20 years",
             "200",
             "400"
+          ],
+          "mistakes": [
+            "That takes away 400 every 10 years. Decay removes half of what is left, so the second step takes 200, not 400.",
+            "200 is what is left after two half-lives, at 20 years. 30 years is three.",
+            "400 is what is left after one half-life, at 10 years. 30 years is three."
           ],
           "why": "Three half-lives: 800 → 400 → 200 → 100. Each step removes half of what is left, not a fixed number, so the count shrinks ever more slowly instead of hitting zero."
         },
@@ -1345,6 +1370,11 @@
             "About 23,000 years",
             "About 1,400 years"
           ],
+          "mistakes": [
+            "One half-life leaves a half. A quarter is half of a half, so two half-lives have passed.",
+            "That is four half-lives, which would leave a sixteenth. A quarter takes two.",
+            "That is a quarter of one half-life. A quarter left means two whole half-lives have gone by."
+          ],
           "why": "A quarter left means two half-lives: 2 × 5,730 is about 11,500 years. Beyond about 50,000 years too little carbon-14 remains to measure well, so older things need slower clocks, such as uranium."
         },
         {
@@ -1355,6 +1385,11 @@
             "None",
             "50 mg",
             "25 mg"
+          ],
+          "mistakes": [
+            "Halving never reaches zero: each step leaves half of what was there. After four half-lives a sixteenth remains.",
+            "50 mg is what is left after two half-lives, at 12 hours. A day is four.",
+            "25 mg is what is left after three half-lives, at 18 hours. A day is four."
           ],
           "why": "24 hours is four half-lives: 200 → 100 → 50 → 25 → 12.5 mg. The same halving rule describes how the body clears many medicines, and caffeine too."
         }
@@ -1379,6 +1414,11 @@
             "Half as bright",
             "Just as bright",
             "An eighth as bright"
+          ],
+          "mistakes": [
+            "Half would be right if the light spread along a line. It spreads over an area, which grows in width and in height.",
+            "The bulb gives out the same light, but your page now catches a smaller share of it.",
+            "An eighth would mean the light thins out in three directions. It spreads over a surface, so in two: 2 × 2 = 4."
           ],
           "why": "The light that fell on your page now spreads over a patch twice as wide and twice as tall. That's four times the area, so each bit of page gets a quarter of the light."
         },
@@ -1472,6 +1512,11 @@
             "Zero: there is no gravity in space",
             "Just as strong"
           ],
+          "mistakes": [
+            "Gravity thins out as light does, with the square of the distance: twice as far is 2 × 2 = 4 times weaker.",
+            "Earth's gravity reaches far into space. It is what holds the Moon in its orbit.",
+            "The pull weakens with distance. Each kilogram twice as far from Earth's centre feels a quarter of it."
+          ],
           "why": "Twice as far from the centre, a quarter of the pull. Astronauts float because they are falling around the Earth, not because gravity has gone: at the height of the space station it is still about 90% as strong as on the ground."
         },
         {
@@ -1509,6 +1554,11 @@
             "In rules written by programmers",
             "In saved copies of the pages it read"
           ],
+          "mistakes": [
+            "The model has no table of facts to consult. It works each answer out from its numbers, which is also why it can be confidently wrong.",
+            "Nobody wrote a rule saying Paris is in France. Programmers write the training procedure; what it learns comes from the text.",
+            "The model doesn't keep the pages it was trained on. Training leaves behind only the adjusted numbers."
+          ],
           "why": "A trained model is one huge formula. What it has learned lives in the formula's adjustable numbers, its weights. To see how a number can hold knowledge, let's train a model that has just one."
         },
         {
@@ -1525,6 +1575,11 @@
             "100°F",
             "232°F"
           ],
+          "mistakes": [
+            "212 is the true answer, the one the model should give. With a = 1 it says 1 × 100 + 32.",
+            "That leaves out the + 32 in the formula.",
+            "That doubles the 100. With a = 1 the formula gives 1 × 100 + 32."
+          ],
           "why": "1 × 100 + 32 = 132. The truth is 212, so the model is off by 80. That gap is called the error, or the loss. Training is nothing more than making it small."
         },
         {
@@ -1534,6 +1589,10 @@
             "Up: a bigger a gives a bigger prediction",
             "Down: a smaller a gives a bigger prediction",
             "Either way: just try values at random"
+          ],
+          "mistakes": [
+            "The prediction is a × 100 + 32. A smaller a makes it smaller, and it is already too low.",
+            "With one weight, guessing would get there in the end. With billions it never would, so training works out the direction first."
           ],
           "why": "Raising a raises a × 100 + 32. Working out which direction lowers the error and stepping that way is called gradient descent. Real training does it for billions of weights at once."
         },
@@ -1606,6 +1665,11 @@
             "It stores the right answers instead of adjusting weights",
             "It learns without ever measuring an error"
           ],
+          "mistakes": [
+            "There are billions of weights and nobody knows what each should be. They are found the way you found yours: by nudging.",
+            "Adjusting weights is all that training does. Nothing else in the model changes.",
+            "Without an error to measure, nothing says which way to nudge. The error steers every step."
+          ],
           "why": "The loop is the same. A language model's examples are pieces of text, its prediction is the next word-piece, and its error is how unlikely it thought the real one was. Billions of small nudges later, the weights hold grammar, facts and style."
         }
       ]
@@ -1629,6 +1693,11 @@
             "1",
             "100",
             "A hunch, like 37"
+          ],
+          "mistakes": [
+            "If the answer is \"higher\", you have ruled out one number and 99 remain.",
+            "If the answer is \"lower\", you have ruled out one number and 99 remain.",
+            "37 leaves 63 numbers if the answer is \"higher\". The middle never leaves more than 50."
           ],
           "why": "50 splits the range in two, so whatever I answer, half the numbers are ruled out. Guess 1 and, unless you're lucky, you rule out a single number."
         },
@@ -1691,6 +1760,11 @@
             "20 more",
             "1,000,000 more"
           ],
+          "mistakes": [
+            "Checking the names one by one would take twice as long. Halving needs one more look to cut 2,000,000 back to 1,000,000.",
+            "20 more looks would handle a list about a million times longer, not twice as long.",
+            "That is the cost of reading the new names one at a time. Binary search drops half the list with each look."
+          ],
           "why": "One extra halving undoes one doubling. Even a sorted list of all 8 billion people on Earth would need only 33 looks."
         },
         {
@@ -1701,6 +1775,11 @@
             "It must be short",
             "It must have no repeated items",
             "It must contain only numbers"
+          ],
+          "mistakes": [
+            "Long lists are where binary search shines: a million items take twenty looks.",
+            "Repeats do no harm. The search still lands on one of the copies.",
+            "Anything that can be put in order will do: names, dates, the words in a dictionary."
           ],
           "why": "Halving works only if looking at the middle item tells you which half to drop, and that needs order. It is why computers work so hard to keep data sorted or indexed: it turns a million looks into twenty."
         }
@@ -1724,6 +1803,10 @@
             "Six half-hour sessions spread over several weeks",
             "One 3-hour session today",
             "Two 90-minute sessions today, morning and evening"
+          ],
+          "mistakes": [
+            "Cramming can work for a test tomorrow, but it fades fast: nothing is ever recalled after a gap.",
+            "A few hours apart helps a little. To keep words for years, the gaps need to be days and weeks."
           ],
           "why": "The time is the same; the result is very different. The benefit of spreading study out is called the spacing effect, one of the most repeated findings in memory research. To see why, look at how forgetting behaves."
         },
@@ -1798,6 +1881,11 @@
             "Only once it is completely forgotten",
             "Whenever: the timing makes no difference"
           ],
+          "mistakes": [
+            "Recalling something you have just seen takes no effort, and the effort is what strengthens a memory.",
+            "By then there is nothing left to recall, so you are learning it again from the start.",
+            "Timing is the whole trick: the same review does far more when it comes just as the memory starts to fade."
+          ],
           "why": "Reviewing at once is easy and adds little. Waiting until it's gone means learning it again from scratch. A little struggle to recall is the sign that a review is strengthening the memory."
         },
         {
@@ -1820,6 +1908,11 @@
             "Reading the page again",
             "Highlighting the key lines",
             "Copying the notes out neatly"
+          ],
+          "mistakes": [
+            "Rereading makes the page feel familiar, which is easy to mistake for knowing it. It never makes you pull the memory out.",
+            "Highlighting picks out what matters, but it doesn't make you recall anything.",
+            "Copying keeps the answer in front of you the whole time. The memory is never tested."
           ],
           "why": "Pulling something out of memory strengthens it more than putting it in again. This is called the testing effect. Rereading feels smooth, and that ease misleads: familiar is not the same as remembered."
         }
@@ -1844,6 +1937,11 @@
             "Stay, or the 15 is wasted",
             "Stay, because leaving admits a mistake",
             "Leave only if you can get a refund"
+          ],
+          "mistakes": [
+            "The 15 is spent whether you stay or go. Staying can't get it back.",
+            "The mistake, if it was one, was buying the ticket. Sitting through the film doesn't undo it.",
+            "A refund would be welcome, but it isn't the test. Without one, the choice is still between a bad hour and a better one."
           ],
           "why": "The 15 is gone whether you stay or go. Staying doesn't win it back. It only adds a wasted hour to a wasted ticket. The one thing still yours to choose is the next hour."
         },
@@ -1882,6 +1980,11 @@
             "Finish: the product is 90% done",
             "Spend more to improve the product first"
           ],
+          "mistakes": [
+            "The 9 million is gone on both paths. Only the next 1 million, and the 0.5 it brings in, are still to be decided.",
+            "Being nearly done is worth something only if the last step pays. Here it costs 1 to get 0.5.",
+            "Only if the extra spending brings in more than it costs. Nothing in these numbers says it would."
+          ],
           "why": "Finishing now costs 1 to gain 0.5. Saying we've come too far to stop is the sunk cost talking. The 9 million argues for nothing, because it is gone on both paths."
         },
         {
@@ -1903,6 +2006,11 @@
             "Past spending really does change which choice is best",
             "Finishing what you start is always a virtue"
           ],
+          "mistakes": [
+            "The sums are easy, and people fall for sunk costs with the numbers in front of them. The pull is a feeling, not a miscalculation.",
+            "What is spent is the same whichever way you go, so it can't favour either.",
+            "Persistence helps while the goal is still worth reaching. When it isn't, finishing only costs more."
+          ],
           "why": "While you carry on, the loss isn't final and you can still hope. Stopping makes it real, and people feel a loss more sharply than an equal gain. Not wanting to look wasteful adds to the pull."
         },
         {
@@ -1913,6 +2021,11 @@
             "How many hours have I already put in?",
             "What will people think if I don't finish?",
             "How much did the book cost?"
+          ],
+          "mistakes": [
+            "That is the sunk cost itself. Those hours are spent whether you read on or stop.",
+            "That is about how you look, not about whether the next 600 pages are worth your time.",
+            "The price is paid either way. It can't tell you whether to keep reading."
           ],
           "why": "Imagining a fresh start strips out what is already spent and leaves only the future. If the answer is no, stop. Stopping doesn't waste the pages you've read. They are read either way."
         }

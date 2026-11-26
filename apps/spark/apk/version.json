@@ -1,7 +1,7 @@
 {
-  "versionCode": 71,
-  "versionName": "1.71",
+  "versionCode": 74,
+  "versionName": "1.74",
   "apk": "spark-release.apk",
-  "size": 1288832,
-  "sha256": "1288cefd0559a264ff58028632207bed778c663ba362362bad71b8f1ec1f5f2f"
+  "size": 1309320,
+  "sha256": "51c0db0f053de6be60fb9c7575a83a660ec092e9c6c0ed1e7b196afc04e29a43"
 }

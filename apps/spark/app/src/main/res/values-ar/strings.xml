@@ -68,6 +68,7 @@
 
     <!-- The screen about you -->
     <string name="you_streak">أيام متتالية</string>
+    <string name="you_streak_about">يُحتسب اليوم بعد مشاهدة %1$d مقاطع أو إنهاء درس. ويُتجاوز عن يوم فائت واحد في الأسبوع.</string>
     <plurals name="days">
         <item quantity="zero">لا أيام</item>
         <item quantity="one">يوم واحد</item>
@@ -84,6 +85,8 @@
     <string name="goal_title">الهدف اليومي</string>
     <string name="goal_about">عدد المقاطع في اليوم، مع درس واحد. بعدها يخبرك التطبيق أنك انتهيت.</string>
     <string name="goal_reels">%1$d مقاطع</string>
+    <string name="sounds_title">الأصوات والاهتزاز</string>
+    <string name="sounds_about">نغمة قصيرة واهتزازة خفيفة عند الإجابة وعند إنهاء درس أو بلوغ هدفك. تصمت النغمات ما دام الهاتف على الوضع الصامت.</string>
     <string name="wishes_title">ما أريد أن أتعلّمه</string>
     <string name="wishes_about">المقاطع التي تطابق القائمة تأتي أولاً. لتُصنع مقاطع ودروس جديدة لها، أرسل القائمة.</string>
     <string name="wishes_empty">لا شيء بعد.</string>

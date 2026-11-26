@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.spark.core.Chime
 import app.spark.data.Library
 import app.spark.data.Store
 import kotlinx.coroutines.launch
@@ -39,6 +40,15 @@ fun App() {
     LifecycleEventEffect(Lifecycle.Event.ON_START) { scope.launch { Library.refresh(context) } }
     LaunchedEffect(shelf) { if (shelf.reels.isNotEmpty()) Store.keepOnly(shelf.reels.keys, shelf.lessons.keys) }
     BackHandler(kept.welcomed && screen != Screen.Feed) { screen = Screen.Feed }
+
+    // The day's goal is marked once, at the moment it is reached, not each time the app opens after it.
+    val feel = rememberFeel()
+    val met = kept.days.metOn(Store.today())
+    var wasMet by remember { mutableStateOf(met) }
+    LaunchedEffect(met) {
+        if (met && !wasMet) feel(Chime.GOAL)
+        wasMet = met
+    }
     UpdateDialog()
 
     val current = screen

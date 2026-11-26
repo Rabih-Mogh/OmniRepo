@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.spark.R
+import app.spark.core.Chime
 import app.spark.core.Kind
 import app.spark.core.Reel
 import kotlinx.coroutines.launch
@@ -78,6 +79,7 @@ fun ReelPage(
 ) {
     val look = look(reel.topic)
     val scope = rememberCoroutineScope()
+    val feel = rememberFeel()
     val puzzle = reel.kind == Kind.PUZZLE
     val total = FeedState.runtime(reel)
 
@@ -184,7 +186,10 @@ fun ReelPage(
                         // The answer's box is already in place underneath, so nothing moves when it is shown.
                         if (puzzle && !revealed && p >= 1f) {
                             OutlinedButton(
-                                onClick = { revealed = true },
+                                onClick = {
+                                    revealed = true
+                                    feel(Chime.REVEAL)
+                                },
                                 Modifier.align(Alignment.Center),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = look.glow),
                             ) { Text(stringResource(R.string.reel_reveal)) }
@@ -217,7 +222,10 @@ fun ReelPage(
             }
 
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onLike) {
+                IconButton(onClick = {
+                    if (!liked) feel(Chime.TAP)
+                    onLike()
+                }) {
                     Icon(
                         if (liked) AppIcons.Heart else AppIcons.HeartOutline,
                         stringResource(if (liked) R.string.reel_liked else R.string.reel_like),

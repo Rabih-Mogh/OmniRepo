@@ -17,8 +17,8 @@ import java.time.LocalDate
 
 /**
  * What the app remembers about its user: what they want to learn, what has held their
- * attention, which reels they have seen and liked, the lessons they finished, and the
- * day's goal and streak. Kept in the app's own preferences file. Used from the main
+ * attention, which reels they have seen and liked, the lessons they finished, the day's
+ * goal and streak, and whether they want sounds. Kept in the app's own preferences file. Used from the main
  * thread only.
  */
 object Store {
@@ -29,6 +29,7 @@ object Store {
     data class Kept(
         val welcomed: Boolean = false,
         val goal: Int = 10,
+        val sounds: Boolean = true,
         val wishes: List<String> = emptyList(),
         val taste: Taste = Taste(),
         val seen: Set<String> = emptySet(),
@@ -67,6 +68,8 @@ object Store {
     fun welcomed() = change { it.copy(welcomed = true) }
 
     fun goal(reels: Int) = change { it.copy(goal = reels) }
+
+    fun sounds(on: Boolean) = change { it.copy(sounds = on) }
 
     fun wish(text: String) {
         val wish = text.replace(Regex("\\s+"), " ").trim().take(120)
@@ -115,6 +118,7 @@ object Store {
     private fun write(kept: Kept) = JSONObject()
         .put("welcomed", kept.welcomed)
         .put("goal", kept.goal)
+        .put("sounds", kept.sounds)
         .put("wishes", JSONArray(kept.wishes))
         .put("topics", leanings(kept.taste.topics))
         .put("tags", leanings(kept.taste.tags))
@@ -126,18 +130,31 @@ object Store {
         .put("lesson", kept.days.lesson)
         .put("streak", kept.days.streak)
         .put("met", kept.days.met)
+        .put("kept", kept.days.kept)
+        .put("rested", kept.days.rested)
 
     private fun read(json: JSONObject): Kept {
         val lessons = json.getJSONObject("lessons")
         return Kept(
             welcomed = json.getBoolean("welcomed"),
             goal = json.getInt("goal"),
+            // Not in what earlier versions kept.
+            sounds = json.optBoolean("sounds", true),
             wishes = strings(json.getJSONArray("wishes")),
             taste = Taste(leanings(json.getJSONObject("topics")), leanings(json.getJSONObject("tags"))),
             seen = strings(json.getJSONArray("seen")).toSet(),
             liked = strings(json.getJSONArray("liked")).toSet(),
             lessons = lessons.keys().asSequence().associateWith { id -> lessons.getJSONArray(id).let { Score(it.getInt(0), it.getInt(1)) } },
-            days = Days(json.getLong("day"), json.getInt("reels"), json.getBoolean("lesson"), json.getInt("streak"), json.getLong("met")),
+            days = Days(
+                day = json.getLong("day"),
+                reels = json.getInt("reels"),
+                lesson = json.getBoolean("lesson"),
+                streak = json.getInt("streak"),
+                met = json.getLong("met"),
+                // Earlier versions counted a day towards the streak only when its goal was met.
+                kept = json.optLong("kept", json.getLong("met")),
+                rested = json.optLong("rested", Days.NEVER),
+            ),
         )
     }
 

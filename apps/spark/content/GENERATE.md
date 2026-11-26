@@ -37,16 +37,24 @@ after another: the hook, then each beat, then the takeaway.
 
 A lesson teaches one thing by having the reader do it, in five to eight steps.
 
-- Start by asking, not telling: a question or a guess first, the explanation after.
+- **Open with a guess.** The first step is a `choice`, an `estimate` or an `order` about
+  the most surprising thing the lesson has to say, asked before anything is explained.
+  Someone who has said what they think wants to know whether they were right; someone
+  who has just been told doesn't. The checker refuses a lesson that opens any other way.
 - One idea per step. Most steps should ask for something; a `read` step is for setting
-  up or summing up.
+  up or summing up, and never comes first.
 - The `why` of a step is where the teaching happens. It is shown after the answer,
   right or wrong, so it should explain, not just confirm.
+- **Wrong options are the mistakes people really make, not filler**, and each says what
+  is wrong with it (`mistakes`). After a wrong pick the reader is shown the line for the
+  option they picked, then the `why`. Write it to that reader: name the slip that leads
+  there ("That adds the same 3 every year"), don't just repeat the right answer. An
+  option you can't write such a line for is filler: replace it.
 - Use `explore` whenever a relationship can be seen: let the reader drag a number and
   watch the curve change, then ask them to hit a target.
-- Wrong options should be the mistakes people really make, not filler.
 - Every lesson hangs off one reel in the same pack (the reel's `lesson` field), so the
-  feed has a way into it. That reel is the lesson's teaser, on the same topic.
+  feed has a way into it. That reel is the lesson's teaser, on the same topic: it raises
+  the question the lesson opens with and leaves it open.
 
 ### The mix
 
@@ -145,7 +153,7 @@ must have a value everywhere in its range.
 ```
 
 `title` is at most 60 characters, `summary` at most 140. A lesson has 3 to 10 steps (five
-to eight is the length to aim for), and at least one that asks for something.
+to eight is the length to aim for). The first is a `choice`, an `estimate` or an `order`.
 
 ### Steps
 
@@ -160,10 +168,14 @@ text may have line breaks.
 ```
 
 **`choice`**: pick one. 2 to 4 `options`, each at most 90 characters. **The first option
-is the right one.** The app shuffles them.
+is the right one.** The app shuffles them. `mistakes` holds one line for each wrong
+option, in the options' order (so one fewer than the options), each at most 200
+characters: what is wrong with that option.
 
 ```json
-{"kind": "choice", "text": "How many pairs do 4 people make?", "options": ["6", "4", "8"], "why": "3 + 2 + 1 = 6."}
+{"kind": "choice", "text": "How many pairs do 4 people make?", "options": ["6", "4", "8"],
+ "mistakes": ["That counts the people, not the pairs.", "That counts every person twice."],
+ "why": "3 + 2 + 1 = 6."}
 ```
 
 **`order`**: put things in order. 3 to 5 `items`, each at most 70 characters, **written in
@@ -174,7 +186,9 @@ the right order**. The app shuffles them.
 ```
 
 **`estimate`**: guess a number on a slider. `range`, `step`, `answer`, `tolerance` (how far
-off still counts) and an optional `unit` (at most 12 characters). The slider rests only
+off still counts) and an optional `unit` (at most 12 characters). After the guess, the
+app shows it on the line beside the answer, with the stretch that counts as right. The
+slider rests only
 on its stops (`range` start, then every `step`, at most 1000 of them), so one of them
 must be within `tolerance` of the answer. Negative ranges work. The slider starts at the
 low end; make the range wide enough that the answer isn't given away by its place in it.

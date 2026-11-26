@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,11 +39,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.spark.R
+import app.spark.core.Chime
+import app.spark.core.Days
 import app.spark.core.Lesson
 import app.spark.core.Letter
 import app.spark.data.Library
@@ -52,13 +57,14 @@ import kotlinx.coroutines.launch
 private const val ISSUES = "https://github.com/Rabih-Mogh/OmniRepo/issues/new"
 
 /**
- * The screen about the user: the streak and the day, the goal, what they want to learn,
+ * The screen about the user: the streak and the day, the goal, sounds, what they want to learn,
  * what the app has learned about them, every lesson, and the library.
  */
 @Composable
 fun You(kept: Store.Kept, shelf: Library.Shelf, onBack: () -> Unit, onLesson: (Lesson) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val feel = rememberFeel()
     val today = Store.today()
     val days = kept.days.on(today)
     val fetch by Library.state.collectAsStateWithLifecycle()
@@ -73,6 +79,7 @@ fun You(kept: Store.Kept, shelf: Library.Shelf, onBack: () -> Unit, onLesson: (L
         }
 
         item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
                 Row(Modifier.fillMaxWidth().padding(18.dp), Arrangement.spacedBy(18.dp), Alignment.CenterVertically) {
                     Icon(AppIcons.Flame, null, Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary)
@@ -96,6 +103,8 @@ fun You(kept: Store.Kept, shelf: Library.Shelf, onBack: () -> Unit, onLesson: (L
                     }
                 }
             }
+            Note(stringResource(R.string.you_streak_about, Days.KEEPS))
+            }
         }
 
         item {
@@ -105,6 +114,25 @@ fun You(kept: Store.Kept, shelf: Library.Shelf, onBack: () -> Unit, onLesson: (L
                         FilterChip(kept.goal == reels, onClick = { Store.goal(reels) }, label = { Text(stringResource(R.string.goal_reels, reels)) })
                     }
                 }
+            }
+        }
+
+        item {
+            val title = stringResource(R.string.sounds_title)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), Arrangement.spacedBy(8.dp)) {
+                    Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Note(stringResource(R.string.sounds_about))
+                }
+                Switch(
+                    kept.sounds,
+                    {
+                        Store.sounds(it)
+                        // Turning them on lets you hear what you turned on.
+                        if (it) feel(Chime.RIGHT)
+                    },
+                    Modifier.semantics { contentDescription = title },
+                )
             }
         }
 

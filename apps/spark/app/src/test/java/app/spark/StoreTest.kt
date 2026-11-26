@@ -40,6 +40,7 @@ class StoreTest {
     fun `everything kept is still there when the app is opened again`() {
         Store.welcomed()
         Store.goal(5)
+        Store.sounds(false)
         Store.wish("  game   theory ")
         Store.wish("how transformers work")
         Store.like(reel("a"), true)
@@ -53,6 +54,33 @@ class StoreTest {
         assertEquals(listOf("game theory", "how transformers work"), before.wishes)
         assertEquals(setOf("a", "b"), before.seen)
         assertEquals(Store.Score(3, 4), before.lessons["l"])
+    }
+
+    @Test
+    fun `what an earlier version kept is still read, with sounds on`() {
+        val old = """{"welcomed":true,"goal":5,"wishes":["game theory"],"topics":{},"tags":{},"seen":["a"],"liked":[],"lessons":{},"day":${today - 1},"reels":5,"lesson":true,"streak":4,"met":${today - 1}}"""
+        context.getSharedPreferences("spark", Context.MODE_PRIVATE).edit().putString("kept", old).commit()
+        Store.load(context)
+        val kept = Store.kept.value
+        assertEquals(5, kept.goal)
+        assertEquals(listOf("game theory"), kept.wishes)
+        assertTrue(kept.sounds)
+        // The streak it had carries on: the last day its goal was met is the last day that counted.
+        assertEquals(4, kept.days.streakOn(today))
+        Store.finished(lesson("l"), Store.Score(1, 1), lessonsLeft = true)
+        assertEquals(5, Store.kept.value.days.streakOn(today))
+    }
+
+    @Test
+    fun `the streak and its day off are still there when the app is opened again`() {
+        Store.finished(lesson("a"), Store.Score(1, 1), lessonsLeft = true)
+        Store.today = { today + 2 }
+        Store.finished(lesson("b"), Store.Score(1, 1), lessonsLeft = true)
+        val before = Store.kept.value
+        assertEquals(2, before.days.streakOn(today + 2))
+        assertEquals(today + 1, before.days.rested)
+        Store.load(context)
+        assertEquals(before, Store.kept.value)
     }
 
     @Test

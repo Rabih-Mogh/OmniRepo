@@ -65,6 +65,7 @@
 
     <!-- The screen about you -->
     <string name="you_streak">Streak</string>
+    <string name="you_streak_about">A day counts once you watch %1$d reels or finish a lesson. One missed day a week is let go.</string>
     <plurals name="days">
         <item quantity="one">%1$d day</item>
         <item quantity="other">%1$d days</item>
@@ -77,6 +78,8 @@
     <string name="goal_title">Daily goal</string>
     <string name="goal_about">Reels a day, with one lesson. After that the feed tells you you\'re done.</string>
     <string name="goal_reels">%1$d reels</string>
+    <string name="sounds_title">Sounds and vibration</string>
+    <string name="sounds_about">A little chime and a tap of vibration when you answer, finish a lesson or reach your goal. The chimes keep quiet while the phone is on silent.</string>
     <string name="wishes_title">What I want to learn</string>
     <string name="wishes_about">Reels that match come first in your feed. To have new reels and lessons made for the list, send it.</string>
     <string name="wishes_empty">Nothing yet.</string>
