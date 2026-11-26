@@ -286,15 +286,20 @@
     <string name="now_starts_in">يدخل وقت %1$s بعد</string>
     <string name="now_until">%1$s حتى %2$s</string>
     <string name="now_at">%1$s عند %2$s</string>
-    <string name="widgets_intro">أداتان للشاشة الرئيسية: كل مواقيت اليوم، والصلاة الحالية مع العدّ التنازلي.</string>
+    <string name="widgets_intro">أداتان للشاشة الرئيسية: كل مواقيت اليوم في جدول، والصلاة الحالية مع العدّ التنازلي. كبّر الأداة لتُظهر أكثر: الصلاة التالية، ومتى ينتهي وقت كل صلاة، والأوقات التي يصلك إشعار عندها، والمنبّه القادم.</string>
     <string name="widget_times_name">كل المواقيت</string>
-    <string name="widget_times_description">كل مواقيت اليوم، مع الأوقات الاختيارية</string>
+    <string name="widget_times_description">كل مواقيت اليوم في جدول، مع الأوقات الاختيارية. كبّرها لترى أكثر</string>
     <string name="widget_now_name">الصلاة الحالية</string>
-    <string name="widget_now_description">الصلاة الحالية وعدّ تنازلي للوقت المتبقي لها</string>
+    <string name="widget_now_description">الصلاة الحالية وعدّ تنازلي للوقت المتبقي لها. كبّرها لترى مواقيت اليوم</string>
     <string name="widget_add_times">إضافة أداة «كل المواقيت»</string>
     <string name="widget_add_now">إضافة أداة «الصلاة الحالية»</string>
     <string name="widget_add_by_hand">اضغط مطوّلاً على مكان فارغ في الشاشة الرئيسية، واختر «الأدوات» ثم «مواقيت الصلاة».</string>
     <string name="widget_set_location">افتح مواقيت الصلاة لتحديد موقعك</string>
+    <!-- The widgets' table, where it is big enough: the headings over a prayer's two clock times, and the bottom line. %1$s a day and a clock time -->
+    <string name="widget_begins">البداية</string>
+    <string name="widget_ends">النهاية</string>
+    <string name="widget_alarm">المنبّه: %1$s</string>
+    <string name="widget_alarm_off">المنبّه متوقف</string>
 
     <!-- Main screen: Calculation, for the other prayers -->
     <string name="isha_angle">زاوية العشاء: %1$.1f°</string>

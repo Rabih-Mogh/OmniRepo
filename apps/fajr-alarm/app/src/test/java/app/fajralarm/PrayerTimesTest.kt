@@ -5,6 +5,8 @@ import android.app.Application
 import android.app.Notification
 import android.app.NotificationManager
 import android.appwidget.AppWidgetManager
+import android.os.Bundle
+import android.util.SizeF
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Chronometer
@@ -45,6 +47,9 @@ import org.robolectric.Robolectric
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlin.math.abs
 
@@ -66,6 +71,12 @@ class PrayerTimesTest {
     private val notifications get() = shadowOf(app.getSystemService(NotificationManager::class.java)).allNotifications
 
     private fun now(): PrayerNow = PrayerClock.at(ZonedDateTime.now(), beirut.calcParams()!!)!!
+
+    /** A fixed moment in Beirut, for what depends on the time of day. */
+    private fun at(hour: Int, minute: Int): PrayerNow = PrayerClock.at(
+        ZonedDateTime.of(LocalDate.of(2026, 11, 25), LocalTime.of(hour, minute), ZoneId.of("Asia/Beirut")),
+        beirut.calcParams()!!,
+    )!!
 
     /** The alarms queued with Android, as (when, whether it wakes the phone). */
     private fun queued(): List<Pair<Long, Boolean>> =
@@ -184,23 +195,84 @@ class PrayerTimesTest {
 
     @Test
     @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
-    fun `the prayer times widget shows all nine times with the current prayer marked`() {
+    fun `the prayer times widget is a table of all nine times with the current prayer marked`() {
         val state = now()
-        val view = PrayerWidgets.timesViews(app, state).apply(app, FrameLayout(app))
-        assertEquals(5, view.findViewById<ViewGroup>(R.id.widget_prayers).childCount)
-        assertEquals(4, view.findViewById<ViewGroup>(R.id.widget_optional).childCount)
-        val shown = texts(view)
-        listOf("Fajr", "Sunrise", "Duha", "Dhuhr", "Asr", "Maghrib", "Isha", "Midnight", "Last third").forEach {
-            assertTrue("$it is on the widget: $shown", it in shown)
-        }
-        assertTrue(shown.first().endsWith(" ends in") || shown.first().endsWith(" starts in"))
-        val marked = (0 until 5).map { view.findViewById<ViewGroup>(R.id.widget_prayers).getChildAt(it) }.count { it.background != null }
-        val markedOptional = (0 until 4).map { view.findViewById<ViewGroup>(R.id.widget_optional).getChildAt(it) }.count { it.background != null }
-        assertEquals("one prayer is marked", 1, marked)
-        assertEquals(0, markedOptional)
+        val names = listOf("Fajr", "Sunrise", "Duha", "Dhuhr", "Asr", "Maghrib", "Isha", "Midnight", "Last third")
 
-        picture("widget-times", view, 328, 136)
-        picture("widget-current", PrayerWidgets.currentViews(app, state).apply(app, FrameLayout(app)), 156, 84)
+        // Four cells by two: the table in two columns, read down the first and then the second.
+        val small = PrayerWidgets.timesViews(app, state, beirut, size(300, 150)).apply(app, FrameLayout(app))
+        assertEquals(names.take(5), rows(small, R.id.table_start).map { it.text(R.id.row_name) })
+        assertEquals(names.drop(5) + "", rows(small, R.id.table_end).map { it.text(R.id.row_name) })
+        assertTrue(texts(small).first().let { it.endsWith(" ends in") || it.endsWith(" starts in") })
+        assertEquals("one prayer is marked", 1, rows(small).count { it.background != null })
+        assertEquals(View.GONE, small.findViewById<View>(R.id.widget_next).visibility)
+        assertEquals(View.GONE, small.findViewById<View>(R.id.widget_footer).visibility)
+        assertTrue("no room for AM and PM", rows(small).none { it.text(R.id.row_time).endsWith("M") })
+        picture("widget-times", small, 300, 150)
+
+        // A little taller: the next prayer under the countdown.
+        val medium = PrayerWidgets.timesViews(app, state, beirut, size(300, 200)).apply(app, FrameLayout(app))
+        assertEquals(5, rows(medium, R.id.table_start).size)
+        assertTrue(medium.findViewById<TextView>(R.id.widget_next).text.startsWith("Next: "))
+        assertEquals(state.current != null, medium.findViewById<View>(R.id.widget_next).visibility == View.VISIBLE)
+        picture("widget-times-medium", medium, 300, 200)
+
+        // Taller still: one column, with AM and PM, and a bell beside the times that notify.
+        val belled = beirut.copy(alerts = setOf(PrayerTime.DHUHR, PrayerTime.MIDNIGHT))
+        val tall = PrayerWidgets.timesViews(app, state, belled, size(250, 270)).apply(app, FrameLayout(app))
+        assertEquals(names, rows(tall, R.id.table_start).map { it.text(R.id.row_name) })
+        assertEquals(View.GONE, tall.findViewById<View>(R.id.table_end).visibility)
+        assertEquals(1, rows(tall).count { it.background != null })
+        assertTrue(rows(tall).all { it.text(R.id.row_time).endsWith("M") })
+        assertEquals(
+            listOf("Dhuhr", "Midnight"),
+            rows(tall).filter { it.findViewById<View>(R.id.row_bell).visibility == View.VISIBLE }.map { it.text(R.id.row_name) },
+        )
+        assertEquals(View.GONE, tall.findViewById<View>(R.id.widget_footer).visibility)
+        picture("widget-times-tall", tall, 250, 270)
+
+        // Tall and wide: when each prayer ends, and the alarm and the method at the bottom.
+        val full = PrayerWidgets.timesViews(app, state, belled, size(330, 350)).apply(app, FrameLayout(app))
+        val table = rows(full, R.id.table_start)
+        assertEquals(listOf("", "Begins", "Ends"), listOf(R.id.row_name, R.id.row_time, R.id.row_ends).map { table.first().text(it) })
+        assertEquals(names, table.drop(1).map { it.text(R.id.row_name) })
+        val ends = table.drop(1).associate { it.text(R.id.row_name) to it.text(R.id.row_ends) }
+        assertEquals("Fajr ends at sunrise", table[2].text(R.id.row_time), ends["Fajr"])
+        assertEquals("Dhuhr ends at Asr", table[5].text(R.id.row_time), ends["Dhuhr"])
+        assertEquals("Maghrib ends at Isha", table[7].text(R.id.row_time), ends["Maghrib"])
+        assertTrue("Isha ends at the next Fajr", ends.getValue("Isha").endsWith("AM"))
+        assertEquals("the optional times have no end", listOf("", "", "", ""), listOf("Sunrise", "Duha", "Midnight", "Last third").map(ends::getValue))
+        val footer = full.findViewById<TextView>(R.id.widget_footer)
+        assertEquals(View.VISIBLE, footer.visibility)
+        assertTrue(footer.text.toString(), footer.text.startsWith("Alarm: ") && footer.text.endsWith(" · Muslim World League"))
+        picture("widget-times-full", full, 330, 350)
+
+        // In the afternoon Asr is gold, what came before it is faded, and Maghrib is named as next.
+        fun drawn(hour: Int, minute: Int = 0) =
+            PrayerWidgets.timesViews(app, at(hour, minute), beirut, size(300, 200)).apply(app, FrameLayout(app))
+        fun View.faded() = findViewById<TextView>(R.id.row_name).currentTextColor == app.getColor(R.color.widget_passed)
+        val afternoon = drawn(15)
+        assertEquals(listOf("Asr"), rows(afternoon).filter { it.background != null }.map { it.text(R.id.row_name) })
+        assertEquals(listOf("Fajr", "Sunrise", "Duha", "Dhuhr"), rows(afternoon).filter { it.faded() }.map { it.text(R.id.row_name) })
+        assertEquals(View.VISIBLE, afternoon.findViewById<View>(R.id.widget_next).visibility)
+        assertTrue(afternoon.text(R.id.widget_next).startsWith("Next: Maghrib "))
+        // In the morning no prayer is current: Dhuhr is gold and the headline already names it.
+        val morning = drawn(9)
+        assertEquals("Dhuhr starts in", morning.text(R.id.widget_headline))
+        assertEquals(listOf("Dhuhr"), rows(morning).filter { it.background != null }.map { it.text(R.id.row_name) })
+        assertEquals(View.GONE, morning.findViewById<View>(R.id.widget_next).visibility)
+        // Late at night the table is already the new day's: Fajr is gold and nothing has passed.
+        val night = drawn(3, 30)
+        assertEquals("Isha ends in", night.text(R.id.widget_headline))
+        assertEquals(listOf("Fajr"), rows(night).filter { it.background != null }.map { it.text(R.id.row_name) })
+        assertTrue(rows(night).none { it.faded() })
+
+        // Every size the home screen is offered draws all nine times.
+        PrayerWidgets.TIMES_SIZES.forEach { size ->
+            val view = PrayerWidgets.timesViews(app, state, beirut, size).apply(app, FrameLayout(app))
+            assertTrue("$size", texts(view).containsAll(names))
+        }
+
         picture(
             "notification-current",
             android.widget.RemoteViews(app.packageName, R.layout.notification_current_prayer).apply {
@@ -212,18 +284,63 @@ class PrayerTimesTest {
     }
 
     @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun `the current prayer widget grows into the date and then the table`() {
+        val state = now()
+        fun draw(width: Int, height: Int) =
+            PrayerWidgets.currentViews(app, state, beirut, size(width, height)).apply(app, FrameLayout(app))
+        fun View.shows(id: Int) = findViewById<View>(id).visibility == View.VISIBLE
+
+        // One cell tall and squeezed: the prayer and the countdown.
+        val tiny = draw(150, 50)
+        assertTrue(tiny.shows(R.id.widget_countdown))
+        assertFalse(tiny.shows(R.id.widget_next) || tiny.shows(R.id.widget_date) || tiny.shows(R.id.widget_table))
+
+        val small = draw(156, 84)
+        assertTrue(small.shows(R.id.widget_next) && !small.shows(R.id.widget_date) && !small.shows(R.id.widget_table))
+        assertTrue(small.findViewById<TextView>(R.id.widget_next).text.startsWith("Next: "))
+        picture("widget-current", small, 156, 84)
+
+        val square = draw(156, 180)
+        assertTrue(square.shows(R.id.widget_date) && !square.shows(R.id.widget_table))
+        assertTrue(rows(square).isEmpty())
+        picture("widget-current-square", square, 156, 180)
+
+        val wide = draw(330, 200)
+        assertTrue(wide.shows(R.id.widget_table) && wide.shows(R.id.table_end))
+        assertEquals("the next prayer is named only where the headline doesn't", state.current != null, wide.shows(R.id.widget_next))
+        assertEquals(5, rows(wide, R.id.table_start).size)
+        assertEquals(5, rows(wide, R.id.table_end).size)
+        picture("widget-current-wide", wide, 330, 200)
+
+        val tall = draw(200, 320)
+        assertTrue(tall.shows(R.id.widget_table) && !tall.shows(R.id.table_end))
+        assertEquals(9, rows(tall, R.id.table_start).size)
+        assertEquals(1, rows(tall).count { it.background != null })
+        picture("widget-current-tall", tall, 200, 320)
+    }
+
+    @Test
     @Config(qualifiers = "ar-rLB-w411dp-h891dp-420dpi")
     fun `the widgets speak Arabic and say so when there is no location`() {
-        val view = PrayerWidgets.timesViews(app, now()).apply(app, FrameLayout(app))
-        val shown = texts(view)
-        listOf("الفجر", "الشروق", "الضحى", "الظهر", "العصر", "المغرب", "العشاء", "منتصف الليل", "الثلث الأخير").forEach {
-            assertTrue("$it is on the widget: $shown", it in shown)
-        }
-        picture("ar-widget-times", view, 328, 136)
+        val names = listOf("الفجر", "الشروق", "الضحى", "الظهر", "العصر", "المغرب", "العشاء", "منتصف الليل", "الثلث الأخير")
+        val view = PrayerWidgets.timesViews(app, now(), beirut, size(300, 150)).apply(app, FrameLayout(app))
+        assertEquals(names.take(5), rows(view, R.id.table_start).map { it.text(R.id.row_name) })
+        assertEquals(names.drop(5) + "", rows(view, R.id.table_end).map { it.text(R.id.row_name) })
+        picture("ar-widget-times", view, 300, 150)
 
-        val empty = PrayerWidgets.currentViews(app, null).apply(app, FrameLayout(app))
-        assertEquals(listOf("افتح مواقيت الصلاة لتحديد موقعك"), texts(empty).filter { it.isNotEmpty() }.take(1))
+        val full = PrayerWidgets.timesViews(app, now(), beirut, size(330, 350)).apply(app, FrameLayout(app))
+        assertTrue(texts(full).containsAll(names + listOf("البداية", "النهاية")))
+        assertTrue(full.findViewById<TextView>(R.id.widget_footer).text.startsWith("المنبّه: "))
+        picture("ar-widget-times-full", full, 330, 350)
+
+        val empty = PrayerWidgets.currentViews(app, null, beirut, size(330, 350)).apply(app, FrameLayout(app))
+        assertEquals(listOf("افتح مواقيت الصلاة لتحديد موقعك"), texts(empty).filter { it.isNotEmpty() })
         assertEquals(View.GONE, empty.findViewById<View>(R.id.widget_countdown).visibility)
+        assertEquals(View.GONE, empty.findViewById<View>(R.id.widget_table).visibility)
+        val emptyTimes = PrayerWidgets.timesViews(app, null, beirut, size(330, 350)).apply(app, FrameLayout(app))
+        assertEquals(listOf("افتح مواقيت الصلاة لتحديد موقعك"), texts(emptyTimes).filter { it.isNotEmpty() })
+        assertTrue(rows(emptyTimes).isEmpty())
     }
 
     @Test
@@ -240,6 +357,49 @@ class PrayerTimesTest {
         assertTrue(texts(widgets.getViewFor(small)).any { it.startsWith("Next: ") })
         assertFalse(notifications.any { it.channelId == FajrAlarmApp.CHANNEL_PRAYER })
     }
+
+    @Test
+    fun `a widget made bigger on the home screen is drawn again with more in it`() {
+        store.save(beirut)
+        val manager = AppWidgetManager.getInstance(app)
+        val widgets = shadowOf(manager)
+        val id = widgets.createWidget(PrayerTimesWidget::class.java, R.layout.widget_times)
+        assertEquals("two columns to begin with", 5, rows(widgets.getViewFor(id), R.id.table_end).size)
+
+        // A home screen that only says how big the widget now is.
+        val bigger = Bundle().apply {
+            putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 330)
+            putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 600)
+            putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 200)
+            putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 350)
+        }
+        assertEquals(size(330, 350), PrayerWidgets.sizeOf(app, bigger))
+        manager.updateAppWidgetOptions(id, bigger)
+        PrayerTimesWidget().onAppWidgetOptionsChanged(app, manager, id, bigger)
+        val table = rows(widgets.getViewFor(id), R.id.table_start)
+        assertEquals("one column under its headings", 10, table.size)
+        assertEquals("Ends", table.first().text(R.id.row_ends))
+        assertEquals(View.VISIBLE, widgets.getViewFor(id).findViewById<View>(R.id.widget_footer).visibility)
+
+        // One from Android 12 lists the sizes and picks among the drawings itself.
+        val listed = Bundle(bigger).apply {
+            putParcelableArrayList(AppWidgetManager.OPTION_APPWIDGET_SIZES, arrayListOf(size(330, 350), size(600, 200)))
+        }
+        assertTrue(PrayerWidgets.choosesSize(listed))
+        manager.updateAppWidgetOptions(id, listed)
+        PrayerTicker.refresh(app)
+        assertTrue(texts(widgets.getViewFor(id)).containsAll(listOf("Fajr", "Last third")))
+    }
+
+    private fun size(width: Int, height: Int) = SizeF(width.toFloat(), height.toFloat())
+
+    /** The rows of a widget's table: of one of its columns, or of both. */
+    private fun rows(view: View, column: Int? = null): List<View> =
+        (if (column != null) listOf(column) else listOf(R.id.table_start, R.id.table_end))
+            .map { view.findViewById<ViewGroup>(it) }
+            .flatMap { group -> (0 until group.childCount).map(group::getChildAt) }
+
+    private fun View.text(id: Int) = findViewById<TextView>(id).text.toString()
 
     /** Saves a picture of [view] at [widthDp] x [heightDp] to app/build/screens. */
     private fun picture(name: String, view: View, widthDp: Int, heightDp: Int) {

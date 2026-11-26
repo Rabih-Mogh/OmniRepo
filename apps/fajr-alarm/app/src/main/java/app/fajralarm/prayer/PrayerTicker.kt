@@ -64,7 +64,7 @@ object PrayerTicker {
         queue(context, REQ_WAKE, AlarmManager.RTC_WAKEUP, wakeAt)
         queue(context, REQ_REDRAW, AlarmManager.RTC, redrawAt)
 
-        PrayerWidgets.update(context, state)
+        PrayerWidgets.update(context, state, settings)
         PrayerNotifications.showCurrent(context, state.takeIf { settings.lockScreenCountdown })
     }
 

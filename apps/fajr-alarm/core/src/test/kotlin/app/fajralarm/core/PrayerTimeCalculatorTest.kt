@@ -270,6 +270,21 @@ class PrayerClockTest {
     }
 
     @Test
+    fun theDayListsWhenEachPrayerEnds() {
+        val tomorrow = PrayerTimeCalculator.compute(date.plusDays(1), zone, params)
+        assertEquals(
+            mapOf(
+                PrayerTime.FAJR to today.sunrise,
+                PrayerTime.DHUHR to today.asr,
+                PrayerTime.ASR to today.maghrib,
+                PrayerTime.MAGHRIB to today.isha,
+                PrayerTime.ISHA to tomorrow.fajr,
+            ),
+            at(15).dayEnds,
+        )
+    }
+
+    @Test
     fun fajrEndsAtSunriseAndThenNoPrayerIsCurrent() {
         val dawn = at(5, 30)
         assertEquals(PrayerTime.FAJR, dawn.current?.prayer)

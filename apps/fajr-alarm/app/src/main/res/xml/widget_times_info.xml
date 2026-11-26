@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Four cells wide, two tall. "keyguard" lets it onto the lock screen where the phone allows widgets there. -->
+<!-- Four cells wide, two tall to begin with; made taller or wider it shows more. "keyguard" lets it onto the lock screen where the phone allows widgets there. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_times_description"
     android:initialLayout="@layout/widget_times"
     android:minHeight="110dp"
-    android:minResizeHeight="90dp"
+    android:minResizeHeight="110dp"
     android:minResizeWidth="220dp"
     android:minWidth="250dp"
     android:resizeMode="horizontal|vertical"

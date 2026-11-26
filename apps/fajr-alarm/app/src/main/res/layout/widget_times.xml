@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Every time of the day: the current prayer and its countdown, the five prayers, then the optional times. -->
+<!-- Every time of the day as a table, under the current prayer and its countdown. The taller lines show as the widget grows. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
@@ -7,14 +7,14 @@
     android:background="@drawable/widget_background"
     android:orientation="vertical"
     android:paddingHorizontal="10dp"
-    android:paddingVertical="8dp">
+    android:paddingVertical="6dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingHorizontal="4dp">
+        android:paddingHorizontal="6dp">
 
         <TextView
             android:id="@+id/widget_headline"
@@ -27,37 +27,52 @@
 
         <Chronometer
             android:id="@+id/widget_countdown"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="6dp"
-            android:layout_weight="1"
             android:maxLines="1"
-            android:textAlignment="viewStart"
             android:textColor="@color/widget_text"
             android:textSize="13sp"
             android:textStyle="bold" />
 
+        <!-- The date gets what is left of the line, so a long one is cut short rather than the countdown. -->
         <TextView
             android:id="@+id/widget_date"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
             android:maxLines="1"
+            android:textAlignment="viewEnd"
             android:textColor="@color/widget_muted"
             android:textSize="12sp" />
     </LinearLayout>
 
-    <LinearLayout
-        android:id="@+id/widget_prayers"
+    <TextView
+        android:id="@+id/widget_next"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="4dp"
-        android:layout_weight="1"
-        android:orientation="horizontal" />
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingHorizontal="6dp"
+        android:textAlignment="viewStart"
+        android:textColor="@color/widget_muted"
+        android:textSize="12sp"
+        android:visibility="gone" />
 
-    <LinearLayout
-        android:id="@+id/widget_optional"
+    <include layout="@layout/widget_table" />
+
+    <TextView
+        android:id="@+id/widget_footer"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:orientation="horizontal" />
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingHorizontal="6dp"
+        android:paddingTop="2dp"
+        android:textAlignment="viewStart"
+        android:textColor="@color/widget_muted"
+        android:textSize="12sp"
+        android:visibility="gone" />
 </LinearLayout>

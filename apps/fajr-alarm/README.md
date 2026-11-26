@@ -16,7 +16,7 @@ and update address keep the old name, so installed copies update as before.
 - **Pick which days it rings.**
 - **Every prayer time of the day**: Fajr, Dhuhr, Asr, Maghrib and Isha, with sunrise and the optional times (Duha, midnight, the last third of the night). The main screen says which prayer it is and how long it has left. See [Prayer times, widgets and the lock screen](#prayer-times-widgets-and-the-lock-screen).
 - **A notification for any of those times**, if you want one: a plain notification with the phone's notification sound, never the alarm or a mission. Off until you tap a time's bell.
-- **Two home screen widgets**: every time of the day, and the current prayer with a live countdown.
+- **Two home screen widgets**: every time of the day as a table, and the current prayer with a live countdown. Both show more when made bigger.
 - **The current prayer on the lock screen**: a silent notification that counts down the time it has left.
 - **Location** from the device (coarse, no Google Play services needed) or typed in manually.
 - **Calculation methods**: Dar al-Fatwa (Lebanon), MWL, ISNA, Egypt, Umm al-Qura, Karachi, Tehran, Dubai, Gulf, Kuwait, Qatar, Singapore, Diyanet, UOIF, or custom Fajr and Isha angles. Asr by the standard rule or the Hanafi one. A ± minute adjustment for each of the five prayers lets you match your mosque's timetable. See [Dar al-Fatwa, Lebanon](#dar-al-fatwa-lebanon).
@@ -74,8 +74,22 @@ A prayer's time is taken to end when the next prayer starts. Fajr ends at sunris
 **Notifications.** Each time except Fajr has a bell. With the bell on, a notification is posted when that time arrives, using the phone's notification sound. It is not the alarm: nothing rings on the alarm stream, there is no mission, and it goes away on its own after an hour. Fajr has no bell because it has the alarm. A notification that would be more than 10 minutes late (the phone was off) is skipped. Sound and vibration are set in the phone's settings for the app, under the **Prayer time notifications** category.
 
 **Widgets.** Add them from **Lock screen & widgets** in the app, or by touching and holding the home screen and choosing Widgets.
-- **All times** (4 × 2): the current prayer with a countdown, the five prayers in a row with the current one in gold, and the four optional times under them. Clock times are shown without AM/PM to fit.
-- **Current prayer** (2 × 1): the current prayer, the countdown, and the next prayer's time.
+- **All times** (4 × 2 to begin with): the current prayer with a countdown and the date, over a table of the nine times in the order they come. The current prayer's row is gold and the times that have passed are faded.
+- **Current prayer** (2 × 1 to begin with): the current prayer, the countdown, and the next prayer's time.
+
+Both show more when you make them bigger (touch and hold the widget, then drag its edges):
+
+| "All times" at least | Shows |
+|---|---|
+| 110 dp tall | The table in two columns, read down the first and then the second. Clock times are shown without AM/PM to fit |
+| 170 dp tall | Also the prayer that comes after the current one |
+| 250 dp tall | The table in one column, with AM/PM, and a bell beside the times that send a notification |
+| 250 dp tall and 290 dp wide | Also a second column of clock times: when each of the five prayers ends |
+| 330 dp tall | Also a bottom line with the next alarm and the calculation method |
+
+**Current prayer** adds the date at 110 dp tall, the table in two columns at 190 dp tall and 220 dp wide, and the table in one column at 290 dp tall and 160 dp wide. How many cells that is depends on the phone: two cells are usually 150 to 220 dp tall.
+
+On Android 12 and later the app hands the home screen a drawing for each of these sizes and the home screen shows the biggest one that fits, so resizing costs nothing. A home screen that doesn't do that tells the app the new size, and the widget is drawn again once.
 
 The countdown ticks by itself, every second. Tapping a widget opens the app.
 

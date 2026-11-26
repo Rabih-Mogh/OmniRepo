@@ -5,6 +5,7 @@
     <color name="widget_background">#F017223F</color>
     <color name="widget_text">#FFE6EBF4</color>
     <color name="widget_muted">#FFBCB8D4</color>
+    <color name="widget_passed">#8CBCB8D4</color>
     <color name="widget_gold">#FFFFD27A</color>
     <color name="widget_on_gold">#FF1A2D52</color>
 </resources>
