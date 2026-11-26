@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- The dot before an obligatory prayer in the widgets' table, on the current prayer's gold row. -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-    <solid android:color="@color/widget_on_gold" />
-</shape>

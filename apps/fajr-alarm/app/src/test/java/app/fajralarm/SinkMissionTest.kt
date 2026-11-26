@@ -5,6 +5,8 @@ import android.os.Looper
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -172,7 +174,10 @@ class SinkMissionTest {
         sunriseIn(300)
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.waitForIdle()
+            compose.onNodeWithText("Fajr alarm").performClick()
+            compose.onNodeWithText("SOUND & WAKE-UP").performScrollTo().performClick()
             compose.onNodeWithText("Max snoozes").assertExists()
+            compose.onNodeWithText("TO TURN THE ALARM OFF").performScrollTo().performClick()
             compose.onNodeWithText("Snooze turns off once sunrise is close", substring = true).assertExists()
         }
     }

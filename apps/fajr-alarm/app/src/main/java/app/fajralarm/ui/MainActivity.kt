@@ -19,7 +19,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,6 +43,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.AlertDialog
@@ -51,6 +55,8 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -68,6 +74,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,6 +90,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -94,7 +102,11 @@ import app.fajralarm.alarm.AlarmService
 import app.fajralarm.core.AlarmAnchor
 import app.fajralarm.core.AlarmPlanner
 import app.fajralarm.core.AlarmSettings
+import app.fajralarm.core.AsrEnd
 import app.fajralarm.core.AsrRule
+import app.fajralarm.core.IshaEnd
+import app.fajralarm.core.WidgetColors
+import app.fajralarm.core.WidgetTheme
 import app.fajralarm.core.CalculationMethod
 import app.fajralarm.core.DismissMission
 import app.fajralarm.core.HighLatitudeRule
@@ -134,6 +146,8 @@ class MainActivity : ComponentActivity() {
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+private const val PAGE_PRAYERS = 0
+
 @Composable
 private fun SettingsScreen() {
     val context = LocalContext.current
@@ -207,317 +221,389 @@ private fun SettingsScreen() {
             }
         })
 
-        SummaryCard(context, settings, resumeTick) { on ->
-            if (on && !settings.hasLocation) {
-                Toast.makeText(context, R.string.toast_set_location_first, Toast.LENGTH_SHORT).show()
+        // Two pages: the day's prayers, and the alarm that wakes you for Fajr. The settings
+        // on each are folded up to a line that says what is set.
+        var page by rememberSaveable { mutableIntStateOf(PAGE_PRAYERS) }
+        TabRow(selectedTabIndex = page, containerColor = Color.Transparent) {
+            listOf(R.string.tab_prayers, R.string.tab_fajr_alarm).forEachIndexed { index, title ->
+                Tab(selected = page == index, onClick = { page = index }, text = { Text(stringResource(title)) })
             }
-            if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                !NotificationManagerCompat.from(context).areNotificationsEnabled()
-            ) {
-                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-            update(settings.copy(enabled = on))
         }
 
-        PrayerTimesCard(settings, resumeTick) { prayer, on ->
-            if (on) askForNotifications()
-            update(settings.copy(alerts = if (on) settings.alerts + prayer else settings.alerts - prayer))
-        }
-
-        LastAlarmCard(context, resumeTick)
-
-        Section(stringResource(R.string.section_alarm)) {
-            Text(stringResource(R.string.ring_relative_to), style = MaterialTheme.typography.labelLarge)
-            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                val anchors = AlarmAnchor.values()
-                anchors.forEachIndexed { i, a ->
-                    SegmentedButton(
-                        selected = settings.anchor == a,
-                        onClick = { update(settings.copy(anchor = a)) },
-                        shape = SegmentedButtonDefaults.itemShape(i, anchors.size),
-                    ) { Text(stringResource(a.label)) }
-                }
-            }
-
-            Text(
-                settings.describeOffset(context),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            Slider(
-                value = settings.offsetMinutes.toFloat(),
-                onValueChange = { v ->
-                    val snapped = (v / 5f).roundToInt() * 5
-                    if (snapped != settings.offsetMinutes) settings = settings.copy(offsetMinutes = snapped)
+        if (page == PAGE_PRAYERS) {
+            PrayerTimesCard(
+                settings, resumeTick,
+                onFullScreenChange = { on ->
+                    if (on) askForNotifications()
+                    update(settings.copy(fullScreenAlerts = on))
                 },
-                onValueChangeFinished = { update(settings) },
-                valueRange = -120f..60f,
-            )
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(
-                    stringResource(R.string.offset_earliest),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    stringResource(R.string.offset_latest),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                onAlertSoundChange = { update(settings.copy(alertSound = it)) },
+            ) { prayer, on ->
+                if (on) askForNotifications()
+                update(settings.copy(alerts = if (on) settings.alerts + prayer else settings.alerts - prayer))
             }
 
-            Text(stringResource(R.string.days), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
-            DayPicker(settings.days) { update(settings.copy(days = it)) }
-        }
+            MoonCard(settings.latitude, resumeTick)
 
-        Section(stringResource(R.string.section_location)) {
-            Text(
-                if (settings.hasLocation) {
-                    stringResource(
-                        R.string.location_value,
-                        settings.locationName(context),
-                        "%.4f, %.4f".format(Locale.US, settings.latitude, settings.longitude).leftToRight(),
-                    )
-                } else {
-                    stringResource(R.string.location_none)
-                },
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            FilledTonalButton(
-                enabled = !locating,
-                onClick = {
-                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
-                        == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        locating = true
-                        fetchLocation(context) { lat, lng ->
-                            locating = false
-                            if (lat != null && lng != null) {
-                                update(settings.copy(latitude = lat, longitude = lng, locationLabel = LOCATION_CURRENT))
+            val locationText = if (settings.hasLocation) {
+                stringResource(
+                    R.string.location_value,
+                    settings.locationName(context),
+                    "%.4f, %.4f".format(Locale.US, settings.latitude, settings.longitude).leftToRight(),
+                )
+            } else {
+                stringResource(R.string.location_none)
+            }
+            Section(stringResource(R.string.section_location), summary = locationText) {
+                Text(locationText, style = MaterialTheme.typography.bodyMedium)
+                FilledTonalButton(
+                    enabled = !locating,
+                    onClick = {
+                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
+                            == PackageManager.PERMISSION_GRANTED
+                        ) {
+                            locating = true
+                            fetchLocation(context) { lat, lng ->
+                                locating = false
+                                if (lat != null && lng != null) {
+                                    update(settings.copy(latitude = lat, longitude = lng, locationLabel = LOCATION_CURRENT))
+                                }
                             }
+                        } else {
+                            locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
                         }
-                    } else {
-                        locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-                    }
-                },
-            ) {
-                Icon(Icons.Rounded.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(if (locating) R.string.locating else R.string.use_current_location))
+                    },
+                ) {
+                    Icon(Icons.Rounded.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(if (locating) R.string.locating else R.string.use_current_location))
+                }
+
+                ManualLocation(settings) { lat, lng ->
+                    update(settings.copy(latitude = lat, longitude = lng, locationLabel = LOCATION_MANUAL))
+                }
             }
 
-            ManualLocation(settings) { lat, lng ->
-                update(settings.copy(latitude = lat, longitude = lng, locationLabel = LOCATION_MANUAL))
+            val methodLabel: @Composable (CalculationMethod) -> String = { m ->
+                if (m == CalculationMethod.CUSTOM) {
+                    stringResource(m.label)
+                } else {
+                    stringResource(R.string.method_with_angle, stringResource(m.label), m.fajrAngle)
+                }
             }
-        }
+            Section(stringResource(R.string.section_calculation), summary = methodLabel(settings.method)) {
+                ChoiceRow(
+                    title = stringResource(R.string.method),
+                    current = settings.method,
+                    options = CalculationMethod.values().toList(),
+                    label = methodLabel,
+                ) { update(settings.copy(method = it)) }
+                if (settings.method == CalculationMethod.DAR_AL_FATWA_LEBANON) {
+                    Text(
+                        stringResource(R.string.method_dar_al_fatwa_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
 
-        Section(stringResource(R.string.section_calculation)) {
-            ChoiceRow(
-                title = stringResource(R.string.method),
-                current = settings.method,
-                options = CalculationMethod.values().toList(),
-                label = { m ->
-                    if (m == CalculationMethod.CUSTOM) {
-                        stringResource(m.label)
-                    } else {
-                        stringResource(R.string.method_with_angle, stringResource(m.label), m.fajrAngle)
-                    }
-                },
-            ) { update(settings.copy(method = it)) }
-            if (settings.method == CalculationMethod.DAR_AL_FATWA_LEBANON) {
+                if (settings.method == CalculationMethod.CUSTOM) {
+                    Text(stringResource(R.string.fajr_angle, settings.customFajrAngle), style = MaterialTheme.typography.bodyMedium)
+                    Slider(
+                        value = settings.customFajrAngle.toFloat(),
+                        onValueChange = { settings = settings.copy(customFajrAngle = (it * 2).roundToInt() / 2.0) },
+                        onValueChangeFinished = { update(settings) },
+                        valueRange = 10f..21f,
+                    )
+                }
+
+                if (settings.method == CalculationMethod.CUSTOM) {
+                    Text(stringResource(R.string.isha_angle, settings.customIshaAngle), style = MaterialTheme.typography.bodyMedium)
+                    Slider(
+                        value = settings.customIshaAngle.toFloat(),
+                        onValueChange = { settings = settings.copy(customIshaAngle = (it * 2).roundToInt() / 2.0) },
+                        onValueChangeFinished = { update(settings) },
+                        valueRange = 10f..21f,
+                    )
+                }
+
+                ChoiceRow(
+                    title = stringResource(R.string.asr_rule),
+                    current = settings.asrRule,
+                    options = AsrRule.values().toList(),
+                    label = { stringResource(it.label) },
+                ) { update(settings.copy(asrRule = it)) }
+
+                ChoiceRow(
+                    title = stringResource(R.string.asr_end),
+                    current = settings.asrEnd,
+                    options = AsrEnd.values().toList(),
+                    label = { stringResource(it.label) },
+                ) { update(settings.copy(asrEnd = it)) }
+
+                ChoiceRow(
+                    title = stringResource(R.string.isha_end),
+                    current = settings.ishaEnd,
+                    options = IshaEnd.values().toList(),
+                    label = { stringResource(it.label) },
+                ) { update(settings.copy(ishaEnd = it)) }
                 Text(
-                    stringResource(R.string.method_dar_al_fatwa_note),
+                    stringResource(R.string.ends_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            }
 
-            if (settings.method == CalculationMethod.CUSTOM) {
-                Text(stringResource(R.string.fajr_angle, settings.customFajrAngle), style = MaterialTheme.typography.bodyMedium)
-                Slider(
-                    value = settings.customFajrAngle.toFloat(),
-                    onValueChange = { settings = settings.copy(customFajrAngle = (it * 2).roundToInt() / 2.0) },
-                    onValueChangeFinished = { update(settings) },
-                    valueRange = 10f..21f,
-                )
-            }
+                ChoiceRow(
+                    title = stringResource(R.string.high_latitude_rule),
+                    current = settings.highLatitudeRule,
+                    options = HighLatitudeRule.values().toList(),
+                    label = { stringResource(it.label) },
+                ) { update(settings.copy(highLatitudeRule = it)) }
 
-            if (settings.method == CalculationMethod.CUSTOM) {
-                Text(stringResource(R.string.isha_angle, settings.customIshaAngle), style = MaterialTheme.typography.bodyMedium)
-                Slider(
-                    value = settings.customIshaAngle.toFloat(),
-                    onValueChange = { settings = settings.copy(customIshaAngle = (it * 2).roundToInt() / 2.0) },
-                    onValueChangeFinished = { update(settings) },
-                    valueRange = 10f..21f,
-                )
-            }
-
-            ChoiceRow(
-                title = stringResource(R.string.asr_rule),
-                current = settings.asrRule,
-                options = AsrRule.values().toList(),
-                label = { stringResource(it.label) },
-            ) { update(settings.copy(asrRule = it)) }
-
-            ChoiceRow(
-                title = stringResource(R.string.high_latitude_rule),
-                current = settings.highLatitudeRule,
-                options = HighLatitudeRule.values().toList(),
-                label = { stringResource(it.label) },
-            ) { update(settings.copy(highLatitudeRule = it)) }
-
-            Stepper(
-                title = stringResource(R.string.fajr_adjustment),
-                value = settings.fajrAdjustMinutes,
-                suffix = stringResource(R.string.minutes_short),
-                range = -30..30,
-            ) { update(settings.copy(fajrAdjustMinutes = it)) }
-            listOf(PrayerTime.DHUHR, PrayerTime.ASR, PrayerTime.MAGHRIB, PrayerTime.ISHA).forEach { prayer ->
                 Stepper(
-                    title = stringResource(R.string.prayer_adjustment, stringResource(prayer.label)),
-                    value = settings.adjustMinutes[prayer] ?: 0,
+                    title = stringResource(R.string.imsak_minutes),
+                    value = settings.imsakMinutes,
                     suffix = stringResource(R.string.minutes_short),
-                    range = -30..30,
-                ) { update(settings.copy(adjustMinutes = settings.adjustMinutes + (prayer to it))) }
-            }
-            Text(
-                stringResource(R.string.fajr_adjustment_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+                    range = 0..30,
+                ) { update(settings.copy(imsakMinutes = it)) }
+                Text(
+                    stringResource(R.string.imsak_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
 
-        Section(stringResource(R.string.section_sound)) {
-            val pickerTitle = stringResource(R.string.sound_picker_title)
-            val soundName = remember(settings.soundUri) { soundTitle(context, settings.soundUri) }
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
-                            .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
-                            .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                            .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
-                            .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, pickerTitle)
-                            .putExtra(
-                                RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
-                                settings.soundUri?.let(Uri::parse)
-                                    ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
-                            )
-                        soundPicker.launch(intent)
-                    }
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(stringResource(R.string.alarm_sound), style = MaterialTheme.typography.bodyLarge)
-                ValueWithChevron(soundName)
-            }
-            SwitchRow(stringResource(R.string.vibrate), settings.vibrate) { update(settings.copy(vibrate = it)) }
-            SwitchRow(stringResource(R.string.gentle_start), settings.gradualVolume) { update(settings.copy(gradualVolume = it)) }
-
-            ChoiceRow(
-                title = stringResource(R.string.snooze),
-                current = settings.snoozeMinutes,
-                options = listOf(0, 3, 5, 10, 15),
-                label = { if (it == 0) stringResource(R.string.snooze_off) else pluralStringResource(R.plurals.minutes, it, it) },
-            ) { update(settings.copy(snoozeMinutes = it)) }
-            if (settings.snoozeMinutes > 0) {
-                Stepper(stringResource(R.string.max_snoozes), settings.maxSnoozes, "", 1..10) { update(settings.copy(maxSnoozes = it)) }
-            }
-
-        }
-
-        Section(stringResource(R.string.section_turn_off)) {
-            ChoiceRow(
-                title = stringResource(R.string.mission),
-                current = settings.dismissMission,
-                options = DismissMission.values().toList(),
-                label = { stringResource(it.label) },
-            ) { mission ->
-                update(settings.copy(dismissMission = mission))
-                // The test screen asks for the camera, which the mission can't work without.
-                if (mission == DismissMission.SINK_PHOTO &&
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+                // The minutes that are not zero, e.g. "Fajr +2, Maghrib -1".
+                val adjusted = (listOf(PrayerTime.FAJR to settings.fajrAdjustMinutes) + settings.adjustMinutes.toList())
+                    .filter { it.second != 0 }
+                    .map { (prayer, minutes) -> stringResource(prayer.label) + " " + "%+d".format(Locale.US, minutes).leftToRight() }
+                Fold(
+                    stringResource(R.string.adjustments_title),
+                    summary = adjusted.joinToString().ifEmpty { stringResource(R.string.adjustments_none) },
                 ) {
-                    context.startActivity(Intent(context, SinkSetupActivity::class.java))
-                }
-            }
-            Text(
-                stringResource(settings.dismissMission.summary),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            if (settings.dismissMission == DismissMission.SINK_PHOTO) {
-                val cameraOk = remember(resumeTick) {
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-                }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.sink_no_photos), Modifier.weight(1f))
-                    TextButton(onClick = { context.startActivity(Intent(context, SinkSetupActivity::class.java)) }) {
-                        Text(stringResource(R.string.test_it))
+                    Stepper(
+                        title = stringResource(R.string.fajr_adjustment),
+                        value = settings.fajrAdjustMinutes,
+                        suffix = stringResource(R.string.minutes_short),
+                        range = -30..30,
+                    ) { update(settings.copy(fajrAdjustMinutes = it)) }
+                    listOf(PrayerTime.DHUHR, PrayerTime.ASR, PrayerTime.MAGHRIB, PrayerTime.ISHA).forEach { prayer ->
+                        Stepper(
+                            title = stringResource(R.string.prayer_adjustment, stringResource(prayer.label)),
+                            value = settings.adjustMinutes[prayer] ?: 0,
+                            suffix = stringResource(R.string.minutes_short),
+                            range = -30..30,
+                        ) { update(settings.copy(adjustMinutes = settings.adjustMinutes + (prayer to it))) }
                     }
-                }
-                if (!cameraOk) {
                     Text(
-                        stringResource(R.string.camera_off_falls_back),
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-                if (settings.snoozeMinutes > 0) {
-                    Text(
-                        stringResource(R.string.sink_snooze_sunrise),
+                        stringResource(R.string.fajr_adjustment_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
-        }
 
-        Section(stringResource(R.string.section_lock_widgets)) {
-            SwitchRow(
-                stringResource(R.string.lock_screen_countdown),
-                settings.lockScreenCountdown,
-                subtitle = stringResource(R.string.lock_screen_countdown_hint),
-            ) { on ->
-                if (on) askForNotifications()
-                update(settings.copy(lockScreenCountdown = on))
+            Section(stringResource(R.string.section_lock_widgets), summary = stringResource(settings.widgetTheme.label)) {
+                SwitchRow(
+                    stringResource(R.string.lock_screen_countdown),
+                    settings.lockScreenCountdown,
+                    subtitle = stringResource(R.string.lock_screen_countdown_hint),
+                ) { on ->
+                    if (on) askForNotifications()
+                    update(settings.copy(lockScreenCountdown = on))
+                }
+                Text(
+                    stringResource(R.string.widgets_intro),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+                ChoiceRow(
+                    title = stringResource(R.string.widget_theme),
+                    current = settings.widgetTheme,
+                    options = WidgetTheme.values().toList(),
+                    label = { stringResource(it.label) },
+                ) { update(settings.copy(widgetTheme = it)) }
+                if (settings.widgetTheme == WidgetTheme.CUSTOM) {
+                    WidgetColorPicker(settings.widgetColors) { update(settings.copy(widgetColors = it)) }
+                }
+                TextButton(onClick = { addWidget(context, PrayerTimesWidget::class.java) }) {
+                    Text(stringResource(R.string.widget_add_times))
+                }
+                TextButton(onClick = { addWidget(context, CurrentPrayerWidget::class.java) }) {
+                    Text(stringResource(R.string.widget_add_now))
+                }
+                Text(
+                    stringResource(R.string.widget_add_by_hand),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-            Text(
-                stringResource(R.string.widgets_intro),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            TextButton(onClick = { addWidget(context, PrayerTimesWidget::class.java) }) {
-                Text(stringResource(R.string.widget_add_times))
-            }
-            TextButton(onClick = { addWidget(context, CurrentPrayerWidget::class.java) }) {
-                Text(stringResource(R.string.widget_add_now))
-            }
-            Text(
-                stringResource(R.string.widget_add_by_hand),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        OutlinedButton(
-            onClick = {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        } else {
+            SummaryCard(context, settings, resumeTick) { on ->
+                if (on && !settings.hasLocation) {
+                    Toast.makeText(context, R.string.toast_set_location_first, Toast.LENGTH_SHORT).show()
+                }
+                if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                     !NotificationManagerCompat.from(context).areNotificationsEnabled()
                 ) {
                     notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                } else {
-                    ContextCompat.startForegroundService(context, AlarmService.startIntent(context))
                 }
-            },
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-        ) {
-            Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.test_alarm_now))
+                update(settings.copy(enabled = on))
+            }
+
+            LastAlarmCard(context, resumeTick)
+
+            Section(stringResource(R.string.section_alarm), summary = settings.describeOffset(context)) {
+                Text(stringResource(R.string.ring_relative_to), style = MaterialTheme.typography.labelLarge)
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                    val anchors = AlarmAnchor.values()
+                    anchors.forEachIndexed { i, a ->
+                        SegmentedButton(
+                            selected = settings.anchor == a,
+                            onClick = { update(settings.copy(anchor = a)) },
+                            shape = SegmentedButtonDefaults.itemShape(i, anchors.size),
+                        ) { Text(stringResource(a.label)) }
+                    }
+                }
+
+                Text(
+                    settings.describeOffset(context),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+                Slider(
+                    value = settings.offsetMinutes.toFloat(),
+                    onValueChange = { v ->
+                        val snapped = (v / 5f).roundToInt() * 5
+                        if (snapped != settings.offsetMinutes) settings = settings.copy(offsetMinutes = snapped)
+                    },
+                    onValueChangeFinished = { update(settings) },
+                    valueRange = -120f..60f,
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(
+                        stringResource(R.string.offset_earliest),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        stringResource(R.string.offset_latest),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                Text(stringResource(R.string.days), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+                DayPicker(settings.days) { update(settings.copy(days = it)) }
+            }
+
+            val soundName = remember(settings.soundUri) { soundTitle(context, settings.soundUri) }
+            val snoozeLabel: @Composable (Int) -> String =
+                { if (it == 0) stringResource(R.string.snooze_off) else pluralStringResource(R.plurals.minutes, it, it) }
+            Section(
+                stringResource(R.string.section_sound),
+                summary = "$soundName · ${stringResource(R.string.snooze)}: ${snoozeLabel(settings.snoozeMinutes)}",
+            ) {
+                val pickerTitle = stringResource(R.string.sound_picker_title)
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
+                                .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+                                .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                                .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+                                .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, pickerTitle)
+                                .putExtra(
+                                    RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
+                                    settings.soundUri?.let(Uri::parse)
+                                        ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
+                                )
+                            soundPicker.launch(intent)
+                        }
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(stringResource(R.string.alarm_sound), style = MaterialTheme.typography.bodyLarge)
+                    ValueWithChevron(soundName)
+                }
+                SwitchRow(stringResource(R.string.vibrate), settings.vibrate) { update(settings.copy(vibrate = it)) }
+                SwitchRow(stringResource(R.string.gentle_start), settings.gradualVolume) { update(settings.copy(gradualVolume = it)) }
+
+                ChoiceRow(
+                    title = stringResource(R.string.snooze),
+                    current = settings.snoozeMinutes,
+                    options = listOf(0, 3, 5, 10, 15),
+                    label = snoozeLabel,
+                ) { update(settings.copy(snoozeMinutes = it)) }
+                if (settings.snoozeMinutes > 0) {
+                    Stepper(stringResource(R.string.max_snoozes), settings.maxSnoozes, "", 1..10) { update(settings.copy(maxSnoozes = it)) }
+                }
+            }
+
+            Section(stringResource(R.string.section_turn_off), summary = stringResource(settings.dismissMission.label)) {
+                ChoiceRow(
+                    title = stringResource(R.string.mission),
+                    current = settings.dismissMission,
+                    options = DismissMission.values().toList(),
+                    label = { stringResource(it.label) },
+                ) { mission ->
+                    update(settings.copy(dismissMission = mission))
+                    // The test screen asks for the camera, which the mission can't work without.
+                    if (mission == DismissMission.SINK_PHOTO &&
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        context.startActivity(Intent(context, SinkSetupActivity::class.java))
+                    }
+                }
+                Text(
+                    stringResource(settings.dismissMission.summary),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                if (settings.dismissMission == DismissMission.SINK_PHOTO) {
+                    val cameraOk = remember(resumeTick) {
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                    }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.sink_no_photos), Modifier.weight(1f))
+                        TextButton(onClick = { context.startActivity(Intent(context, SinkSetupActivity::class.java)) }) {
+                            Text(stringResource(R.string.test_it))
+                        }
+                    }
+                    if (!cameraOk) {
+                        Text(
+                            stringResource(R.string.camera_off_falls_back),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    if (settings.snoozeMinutes > 0) {
+                        Text(
+                            stringResource(R.string.sink_snooze_sunrise),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
+            OutlinedButton(
+                onClick = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        !NotificationManagerCompat.from(context).areNotificationsEnabled()
+                    ) {
+                        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        ContextCompat.startForegroundService(context, AlarmService.startIntent(context))
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) {
+                Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.test_alarm_now))
+            }
         }
 
         VersionFooter()
@@ -705,29 +791,142 @@ private fun TimePill(label: String, value: String, modifier: Modifier = Modifier
     }
 }
 
+/**
+ * A titled card. With a [summary] it starts folded up to that one line and opens when
+ * tapped, so the screen stays short until a setting is wanted.
+ */
 @Composable
-internal fun Section(title: String, content: @Composable () -> Unit) {
+internal fun Section(title: String, summary: String? = null, content: @Composable () -> Unit) {
+    var open by rememberSaveable(title) { mutableStateOf(summary == null) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            title.uppercase(Locale.getDefault()),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 8.dp, top = 12.dp),
-        )
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp)
+                .clip(MaterialTheme.shapes.small)
+                .then(if (summary != null) Modifier.clickable { open = !open } else Modifier)
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                title.uppercase(Locale.getDefault()),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f),
+            )
+            if (summary != null) FoldArrow(open)
+        }
         Card(
             shape = MaterialTheme.shapes.large,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                content()
+            if (open) {
+                Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    content()
+                }
+            } else {
+                Text(
+                    summary.orEmpty(),
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { open = true }
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }
 }
 
+/** A row inside a section that opens to show more: its title, and what is set while it is closed. */
 @Composable
-private fun SwitchRow(title: String, checked: Boolean, subtitle: String? = null, onChange: (Boolean) -> Unit) {
+internal fun Fold(title: String, summary: String? = null, content: @Composable () -> Unit) {
+    var open by rememberSaveable(title) { mutableStateOf(false) }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable { open = !open }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        if (!open && summary != null) {
+            Text(
+                summary,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+        }
+        FoldArrow(open)
+    }
+    if (open) content()
+}
+
+@Composable
+private fun FoldArrow(open: Boolean) {
+    Icon(
+        if (open) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.size(20.dp),
+    )
+}
+
+/** The colours offered for a widget of your own, as 0xRRGGBB. */
+private val WIDGET_SWATCHES = listOf(
+    0x000000, 0x17223F, 0x2F3B52, 0x1F3D2B, 0x4A1F2A, 0xFFFFFF, 0xFBF8F1,
+    0xFFD27A, 0xF2994A, 0xE6B3C9, 0x8AB4F8, 0x7FD1C7, 0x9BD67D,
+)
+
+/** Picks the three colours of your own widget theme and how solid its background is. */
+@Composable
+private fun WidgetColorPicker(colors: WidgetColors, onChange: (WidgetColors) -> Unit) {
+    SwatchRow(stringResource(R.string.widget_color_background), colors.background) { onChange(colors.copy(background = it)) }
+    var opacity by remember(colors.backgroundOpacity) { mutableIntStateOf(colors.backgroundOpacity) }
+    Text(stringResource(R.string.widget_color_opacity, opacity), style = MaterialTheme.typography.labelLarge)
+    Slider(
+        value = opacity.toFloat(),
+        onValueChange = { opacity = (it / 5f).roundToInt() * 5 },
+        onValueChangeFinished = { onChange(colors.copy(backgroundOpacity = opacity)) },
+        valueRange = 0f..100f,
+    )
+    SwatchRow(stringResource(R.string.widget_color_text), colors.text) { onChange(colors.copy(text = it)) }
+    SwatchRow(stringResource(R.string.widget_color_highlight), colors.highlight) { onChange(colors.copy(highlight = it)) }
+}
+
+@Composable
+private fun SwatchRow(title: String, selected: Int, onSelect: (Int) -> Unit) {
+    Text(title, style = MaterialTheme.typography.labelLarge)
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        WIDGET_SWATCHES.forEach { rgb ->
+            val name = "$title #%06X".format(Locale.US, rgb).leftToRight()
+            Box(
+                Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF000000 or rgb.toLong()))
+                    .border(
+                        width = if (rgb == selected) 3.dp else 1.dp,
+                        color = if (rgb == selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                        shape = CircleShape,
+                    )
+                    .selectable(selected = rgb == selected, role = Role.RadioButton) { onSelect(rgb) }
+                    .semantics { contentDescription = name },
+            )
+        }
+    }
+}
+
+@Composable
+internal fun SwitchRow(title: String, checked: Boolean, subtitle: String? = null, onChange: (Boolean) -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -787,7 +986,7 @@ private fun ValueWithChevron(value: String) {
 }
 
 @Composable
-private fun <T> ChoiceRow(
+internal fun <T> ChoiceRow(
     title: String,
     current: T,
     options: List<T>,

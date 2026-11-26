@@ -11,6 +11,42 @@ enum class DismissMission {
     SINK_PHOTO,
 }
 
+/** How a prayer time's notification makes itself heard. */
+enum class AlertSound {
+    /** The phone's notification sound. */
+    SOUND,
+    VIBRATE,
+
+    /** Neither: it only shows. */
+    SILENT,
+}
+
+/** How the home screen widgets are coloured. The app holds the colours. */
+enum class WidgetTheme {
+    NIGHT,
+    BLACK,
+    LIGHT,
+
+    /** See-through, for a wallpaper to show behind it. */
+    GLASS,
+
+    /** [LIGHT] while the phone is in light mode, [NIGHT] in dark mode. */
+    SYSTEM,
+
+    /** The colours picked in [AlarmSettings.widgetColors]. */
+    CUSTOM,
+}
+
+/** Your own widget colours, each as 0xRRGGBB, and how solid the background is. */
+data class WidgetColors(
+    val background: Int = 0x17223F,
+    /** 0 = no background at all, 100 = solid. */
+    val backgroundOpacity: Int = 60,
+    val text: Int = 0xFFFFFF,
+    /** The current prayer's row and the headline. */
+    val highlight: Int = 0xFFD27A,
+)
+
 /** What the alarm time is measured from. */
 enum class AlarmAnchor {
     FAJR,
@@ -28,6 +64,11 @@ data class AlarmSettings(
     val customFajrAngle: Double = 18.0,
     val customIshaAngle: Double = 17.0,
     val asrRule: AsrRule = AsrRule.STANDARD,
+    /** When Asr and Isha are shown as ending, for the schools that set a point inside their time. */
+    val asrEnd: AsrEnd = AsrEnd.MAGHRIB,
+    val ishaEnd: IshaEnd = IshaEnd.FAJR,
+    /** Imsak this many minutes before Fajr; 0 leaves it out of the list. */
+    val imsakMinutes: Int = PrayerCalcParams.DEFAULT_IMSAK_MINUTES,
     val highLatitudeRule: HighLatitudeRule = HighLatitudeRule.ANGLE_BASED,
     val fajrAdjustMinutes: Int = 0,
     /** The same manual correction for Dhuhr, Asr, Maghrib and Isha, in minutes. */
@@ -45,8 +86,15 @@ data class AlarmSettings(
     val dismissMission: DismissMission = DismissMission.NONE,
     /** The times that get a plain notification when they arrive. Fajr has the alarm instead. */
     val alerts: Set<PrayerTime> = emptySet(),
+    /** Show a time's notification over the whole screen, lock screen included, rather than as a plain one. */
+    val fullScreenAlerts: Boolean = false,
+    /** What a time's notification does besides showing. */
+    val alertSound: AlertSound = AlertSound.SOUND,
     /** Keep the current prayer and the time it has left in a notification, for the lock screen. */
     val lockScreenCountdown: Boolean = false,
+    val widgetTheme: WidgetTheme = WidgetTheme.GLASS,
+    /** The colours of [WidgetTheme.CUSTOM]. */
+    val widgetColors: WidgetColors = WidgetColors(),
 ) {
     val hasLocation: Boolean get() = latitude != null && longitude != null
 
@@ -76,6 +124,9 @@ data class AlarmSettings(
             ishaMinutes = method.ishaMinutes,
             maghribAngle = method.maghribAngle,
             asrRule = asrRule,
+            asrEnd = asrEnd,
+            ishaEnd = ishaEnd,
+            imsakMinutes = imsakMinutes,
             // The method's own minutes, then yours on top.
             adjustMinutes = (method.offsets.keys + adjustMinutes.keys)
                 .associateWith { (method.offsets[it] ?: 0) + (adjustMinutes[it] ?: 0) },

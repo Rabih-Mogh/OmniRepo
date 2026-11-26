@@ -1,58 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- One row of the table: the shape that says what kind of prayer it is, its name, a bell if it notifies, and its clock time. -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- One row of the table. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/row"
     android:layout_width="match_parent"
     android:layout_height="0dp"
-    android:layout_weight="1"
-    android:gravity="center_vertical"
-    android:orientation="horizontal"
-    android:paddingHorizontal="6dp">
+    android:layout_weight="1">
 
-    <!-- A dot for an obligatory prayer, a ring for a voluntary one; kept as a gap before sunrise and midnight. -->
+    <!-- Shown behind the current prayer's row, in the theme's highlight colour. -->
     <ImageView
-        android:id="@+id/row_mark"
-        android:layout_width="7dp"
-        android:layout_height="7dp"
-        android:layout_marginEnd="5dp"
+        android:id="@+id/row_highlight"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:importantForAccessibility="no"
-        android:src="@drawable/widget_mark_dot"
-        android:visibility="invisible" />
-
-    <TextView
-        android:id="@+id/row_name"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:ellipsize="end"
-        android:includeFontPadding="false"
-        android:maxLines="1"
-        android:textAlignment="viewStart"
-        android:textColor="@color/widget_text"
-        android:textSize="12sp" />
-
-    <ImageView
-        android:id="@+id/row_bell"
-        android:layout_width="12dp"
-        android:layout_height="12dp"
-        android:layout_marginHorizontal="4dp"
-        android:importantForAccessibility="no"
-        android:src="@drawable/ic_widget_bell"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_cell_current"
         android:visibility="gone" />
 
-    <TextView
-        android:id="@+id/row_time"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:includeFontPadding="false"
-        android:maxLines="1"
-        android:textColor="@color/widget_text"
-        android:textSize="12sp"
-        android:textStyle="bold" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:paddingHorizontal="6dp">
 
-    <TextView
-        android:id="@+id/row_ends"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:visibility="gone" />
-</LinearLayout>
+        <include layout="@layout/widget_times_cells" />
+    </LinearLayout>
+</FrameLayout>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Qiyam, the night prayer: the crescent with stars. White, to be tinted where it is shown. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <group
+        android:scaleX="0.85"
+        android:scaleY="0.85"
+        android:translateY="3.6">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M14,2c1.82,0 3.53,0.5 5,1.35C16.01,5.08 14,8.3 14,12s2.01,6.92 5,8.65C17.53,21.5 15.82,22 14,22C8.48,22 4,17.52 4,12S8.48,2 14,2z" />
+    </group>
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M18.5,2 l1,2.5 2.5,1 -2.5,1 -1,2.5 -1,-2.5 -2.5,-1 2.5,-1 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M20.5,11.5 l0.6,1.4 1.4,0.6 -1.4,0.6 -0.6,1.4 -0.6,-1.4 -1.4,-0.6 1.4,-0.6 Z" />
+</vector>

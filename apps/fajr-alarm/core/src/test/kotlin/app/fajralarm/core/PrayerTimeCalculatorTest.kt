@@ -1,6 +1,7 @@
 package app.fajralarm.core
 
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
@@ -155,7 +156,11 @@ class PrayerTimeCalculatorTest {
         )
         val a = PrayerTimeCalculator.compute(date, zone, plain.calcParams()!!)
         val b = PrayerTimeCalculator.compute(date, zone, moved.calcParams()!!)
-        assertEquals(listOf(2L, 0L, 0L, 3L, -1L, 4L, -2L), a.moments().zip(b.moments()).take(7).map { (x, y) -> Duration.between(x.at, y.at).toMinutes() })
+        // Imsak moves with Fajr; sunrise and Duha stay.
+        assertEquals(
+            listOf(2L, 2L, 0L, 0L, 3L, -1L, 4L, -2L),
+            a.moments().zip(b.moments()).take(8).map { (x, y) -> Duration.between(x.at, y.at).toMinutes() },
+        )
 
         // Your minutes go on top of the method's own.
         val official = plain.copy(method = CalculationMethod.DAR_AL_FATWA_LEBANON)
@@ -270,6 +275,22 @@ class PrayerClockTest {
     }
 
     @Test
+    fun imsakComesBeforeFajrAndCanBeMovedOrLeftOut() {
+        assertEquals(today.fajr!!.minusMinutes(10), today.imsak)
+        assertEquals(PrayerTime.IMSAK, today.moments().first().prayer)
+        assertEquals(today.fajr.minusMinutes(20), PrayerTimeCalculator.compute(date, zone, params.copy(imsakMinutes = 20)).imsak)
+        val without = PrayerTimeCalculator.compute(date, zone, params.copy(imsakMinutes = 0))
+        assertNull(without.imsak)
+        assertEquals(PrayerTime.FAJR, without.moments().first().prayer)
+        // It is a moment, not a prayer: Isha still runs to Fajr and nothing is current because of it.
+        val beforeDawn = at(4, 46)
+        assertEquals(PrayerTime.ISHA, beforeDawn.current?.prayer)
+        assertEquals(today.fajr, beforeDawn.currentEnds)
+        assertEquals(PrayerTime.FAJR, beforeDawn.nextEvent.prayer)
+        assertNull(beforeDawn.dayEnds[PrayerTime.IMSAK])
+    }
+
+    @Test
     fun duhaAndTheLastThirdAreTheVoluntaryPrayers() {
         assertEquals(listOf(PrayerTime.DUHA, PrayerTime.LAST_THIRD), PrayerTime.values().filter { it.nafl })
         assertTrue(PrayerTime.values().none { it.nafl && it.obligatory })
@@ -290,6 +311,62 @@ class PrayerClockTest {
             ),
             at(15).dayEnds,
         )
+    }
+
+    @Test
+    fun asrCanBeShownEndingWhereASchoolSetsItAndStaysCurrentUntilMaghrib() {
+        fun clock(hour: Int, minute: Int, end: AsrEnd) =
+            assertNotNull(PrayerClock.at(ZonedDateTime.of(date, LocalTime.of(hour, minute), zone), params.copy(asrEnd = end)))
+        val twice = assertNotNull(today.asrShadowTwice)
+        assertTrue(twice.isAfter(today.asr) && twice.isBefore(today.maghrib), "a shadow is twice as long after Asr and before Maghrib")
+        // Hanafi Asr starts at that very moment.
+        val hanafi = PrayerTimeCalculator.compute(date, zone, params.copy(asrRule = AsrRule.HANAFI))
+        assertEquals(hanafi.asr, twice)
+
+        // Just after Asr the countdown runs to the chosen end.
+        val early = clock(14, 20, AsrEnd.SHADOW_TWICE)
+        assertEquals(twice, early.dayEnds[PrayerTime.ASR])
+        assertEquals(twice, early.currentEnds)
+        assertEquals(twice, early.nextChange)
+        // Past it Asr is still the current prayer, now until Maghrib.
+        val late = clock(16, 0, AsrEnd.SHADOW_TWICE)
+        assertEquals(PrayerTime.ASR, late.current?.prayer)
+        assertEquals(today.maghrib, late.currentEnds)
+        assertEquals(twice, late.dayEnds[PrayerTime.ASR])
+        assertEquals(late.nextEvent.at, late.nextChange)
+
+        assertEquals(today.sunset!!.minusMinutes(20), clock(15, 0, AsrEnd.SUN_YELLOWS).dayEnds[PrayerTime.ASR])
+        // With Hanafi Asr the twice-as-long shadow is where Asr starts, so it can't also end there.
+        val both = assertNotNull(
+            PrayerClock.at(
+                ZonedDateTime.of(date, LocalTime.of(15, 30), zone),
+                params.copy(asrRule = AsrRule.HANAFI, asrEnd = AsrEnd.SHADOW_TWICE),
+            ),
+        )
+        assertEquals(hanafi.maghrib, both.dayEnds[PrayerTime.ASR])
+    }
+
+    @Test
+    fun ishaCanBeShownEndingAtMidnightOrTheFirstThird() {
+        val tomorrow = PrayerTimeCalculator.compute(date.plusDays(1), zone, params)
+        fun clock(end: IshaEnd) =
+            assertNotNull(PrayerClock.at(ZonedDateTime.of(date, LocalTime.of(19, 0), zone), params.copy(ishaEnd = end)))
+        assertEquals(tomorrow.fajr, clock(IshaEnd.FAJR).dayEnds[PrayerTime.ISHA])
+        assertEquals(today.midnight, clock(IshaEnd.MIDNIGHT).dayEnds[PrayerTime.ISHA])
+        val third = assertNotNull(today.firstThird)
+        assertEquals(third, clock(IshaEnd.FIRST_THIRD).dayEnds[PrayerTime.ISHA])
+        assertTrue(third.isAfter(today.isha) && third.isBefore(today.midnight))
+        // A third of the night, measured from sunset to the next Fajr.
+        assertEquals(
+            Duration.between(today.sunset, tomorrow.fajr).dividedBy(3),
+            Duration.between(today.sunset, third),
+        )
+        // After the first third Isha is still current, until Fajr.
+        val late = assertNotNull(
+            PrayerClock.at(ZonedDateTime.of(date, LocalTime.of(23, 30), zone), params.copy(ishaEnd = IshaEnd.FIRST_THIRD)),
+        )
+        assertEquals(PrayerTime.ISHA, late.current?.prayer)
+        assertEquals(tomorrow.fajr, late.currentEnds)
     }
 
     @Test
@@ -322,7 +399,8 @@ class PrayerClockTest {
 
         // Once the last third has begun, the next day's list takes over.
         val late = at(3, 0, date.plusDays(1))
-        assertEquals(PrayerTime.FAJR, late.nextEvent.prayer)
+        assertEquals(PrayerTime.IMSAK, late.nextEvent.prayer)
+        assertEquals(PrayerTime.FAJR, late.next.prayer)
         assertEquals(PrayerMoment(PrayerTime.ISHA, today.isha!!), late.current)
         assertEquals(date.plusDays(1), late.day.date)
     }
@@ -331,6 +409,49 @@ class PrayerClockTest {
     fun polarDayHasNoClock() {
         val oslo = ZoneId.of("Europe/Oslo")
         assertNull(PrayerClock.at(ZonedDateTime.of(2024, 6, 21, 12, 0, 0, 0, oslo), PrayerCalcParams(69.6492, 18.9553, 18.0)))
+    }
+}
+
+class MoonTest {
+    private fun utc(text: String) = Instant.parse(text)
+    private fun assertNear(expected: String, actual: Instant, what: String) {
+        val off = Duration.between(utc(expected), actual).abs()
+        assertTrue(off <= Duration.ofMinutes(90), "$what: expected about $expected, was $actual")
+    }
+
+    @Test
+    fun theFourPhasesOfJanuary2024ComeWhenTheAlmanacSays() {
+        val next = Moon.nextPrincipal(utc("2024-01-10T00:00:00Z"))
+        assertEquals(
+            listOf(MoonPhaseName.NEW, MoonPhaseName.FIRST_QUARTER, MoonPhaseName.FULL, MoonPhaseName.LAST_QUARTER),
+            next.map { it.first },
+        )
+        assertNear("2024-01-11T11:57:00Z", next[0].second, "new moon")
+        assertNear("2024-01-18T03:53:00Z", next[1].second, "first quarter")
+        assertNear("2024-01-25T17:54:00Z", next[2].second, "full moon")
+        assertNear("2024-02-02T23:18:00Z", next[3].second, "last quarter")
+    }
+
+    @Test
+    fun thePhaseHasItsNameItsLitPartAndItsAge() {
+        val full = Moon.phaseAt(utc("2024-01-25T17:54:00Z"))
+        assertEquals(MoonPhaseName.FULL, full.name)
+        assertTrue(full.illumination > 0.99)
+        assertTrue(full.ageDays in 14.0..15.6, "age ${full.ageDays}")
+
+        val new = Moon.phaseAt(utc("2024-01-11T11:57:00Z"))
+        assertEquals(MoonPhaseName.NEW, new.name)
+        assertTrue(new.illumination < 0.01)
+
+        val growing = Moon.phaseAt(utc("2024-01-15T00:00:00Z"))
+        assertEquals(MoonPhaseName.WAXING_CRESCENT, growing.name)
+        assertTrue(growing.waxing && growing.illumination in 0.1..0.3, "lit ${growing.illumination}")
+        assertEquals(MoonPhaseName.FIRST_QUARTER, Moon.phaseAt(utc("2024-01-18T03:53:00Z")).name)
+        assertEquals(MoonPhaseName.WAXING_GIBBOUS, Moon.phaseAt(utc("2024-01-22T00:00:00Z")).name)
+        val shrinking = Moon.phaseAt(utc("2024-01-29T00:00:00Z"))
+        assertEquals(MoonPhaseName.WANING_GIBBOUS, shrinking.name)
+        assertTrue(!shrinking.waxing)
+        assertEquals(MoonPhaseName.WANING_CRESCENT, Moon.phaseAt(utc("2024-02-06T00:00:00Z")).name)
     }
 }
 

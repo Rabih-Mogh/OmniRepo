@@ -62,8 +62,36 @@ enum class AsrRule(val shadow: Int) {
     HANAFI(2),
 }
 
+/**
+ * When Asr's time is shown as ending. Its time runs to Maghrib in every school; the
+ * others are earlier points that schools set within it.
+ */
+enum class AsrEnd {
+    /** Maghrib: the end of its time. */
+    MAGHRIB,
+
+    /** When a shadow is twice its object's height, plus its length at noon: the end of the preferred time. */
+    SHADOW_TWICE,
+
+    /** [PrayerClock.ASR_YELLOW_BEFORE_SUNSET_MINUTES] before sunset, about when the sun turns yellow: delaying past it is disliked. */
+    SUN_YELLOWS,
+}
+
+/** When Isha's time is shown as ending. Its time runs to Fajr; the others are earlier points within it. */
+enum class IshaEnd {
+    FAJR,
+
+    /** Halfway from sunset to Fajr. */
+    MIDNIGHT,
+
+    /** A third of the way from sunset to Fajr. */
+    FIRST_THIRD,
+}
+
 /** The times the app shows for a day, in the order they come. */
 enum class PrayerTime(val obligatory: Boolean) {
+    /** When someone fasting stops eating and drinking, a little before Fajr. */
+    IMSAK(false),
     FAJR(true),
     SUNRISE(false),
     DUHA(false),
@@ -77,7 +105,7 @@ enum class PrayerTime(val obligatory: Boolean) {
 
     /**
      * The start of a voluntary prayer's time: Duha, and the night prayer in the last
-     * third. Sunrise and midnight are not: they only mark where a prayer's time ends.
+     * third. Imsak, sunrise and midnight are not: they are moments, not prayers.
      */
     val nafl: Boolean get() = this == DUHA || this == LAST_THIRD
 }
@@ -108,7 +136,15 @@ data class PrayerCalcParams(
     val asrRule: AsrRule = AsrRule.STANDARD,
     /** Minutes added to Fajr, Sunrise, Dhuhr, Asr, Maghrib or Isha, on top of [fajrAdjustMinutes]. */
     val adjustMinutes: Map<PrayerTime, Int> = emptyMap(),
-)
+    val asrEnd: AsrEnd = AsrEnd.MAGHRIB,
+    val ishaEnd: IshaEnd = IshaEnd.FAJR,
+    /** Imsak this many minutes before Fajr; 0 leaves it out. */
+    val imsakMinutes: Int = DEFAULT_IMSAK_MINUTES,
+) {
+    companion object {
+        const val DEFAULT_IMSAK_MINUTES = 10
+    }
+}
 
 /** One time on one day. */
 data class PrayerMoment(val prayer: PrayerTime, val at: ZonedDateTime)
@@ -132,8 +168,17 @@ data class DailyTimes(
     val midnight: ZonedDateTime? = null,
     /** The start of the last third of the night, the time for the night prayer (Qiyam, Tahajjud). */
     val lastThird: ZonedDateTime? = null,
+    /** The sun's upper edge on the horizon, whatever the method does with Maghrib. Not one of the listed times. */
+    val sunset: ZonedDateTime? = null,
+    /** When a shadow is twice its object's height longer than at noon. Not one of the listed times. */
+    val asrShadowTwice: ZonedDateTime? = null,
+    /** The end of the first third of the night. Not one of the listed times. */
+    val firstThird: ZonedDateTime? = null,
+    /** A set number of minutes before [fajr]; null where the settings leave it out. */
+    val imsak: ZonedDateTime? = null,
 ) {
     fun at(prayer: PrayerTime): ZonedDateTime? = when (prayer) {
+        PrayerTime.IMSAK -> imsak
         PrayerTime.FAJR -> fajr
         PrayerTime.SUNRISE -> sunrise
         PrayerTime.DUHA -> duha
@@ -188,6 +233,10 @@ object PrayerTimeCalculator {
             isha = adjusted(day.isha, PrayerTime.ISHA),
             midnight = night?.let { sunset!!.plus(it.dividedBy(2)) },
             lastThird = night?.let { sunset!!.plus(it.multipliedBy(2).dividedBy(3)) },
+            sunset = sunset,
+            asrShadowTwice = adjusted(day.asrTwice, PrayerTime.ASR),
+            firstThird = night?.let { sunset!!.plus(it.dividedBy(3)) },
+            imsak = fajr?.takeIf { params.imsakMinutes > 0 }?.minusMinutes(params.imsakMinutes.toLong()),
         )
     }
 
@@ -199,6 +248,7 @@ object PrayerTimeCalculator {
         val sunrise: Double,
         val noon: Double,
         val asr: Double,
+        val asrTwice: Double,
         val sunset: Double,
         val maghrib: Double,
         val isha: Double,
@@ -236,9 +286,11 @@ object PrayerTimeCalculator {
         repeat(2) { noon = solarNoon(jdBase, zoneLag, noon) }
         // Asr: the sun is as high as makes a shadow `shadow` times an object's height
         // longer than its shadow at noon.
-        val asr = timeForAngle(jdBase, zoneLag, lat, morning = false, estimate = 15.0) { decl ->
-            -dAtan(1.0 / (params.asrRule.shadow + dTan(abs(lat - decl))))
+        fun shadow(times: Int) = timeForAngle(jdBase, zoneLag, lat, morning = false, estimate = 15.0) { decl ->
+            -dAtan(1.0 / (times + dTan(abs(lat - decl))))
         }
+        val asr = shadow(params.asrRule.shadow)
+        val asrTwice = shadow(2)
         val maghrib = if (params.maghribAngle > 0.0) {
             below(params.maghribAngle, morning = false, estimate = 18.3).takeUnless { it.isNaN() } ?: sunset
         } else {
@@ -265,7 +317,7 @@ object PrayerTimeCalculator {
                 isha = sunset + portion(params.ishaAngle)
             }
         }
-        return SolarDay(midnight, zone, fajr, sunrise, noon, asr, sunset, maghrib, isha)
+        return SolarDay(midnight, zone, fajr, sunrise, noon, asr, asrTwice, sunset, maghrib, isha)
     }
 
     /** Julian day at 0h UT of the given calendar date. */

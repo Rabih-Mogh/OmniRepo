@@ -9,9 +9,11 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import app.fajralarm.FajrAlarmApp
 import app.fajralarm.R
+import app.fajralarm.core.AlertSound
 import app.fajralarm.core.PrayerMoment
 import app.fajralarm.core.PrayerNow
 import app.fajralarm.ui.MainActivity
+import app.fajralarm.ui.PrayerAlertActivity
 import app.fajralarm.ui.alertText
 import app.fajralarm.ui.clockTime
 import app.fajralarm.ui.label
@@ -23,13 +25,29 @@ object PrayerNotifications {
     private const val ALERT_ID = 31
     private const val CURRENT_ID = 32
     private const val REQ_OPEN = 22
+    private const val REQ_ALERT_SCREEN = 25
 
     /** A time has stayed up this long with nobody looking: take the notification down. */
     private const val ALERT_TIMEOUT_MS = 60 * 60_000L
 
-    /** A plain notification, with the phone's notification sound, that [moment] has arrived. */
-    fun alert(context: Context, moment: PrayerMoment) {
-        val n = NotificationCompat.Builder(context, FajrAlarmApp.CHANNEL_PRAYER)
+    /**
+     * A notification that [moment] has arrived, heard the way [sound] says: the phone's
+     * notification sound, a vibration, or neither. With [fullScreen] it also opens
+     * [PrayerAlertActivity] over a locked or sleeping phone; on a phone in use Android
+     * shows it as a banner instead.
+     */
+    fun alert(context: Context, moment: PrayerMoment, fullScreen: Boolean = false, sound: AlertSound = AlertSound.SOUND) {
+        val screen = PendingIntent.getActivity(
+            context, REQ_ALERT_SCREEN,
+            PrayerAlertActivity.intent(context, moment),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val channel = when (sound) {
+            AlertSound.SOUND -> FajrAlarmApp.CHANNEL_PRAYER
+            AlertSound.VIBRATE -> FajrAlarmApp.CHANNEL_PRAYER_VIBRATE
+            AlertSound.SILENT -> FajrAlarmApp.CHANNEL_PRAYER_SILENT
+        }
+        val n = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(
                 context.getString(R.string.prayer_alert_title, context.getString(moment.prayer.label), moment.at.clockTime(context)),
@@ -37,15 +55,18 @@ object PrayerNotifications {
             .setContentText(context.getString(moment.prayer.alertText))
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setWhen(moment.at.toInstant().toEpochMilli())
             .setAutoCancel(true)
             .setTimeoutAfter(ALERT_TIMEOUT_MS)
-            .setContentIntent(openApp(context))
+            .setContentIntent(if (fullScreen) screen else openApp(context))
+            .apply { if (fullScreen) setFullScreenIntent(screen, true) }
             .build()
         post(context, ALERT_ID, n)
     }
+
+    /** Takes the arriving-time notification down, once its full-screen alert has been answered. */
+    fun dismissAlert(context: Context) = NotificationManagerCompat.from(context).cancel(ALERT_ID)
 
     /**
      * Shows the current prayer and counts down the time it has left, silently and for as

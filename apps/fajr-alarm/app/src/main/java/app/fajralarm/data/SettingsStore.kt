@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import app.fajralarm.core.AlarmSettings
 import app.fajralarm.core.DismissMission
 import app.fajralarm.core.PrayerTime
+import app.fajralarm.core.WidgetColors
 import java.time.DayOfWeek
 
 /** Persists [AlarmSettings] and a little runtime state in SharedPreferences. */
@@ -24,6 +25,9 @@ class SettingsStore(context: Context) {
             customFajrAngle = prefs.getFloat(K_CUSTOM_ANGLE, d.customFajrAngle.toFloat()).toDouble(),
             customIshaAngle = prefs.getFloat(K_CUSTOM_ISHA, d.customIshaAngle.toFloat()).toDouble(),
             asrRule = enumOr(prefs.getString(K_ASR, null), d.asrRule),
+            asrEnd = enumOr(prefs.getString(K_ASR_END, null), d.asrEnd),
+            ishaEnd = enumOr(prefs.getString(K_ISHA_END, null), d.ishaEnd),
+            imsakMinutes = prefs.getInt(K_IMSAK, d.imsakMinutes),
             highLatitudeRule = enumOr(prefs.getString(K_HIGH_LAT, null), d.highLatitudeRule),
             fajrAdjustMinutes = prefs.getInt(K_ADJUST, d.fajrAdjustMinutes),
             adjustMinutes = ADJUSTABLE.associateWith { prefs.getInt(adjustKey(it), 0) }.filterValues { it != 0 },
@@ -42,7 +46,16 @@ class SettingsStore(context: Context) {
             ),
             alerts = prefs.getStringSet(K_ALERTS, null)
                 ?.mapNotNull { n -> PrayerTime.values().firstOrNull { it.name == n } }?.toSet() ?: d.alerts,
+            fullScreenAlerts = prefs.getBoolean(K_FULL_SCREEN_ALERTS, d.fullScreenAlerts),
+            alertSound = enumOr(prefs.getString(K_ALERT_SOUND, null), d.alertSound),
             lockScreenCountdown = prefs.getBoolean(K_LOCK_SCREEN, d.lockScreenCountdown),
+            widgetTheme = enumOr(prefs.getString(K_WIDGET_THEME, null), d.widgetTheme),
+            widgetColors = WidgetColors(
+                background = prefs.getInt(K_WIDGET_BACKGROUND, d.widgetColors.background),
+                backgroundOpacity = prefs.getInt(K_WIDGET_OPACITY, d.widgetColors.backgroundOpacity),
+                text = prefs.getInt(K_WIDGET_TEXT, d.widgetColors.text),
+                highlight = prefs.getInt(K_WIDGET_HIGHLIGHT, d.widgetColors.highlight),
+            ),
         )
     }
 
@@ -56,6 +69,9 @@ class SettingsStore(context: Context) {
             putFloat(K_CUSTOM_ANGLE, s.customFajrAngle.toFloat())
             putFloat(K_CUSTOM_ISHA, s.customIshaAngle.toFloat())
             putString(K_ASR, s.asrRule.name)
+            putString(K_ASR_END, s.asrEnd.name)
+            putString(K_ISHA_END, s.ishaEnd.name)
+            putInt(K_IMSAK, s.imsakMinutes)
             putString(K_HIGH_LAT, s.highLatitudeRule.name)
             putInt(K_ADJUST, s.fajrAdjustMinutes)
             ADJUSTABLE.forEach { putInt(adjustKey(it), s.adjustMinutes[it] ?: 0) }
@@ -70,7 +86,14 @@ class SettingsStore(context: Context) {
             putString(K_MISSION, s.dismissMission.name)
             remove(K_CHALLENGE)
             putStringSet(K_ALERTS, s.alerts.map { it.name }.toSet())
+            putBoolean(K_FULL_SCREEN_ALERTS, s.fullScreenAlerts)
+            putString(K_ALERT_SOUND, s.alertSound.name)
             putBoolean(K_LOCK_SCREEN, s.lockScreenCountdown)
+            putString(K_WIDGET_THEME, s.widgetTheme.name)
+            putInt(K_WIDGET_BACKGROUND, s.widgetColors.background)
+            putInt(K_WIDGET_OPACITY, s.widgetColors.backgroundOpacity)
+            putInt(K_WIDGET_TEXT, s.widgetColors.text)
+            putInt(K_WIDGET_HIGHLIGHT, s.widgetColors.highlight)
         }.apply()
     }
 
@@ -145,6 +168,14 @@ class SettingsStore(context: Context) {
         const val K_CUSTOM_ANGLE = "custom_angle"
         const val K_CUSTOM_ISHA = "custom_isha_angle"
         const val K_ASR = "asr_rule"
+        const val K_ASR_END = "asr_end"
+        const val K_ISHA_END = "isha_end"
+        const val K_WIDGET_THEME = "widget_theme"
+        const val K_WIDGET_BACKGROUND = "widget_background"
+        const val K_WIDGET_OPACITY = "widget_background_opacity"
+        const val K_WIDGET_TEXT = "widget_text"
+        const val K_WIDGET_HIGHLIGHT = "widget_highlight"
+        const val K_IMSAK = "imsak_minutes"
         const val K_HIGH_LAT = "high_lat_rule"
         const val K_ADJUST = "fajr_adjust"
         const val K_LAT = "lat"
@@ -159,6 +190,8 @@ class SettingsStore(context: Context) {
         const val K_MISSION = "dismiss_mission"
         const val K_ALERTS = "prayer_alerts"
         const val K_LOCK_SCREEN = "lock_screen_countdown"
+        const val K_FULL_SCREEN_ALERTS = "full_screen_alerts"
+        const val K_ALERT_SOUND = "alert_sound"
         const val K_AWAITED = "awaited_prayer"
         const val K_AWAITED_AT = "awaited_prayer_at"
         const val K_NEXT_AT = "next_alarm_at"

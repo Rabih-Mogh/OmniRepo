@@ -1,14 +1,9 @@
 <resources>
     <color name="night">#FF0E1830</color>
 
-    <!-- Widgets: the app's night sky and golden horizon. -->
-    <color name="widget_background">#F017223F</color>
+    <!-- Widgets, before they are first drawn: the Night theme's colours. The themes themselves are in WidgetPalette.kt. -->
     <color name="widget_text">#FFE6EBF4</color>
     <color name="widget_muted">#FFBCB8D4</color>
-    <color name="widget_passed">#8CBCB8D4</color>
-    <!-- The ring before a voluntary prayer: the pink band before sunrise, and the same once its time has passed. -->
-    <color name="widget_nafl">#FFE6B3C9</color>
-    <color name="widget_nafl_passed">#8CE6B3C9</color>
     <color name="widget_gold">#FFFFD27A</color>
     <color name="widget_on_gold">#FF1A2D52</color>
 </resources>

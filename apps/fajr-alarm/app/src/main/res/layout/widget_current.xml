@@ -1,51 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The current prayer and a countdown of the time it has left. Made bigger, it adds the date and then the table of the day's times. -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@drawable/widget_background"
-    android:gravity="center"
-    android:orientation="vertical"
-    android:paddingHorizontal="10dp"
-    android:paddingVertical="6dp">
+    android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/widget_headline"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+    <!-- An image rather than a background so that the theme can tint and fade it. -->
+    <ImageView
+        android:id="@+id/widget_background"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_background" />
+
+    <LinearLayout
+        android:id="@+id/widget_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:gravity="center"
-        android:maxLines="2"
-        android:textColor="@color/widget_gold"
-        android:textSize="12sp"
-        android:textStyle="bold" />
+        android:orientation="vertical"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="6dp">
 
-    <Chronometer
-        android:id="@+id/widget_countdown"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:includeFontPadding="false"
-        android:maxLines="1"
-        android:textColor="@color/widget_text"
-        android:textSize="22sp"
-        android:textStyle="bold" />
+        <TextView
+            android:id="@+id/widget_headline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:maxLines="2"
+            android:textColor="@color/widget_gold"
+            android:textSize="12sp"
+            android:textStyle="bold" />
 
-    <TextView
-        android:id="@+id/widget_next"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:maxLines="1"
-        android:textColor="@color/widget_muted"
-        android:textSize="11sp" />
+        <Chronometer
+            android:id="@+id/widget_countdown"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:textColor="@color/widget_text"
+            android:textSize="22sp"
+            android:textStyle="bold" />
 
-    <TextView
-        android:id="@+id/widget_date"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:maxLines="1"
-        android:textColor="@color/widget_muted"
-        android:textSize="11sp"
-        android:visibility="gone" />
+        <TextView
+            android:id="@+id/widget_next"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:textColor="@color/widget_muted"
+            android:textSize="11sp" />
 
-    <include layout="@layout/widget_table" />
-</LinearLayout>
+        <TextView
+            android:id="@+id/widget_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:textColor="@color/widget_muted"
+            android:textSize="11sp"
+            android:visibility="gone" />
+
+        <include layout="@layout/widget_table" />
+    </LinearLayout>
+</FrameLayout>

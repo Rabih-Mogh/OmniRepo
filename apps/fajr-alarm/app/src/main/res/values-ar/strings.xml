@@ -127,6 +127,10 @@
     <!-- %1$s a prayer -->
     <string name="prayer_adjustment">تعديل وقت %1$s</string>
     <string name="fajr_adjustment_hint">استخدمها لمطابقة توقيت مسجدك المحلي.</string>
+    <string name="adjustments_title">تعديل الدقائق</string>
+    <string name="adjustments_none">لا يوجد</string>
+    <string name="imsak_minutes">الإمساك قبل الفجر</string>
+    <string name="imsak_hint">الإمساك هو وقت توقّف الصائم عن الطعام والشراب. القيمة 0 تحذفه من القائمة.</string>
 
     <!-- Main screen: Sound & wake-up -->
     <string name="section_sound">الصوت والإيقاظ</string>
@@ -246,10 +250,13 @@
     <!-- Notification channels for the other prayers -->
     <string name="channel_prayer_name">إشعارات المواقيت</string>
     <string name="channel_prayer_description">إشعار عند دخول وقت اخترته</string>
+    <string name="channel_prayer_vibrate_name">إشعارات المواقيت، اهتزاز فقط</string>
+    <string name="channel_prayer_silent_name">إشعارات المواقيت، صامتة</string>
     <string name="channel_now_name">الصلاة الحالية</string>
     <string name="channel_now_description">الصلاة الحالية والوقت المتبقي لها، لشاشة القفل</string>
 
     <!-- The times of the day -->
+    <string name="prayer_imsak">الإمساك</string>
     <string name="prayer_duha">الضحى</string>
     <string name="prayer_dhuhr">الظهر</string>
     <string name="prayer_asr">العصر</string>
@@ -261,18 +268,46 @@
 
     <!-- Main screen: Times of the day. %1$s a time of the day, %2$s a clock time or a length of time -->
     <string name="section_prayers">أوقات اليوم</string>
+    <string name="times_about">عن هذه الأوقات</string>
+    <string name="full_screen_alerts">تنبيه بملء الشاشة</string>
+    <string name="full_screen_alerts_hint">عند دخول وقت جرسه مفعّل، يظهر على شاشة سوداء مع ساعته، فوق شاشة القفل أيضاً. وإذا كان الهاتف قيد الاستعمال يظهر شريطاً. عند الإيقاف: إشعار عادي.</string>
+    <string name="prayer_alert_dismiss">حسناً</string>
+    <string name="alert_sound">صوت التنبيه</string>
+    <string name="alert_sound_sound">صوت</string>
+    <string name="alert_sound_vibrate">اهتزاز فقط</string>
+    <string name="alert_sound_silent">لا شيء: يظهر فقط</string>
+    <!-- Main screen: the two pages -->
+    <string name="tab_prayers">الصلوات</string>
+    <string name="tab_fajr_alarm">منبّه الفجر</string>
+    <!-- Main screen: Moon. %1$d a percentage or a day number, %1$s a phase and %2$s a date -->
+    <string name="section_moon">القمر</string>
+    <string name="moon_new">محاق</string>
+    <string name="moon_waxing_crescent">هلال متزايد</string>
+    <string name="moon_first_quarter">تربيع أول</string>
+    <string name="moon_waxing_gibbous">أحدب متزايد</string>
+    <string name="moon_full">بدر</string>
+    <string name="moon_waning_gibbous">أحدب متناقص</string>
+    <string name="moon_last_quarter">تربيع أخير</string>
+    <string name="moon_waning_crescent">هلال متناقص</string>
+    <string name="moon_lit">مضاء %1$d%%</string>
+    <string name="moon_day">اليوم %1$d منذ المحاق</string>
+    <string name="moon_picture">القمر: %1$s</string>
     <string name="time_left">بقي %1$s</string>
     <string name="starts_in">بعد %1$s</string>
     <string name="next_prayer">التالية: %1$s %2$s</string>
+    <!-- A countdown follows each of these three -->
+    <string name="next_prayer_in">التالية: %1$s بعد</string>
+    <string name="row_ends_in">ينتهي بعد</string>
+    <string name="row_starts_in">يدخل بعد</string>
     <string name="duration_hours_minutes">%1$d س %2$d د</string>
     <string name="duration_minutes">%1$d د</string>
     <string name="alert_at">إشعار عند %1$s</string>
     <string name="alerts_hint">اضغط على الجرس ليصلك إشعار عند دخول ذلك الوقت. هو إشعار عادي وليس المنبّه: المنبّه للفجر.</string>
     <string name="optional_times_hint">يبدأ الضحى بعد الشروق بـ 15 دقيقة. يُحسب منتصف الليل والثلث الأخير من غروب الشمس إلى الفجر التالي.</string>
-    <!-- The shape before each prayer in the list and in the widgets: what it stands for, read out by a screen reader -->
+    <!-- The icon before each prayer in the list: what kind of prayer it is, read out by a screen reader -->
     <string name="mark_obligatory">فريضة</string>
     <string name="mark_nafl">نافلة</string>
-    <string name="nafl_hint">النقطة تدلّ على الفريضة والحلقة على النافلة: الضحى، حتى ما قبل الظهر بـ 10 دقائق، وقيام الليل، من الثلث الأخير من الليل حتى الفجر. الشروق ومنتصف الليل ليسا صلاتين.</string>
+    <string name="nafl_hint">لكل صلاة أيقونتها. الأيقونة الوردية صلاة تطوّع (نافلة): الضحى، حتى ما قبل الظهر بـ 10 دقائق، وقيام الليل، من الثلث الأخير من الليل حتى الفجر. الإمساك والشروق ومنتصف الليل ليست صلوات ولا أيقونة لها.</string>
     <!-- Under a prayer's start in the list: when its time runs out. %1$s a clock time -->
     <string name="until_time">حتى %1$s</string>
 
@@ -280,6 +315,7 @@
     <string name="prayer_alert_title">%1$s · %2$s</string>
     <string name="alert_pray">حان وقت الصلاة.</string>
     <string name="alert_sunrise">انتهى وقت الفجر.</string>
+    <string name="alert_imsak">أمسِك عن الطعام والشراب إن كنت صائماً.</string>
     <string name="alert_duha">بدأ وقت صلاة الضحى.</string>
     <string name="alert_midnight">انقضى نصف الليل.</string>
     <string name="alert_last_third">بدأ الثلث الأخير من الليل: وقت قيام الليل.</string>
@@ -301,6 +337,18 @@
     <string name="widget_add_now">إضافة أداة «الصلاة الحالية»</string>
     <string name="widget_add_by_hand">اضغط مطوّلاً على مكان فارغ في الشاشة الرئيسية، واختر «الأدوات» ثم «مواقيت الصلاة».</string>
     <string name="widget_set_location">افتح مواقيت الصلاة لتحديد موقعك</string>
+    <string name="widget_theme">ألوان الأدوات</string>
+    <string name="widget_theme_night">ليلي: أزرق التطبيق وذهبيّه</string>
+    <string name="widget_theme_black">أسود</string>
+    <string name="widget_theme_light">فاتح</string>
+    <string name="widget_theme_glass">شفّاف، لتظهر الخلفية من ورائه</string>
+    <string name="widget_theme_system">يتبع الهاتف: فاتح أو ليلي</string>
+    <string name="widget_theme_custom">ألوانك الخاصة</string>
+    <!-- Your own widget colours. %1$d a percentage -->
+    <string name="widget_color_background">الخلفية</string>
+    <string name="widget_color_opacity">قوة الخلفية: %1$d%%</string>
+    <string name="widget_color_text">النص</string>
+    <string name="widget_color_highlight">التمييز: الصلاة الحالية</string>
     <!-- The widgets' table, where it is big enough: the headings over a prayer's two clock times, and the bottom line. %1$s a day and a clock time -->
     <string name="widget_begins">البداية</string>
     <string name="widget_ends">النهاية</string>
@@ -312,4 +360,14 @@
     <string name="asr_rule">العصر</string>
     <string name="asr_standard">الجمهور (الشافعي، المالكي، الحنبلي)</string>
     <string name="asr_hanafi">الحنفي</string>
+    <!-- Main screen: Calculation, where a prayer's time is shown as ending -->
+    <string name="asr_end">نهاية وقت العصر</string>
+    <string name="asr_end_maghrib">عند المغرب: نهاية وقته</string>
+    <string name="asr_end_shadow_twice">حين يصير ظلّ الشيء مثلَيه: نهاية وقت الاختيار (الشافعي، الحنبلي)</string>
+    <string name="asr_end_sun_yellows">قبل الغروب بـ 20 دقيقة، عند اصفرار الشمس: يُكره التأخير بعده (الحنفي، المالكي)</string>
+    <string name="isha_end">نهاية وقت العشاء</string>
+    <string name="isha_end_fajr">عند الفجر: نهاية وقته</string>
+    <string name="isha_end_midnight">عند منتصف الليل: يُكره التأخير بعده (الحنفي)</string>
+    <string name="isha_end_first_third">بعد ثلث الليل الأول: نهاية وقت الاختيار (الشافعي، المالكي، الحنبلي)</string>
+    <string name="ends_hint">يمتدّ وقت العصر إلى المغرب ووقت العشاء إلى الفجر. وتختلف المذاهب في الحدّ الذي يُكره تأخير الصلاة بعده أو لا يجوز إلا لعذر. اختر ما تتبعه: تعرضه القائمة والأدوات نهايةً للوقت، وتبقى الصلاة هي الحالية حتى ينتهي وقتها فعلاً. راجع اختيارك مع عالم تثق به.</string>
 </resources>

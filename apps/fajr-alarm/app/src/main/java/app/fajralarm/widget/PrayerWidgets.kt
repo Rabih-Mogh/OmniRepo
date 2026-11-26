@@ -23,6 +23,7 @@ import app.fajralarm.prayer.PrayerTicker
 import app.fajralarm.prayer.setCountdown
 import app.fajralarm.ui.MainActivity
 import app.fajralarm.ui.clockTime
+import app.fajralarm.ui.icon
 import app.fajralarm.ui.label
 import app.fajralarm.ui.shortLabel
 import java.time.ZonedDateTime
@@ -55,29 +56,35 @@ abstract class PrayerWidget : AppWidgetProvider() {
 /**
  * Draws the widgets. Each one shows the table of the day's times, and more of it the
  * bigger it is made: [TIMES_SIZES] and [CURRENT_SIZES] are the sizes where something
- * is added, and what is added is decided from the size alone.
+ * is added, and what is added is decided from the size alone. The colours come from
+ * the theme chosen in the settings.
  */
 object PrayerWidgets {
 
     private const val REQ_OPEN = 23
 
-    // "All times", by height: under 250dp the nine times sit in two columns, from
-    // 250dp in one. 170dp adds the prayer after the current one, 330dp the alarm and the method.
+    // "All times", by height: under 250dp the ten times sit in two columns, from
+    // 250dp in one. 140dp adds a countdown inside the current prayer's row, 170dp a
+    // countdown to the next prayer where the current one ends before it starts (Fajr, or
+    // an end chosen in the settings), 330dp the alarm and the method.
     // In one column each prayer has its start and its end: as "4:52 – 6:20", or from
     // 290dp wide in two columns of clock times with AM and PM.
+    private const val ROW_COUNTDOWN_HEIGHT = 140f
     private const val NEXT_LINE_HEIGHT = 170f
     private const val ONE_COLUMN_HEIGHT = 250f
     private const val FOOTER_HEIGHT = 330f
     private const val ENDS_WIDTH = 290f
     internal val TIMES_SIZES = listOf(
-        SizeF(220f, 110f), SizeF(220f, NEXT_LINE_HEIGHT),
+        SizeF(220f, 110f), SizeF(220f, ROW_COUNTDOWN_HEIGHT), SizeF(220f, NEXT_LINE_HEIGHT),
         SizeF(220f, ONE_COLUMN_HEIGHT), SizeF(ENDS_WIDTH, ONE_COLUMN_HEIGHT),
         SizeF(220f, FOOTER_HEIGHT), SizeF(ENDS_WIDTH, FOOTER_HEIGHT),
     )
 
-    // "Current prayer": the next prayer from 70dp tall, the date from 110dp, then the
-    // table: in two columns where it is 220dp wide, in one from 290dp tall. In one
-    // column it has the prayers' ends too where it is 220dp wide.
+    // "Current prayer": one cell holds the prayer's name and the countdown. From 110dp
+    // wide the headline is a sentence, with the next prayer from 70dp tall and the date
+    // from 110dp. Then the table: in two columns where it is 220dp wide, in one from
+    // 290dp tall. In one column it has the prayers' ends too where it is 220dp wide.
+    private const val CURRENT_SENTENCE_WIDTH = 110f
     private const val CURRENT_NEXT_HEIGHT = 70f
     private const val CURRENT_DATE_HEIGHT = 110f
     private const val CURRENT_TABLE_HEIGHT = 190f
@@ -85,7 +92,9 @@ object PrayerWidgets {
     private const val CURRENT_ONE_COLUMN_HEIGHT = 290f
     private const val CURRENT_ONE_COLUMN_WIDTH = 160f
     internal val CURRENT_SIZES = listOf(
-        SizeF(110f, 40f), SizeF(110f, CURRENT_NEXT_HEIGHT), SizeF(110f, CURRENT_DATE_HEIGHT),
+        SizeF(40f, 40f),
+        SizeF(CURRENT_SENTENCE_WIDTH, 40f), SizeF(CURRENT_SENTENCE_WIDTH, CURRENT_NEXT_HEIGHT),
+        SizeF(CURRENT_SENTENCE_WIDTH, CURRENT_DATE_HEIGHT),
         SizeF(CURRENT_TABLE_WIDTH, CURRENT_TABLE_HEIGHT),
         SizeF(CURRENT_ONE_COLUMN_WIDTH, CURRENT_ONE_COLUMN_HEIGHT), SizeF(CURRENT_TABLE_WIDTH, CURRENT_ONE_COLUMN_HEIGHT),
     )
@@ -151,12 +160,22 @@ object PrayerWidgets {
     /** The "All times" widget as it is drawn at [size], in dp. */
     internal fun timesViews(context: Context, state: PrayerNow?, settings: AlarmSettings, size: SizeF): RemoteViews =
         RemoteViews(context.packageName, R.layout.widget_times).apply {
+            val palette = WidgetPalette.of(settings)
             val oneColumn = size.height >= ONE_COLUMN_HEIGHT
             val footer = size.height >= FOOTER_HEIGHT
             setOnClickPendingIntent(R.id.widget_root, openApp(context))
+            background(context, palette)
+            paint(context, R.id.widget_headline, TEXT, palette.accent)
+            paint(context, R.id.widget_countdown, TEXT, palette.text)
+            for (id in listOf(R.id.widget_date, R.id.widget_next, R.id.widget_next_countdown, R.id.widget_footer)) {
+                paint(context, id, TEXT, palette.muted)
+            }
             show(R.id.widget_countdown, state != null, otherwise = View.INVISIBLE)
-            // With no prayer current the headline already counts down to the next one.
-            show(R.id.widget_next, state?.current != null && size.height >= NEXT_LINE_HEIGHT)
+            // Only where it says something new: often the headline already counts down to the next prayer.
+            show(
+                R.id.widget_next_line,
+                state?.currentEnds != null && state.currentEnds != state.next.at && size.height >= NEXT_LINE_HEIGHT,
+            )
             show(R.id.widget_footer, state != null && footer)
             if (state == null) {
                 setTextViewText(R.id.widget_headline, context.getString(R.string.widget_set_location))
@@ -168,16 +187,18 @@ object PrayerWidgets {
             setTextViewText(R.id.widget_headline, text.headline)
             setCountdown(R.id.widget_countdown, text.countsDownTo)
             setTextViewText(R.id.widget_date, state.day.date.format(dayFormat()))
-            setTextViewText(R.id.widget_next, text.next)
+            setTextViewText(R.id.widget_next, context.getString(R.string.next_prayer_in, context.getString(state.next.prayer.label)))
+            setCountdown(R.id.widget_next_countdown, state.next.at)
             if (footer) setTextViewText(R.id.widget_footer, footerText(context, settings))
             fillTable(
-                context, state, settings,
+                context, state, settings, palette,
                 oneColumn = oneColumn,
                 times = when {
                     !oneColumn -> Times.START_SHORT
                     size.width >= ENDS_WIDTH -> Times.COLUMNS
                     else -> Times.RANGE
                 },
+                countdown = text.takeIf { size.height >= ROW_COUNTDOWN_HEIGHT },
                 textSp = when {
                     footer -> 15f
                     oneColumn || size.height >= NEXT_LINE_HEIGHT -> 13f
@@ -189,42 +210,92 @@ object PrayerWidgets {
     /** The "Current prayer" widget as it is drawn at [size], in dp. */
     internal fun currentViews(context: Context, state: PrayerNow?, settings: AlarmSettings, size: SizeF): RemoteViews =
         RemoteViews(context.packageName, R.layout.widget_current).apply {
+            val palette = WidgetPalette.of(settings)
+            val sentence = size.width >= CURRENT_SENTENCE_WIDTH
             val oneColumn = size.height >= CURRENT_ONE_COLUMN_HEIGHT && size.width >= CURRENT_ONE_COLUMN_WIDTH
             val table = oneColumn || (size.height >= CURRENT_TABLE_HEIGHT && size.width >= CURRENT_TABLE_WIDTH)
             setOnClickPendingIntent(R.id.widget_root, openApp(context))
+            background(context, palette)
+            paint(context, R.id.widget_headline, TEXT, palette.accent)
+            paint(context, R.id.widget_countdown, TEXT, palette.text)
+            paint(context, R.id.widget_next, TEXT, palette.muted)
+            paint(context, R.id.widget_date, TEXT, palette.muted)
+            // One cell has no room to spare at its edges.
+            val edge = context.resources.displayMetrics.density.let { ((if (sentence) 10 else 3) * it).toInt() to (6 * it).toInt() }
+            setViewPadding(R.id.widget_content, edge.first, edge.second, edge.first, edge.second)
             show(R.id.widget_countdown, state != null)
             // With no prayer current the next one is in the headline; its clock time is then in the table.
-            show(R.id.widget_next, state != null && size.height >= CURRENT_NEXT_HEIGHT && (state.current != null || !table))
-            show(R.id.widget_date, state != null && size.height >= CURRENT_DATE_HEIGHT)
+            show(
+                R.id.widget_next,
+                state != null && sentence && size.height >= CURRENT_NEXT_HEIGHT && (state.current != null || !table),
+            )
+            show(R.id.widget_date, state != null && sentence && size.height >= CURRENT_DATE_HEIGHT)
             show(R.id.widget_table, state != null && table)
+            setTextViewTextSize(R.id.widget_headline, TypedValue.COMPLEX_UNIT_SP, if (sentence) 12f else 11f)
             if (state == null) {
                 setTextViewText(R.id.widget_headline, context.getString(R.string.widget_set_location))
                 clearTable()
                 return@apply
             }
             val text = CurrentPrayerText.of(context, state)
-            setTextViewText(R.id.widget_headline, text.headline)
+            // In one cell just the prayer's name: the countdown under it is to its end, or to its start.
+            setTextViewText(
+                R.id.widget_headline,
+                if (sentence) text.headline else context.getString((state.current ?: state.next).prayer.shortLabel),
+            )
             setCountdown(R.id.widget_countdown, text.countsDownTo)
-            // One cell tall there is little room over and under the countdown.
+            // One cell tall there is little room over and under the countdown, one cell wide beside it.
             setTextViewTextSize(
-                R.id.widget_countdown, TypedValue.COMPLEX_UNIT_SP, if (size.height >= CURRENT_NEXT_HEIGHT) 22f else 18f,
+                R.id.widget_countdown, TypedValue.COMPLEX_UNIT_SP,
+                when {
+                    !sentence -> 13f
+                    size.height >= CURRENT_NEXT_HEIGHT -> 22f
+                    else -> 18f
+                },
             )
             setTextViewText(R.id.widget_next, text.next)
             setTextViewText(R.id.widget_date, state.day.date.format(dayFormat()))
             if (table) {
                 fillTable(
-                    context, state, settings, oneColumn,
+                    context, state, settings, palette, oneColumn,
                     times = when {
                         !oneColumn -> Times.START_SHORT
                         size.width >= CURRENT_TABLE_WIDTH -> Times.RANGE
                         else -> Times.START
                     },
+                    // The big countdown is right above the table.
+                    countdown = null,
                     textSp = if (oneColumn) 13f else 12f,
                 )
             } else {
                 clearTable()
             }
         }
+
+    private const val TEXT = "setTextColor"
+    private const val TINT = "setColorFilter"
+
+    /**
+     * Colours the view [viewId] through its setter [method]. A tone with a colour of
+     * its own for dark mode is handed over as the pair from Android 12, so the home
+     * screen switches by itself; before that the one for the phone's mode right now is used.
+     */
+    private fun RemoteViews.paint(context: Context, viewId: Int, method: String, tone: Tone) {
+        when {
+            tone.light == tone.dark -> setInt(viewId, method, tone.light)
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> setColorInt(viewId, method, tone.light, tone.dark)
+            else -> {
+                val night = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+                    Configuration.UI_MODE_NIGHT_YES
+                setInt(viewId, method, if (night) tone.dark else tone.light)
+            }
+        }
+    }
+
+    private fun RemoteViews.background(context: Context, palette: WidgetPalette) {
+        paint(context, R.id.widget_background, TINT, palette.background)
+        setInt(R.id.widget_background, "setImageAlpha", palette.backgroundAlpha)
+    }
 
     private fun RemoteViews.show(viewId: Int, shown: Boolean, otherwise: Int = View.GONE) =
         setViewVisibility(viewId, if (shown) View.VISIBLE else otherwise)
@@ -253,36 +324,40 @@ object PrayerWidgets {
      * Fills the table with the times of the listed day, in the order they come. In two
      * columns they read down the first and then down the second. In one column there is
      * room for a bell beside the times that notify, and for when each prayer ends.
-     * Each prayer has a shape before its name: a dot if it is obligatory, a ring if it is voluntary.
+     * Each prayer has its icon before its name, pink for a voluntary one. With
+     * [countdown] the gold row is twice as tall and counts down under the prayer's name.
      */
     private fun RemoteViews.fillTable(
         context: Context,
         state: PrayerNow,
         settings: AlarmSettings,
+        palette: WidgetPalette,
         oneColumn: Boolean,
         times: Times,
+        countdown: CurrentPrayerText?,
         textSp: Float,
     ) {
         clearTable()
         show(R.id.table_end, !oneColumn)
         val ends = times == Times.COLUMNS
-        val layout = if (ends) R.layout.widget_times_row_wide else R.layout.widget_times_row
-        fun row(name: String, time: String, end: String, size: Float, nameColor: Int, timeColor: Int, endColor: Int) =
+        val plain = if (ends) R.layout.widget_times_row_wide else R.layout.widget_times_row
+        val tall = if (ends) R.layout.widget_times_row_current_wide else R.layout.widget_times_row_current
+        fun row(layout: Int, name: String, time: String, end: String, size: Float, nameTone: Tone, timeTone: Tone, endTone: Tone) =
             RemoteViews(context.packageName, layout).apply {
                 setTextViewText(R.id.row_name, name)
                 setTextViewText(R.id.row_time, time)
                 setTextViewText(R.id.row_ends, end)
-                for ((id, color) in listOf(R.id.row_name to nameColor, R.id.row_time to timeColor, R.id.row_ends to endColor)) {
+                for ((id, tone) in listOf(R.id.row_name to nameTone, R.id.row_time to timeTone, R.id.row_ends to endTone)) {
                     setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, size)
-                    setTextColor(id, context.getColor(color))
+                    paint(context, id, TEXT, tone)
                 }
             }
 
         if (ends) {
-            val heading = R.color.widget_muted
+            val heading = palette.muted
             addView(
                 R.id.table_start,
-                row("", context.getString(R.string.widget_begins), context.getString(R.string.widget_ends), 11f, heading, heading, heading),
+                row(plain, "", context.getString(R.string.widget_begins), context.getString(R.string.widget_ends), 11f, heading, heading, heading),
             )
         }
 
@@ -291,14 +366,18 @@ object PrayerWidgets {
         val moments = state.day.moments()
         val marked = state.current?.takeIf { it in moments } ?: state.next
         val firstColumn = if (oneColumn) moments.size else (moments.size + 1) / 2
+        // How many rows' height each column has used: the gold row with a countdown takes two.
+        val used = intArrayOf(0, 0)
         moments.forEachIndexed { index, moment ->
             val isMarked = moment == marked
             // Everything before the next time of the day has been and gone.
             val passed = !isMarked && moment.at.isBefore(state.nextEvent.at)
-            val faded = if (passed) R.color.widget_passed else null
-            val onGold = if (isMarked) R.color.widget_on_gold else null
+            val faded = palette.passed.takeIf { passed }
+            val onGold = palette.onGold.takeIf { isMarked }
             val end = state.dayEnds[moment.prayer]
+            val counting = isMarked && countdown != null
             val cell = row(
+                layout = if (counting) tall else plain,
                 name = context.getString(moment.prayer.shortLabel),
                 time = when (times) {
                     Times.START_SHORT -> moment.at.shortClockTime(context)
@@ -307,33 +386,46 @@ object PrayerWidgets {
                 },
                 end = end?.clockTime(context).orEmpty(),
                 size = textSp,
-                nameColor = onGold ?: faded ?: if (moment.prayer.obligatory) R.color.widget_text else R.color.widget_muted,
-                timeColor = onGold ?: faded ?: R.color.widget_text,
-                endColor = onGold ?: faded ?: R.color.widget_muted,
+                nameTone = onGold ?: faded ?: if (moment.prayer.obligatory) palette.text else palette.muted,
+                timeTone = onGold ?: faded ?: palette.text,
+                endTone = onGold ?: faded ?: palette.muted,
             ).apply {
-                if (isMarked) setInt(R.id.row, "setBackgroundResource", R.drawable.widget_cell_current)
-                val mark = when {
-                    moment.prayer.nafl -> if (passed) R.drawable.widget_mark_ring_passed else R.drawable.widget_mark_ring
-                    !moment.prayer.obligatory -> null
-                    isMarked -> R.drawable.widget_mark_dot_current
-                    passed -> R.drawable.widget_mark_dot_passed
-                    else -> R.drawable.widget_mark_dot
+                if (isMarked) {
+                    setViewVisibility(R.id.row_highlight, View.VISIBLE)
+                    paint(context, R.id.row_highlight, TINT, palette.highlight)
                 }
-                if (mark != null) {
+                moment.prayer.icon?.let { icon ->
                     setViewVisibility(R.id.row_mark, View.VISIBLE)
-                    setImageViewResource(R.id.row_mark, mark)
+                    setImageViewResource(R.id.row_mark, icon)
+                    val tone = when {
+                        moment.prayer.nafl -> if (passed) palette.naflPassed else palette.nafl
+                        else -> onGold ?: faded ?: palette.text
+                    }
+                    paint(context, R.id.row_mark, TINT, tone)
                 }
                 if (oneColumn && moment.prayer in settings.alerts) {
                     setViewVisibility(R.id.row_bell, View.VISIBLE)
-                    setInt(R.id.row_bell, "setColorFilter", context.getColor(onGold ?: faded ?: R.color.widget_muted))
+                    paint(context, R.id.row_bell, TINT, onGold ?: faded ?: palette.muted)
+                }
+                if (counting && countdown != null) {
+                    setTextViewText(
+                        R.id.row_count_label,
+                        context.getString(if (state.current == moment) R.string.row_ends_in else R.string.row_starts_in),
+                    )
+                    setCountdown(R.id.row_countdown, countdown.countsDownTo)
+                    paint(context, R.id.row_count_label, TEXT, palette.onGold)
+                    paint(context, R.id.row_countdown, TEXT, palette.onGold)
                 }
             }
-            addView(if (index < firstColumn) R.id.table_start else R.id.table_end, cell)
+            val column = if (index < firstColumn) 0 else 1
+            used[column] += if (counting) 2 else 1
+            addView(if (column == 0) R.id.table_start else R.id.table_end, cell)
         }
-        // An empty row under the shorter column keeps the two columns' rows level.
+        // Empty rows under the shorter column keep the two columns' rows level.
         if (!oneColumn) {
-            repeat(2 * firstColumn - moments.size) {
-                addView(R.id.table_end, RemoteViews(context.packageName, layout))
+            val shorter = if (used[0] < used[1]) R.id.table_start else R.id.table_end
+            repeat(kotlin.math.abs(used[0] - used[1])) {
+                addView(shorter, RemoteViews(context.packageName, plain))
             }
         }
     }

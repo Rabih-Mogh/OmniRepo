@@ -3,15 +3,21 @@ package app.fajralarm.ui
 import android.content.Context
 import android.text.BidiFormatter
 import android.text.TextDirectionHeuristics
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import app.fajralarm.R
 import app.fajralarm.core.AlarmAnchor
 import app.fajralarm.core.AlarmSettings
+import app.fajralarm.core.AlertSound
+import app.fajralarm.core.AsrEnd
 import app.fajralarm.core.AsrRule
 import app.fajralarm.core.CalculationMethod
 import app.fajralarm.core.DismissMission
 import app.fajralarm.core.HighLatitudeRule
+import app.fajralarm.core.IshaEnd
+import app.fajralarm.core.MoonPhaseName
 import app.fajralarm.core.PrayerTime
+import app.fajralarm.core.WidgetTheme
 import app.fajralarm.data.StopReason
 import java.time.Duration
 import java.time.ZonedDateTime
@@ -83,6 +89,7 @@ val AsrRule.label: Int
 val PrayerTime.label: Int
     get() = when (this) {
         PrayerTime.FAJR -> R.string.anchor_fajr
+        PrayerTime.IMSAK -> R.string.prayer_imsak
         PrayerTime.SUNRISE -> R.string.anchor_sunrise
         PrayerTime.DUHA -> R.string.prayer_duha
         PrayerTime.DHUHR -> R.string.prayer_dhuhr
@@ -91,6 +98,68 @@ val PrayerTime.label: Int
         PrayerTime.ISHA -> R.string.prayer_isha
         PrayerTime.MIDNIGHT -> R.string.prayer_midnight
         PrayerTime.LAST_THIRD -> R.string.prayer_last_third
+    }
+
+/** The picture that goes with a prayer; Imsak, sunrise and midnight are not prayers and have none. */
+@get:DrawableRes
+val PrayerTime.icon: Int?
+    get() = when (this) {
+        PrayerTime.FAJR -> R.drawable.ic_prayer_fajr
+        PrayerTime.DUHA -> R.drawable.ic_prayer_duha
+        PrayerTime.DHUHR -> R.drawable.ic_prayer_dhuhr
+        PrayerTime.ASR -> R.drawable.ic_prayer_asr
+        PrayerTime.MAGHRIB -> R.drawable.ic_prayer_maghrib
+        PrayerTime.ISHA -> R.drawable.ic_prayer_isha
+        PrayerTime.LAST_THIRD -> R.drawable.ic_prayer_qiyam
+        PrayerTime.IMSAK, PrayerTime.SUNRISE, PrayerTime.MIDNIGHT -> null
+    }
+
+@get:StringRes
+val MoonPhaseName.label: Int
+    get() = when (this) {
+        MoonPhaseName.NEW -> R.string.moon_new
+        MoonPhaseName.WAXING_CRESCENT -> R.string.moon_waxing_crescent
+        MoonPhaseName.FIRST_QUARTER -> R.string.moon_first_quarter
+        MoonPhaseName.WAXING_GIBBOUS -> R.string.moon_waxing_gibbous
+        MoonPhaseName.FULL -> R.string.moon_full
+        MoonPhaseName.WANING_GIBBOUS -> R.string.moon_waning_gibbous
+        MoonPhaseName.LAST_QUARTER -> R.string.moon_last_quarter
+        MoonPhaseName.WANING_CRESCENT -> R.string.moon_waning_crescent
+    }
+
+@get:StringRes
+val AsrEnd.label: Int
+    get() = when (this) {
+        AsrEnd.MAGHRIB -> R.string.asr_end_maghrib
+        AsrEnd.SHADOW_TWICE -> R.string.asr_end_shadow_twice
+        AsrEnd.SUN_YELLOWS -> R.string.asr_end_sun_yellows
+    }
+
+@get:StringRes
+val IshaEnd.label: Int
+    get() = when (this) {
+        IshaEnd.FAJR -> R.string.isha_end_fajr
+        IshaEnd.MIDNIGHT -> R.string.isha_end_midnight
+        IshaEnd.FIRST_THIRD -> R.string.isha_end_first_third
+    }
+
+@get:StringRes
+val AlertSound.label: Int
+    get() = when (this) {
+        AlertSound.SOUND -> R.string.alert_sound_sound
+        AlertSound.VIBRATE -> R.string.alert_sound_vibrate
+        AlertSound.SILENT -> R.string.alert_sound_silent
+    }
+
+@get:StringRes
+val WidgetTheme.label: Int
+    get() = when (this) {
+        WidgetTheme.NIGHT -> R.string.widget_theme_night
+        WidgetTheme.BLACK -> R.string.widget_theme_black
+        WidgetTheme.LIGHT -> R.string.widget_theme_light
+        WidgetTheme.GLASS -> R.string.widget_theme_glass
+        WidgetTheme.SYSTEM -> R.string.widget_theme_system
+        WidgetTheme.CUSTOM -> R.string.widget_theme_custom
     }
 
 /** The name where there is little room, as in a widget. */
@@ -102,6 +171,7 @@ val PrayerTime.shortLabel: Int
 @get:StringRes
 val PrayerTime.alertText: Int
     get() = when (this) {
+        PrayerTime.IMSAK -> R.string.alert_imsak
         PrayerTime.SUNRISE -> R.string.alert_sunrise
         PrayerTime.DUHA -> R.string.alert_duha
         PrayerTime.MIDNIGHT -> R.string.alert_midnight

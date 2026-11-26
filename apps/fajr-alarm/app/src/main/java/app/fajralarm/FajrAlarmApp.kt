@@ -51,6 +51,28 @@ class FajrAlarmApp : Application() {
             description = getString(R.string.channel_prayer_description)
             lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
         }
+        // The same notification for those who chose vibration only, or neither. A category's
+        // sound can't be changed once it exists, so each choice has a category of its own.
+        val prayerVibrate = NotificationChannel(
+            CHANNEL_PRAYER_VIBRATE,
+            getString(R.string.channel_prayer_vibrate_name),
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = getString(R.string.channel_prayer_description)
+            setSound(null, null)
+            enableVibration(true)
+            lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+        }
+        val prayerSilent = NotificationChannel(
+            CHANNEL_PRAYER_SILENT,
+            getString(R.string.channel_prayer_silent_name),
+            NotificationManager.IMPORTANCE_HIGH, // still high, so that it can open over the lock screen
+        ).apply {
+            description = getString(R.string.channel_prayer_description)
+            setSound(null, null)
+            enableVibration(false)
+            lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+        }
         val now = NotificationChannel(
             CHANNEL_NOW,
             getString(R.string.channel_now_name),
@@ -60,13 +82,15 @@ class FajrAlarmApp : Application() {
             setShowBadge(false)
             lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
         }
-        nm.createNotificationChannels(listOf(ringing, info, prayer, now))
+        nm.createNotificationChannels(listOf(ringing, info, prayer, prayerVibrate, prayerSilent, now))
     }
 
     companion object {
         const val CHANNEL_ALARM = "fajr_alarm_ringing"
         const val CHANNEL_INFO = "fajr_alarm_info"
         const val CHANNEL_PRAYER = "fajr_alarm_prayer"
+        const val CHANNEL_PRAYER_VIBRATE = "fajr_alarm_prayer_vibrate"
+        const val CHANNEL_PRAYER_SILENT = "fajr_alarm_prayer_silent"
         const val CHANNEL_NOW = "fajr_alarm_now"
     }
 }

@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Two cells wide, one tall to begin with; made bigger it adds the date and then the table of times. "keyguard" lets it onto the lock screen where the phone allows widgets there. -->
+<!-- Two cells wide, one tall to begin with. It shrinks to one cell, and made bigger it adds the date and then the table of times. "keyguard" lets it onto the lock screen where the phone allows widgets there. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_now_description"
     android:initialLayout="@layout/widget_current"
     android:minHeight="50dp"
+    android:minResizeHeight="40dp"
+    android:minResizeWidth="40dp"
     android:minWidth="110dp"
     android:resizeMode="horizontal|vertical"
     android:targetCellHeight="1"

@@ -46,7 +46,10 @@ object PrayerTicker {
             if (at <= nowMillis) {
                 store.awaitedPrayer = null
                 if (prayer in settings.alerts && nowMillis - at < ALERT_GRACE_MS) {
-                    PrayerNotifications.alert(context, PrayerMoment(prayer, Instant.ofEpochMilli(at).atZone(zone)))
+                    PrayerNotifications.alert(
+                        context, PrayerMoment(prayer, Instant.ofEpochMilli(at).atZone(zone)),
+                        settings.fullScreenAlerts, settings.alertSound,
+                    )
                 }
             }
         }
@@ -57,10 +60,12 @@ object PrayerTicker {
         // Queue what comes next before drawing anything, so a failure to draw can't stop the chain.
         val nextAlert = state?.upcoming?.firstOrNull { it.prayer in settings.alerts }
         store.awaitedPrayer = nextAlert?.let { it.prayer to it.at.toInstant().toEpochMilli() }
-        val wakeAt = listOfNotNull(nextAlert, state?.nextEvent.takeIf { settings.lockScreenCountdown })
-            .minOfOrNull { it.at.toInstant().toEpochMilli() }
-        val redrawAt = state?.nextEvent?.at?.toInstant()?.toEpochMilli()
-            ?.takeIf { it != wakeAt && PrayerWidgets.anyPlaced(context) }
+        // What is on show goes out of date at the next time of the day, or sooner where
+        // a prayer is counted down to an end chosen inside its time.
+        val changeAt = state?.nextChange?.toInstant()?.toEpochMilli()
+        val wakeAt = listOfNotNull(nextAlert?.at?.toInstant()?.toEpochMilli(), changeAt.takeIf { settings.lockScreenCountdown })
+            .minOrNull()
+        val redrawAt = changeAt?.takeIf { it != wakeAt && PrayerWidgets.anyPlaced(context) }
         queue(context, REQ_WAKE, AlarmManager.RTC_WAKEUP, wakeAt)
         queue(context, REQ_REDRAW, AlarmManager.RTC, redrawAt)
 

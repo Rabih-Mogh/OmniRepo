@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Asr: the afternoon sun, drawn hollow. White, to be tinted where it is shown. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M8,12 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="2" />
+    <path
+        android:pathData="M12,2 V4.5 M12,19.5 V22 M2,12 H4.5 M19.5,12 H22 M4.93,4.93 L6.7,6.7 M17.3,17.3 L19.07,19.07 M4.93,19.07 L6.7,17.3 M17.3,6.7 L19.07,4.93"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="2" />
+</vector>

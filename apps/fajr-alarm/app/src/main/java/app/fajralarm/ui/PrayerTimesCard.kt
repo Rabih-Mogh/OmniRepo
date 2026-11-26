@@ -1,7 +1,6 @@
 package app.fajralarm.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +31,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fajralarm.R
 import app.fajralarm.core.AlarmSettings
+import app.fajralarm.core.AlertSound
 import app.fajralarm.core.PrayerClock
 import app.fajralarm.core.PrayerTime
 import java.time.Duration
@@ -55,7 +56,13 @@ import kotlinx.coroutines.delay
  * until a location is set.
  */
 @Composable
-internal fun PrayerTimesCard(settings: AlarmSettings, tick: Int, onAlertChange: (PrayerTime, Boolean) -> Unit) {
+internal fun PrayerTimesCard(
+    settings: AlarmSettings,
+    tick: Int,
+    onFullScreenChange: (Boolean) -> Unit,
+    onAlertSoundChange: (AlertSound) -> Unit,
+    onAlertChange: (PrayerTime, Boolean) -> Unit,
+) {
     val context = LocalContext.current
     val params = settings.calcParams() ?: return
     var now by remember(tick) { mutableStateOf(ZonedDateTime.now()) }
@@ -129,7 +136,7 @@ internal fun PrayerTimesCard(settings: AlarmSettings, tick: Int, onAlertChange: 
                         fontWeight = weight,
                         color = color,
                     )
-                    // When it starts, and under that when its time runs out. Sunrise and midnight are single moments.
+                    // When it starts, and under that when its time runs out. Imsak, sunrise and midnight are single moments.
                     Column(Modifier.alpha(if (passed) 0.6f else 1f), horizontalAlignment = Alignment.End) {
                         Text(
                             moment.at.clockTime(context),
@@ -157,46 +164,49 @@ internal fun PrayerTimesCard(settings: AlarmSettings, tick: Int, onAlertChange: 
                 }
             }
         }
-        Text(
-            stringResource(R.string.alerts_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        SwitchRow(
+            stringResource(R.string.full_screen_alerts),
+            settings.fullScreenAlerts,
+            subtitle = stringResource(R.string.full_screen_alerts_hint),
+            onChange = onFullScreenChange,
         )
-        Text(
-            stringResource(R.string.optional_times_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        ChoiceRow(
+            title = stringResource(R.string.alert_sound),
+            current = settings.alertSound,
+            options = AlertSound.values().toList(),
+            label = { stringResource(it.label) },
+            onSelect = onAlertSoundChange,
         )
-        Text(
-            stringResource(R.string.nafl_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        // What the bells, the optional times and the icons mean: there when wanted, out of the way otherwise.
+        Fold(stringResource(R.string.times_about)) {
+            for (hint in listOf(R.string.alerts_hint, R.string.optional_times_hint, R.string.nafl_hint)) {
+                Text(
+                    stringResource(hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
 /**
- * The shape before a time's name: a dot for an obligatory prayer and a ring for a
- * voluntary one. Sunrise and midnight are not prayers and keep the gap.
+ * The icon before a prayer's name, pink for a voluntary one. Imsak, sunrise and midnight are
+ * not prayers and keep the gap.
  */
 @Composable
 private fun PrayerMark(prayer: PrayerTime, color: Color, modifier: Modifier = Modifier) {
-    val description = when {
-        prayer.obligatory -> stringResource(R.string.mark_obligatory)
-        prayer.nafl -> stringResource(R.string.mark_nafl)
-        else -> null
+    val icon = prayer.icon
+    if (icon == null) {
+        Spacer(modifier.size(20.dp))
+    } else {
+        Icon(
+            painterResource(icon),
+            contentDescription = stringResource(if (prayer.nafl) R.string.mark_nafl else R.string.mark_obligatory),
+            tint = if (prayer.nafl) MaterialTheme.colorScheme.tertiary else color,
+            modifier = modifier.size(20.dp),
+        )
     }
-    val shape = when {
-        prayer.obligatory -> Modifier.background(color, CircleShape)
-        prayer.nafl -> Modifier.border(1.5.dp, MaterialTheme.colorScheme.tertiary, CircleShape)
-        else -> Modifier
-    }
-    Box(
-        modifier
-            .size(8.dp)
-            .then(shape)
-            .then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier),
-    )
 }
 
 /** A bell that is gold when on and struck through when off. */

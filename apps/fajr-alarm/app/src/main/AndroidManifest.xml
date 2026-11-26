@@ -61,6 +61,17 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.FajrAlarm" />
 
+        <!-- A prayer time's full-screen alert, over the lock screen. -->
+        <activity
+            android:name=".ui.PrayerAlertActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.FajrAlarm" />
+
         <activity
             android:name=".ui.SinkSetupActivity"
             android:exported="false"

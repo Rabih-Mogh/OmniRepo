@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Behind the current prayer's row in the widgets' table. -->
+<!-- Behind the current prayer's row in the widgets' table. It is tinted to the theme's highlight where it is shown. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
     <solid android:color="@color/widget_gold" />
     <corners android:radius="12dp" />
