@@ -43,9 +43,24 @@ class PacksTest {
         assertEquals(listOf("4", "8"), choice.wrong)
         assertEquals("That counts every person twice.", choice.mistake("8"))
         assertNull(choice.mistake("6"))
-        assertEquals(Visual.Number(253.0, 0, "", "pairs"), assertIs<Step.Read>(steps[1]).visual)
-        assertEquals(3, assertIs<Step.Order>(steps[2]).items.size)
-        assertEquals(23.0, assertIs<Step.Estimate>(steps[3]).answer)
+        // A picture goes with the question, and another is kept for the explanation.
+        assertEquals(Picture(Visual.Grid(1, 4, 4), "Four people"), choice.picture)
+        assertEquals(Visual.Bars(listOf("2 people", "3 people", "4 people"), listOf(1.0, 3.0, 6.0), 2), choice.reveal?.visual)
+        assertEquals(Picture(Visual.Number(253.0, 0, "", "pairs"), null), steps[1].picture)
+        assertNull(steps[1].reveal)
+        val order = assertIs<Step.Order>(steps[2])
+        assertEquals(3, order.items.size)
+        assertNull(order.picture)
+        val line = assertIs<Visual.Line>(order.reveal?.visual)
+        assertEquals(Mark(253.0, "23 people"), line.points[2])
+        assertEquals(2, line.highlight)
+        val estimate = assertIs<Step.Estimate>(steps[3])
+        assertEquals(23.0, estimate.answer)
+        val curve = assertIs<Visual.Curve>(estimate.reveal?.visual)
+        assertEquals(listOf("Any two", "You and one"), curve.names)
+        assertEquals(Mark(23.0, "23 people: 50%"), curve.mark)
+        assertEquals(0.06, assertNotNull(curve.versus).at(23.0), 0.005)
+        assertEquals("The chance of a shared birthday", estimate.reveal?.caption)
         val explore = assertIs<Step.Explore>(steps[4])
         assertTrue(explore.hits(1.0))
         assertTrue(!explore.hits(0.5))
@@ -109,6 +124,47 @@ class PacksTest {
     }
 
     @Test
+    fun `the pictures a lesson can show are checked`() {
+        val bars = "{\"kind\": \"bars\", \"labels\": [\"2 people\", \"3 people\", \"4 people\"], \"values\": [1, 3, 6], \"highlight\": 2, \"caption\": \"Pairs among them\"}"
+        fun reveal(visual: String) = with(bars, visual)
+        fun share(rest: String) = reveal("{\"kind\": \"share\", $rest}")
+
+        val reading = share("\"labels\": [\"True\", \"False\"], \"values\": [99, 999]")
+        assertEquals(emptyList(), reading.problems)
+        val drawn = assertIs<Visual.Share>(reading.pack!!.lessons.single().steps[0].reveal?.visual)
+        assertEquals(0, drawn.highlight)
+        assertEquals(listOf("9%", "91%"), listOf(drawn.percent(0), drawn.percent(1)))
+        assertEquals("<1%", Visual.Share(listOf("a", "b"), listOf(1.0, 999.0), 0).percent(0))
+        assertProblem(share("\"labels\": [\"True\", \"False\"], \"values\": [99]"), "\"values\" must be a list of 2 to 5")
+        assertProblem(share("\"labels\": [\"True\", \"False\"], \"values\": [0, 0]"), "one must be above zero")
+        assertProblem(share("\"labels\": [\"True\", \"False\"], \"values\": [1, 2], \"highlight\": 2"), "the position of a part")
+
+        assertProblem(with("\"rows\": 1, \"columns\": 4", "\"rows\": 1, \"columns\": 11"), "a grid needs")
+        assertProblem(with("\"rows\": 1, \"columns\": 4", "\"rows\": 1, \"columns\": 4, \"lit\": 5"), "a grid needs")
+        assertProblem(with("{\"at\": 253, \"label\": \"23 people\"}", "{\"at\": 353, \"label\": \"23 people\"}"), "a point is off the line")
+        assertProblem(with("\"highlight\": 2, \"caption\": \"How many", "\"highlight\": 3, \"caption\": \"How many"), "the position of a point")
+        assertProblem(with("\"versus\": \"1-(364/365)^x\", ", ""), "there is no \"versus\"")
+        assertProblem(with("\"versus\": \"1-(364/365)^x\"", "\"versus\": \"1/(x-30)\""), "no value somewhere")
+        assertProblem(with("\"mark\": {\"x\": 23,", "\"mark\": {\"x\": 61,"), "the mark is outside")
+        assertProblem(with("\"caption\": \"Four people\"", "\"caption\": \"${"x".repeat(61)}\""), "\"caption\" is 61 characters")
+        // A picture that can't be drawn takes its lesson with it, as a step that can't work does.
+        assertTrue(reveal("{\"kind\": \"spiral\"}").pack!!.lessons.isEmpty())
+    }
+
+    @Test
+    fun `a lesson has to show something`() {
+        val ask = """{"kind": "order", "text": "Smallest first.", "items": ["1", "2", "3"], "why": "Counting."}"""
+        val shown = """{"kind": "order", "text": "Smallest first.", "items": ["1", "2", "3"], "why": "Counting.", "reveal": {"kind": "dots", "total": 3, "lit": 1}}"""
+        val seen = """{"kind": "read", "text": "Look.", "visual": {"kind": "number", "value": 3}}"""
+        fun reading(steps: String) = Packs.read(
+            """{"format": 1, "day": "2026-11-26", "reels": [], "lessons": [{"id": "2026-11-26-words", "topic": "maths", "tags": ["x1"], "title": "Words", "summary": "All words.", "steps": [$steps]}]}""",
+        )
+        assertProblem(reading("$ask, $ask, $seen"), "2026-11-26-words: a lesson shows as well as tells")
+        assertTrue(reading("$ask, $ask, $seen").pack!!.lessons.isEmpty())
+        assertEquals(1, reading("$shown, $ask, $seen").pack!!.lessons.size)
+    }
+
+    @Test
     fun `a lesson with a step that can't work is left out, and so is the reel that leads to it`() {
         val reading = with("\"answer\": 23, \"tolerance\": 3", "\"answer\": 230, \"tolerance\": 3")
         assertProblem(reading, "2026-11-26-pairs, steps 4: \"answer\" is outside the range")
@@ -141,7 +197,7 @@ class PacksTest {
 
     @Test
     fun `a lesson has to open with a guess`() {
-        val read = """{"kind": "read", "text": "Just read."}"""
+        val read = """{"kind": "read", "text": "Just read.", "visual": {"kind": "number", "value": 3}}"""
         val ask = """{"kind": "order", "text": "Smallest first.", "items": ["1", "2", "3"], "why": "Counting."}"""
         fun reading(steps: String) = Packs.read(
             """{"format": 1, "day": "2026-11-26", "reels": [], "lessons": [{"id": "2026-11-26-told", "topic": "maths", "tags": ["x1"], "title": "Told", "summary": "Telling first.", "steps": [$steps]}]}""",

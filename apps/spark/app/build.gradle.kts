@@ -48,6 +48,9 @@ android {
         compose = true
     }
 
+    // The writer's brief ships with the app: it is what a model is told when the phone writes its own packs.
+    sourceSets["main"].assets.srcDir("../content")
+
     testOptions {
         unitTests {
             isIncludeAndroidResources = true

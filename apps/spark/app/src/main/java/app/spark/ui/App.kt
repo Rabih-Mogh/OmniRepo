@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.spark.core.Chime
 import app.spark.data.Library
 import app.spark.data.Store
+import app.spark.data.Writer
 import kotlinx.coroutines.launch
 
 private sealed interface Screen {
@@ -37,7 +38,14 @@ fun App() {
     val pager = rememberPagerState { feed.pages.size }
 
     // Each time the app comes to the front it looks for the morning's batch, at most once an hour.
-    LifecycleEventEffect(Lifecycle.Event.ON_START) { scope.launch { Library.refresh(context) } }
+    LifecycleEventEffect(Lifecycle.Event.ON_START) {
+        scope.launch { Library.refresh(context) }
+        Writer.start(context, quiet = true)
+    }
+    // With a key, the phone writes its own reels, but only when the feed is running out or has gone old:
+    // looked at when the app comes to the front, above, and at the moment the feed turns low.
+    val low = remember(kept.seen.size, kept.goal, shelf) { Writer.needed() }
+    LaunchedEffect(low) { if (low) Writer.start(context, quiet = true) }
     LaunchedEffect(shelf) { if (shelf.reels.isNotEmpty()) Store.keepOnly(shelf.reels.keys, shelf.lessons.keys) }
     BackHandler(kept.welcomed && screen != Screen.Feed) { screen = Screen.Feed }
 

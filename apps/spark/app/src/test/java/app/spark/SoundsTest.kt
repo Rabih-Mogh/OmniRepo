@@ -89,6 +89,31 @@ class SoundsTest {
     }
 
     @Test
+    fun `right answers in a row climb a note each`() {
+        val lesson = Packs.read(javaClass.getResource("/pack.json")!!.readText()).pack!!.lessons.single()
+        compose.setContent { SparkTheme { LessonScreen(lesson) {} } }
+        fun tap(text: String) = compose.onNodeWithText(text).performClick()
+        fun rates() = pool.getPathPlaybacks(path(Chime.RIGHT)).map { it.rate }
+
+        tap("6")
+        tap("Check")
+        compose.waitForIdle()
+        tap("Continue")
+        tap("Continue")
+        for (item in listOf("5 people", "10 people", "23 people")) tap(item)
+        tap("Check")
+        compose.waitForIdle()
+        assertEquals(listOf(1f, Chime.climb(1)), rates())
+        assertTrue(Chime.climb(1) > 1f)
+
+        // A wrong answer, and the next right one starts from the bottom again.
+        tap("Continue")
+        tap("Check")
+        compose.waitForIdle()
+        assertEquals(1, played(Chime.WRONG))
+    }
+
+    @Test
     fun `a lesson plays a sound for a pick, a right answer, a wrong one and the end`() {
         val lesson = Packs.read(javaClass.getResource("/pack.json")!!.readText()).pack!!.lessons.single()
         compose.setContent { SparkTheme { LessonScreen(lesson) {} } }

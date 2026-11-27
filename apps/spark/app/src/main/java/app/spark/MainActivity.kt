@@ -13,6 +13,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import app.spark.data.Library
 import app.spark.data.Store
+import app.spark.data.Writer
 import app.spark.ui.App
 import app.spark.ui.Sounds
 import app.spark.ui.SparkTheme
@@ -24,6 +25,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         Store.open(this)
         Library.open(this)
+        Writer.open(this)
         Sounds.open(this)
         // The volume keys set how loud the app's sounds are, whether or not one is playing.
         volumeControlStream = AudioManager.STREAM_MUSIC

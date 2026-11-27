@@ -11,17 +11,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
 
 /**
  * Every reel and lesson the app has. The starter pack ships inside the app, so the feed is
- * never empty. The rest are packs fetched from the repo's `spark-content` branch, where a
- * new one is published each morning: `index.json` names the packs on offer, and each is
- * fetched once and kept in the app's files. A pack the index no longer names is deleted.
+ * never empty. The rest are packs kept in the app's files, of two kinds. Some are fetched
+ * from the repo's `spark-content` branch: `index.json` names the packs on offer, each is
+ * fetched once, and one the index no longer names is deleted. The others are written on
+ * the phone ([Writer]), one a day, and kept for [KEPT_DAYS] days.
  */
 object Library {
 
@@ -43,6 +41,9 @@ object Library {
     private const val STARTER = "starter.json"
     private const val LIMIT = 2_000_000 // No pack comes near this; anything larger isn't one.
     private const val RESTING_MS = 60 * 60 * 1000L
+
+    /** How long a pack written on the phone is kept, as the published ones are. */
+    const val KEPT_DAYS = 45L
     private val NAME = Regex("[a-z0-9-]{1,40}")
 
     private val _shelf = MutableStateFlow(Shelf())
@@ -70,7 +71,7 @@ object Library {
     private fun read(app: Context) {
         val texts = ArrayList<String>()
         texts += app.assets.open(STARTER).bufferedReader().use { it.readText() }
-        for (file in folder(app).listFiles().orEmpty().sortedBy { it.name }) {
+        for (file in (folder(app).listFiles().orEmpty().toList() + made(app).listFiles().orEmpty()).sortedBy { it.name }) {
             if (file.extension == "json") texts += file.readText()
         }
         val reels = LinkedHashMap<String, Reel>()
@@ -138,28 +139,25 @@ object Library {
         return changed to whole
     }
 
-    private fun get(url: String): String {
-        val conn = URL(url).openConnection() as HttpURLConnection
-        try {
-            conn.connectTimeout = 20_000
-            conn.readTimeout = 30_000
-            conn.useCaches = false
-            if (conn.responseCode != HttpURLConnection.HTTP_OK) throw IOException("HTTP ${conn.responseCode}")
-            val bytes = ByteArrayOutputStream()
-            conn.inputStream.use { input ->
-                val buf = ByteArray(1 shl 14)
-                while (true) {
-                    val n = input.read(buf)
-                    if (n < 0) break
-                    bytes.write(buf, 0, n)
-                    if (bytes.size() > LIMIT) throw IOException("Too large to be a pack.")
-                }
-            }
-            return bytes.toString("UTF-8")
-        } finally {
-            conn.disconnect()
-        }
+    private fun get(url: String): String = Net.get(url, LIMIT)
+
+    /** Whether the pack written on the phone for [day] (a date like 2026-11-28) is here. */
+    fun made(context: Context, day: String): Boolean = File(made(context), "$day.json").exists()
+
+    /**
+     * Keeps [text] as the pack written on the phone for [day], puts its reels and lessons
+     * on the shelf, and lets go of such packs from before [oldest].
+     */
+    fun keep(context: Context, day: String, text: String, oldest: String) {
+        val dir = made(context.applicationContext)
+        dir.mkdirs()
+        for (file in dir.listFiles().orEmpty()) if (file.nameWithoutExtension < oldest) file.delete()
+        val part = File(dir, "$day.part")
+        part.writeText(text)
+        if (part.renameTo(File(dir, "$day.json"))) read(context.applicationContext)
     }
 
     private fun folder(context: Context) = File(context.filesDir, "packs")
+
+    private fun made(context: Context) = File(context.filesDir, "made")
 }

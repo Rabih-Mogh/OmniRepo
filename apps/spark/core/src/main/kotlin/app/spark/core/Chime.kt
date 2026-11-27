@@ -5,6 +5,7 @@ import java.nio.ByteOrder
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.exp
+import kotlin.math.pow
 import kotlin.math.sin
 
 private const val C4 = 261.63
@@ -85,5 +86,14 @@ enum class Chime(private val notes: List<Note>) {
 
         // The samples a note takes to come in and to go out, so it doesn't click.
         private const val EDGE = RATE * 4 / 1000.0
+
+        // The notes of a scale above the first, in semitones, as far as a fifth.
+        private val CLIMB = listOf(0, 2, 4, 5, 7)
+
+        /**
+         * How much faster, and so how much higher, [RIGHT] is played after [run] right
+         * answers in a row before it: a note up the scale for each, as far as a fifth.
+         */
+        fun climb(run: Int): Float = 2.0.pow(CLIMB[run.coerceIn(0, CLIMB.lastIndex)] / 12.0).toFloat()
     }
 }

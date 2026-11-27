@@ -52,6 +52,18 @@ A lesson teaches one thing by having the reader do it, in five to eight steps.
   option you can't write such a line for is filler: replace it.
 - Use `explore` whenever a relationship can be seen: let the reader drag a number and
   watch the curve change, then ask them to hit a target.
+- **Show it.** Most steps should carry a picture, and at least two must (an `explore`
+  counts); the checker refuses a lesson that is all words. There are two places for one:
+  - `reveal`, shown with the explanation once the step is answered. This is the one to
+    reach for: the answer drawn. The four halvings as shrinking bars, the real figure
+    and the common guess on one line, the curve with the answer marked on it.
+  - `visual`, shown with the question. It sets the question up and must not give the
+    answer away: the numbers the question is about, never the result.
+- **A picture carries the idea or it is left out.** Draw the thing the explanation is
+  about, with the lesson's own numbers, worked out and checked like any other fact. A
+  picture that only decorates takes attention from the point: no picture is better.
+  Give each one a `caption` saying what it shows and in what unit ("% left after 60
+  years"), since the drawings carry few words of their own.
 - Every lesson hangs off one reel in the same pack (the reel's `lesson` field), so the
   feed has a way into it. That reel is the lesson's teaser, on the same topic: it raises
   the question the lesson opens with and leaves it open.
@@ -124,15 +136,22 @@ unless noted. Ordinary symbols such as × ÷ − … ° are fine. English only f
 
 ### Visuals
 
-The app draws these itself and animates them.
+The app draws these itself and animates them. A reel has one; in a lesson, a step can
+have one with its question and one with its explanation (see [Steps](#steps)).
 
 | Kind | Fields | What it shows |
 |---|---|---|
 | `number` | `value`; optional `decimals` (0 to 3), `prefix`, `suffix` (at most 12 characters each) | A big number counting up: `{"kind": "number", "value": 253, "suffix": "pairs"}`. Thousands get commas, and a suffix that starts with a letter gets a space before it, so write `"pairs"` and `"%"`. |
 | `bars` | `labels` and `values`, 2 to 6 of each, values not negative and at least one above zero; optional `highlight`, the position of one bar counted from 0. Labels at most 14 characters. | Bars growing, one picked out. Heights are in proportion, so beside a bar of a million a bar of ten can't be seen: use bars for values within a few hundred times of each other. |
 | `dots` | `total` (2 to 200), `lit` | A grid of dots with some lit: "2 in 23" |
-| `curve` | `plot`, a formula in `x`; `x`, the range to draw | One curve drawn left to right, scaled to fit. There is no way to draw two curves or mark a point; compare things with bars. |
+| `curve` | `plot`, a formula in `x`; `x`, the range to draw. Optional `versus`, a second formula, with `labels`, the two curves' names (at most 14 characters each, `plot`'s first). Optional `mark`: `{"x": 23, "label": "23 people: 50%"}`, label at most 24 characters. | A curve drawn left to right, scaled to fit. With `versus`, a second, fainter curve on the same scale, to show one thing pulling away from another: `{"kind": "curve", "plot": "100*1.07^x", "versus": "100+7*x", "labels": ["Compound", "Simple"], "x": [0, 40]}`. The mark is a dot on the first curve with its label beside it. The axes carry no numbers, so the mark's label is where a number goes. |
 | `chain` | `items`, 2 to 5, each at most 22 characters | Steps appearing one after another, with an arrow between them |
+| `line` | `range`, the two ends of the line; `points`, 1 to 5, each `{"at": 9, "label": "Real: 9%"}` with `at` inside the range and a label of at most 18 characters; optional `highlight`, the position of one point counted from 0 | Things placed along a line with its ends numbered: a guess against the truth, outcomes that can be negative, dates. Labels take turns above and below the line, so keep points that are neighbours on the same side from sitting on top of each other. |
+| `share` | `labels` and `values`, 2 to 5 of each, values not negative and at least one above zero; optional `highlight`, the position of the part picked out (the first if left out). Labels at most 14 characters. | A ring split into parts, with each part's percent beside its name and the picked-out part's percent in the middle. The app works the percents out; give the counts. |
+| `grid` | `rows` and `columns`, 1 to 10 each; optional `lit`, how many squares are lit, counted along the rows (all of them if left out) | Squares in rows and columns: an area, "1 of these 9" |
+
+In a lesson, any visual may also have a `caption` (at most 60 characters), shown under
+it. A reel's visual has none: the reel's own words are its caption.
 
 **Formulas** know `x`, the parameter `a` (in `explore` steps), numbers, `pi` and `e`, the
 operators `+ - * / ^`, brackets, and `sin cos tan sqrt abs exp ln log min max` (`log` is
@@ -154,11 +173,24 @@ must have a value everywhere in its range.
 
 `title` is at most 60 characters, `summary` at most 140. A lesson has 3 to 10 steps (five
 to eight is the length to aim for). The first is a `choice`, an `estimate` or an `order`.
+At least two steps carry a picture: a `visual`, a `reveal`, or being an `explore`.
 
 ### Steps
 
 Every step has a `kind` and a `text` (at most 300 characters; 500 for `read`). Every kind
 but `read` also has a `why` (at most 300 characters).
+
+A `choice`, an `order` and an `estimate` can each have two pictures, both optional and
+both written like any [visual](#visuals): `visual`, shown under the question, and
+`reveal`, shown with the `why` once the step is answered.
+
+```json
+{"kind": "estimate", "text": "You test positive. What is the chance you have the disease?",
+ "range": [0, 100], "step": 1, "answer": 9, "tolerance": 4, "unit": "%",
+ "why": "About 9%. The disease is so rare that false alarms swamp the real cases.",
+ "reveal": {"kind": "line", "range": [0, 100], "highlight": 0, "caption": "The chance you have the disease",
+            "points": [{"at": 9, "label": "Real: 9%"}, {"at": 99, "label": "Common guess: 99%"}]}}
+```
 
 **`read`**: something to read. Optional `title` (at most 60 characters) and `visual`. Its
 text may have line breaks.
@@ -175,7 +207,8 @@ characters: what is wrong with that option.
 ```json
 {"kind": "choice", "text": "How many pairs do 4 people make?", "options": ["6", "4", "8"],
  "mistakes": ["That counts the people, not the pairs.", "That counts every person twice."],
- "why": "3 + 2 + 1 = 6."}
+ "why": "3 + 2 + 1 = 6.",
+ "reveal": {"kind": "bars", "labels": ["2 people", "3 people", "4 people"], "values": [1, 3, 6], "highlight": 2, "caption": "Pairs among them"}}
 ```
 
 **`order`**: put things in order. 3 to 5 `items`, each at most 70 characters, **written in
@@ -217,6 +250,9 @@ a `value` formula in `a`) puts numbers worked out from `a` beside the picture.
 ```
 
 ## Checking a pack
+
+Everything above this heading ships inside the app and is what a model is told when the
+phone writes its own packs, so keep what a pack is above it and how one is published below.
 
 The app leaves out any reel or lesson that breaks a rule above, so check before publishing:
 

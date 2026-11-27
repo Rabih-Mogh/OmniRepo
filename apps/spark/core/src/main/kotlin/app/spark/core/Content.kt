@@ -19,12 +19,43 @@ sealed interface Visual {
     /** [total] dots, [lit] of them lit: "2 in 23". */
     data class Dots(val total: Int, val lit: Int) : Visual
 
-    /** A curve drawn from left to right. */
-    data class Curve(val plot: Expr, val from: Double, val to: Double) : Visual
+    /**
+     * A curve drawn from left to right. [versus] is a second curve to set it against, the
+     * two called by [names]; [mark] picks out one point of the first.
+     */
+    data class Curve(
+        val plot: Expr,
+        val from: Double,
+        val to: Double,
+        val versus: Expr? = null,
+        val names: List<String> = emptyList(),
+        val mark: Mark? = null,
+    ) : Visual
 
     /** Steps that appear one after another, each leading to the next. */
     data class Chain(val items: List<String>) : Visual
+
+    /** Things placed along a line that runs from [from] to [to]: a scale, or a stretch of time. */
+    data class Line(val from: Double, val to: Double, val points: List<Mark>, val highlight: Int?) : Visual
+
+    /** A whole split into parts, one of them picked out. */
+    data class Share(val labels: List<String>, val values: List<Double>, val highlight: Int) : Visual {
+        /** The part at [index] as a percent of the whole, in words: "9%", or "<1%" for a sliver. */
+        fun percent(index: Int): String {
+            val share = values[index] / values.sum() * 100
+            return if (share > 0 && share < 0.5) "<1%" else "${Math.round(share)}%"
+        }
+    }
+
+    /** [rows] by [columns] squares, the first [lit] of them lit. */
+    data class Grid(val rows: Int, val columns: Int, val lit: Int) : Visual
 }
+
+/** A place picked out on a [Visual.Curve] or a [Visual.Line], and what is written beside it. */
+data class Mark(val at: Double, val label: String)
+
+/** A picture on a lesson's page, with the line under it that says what it shows. */
+data class Picture(val visual: Visual, val caption: String?)
 
 /** One screen of the feed. [day] is the day its pack was made, counted from 1970. */
 data class Reel(
@@ -51,11 +82,16 @@ data class Lesson(
     val steps: List<Step>,
 )
 
-/** One page of a lesson. Every kind but [Read] asks for something and is marked. */
+/**
+ * One page of a lesson. Every kind but [Read] asks for something and is marked. [picture]
+ * is shown with the step, and [reveal] with the explanation once it is answered.
+ */
 sealed interface Step {
     val text: String
+    val picture: Picture? get() = null
+    val reveal: Picture? get() = null
 
-    data class Read(override val text: String, val title: String?, val visual: Visual?) : Step
+    data class Read(override val text: String, val title: String?, override val picture: Picture?) : Step
 
     /**
      * One of [wrong] and [right], shown in a shuffled order. [mistakes] says what is wrong
@@ -67,13 +103,21 @@ sealed interface Step {
         val wrong: List<String>,
         val mistakes: List<String>,
         val why: String,
+        override val picture: Picture? = null,
+        override val reveal: Picture? = null,
     ) : Step {
         /** What is wrong with [option], or null when it is the right one. */
         fun mistake(option: String): String? = mistakes.getOrNull(wrong.indexOf(option))
     }
 
     /** [items] in their right order; they are shown shuffled. */
-    data class Order(override val text: String, val items: List<String>, val why: String) : Step
+    data class Order(
+        override val text: String,
+        val items: List<String>,
+        val why: String,
+        override val picture: Picture? = null,
+        override val reveal: Picture? = null,
+    ) : Step
 
     /** A guess on a slider, right when it lands within [tolerance] of [answer]. */
     data class Estimate(
@@ -85,6 +129,8 @@ sealed interface Step {
         val tolerance: Double,
         val unit: String,
         val why: String,
+        override val picture: Picture? = null,
+        override val reveal: Picture? = null,
     ) : Step
 
     /**
@@ -132,6 +178,9 @@ object Packs {
 
     /** The most text a reel can carry, with a visual, and still fit a small phone's screen without scrolling. */
     const val SCREENFUL = 520
+
+    /** The fewest steps of a lesson that carry a picture. */
+    const val SHOWN = 2
 
     /** What a pack's text holds, and everything wrong with it. A reel or lesson with something wrong is left out of [pack]. */
     data class Reading(val pack: Pack?, val problems: List<String>)
@@ -225,6 +274,10 @@ object Packs {
         if (steps.firstOrNull().let { it is Step.Read || it is Step.Explore }) {
             f.wrong("a lesson opens with a guess: its first step must be a choice, an estimate or an order")
         }
+        // Something to look at: a lesson that is all words is a lesson half taught.
+        if (steps.count { it.picture != null || it.reveal != null || it is Step.Explore } < SHOWN) {
+            f.wrong("a lesson shows as well as tells: at least $SHOWN of its steps need a \"visual\", a \"reveal\" or to be an explore")
+        }
         val lesson = Lesson(
             id = id,
             day = day.toEpochDay(),
@@ -282,18 +335,55 @@ object Packs {
         "curve" -> {
             val plot = f.formula("plot")
             val (from, to) = f.range("x")
-            if (plot != null && from < to && samples(from, to).any { !plot.at(it).isFinite() }) f.wrong("the curve has no value somewhere between $from and $to")
-            plot?.let { Visual.Curve(it, from, to) }
+            val versus = if (f.has("versus")) f.formula("versus") else null
+            val names = if (f.has("labels")) f.texts("labels", 2..2, 14) else emptyList()
+            val mark = f.child("mark")?.let { Mark(it.number("x"), it.text("label", 24)) }
+            for (curve in listOfNotNull(plot, versus)) {
+                if (from < to && samples(from, to).any { !curve.at(it).isFinite() }) f.wrong("the curve has no value somewhere between $from and $to")
+            }
+            if (names.isNotEmpty() && versus == null) f.wrong("\"labels\" name two curves; there is no \"versus\"")
+            if (mark != null && mark.at !in from..to) f.wrong("the mark is outside the curve's range")
+            plot?.let { Visual.Curve(it, from, to, versus, names, mark) }
         }
         "chain" -> Visual.Chain(f.texts("items", 2..5, 22))
+        "line" -> {
+            val (from, to) = f.range("range")
+            val points = f.children("points", 1..5).map { Mark(it.number("at"), it.text("label", 18)) }
+            val highlight = f.wholeOrNull("highlight")
+            if (points.any { it.at !in from..to }) f.wrong("a point is off the line: each \"at\" must be inside \"range\"")
+            if (highlight != null && highlight !in points.indices) f.wrong("\"highlight\" must be the position of a point, counted from 0")
+            Visual.Line(from, to, points, highlight)
+        }
+        "share" -> {
+            val labels = f.texts("labels", 2..5, 14)
+            val values = f.numbers("values", 2..5)
+            val highlight = f.wholeOrNull("highlight") ?: 0
+            if (labels.size != values.size) f.wrong("a share needs as many labels as values")
+            if (values.any { it < 0 } || values.none { it > 0 }) f.wrong("the parts of a share can't be negative, and one must be above zero")
+            if (highlight !in values.indices) f.wrong("\"highlight\" must be the position of a part, counted from 0")
+            Visual.Share(labels, values, highlight)
+        }
+        "grid" -> {
+            val rows = f.whole("rows")
+            val columns = f.whole("columns")
+            val lit = f.wholeOrNull("lit") ?: (rows * columns)
+            if (rows !in 1..10 || columns !in 1..10 || rows * columns < 2 || lit !in 0..rows * columns) {
+                f.wrong("a grid needs 1 to 10 rows and columns, at least 2 squares, and no more lit than it has")
+            }
+            Visual.Grid(rows, columns, lit)
+        }
         else -> {
-            if (kind.isNotEmpty()) f.wrong("\"kind\" is \"$kind\"; a visual is a number, bars, dots, curve or chain")
+            if (kind.isNotEmpty()) f.wrong("\"kind\" is \"$kind\"; a visual is a number, bars, dots, curve, chain, line, share or grid")
             null
         }
     }
 
+    /** The picture called [name] in a step, with its caption. */
+    private fun picture(f: Fields, name: String): Picture? =
+        f.child(name)?.let { v -> visual(v)?.let { Picture(it, v.textOrNull("caption", 60)) } }
+
     private fun step(f: Fields): Step = when (val kind = f.text("kind", 10)) {
-        "read" -> Step.Read(f.text("text", 500, lines = true), f.textOrNull("title", 60), f.child("visual")?.let(::visual))
+        "read" -> Step.Read(f.text("text", 500, lines = true), f.textOrNull("title", 60), picture(f, "visual"))
         "choice" -> {
             val options = f.texts("options", 2..4, 90)
             if (options.distinct().size != options.size) f.wrong("two options are the same")
@@ -302,12 +392,15 @@ object Packs {
             if (options.isNotEmpty() && mistakes.isNotEmpty() && mistakes.size != options.size - 1) {
                 f.wrong("\"mistakes\" needs one line for each wrong option, in the options' order: ${options.size - 1}, not ${mistakes.size}")
             }
-            Step.Choice(f.text("text", 300), options.firstOrNull().orEmpty(), options.drop(1), mistakes, f.text("why", 300))
+            Step.Choice(
+                f.text("text", 300), options.firstOrNull().orEmpty(), options.drop(1), mistakes, f.text("why", 300),
+                picture(f, "visual"), picture(f, "reveal"),
+            )
         }
         "order" -> {
             val items = f.texts("items", 3..5, 70)
             if (items.distinct().size != items.size) f.wrong("two items are the same")
-            Step.Order(f.text("text", 300), items, f.text("why", 300))
+            Step.Order(f.text("text", 300), items, f.text("why", 300), picture(f, "visual"), picture(f, "reveal"))
         }
         "estimate" -> {
             val (min, max) = f.range("range")
@@ -321,7 +414,10 @@ object Packs {
                 !(tolerance >= 0) || kotlin.math.abs(min + Math.round((answer - min) / step) * step - answer) > tolerance + 1e-9 ->
                     f.wrong("no stop of the slider is within \"tolerance\" of the answer")
             }
-            Step.Estimate(f.text("text", 300), min, max, step, answer, tolerance, f.textOrNull("unit", 12).orEmpty(), f.text("why", 300))
+            Step.Estimate(
+                f.text("text", 300), min, max, step, answer, tolerance, f.textOrNull("unit", 12).orEmpty(), f.text("why", 300),
+                picture(f, "visual"), picture(f, "reveal"),
+            )
         }
         "explore" -> explore(f)
         else -> {
@@ -393,6 +489,8 @@ object Packs {
         fun rename(id: String) {
             if (id.isNotEmpty()) where = id
         }
+
+        fun has(name: String): Boolean = map[name] != null
 
         fun textOrNull(name: String, max: Int, lines: Boolean = false): String? {
             val value = map[name] ?: return null

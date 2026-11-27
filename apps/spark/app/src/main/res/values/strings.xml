@@ -82,10 +82,36 @@
     <string name="sounds_about">A little chime and a tap of vibration when you answer, finish a lesson or reach your goal. The chimes keep quiet while the phone is on silent.</string>
     <string name="wishes_title">What I want to learn</string>
     <string name="wishes_about">Reels that match come first in your feed. To have new reels and lessons made for the list, send it.</string>
+    <string name="wishes_about_writer">Reels that match come first in your feed, and the next reels written on this phone are made for the list.</string>
     <string name="wishes_empty">Nothing yet.</string>
     <string name="wishes_send">Send the list</string>
     <string name="wishes_send_about">This opens a new issue on the app\'s GitHub repo, with your list and a summary of what has held your attention filled in. Submit it there, signed in as the repo\'s owner, and the next morning\'s batch uses it. The issue is public.</string>
     <string name="wishes_send_failed">No app on this phone opens web pages.</string>
+    <!-- Reels written on the phone -->
+    <string name="writer_title">Reels written on this phone</string>
+    <string name="writer_about">With a free key from Google, the app writes new reels and lessons for you with Google\'s Gemini. It asks only when your feed is running out or is more than a week old, and at most once a day.</string>
+    <string name="writer_steps">1. Open Google AI Studio and sign in with a Google account.\n2. Accept its terms. A key is made for you; if you see none, tap Create API key.\n3. Copy the key and paste it here.</string>
+    <string name="writer_open">Open Google AI Studio</string>
+    <string name="writer_key_hint">Paste the key</string>
+    <string name="writer_key_save">Save</string>
+    <string name="writer_key_saved">Key saved, ending in %1$s</string>
+    <string name="writer_key_remove">Remove</string>
+    <string name="writer_now">Write new reels now</string>
+    <string name="writer_waiting">Nothing to write yet: your feed has enough that is fresh.</string>
+    <string name="writer_written">Today\'s reels are written. More can be written tomorrow.</string>
+    <string name="writer_checking">Asking Google about the key…</string>
+    <string name="writer_works">The key works.</string>
+    <string name="writer_working">Writing, step %1$d of %2$d: %3$s. This takes a few minutes.</string>
+    <string name="writer_step_news">the news</string>
+    <string name="writer_step_reels">the reels</string>
+    <string name="writer_step_lessons">the lessons</string>
+    <string name="writer_done">%1$d new reels and %2$d lessons are in your feed.</string>
+    <string name="writer_failed_offline">Couldn\'t reach Google. Is the phone online?</string>
+    <string name="writer_failed_key">Google didn\'t accept this key. Check it was copied whole, or make a new one.</string>
+    <string name="writer_failed_quota">The key\'s free allowance is used up for now. It starts again tomorrow.</string>
+    <string name="writer_failed_empty">What came back broke too many rules to use. Try again.</string>
+    <string name="writer_failed_other">Google answered with an error:</string>
+    <string name="writer_privacy">The key stays on this phone and goes only to Google. Each request tells Google what you want to learn and which subjects have held you. On the free plan, Google may use what is sent to improve its products.</string>
     <string name="taste_title">What Spark has learned</string>
     <string name="taste_about">How much each subject has held your attention so far. This is what orders your feed.</string>
     <string name="taste_empty">Watch a few reels first.</string>
@@ -99,7 +125,7 @@
         <item quantity="one">%1$d new reel.</item>
         <item quantity="other">%1$d new reels.</item>
     </plurals>
-    <string name="library_nothing">Nothing new. A batch arrives each morning.</string>
+    <string name="library_nothing">Nothing new on GitHub.</string>
     <string name="library_failed">Couldn\'t reach GitHub. Is the phone online?</string>
 
     <!-- App updates -->

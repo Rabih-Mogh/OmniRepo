@@ -43,6 +43,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,14 +64,17 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.spark.R
 import app.spark.core.Chime
 import app.spark.core.Lesson
+import app.spark.core.Picture
 import app.spark.core.Step
 import app.spark.data.Store
 import kotlin.random.Random
+import kotlinx.coroutines.launch
 
 /**
  * A lesson, a step at a time. Each step that asks for something is marked once, on the
@@ -97,7 +101,7 @@ fun LessonScreen(lesson: Lesson, onDone: (Store.Score?) -> Unit) {
         } else {
             // A step keeps nothing from the one before it.
             key(at) {
-                StepPage(lesson, at, last = at == steps.lastIndex) { mark ->
+                StepPage(lesson, at, last = at == steps.lastIndex, run = marks.takeLastWhile { it }.size) { mark ->
                     mark?.let(marks::add)
                     at++
                 }
@@ -106,9 +110,13 @@ fun LessonScreen(lesson: Lesson, onDone: (Store.Score?) -> Unit) {
     }
 }
 
-/** One step: what it asks, then what was right and why, then on to the next. [next] is given the mark, or null for a step that has none. */
+/**
+ * One step: what it asks, then what was right and why, then on to the next. [run] is how
+ * many answers in a row were right before it. [next] is given the mark, or null for a step
+ * that has none.
+ */
 @Composable
-private fun StepPage(lesson: Lesson, index: Int, last: Boolean, next: (Boolean?) -> Unit) {
+private fun StepPage(lesson: Lesson, index: Int, last: Boolean, run: Int, next: (Boolean?) -> Unit) {
     val step = lesson.steps[index]
     // The same shuffle every time the lesson is opened, and a different one for each step.
     val random = remember { Random(lesson.id.hashCode() * 31 + index) }
@@ -118,13 +126,17 @@ private fun StepPage(lesson: Lesson, index: Int, last: Boolean, next: (Boolean?)
     var answer by remember { mutableStateOf<String?>(null) }
     val marked = step !is Step.Read && !(step is Step.Explore && step.target == null)
     val feel = rememberFeel()
-    LaunchedEffect(mark) { mark?.let { feel(if (it) Chime.RIGHT else Chime.WRONG) } }
+    val scroll = rememberScrollState()
+    LaunchedEffect(mark) {
+        // A right answer after others sounds a note higher than the last.
+        mark?.let { if (it) feel(Chime.RIGHT, Chime.climb(run)) else feel(Chime.WRONG) }
+    }
 
     Column(Modifier.fillMaxSize()) {
         // Lessons are in English whatever the phone's language, so they read from the left.
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Column(
-                Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 12.dp),
+                Modifier.weight(1f).fillMaxWidth().verticalScroll(scroll).padding(vertical = 12.dp),
                 Arrangement.spacedBy(16.dp),
             ) {
                 when (step) {
@@ -154,7 +166,12 @@ private fun StepPage(lesson: Lesson, index: Int, last: Boolean, next: (Boolean?)
                 }
                 mark?.let { right ->
                     val up = remember { Animatable(0f) }
-                    LaunchedEffect(Unit) { up.animateTo(1f, tween(220)) }
+                    LaunchedEffect(Unit) {
+                        launch { up.animateTo(1f, tween(220)) }
+                        // The explanation may have landed below the screen's edge: once it has its place, bring it up.
+                        withFrameNanos { }
+                        scroll.animateScrollTo(scroll.maxValue)
+                    }
                     Surface(
                         Modifier.fillMaxWidth().graphicsLayer {
                             alpha = up.value
@@ -172,6 +189,7 @@ private fun StepPage(lesson: Lesson, index: Int, last: Boolean, next: (Boolean?)
                             )
                             if (!right) answer?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                             why?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+                            step.reveal?.let { PictureView(it, compact = true, Modifier.padding(top = 4.dp), MaterialTheme.colorScheme.surface) }
                         }
                     }
                 }
@@ -196,21 +214,45 @@ private fun StepPage(lesson: Lesson, index: Int, last: Boolean, next: (Boolean?)
     }
 }
 
+/** What a step asks, and the picture that goes with the question. */
 @Composable
-private fun Question(text: String) = Text(text, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+private fun Question(step: Step) {
+    Text(step.text, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+    step.picture?.let { PictureView(it, compact = true) }
+}
+
+/** A step's picture, drawn as it comes on to the page, over the line that says what it shows. */
+@Composable
+private fun PictureView(picture: Picture, compact: Boolean, modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.surfaceContainer) {
+    val drawn = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { drawn.animateTo(1f, tween(1400, easing = LinearEasing)) }
+    Surface(modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), color = color) {
+        Column(Modifier.padding(if (compact) 14.dp else 18.dp), Arrangement.spacedBy(8.dp)) {
+            VisualView(picture.visual, drawn.value, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.primary, compact = compact)
+            picture.caption?.let {
+                Text(it, Modifier.fillMaxWidth(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+            }
+        }
+    }
+}
 
 @Composable
 private fun ReadStep(step: Step.Read) {
     step.title?.let { Text(it, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) }
-    step.visual?.let {
-        val drawn = remember { Animatable(0f) }
-        LaunchedEffect(Unit) { drawn.animateTo(1f, tween(1400, easing = LinearEasing)) }
-        Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
-            VisualView(it, drawn.value, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.primary, Modifier.padding(18.dp))
-        }
-    }
+    step.picture?.let { PictureView(it, compact = false) }
     Text(step.text, style = MaterialTheme.typography.bodyLarge)
 }
+
+/**
+ * Which notch of a slider [raw] rests in; crossing into another is felt as a tick. A slider
+ * of many stops has a notch for every few of them.
+ */
+private fun notch(raw: Float, min: Double, step: Double, stops: Int): Long {
+    val stop = Math.round((raw - min) / step)
+    return if (stops <= NOTCHES) stop else stop * NOTCHES / stops
+}
+
+private const val NOTCHES = 40
 
 /**
  * An answer to pick: outlined, filled once picked, and green or red once marked. Unless it
@@ -282,7 +324,7 @@ private fun ChoiceStep(
 ) {
     val options = remember { (step.wrong + step.right).shuffled(random) }
     var picked by remember { mutableStateOf<String?>(null) }
-    Question(step.text)
+    Question(step)
     for (option in options) {
         Option(
             option,
@@ -314,7 +356,7 @@ private fun OrderStep(
     }
     val picked = remember { mutableStateListOf<String>() }
     val right = stringResource(R.string.lesson_order_right)
-    Question(step.text)
+    Question(step)
     Text(stringResource(R.string.lesson_order_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
     // Once marked, every item travels to where it belongs, still wearing the number it was given.
@@ -354,6 +396,7 @@ private val ORDER_GAP = 16.dp
 @Composable
 private fun EstimateStep(step: Step.Estimate, marked: Boolean, answer: (String) -> Unit, judge: (() -> Boolean) -> Unit) {
     var value by remember { mutableFloatStateOf(step.min.toFloat()) }
+    val feel = rememberFeel()
     fun stop(raw: Float): Double = step.min + Math.round((raw - step.min) / step.step) * step.step
     val unit = if (step.unit.isEmpty()) "" else " " + step.unit
     val line = stringResource(R.string.lesson_answer, plain(step.answer) + unit)
@@ -361,7 +404,7 @@ private fun EstimateStep(step: Step.Estimate, marked: Boolean, answer: (String) 
         answer(line)
         judge { kotlin.math.abs(stop(value) - step.answer) <= step.tolerance + 1e-9 }
     }
-    Question(step.text)
+    Question(step)
     Text(
         plain(stop(value)) + unit,
         Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -369,7 +412,15 @@ private fun EstimateStep(step: Step.Estimate, marked: Boolean, answer: (String) 
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary,
     )
-    if (marked) GuessLine(step, stop(value)) else Slider(value, { value = it }, valueRange = step.min.toFloat()..step.max.toFloat())
+    if (marked) {
+        GuessLine(step, stop(value))
+    } else {
+        val stops = ((step.max - step.min) / step.step).toInt()
+        Slider(value, {
+            if (notch(it, step.min, step.step, stops) != notch(value, step.min, step.step, stops)) feel.tick()
+            value = it
+        }, valueRange = step.min.toFloat()..step.max.toFloat())
+    }
     Row(Modifier.fillMaxWidth()) {
         Text(plain(step.min), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.weight(1f))
@@ -423,8 +474,10 @@ private fun ExploreStep(step: Step.Explore, marked: Boolean, onHit: (Boolean) ->
     val a = step.param.min + Math.round((raw - step.param.min) / step.param.step) * step.param.step
     val hit = step.hits(a)
     LaunchedEffect(hit) { onHit(hit) }
+    val feel = rememberFeel()
+    val stops = ((step.param.max - step.param.min) / step.param.step).toInt()
 
-    Question(step.text)
+    Question(step)
     val scheme = MaterialTheme.colorScheme
     val good = Right.ink
     Surface(shape = RoundedCornerShape(20.dp), color = scheme.surfaceContainer) {
@@ -476,7 +529,10 @@ private fun ExploreStep(step: Step.Explore, marked: Boolean, onHit: (Boolean) ->
     }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text("a = " + plain(a), Modifier.padding(end = 12.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Slider(raw, { raw = it }, Modifier.weight(1f), enabled = !marked || step.target == null, valueRange = step.param.min.toFloat()..step.param.max.toFloat())
+        Slider(raw, {
+            if (notch(it, step.param.min, step.param.step, stops) != notch(raw, step.param.min, step.param.step, stops)) feel.tick()
+            raw = it
+        }, Modifier.weight(1f), enabled = !marked || step.target == null, valueRange = step.param.min.toFloat()..step.param.max.toFloat())
     }
     for (show in step.shows) {
         Row(Modifier.fillMaxWidth()) {

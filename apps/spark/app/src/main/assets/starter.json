@@ -1033,7 +1033,25 @@
           "answer": 10,
           "tolerance": 1,
           "unit": "years",
-          "why": "About 10 years, not the 14 you get from 100 ÷ 7. Each year's 7% is taken from a bigger pile than the last: 1.07 multiplied by itself 10 times is about 1.97."
+          "why": "About 10 years, not the 14 you get from 100 ÷ 7. Each year's 7% is taken from a bigger pile than the last: 1.07 multiplied by itself 10 times is about 1.97.",
+          "reveal": {
+            "kind": "curve",
+            "plot": "100*1.07^x",
+            "x": [
+              0,
+              20
+            ],
+            "versus": "100+7*x",
+            "labels": [
+              "Compound",
+              "Simple"
+            ],
+            "mark": {
+              "x": 10,
+              "label": "Year 10: 197"
+            },
+            "caption": "100 growing at 7% a year"
+          }
         },
         {
           "kind": "read",
@@ -1045,7 +1063,13 @@
             "x": [
               0,
               40
-            ]
+            ],
+            "versus": "100+7*x",
+            "labels": [
+              "Compound",
+              "Simple"
+            ],
+            "caption": "100 at 7% a year, over 40 years"
           }
         },
         {
@@ -1098,7 +1122,22 @@
             "That is the answer at 2% a year: 72 ÷ 2. Here the rate is 3%.",
             "72 years is the doubling time at 1% a year. Divide 72 by the rate: 72 ÷ 3."
           ],
-          "why": "72 ÷ 3 = 24. The exact answer is about 23.4 years. Dividing 100 by 3 gives 33 years, which forgets that growth compounds."
+          "why": "72 ÷ 3 = 24. The exact answer is about 23.4 years. Dividing 100 by 3 gives 33 years, which forgets that growth compounds.",
+          "reveal": {
+            "kind": "bars",
+            "labels": [
+              "Rule of 72",
+              "Exact",
+              "100 ÷ 3"
+            ],
+            "values": [
+              24,
+              23.4,
+              33.3
+            ],
+            "highlight": 0,
+            "caption": "Years to double at 3% a year"
+          }
         },
         {
           "kind": "order",
@@ -1109,7 +1148,24 @@
             "12% a year for 18 years",
             "9% a year for 32 years"
           ],
-          "why": "Count doublings with the rule of 72. 2% doubles every 36 years: once. 6% every 12 years: twice. 12% every 6 years: three times. 9% every 8 years: four times, about 16 times the start."
+          "why": "Count doublings with the rule of 72. 2% doubles every 36 years: once. 6% every 12 years: twice. 12% every 6 years: three times. 9% every 8 years: four times, about 16 times the start.",
+          "reveal": {
+            "kind": "bars",
+            "labels": [
+              "2%, 36 yrs",
+              "6%, 24 yrs",
+              "12%, 18 yrs",
+              "9%, 32 yrs"
+            ],
+            "values": [
+              204,
+              405,
+              769,
+              1576
+            ],
+            "highlight": 3,
+            "caption": "Where each 100 ends up"
+          }
         },
         {
           "kind": "estimate",
@@ -1122,7 +1178,16 @@
           "answer": 4,
           "tolerance": 0,
           "unit": "times",
-          "why": "At 3%, prices double every 24 years. In 48 years they double twice: 2 × 2 = 4 times higher (the exact figure is about 4.1). Slow rates still add up over a lifetime."
+          "why": "At 3%, prices double every 24 years. In 48 years they double twice: 2 × 2 = 4 times higher (the exact figure is about 4.1). Slow rates still add up over a lifetime.",
+          "reveal": {
+            "kind": "chain",
+            "items": [
+              "Now: ×1",
+              "24 years: ×2",
+              "48 years: ×4"
+            ],
+            "caption": "Prices rising 3% a year"
+          }
         },
         {
           "kind": "choice",
@@ -1138,7 +1203,20 @@
             "8 years is the doubling time at about 9% a year. At 24% it is 72 ÷ 24.",
             "24 is the rate, not the time. The rule divides 72 by the rate: 72 ÷ 24."
           ],
-          "why": "72 ÷ 24 = 3. The exact answer is about 3.2 years: the rule gets rougher at high rates. The message holds, though. Compounding works against you just as fast as it works for you."
+          "why": "72 ÷ 24 = 3. The exact answer is about 3.2 years: the rule gets rougher at high rates. The message holds, though. Compounding works against you just as fast as it works for you.",
+          "reveal": {
+            "kind": "curve",
+            "plot": "100*1.24^x",
+            "x": [
+              0,
+              6
+            ],
+            "mark": {
+              "x": 3.2,
+              "label": "Doubled: 3.2 years"
+            },
+            "caption": "A debt of 100 growing 24% a year"
+          }
         }
       ]
     },
@@ -1164,7 +1242,26 @@
           "answer": 9,
           "tolerance": 3,
           "unit": "%",
-          "why": "About 9%. Most people guess close to 99%. The test is good, but the disease is so rare that false alarms from the huge healthy crowd swamp the real cases. Let's count them."
+          "why": "About 9%. Most people guess close to 99%. The test is good, but the disease is so rare that false alarms from the huge healthy crowd swamp the real cases. Let's count them.",
+          "reveal": {
+            "kind": "line",
+            "range": [
+              0,
+              100
+            ],
+            "points": [
+              {
+                "at": 9,
+                "label": "Real: 9%"
+              },
+              {
+                "at": 99,
+                "label": "Common guess: 99%"
+              }
+            ],
+            "highlight": 0,
+            "caption": "The chance you have the disease"
+          }
         },
         {
           "kind": "read",
@@ -1180,7 +1277,8 @@
               99,
               999
             ],
-            "highlight": 0
+            "highlight": 0,
+            "caption": "Positive results among 100,000 people"
           }
         },
         {
@@ -1197,7 +1295,33 @@
             "Those 999 are the healthy people flagged by mistake. 91% is the share of positives that are false alarms.",
             "That is how common the disease was before anyone was tested. A positive result does raise your chance, to about 9%."
           ],
-          "why": "The positives are 99 true alarms plus 999 false ones, and 99 ÷ 1,098 is about 9%. The 99% figure answers a different question: if you are ill, will the test say so?"
+          "why": "The positives are 99 true alarms plus 999 false ones, and 99 ÷ 1,098 is about 9%. The 99% figure answers a different question: if you are ill, will the test say so?",
+          "visual": {
+            "kind": "bars",
+            "labels": [
+              "True alarms",
+              "False alarms"
+            ],
+            "values": [
+              99,
+              999
+            ],
+            "highlight": 0,
+            "caption": "Positive results among 100,000 people"
+          },
+          "reveal": {
+            "kind": "share",
+            "labels": [
+              "True alarms",
+              "False alarms"
+            ],
+            "values": [
+              99,
+              999
+            ],
+            "highlight": 0,
+            "caption": "Everyone who tested positive"
+          }
         },
         {
           "kind": "order",
@@ -1208,7 +1332,23 @@
             "A disease 1 person in 100 has",
             "A disease 1 person in 10 has"
           ],
-          "why": "The rarer the condition, the more the false alarms outnumber the real ones. The chances are about 1%, 9%, 50% and 92%. How common the thing is to begin with, the base rate, matters as much as the test."
+          "why": "The rarer the condition, the more the false alarms outnumber the real ones. The chances are about 1%, 9%, 50% and 92%. How common the thing is to begin with, the base rate, matters as much as the test.",
+          "reveal": {
+            "kind": "bars",
+            "labels": [
+              "1 in 10,000",
+              "1 in 1,000",
+              "1 in 100",
+              "1 in 10"
+            ],
+            "values": [
+              1,
+              9,
+              50,
+              92
+            ],
+            "caption": "% of positive results that are real"
+          }
         },
         {
           "kind": "explore",
@@ -1256,7 +1396,33 @@
             "An independent second test is new evidence. A healthy person has only a 1% chance of being flagged again.",
             "That would need every false alarm to vanish. About 10 of the 999 healthy people are flagged twice, next to 98 who are ill."
           ],
-          "why": "This time you start in a crowd where 9% are ill, not 0.1%. Of the 1,098 first positives, 98 of the 99 ill people test positive again, but only about 10 of the 999 healthy ones. 98 out of 108 is about 91%."
+          "why": "This time you start in a crowd where 9% are ill, not 0.1%. Of the 1,098 first positives, 98 of the 99 ill people test positive again, but only about 10 of the 999 healthy ones. 98 out of 108 is about 91%.",
+          "visual": {
+            "kind": "share",
+            "labels": [
+              "Ill",
+              "Healthy"
+            ],
+            "values": [
+              99,
+              999
+            ],
+            "highlight": 0,
+            "caption": "Positive on the first test"
+          },
+          "reveal": {
+            "kind": "share",
+            "labels": [
+              "Ill",
+              "Healthy"
+            ],
+            "values": [
+              98,
+              10
+            ],
+            "highlight": 0,
+            "caption": "Positive on both tests"
+          }
         },
         {
           "kind": "read",
@@ -1290,7 +1456,24 @@
             "200 is what is left after two half-lives, at 20 years. 30 years is three.",
             "400 is what is left after one half-life, at 10 years. 30 years is three."
           ],
-          "why": "Three half-lives: 800 → 400 → 200 → 100. Each step removes half of what is left, not a fixed number, so the count shrinks ever more slowly instead of hitting zero."
+          "why": "Three half-lives: 800 → 400 → 200 → 100. Each step removes half of what is left, not a fixed number, so the count shrinks ever more slowly instead of hitting zero.",
+          "reveal": {
+            "kind": "bars",
+            "labels": [
+              "Start",
+              "10 years",
+              "20 years",
+              "30 years"
+            ],
+            "values": [
+              800,
+              400,
+              200,
+              100
+            ],
+            "highlight": 3,
+            "caption": "Atoms left"
+          }
         },
         {
           "kind": "read",
@@ -1302,7 +1485,12 @@
             "x": [
               0,
               50
-            ]
+            ],
+            "mark": {
+              "x": 10,
+              "label": "10 years: half left"
+            },
+            "caption": "% left, with a half-life of 10 years"
           }
         },
         {
@@ -1314,7 +1502,23 @@
             "Half-life of 30 years",
             "Half-life of 6 years"
           ],
-          "why": "A longer half-life means slower decay. After 60 years these have about 71%, 50%, 25% and 0.1% left: that's half a half-life, one, two and ten."
+          "why": "A longer half-life means slower decay. After 60 years these have about 71%, 50%, 25% and 0.1% left: that's half a half-life, one, two and ten.",
+          "reveal": {
+            "kind": "bars",
+            "labels": [
+              "120 years",
+              "60 years",
+              "30 years",
+              "6 years"
+            ],
+            "values": [
+              71,
+              50,
+              25,
+              0.1
+            ],
+            "caption": "% left after 60 years, by half-life"
+          }
         },
         {
           "kind": "estimate",
@@ -1327,7 +1531,20 @@
           "answer": 7,
           "tolerance": 0,
           "unit": "half-lives",
-          "why": "Halve 100% seven times: 50, 25, 12.5, 6.3, 3.1, 1.6, 0.8. It takes 7. Ten half-lives leave about a thousandth."
+          "why": "Halve 100% seven times: 50, 25, 12.5, 6.3, 3.1, 1.6, 0.8. It takes 7. Ten half-lives leave about a thousandth.",
+          "reveal": {
+            "kind": "curve",
+            "plot": "100*0.5^x",
+            "x": [
+              0,
+              10
+            ],
+            "mark": {
+              "x": 7,
+              "label": "7 half-lives: 0.8%"
+            },
+            "caption": "% left after each half-life"
+          }
         },
         {
           "kind": "explore",
@@ -1375,7 +1592,16 @@
             "That is four half-lives, which would leave a sixteenth. A quarter takes two.",
             "That is a quarter of one half-life. A quarter left means two whole half-lives have gone by."
           ],
-          "why": "A quarter left means two half-lives: 2 × 5,730 is about 11,500 years. Beyond about 50,000 years too little carbon-14 remains to measure well, so older things need slower clocks, such as uranium."
+          "why": "A quarter left means two half-lives: 2 × 5,730 is about 11,500 years. Beyond about 50,000 years too little carbon-14 remains to measure well, so older things need slower clocks, such as uranium.",
+          "reveal": {
+            "kind": "chain",
+            "items": [
+              "Alive: all of it",
+              "5,730 years: half",
+              "11,460 years: quarter"
+            ],
+            "caption": "Carbon-14 left in the bone"
+          }
         },
         {
           "kind": "choice",
@@ -1391,7 +1617,26 @@
             "50 mg is what is left after two half-lives, at 12 hours. A day is four.",
             "25 mg is what is left after three half-lives, at 18 hours. A day is four."
           ],
-          "why": "24 hours is four half-lives: 200 → 100 → 50 → 25 → 12.5 mg. The same halving rule describes how the body clears many medicines, and caffeine too."
+          "why": "24 hours is four half-lives: 200 → 100 → 50 → 25 → 12.5 mg. The same halving rule describes how the body clears many medicines, and caffeine too.",
+          "reveal": {
+            "kind": "bars",
+            "labels": [
+              "Now",
+              "6 h",
+              "12 h",
+              "18 h",
+              "24 h"
+            ],
+            "values": [
+              200,
+              100,
+              50,
+              25,
+              12.5
+            ],
+            "highlight": 4,
+            "caption": "mg still in the body"
+          }
         }
       ]
     },
@@ -1420,7 +1665,14 @@
             "The bulb gives out the same light, but your page now catches a smaller share of it.",
             "An eighth would mean the light thins out in three directions. It spreads over a surface, so in two: 2 × 2 = 4."
           ],
-          "why": "The light that fell on your page now spreads over a patch twice as wide and twice as tall. That's four times the area, so each bit of page gets a quarter of the light."
+          "why": "The light that fell on your page now spreads over a patch twice as wide and twice as tall. That's four times the area, so each bit of page gets a quarter of the light.",
+          "reveal": {
+            "kind": "grid",
+            "rows": 2,
+            "columns": 2,
+            "lit": 1,
+            "caption": "The same light, over four times the area"
+          }
         },
         {
           "kind": "read",
@@ -1440,7 +1692,8 @@
               11.1,
               6.25
             ],
-            "highlight": 1
+            "highlight": 1,
+            "caption": "Brightness, as % of what it is at 1 m"
           }
         },
         {
@@ -1454,7 +1707,14 @@
           "answer": 100,
           "tolerance": 10,
           "unit": "units",
-          "why": "Three times as far means 3 × 3 = 9 times the area, so 900 ÷ 9 = 100. Dividing by 3 gives 300, the most common slip. Brightness follows the square of the distance."
+          "why": "Three times as far means 3 × 3 = 9 times the area, so 900 ÷ 9 = 100. Dividing by 3 gives 300, the most common slip. Brightness follows the square of the distance.",
+          "reveal": {
+            "kind": "grid",
+            "rows": 3,
+            "columns": 3,
+            "lit": 1,
+            "caption": "At 3 m the same light covers 9 times the area"
+          }
         },
         {
           "kind": "explore",
@@ -1501,7 +1761,24 @@
             "100 watts, 3 metres away",
             "900 watts, 10 metres away"
           ],
-          "why": "Divide power by distance squared: 100 ÷ 1 = 100, 400 ÷ 16 = 25, 100 ÷ 9 is about 11, and 900 ÷ 100 = 9. A lamp nine times stronger loses to a weak one that is close."
+          "why": "Divide power by distance squared: 100 ÷ 1 = 100, 400 ÷ 16 = 25, 100 ÷ 9 is about 11, and 900 ÷ 100 = 9. A lamp nine times stronger loses to a weak one that is close.",
+          "reveal": {
+            "kind": "bars",
+            "labels": [
+              "100 W, 1 m",
+              "400 W, 4 m",
+              "100 W, 3 m",
+              "900 W, 10 m"
+            ],
+            "values": [
+              100,
+              25,
+              11.1,
+              9
+            ],
+            "highlight": 0,
+            "caption": "Power ÷ distance squared"
+          }
         },
         {
           "kind": "choice",
@@ -1517,7 +1794,20 @@
             "Earth's gravity reaches far into space. It is what holds the Moon in its orbit.",
             "The pull weakens with distance. Each kilogram twice as far from Earth's centre feels a quarter of it."
           ],
-          "why": "Twice as far from the centre, a quarter of the pull. Astronauts float because they are falling around the Earth, not because gravity has gone: at the height of the space station it is still about 90% as strong as on the ground."
+          "why": "Twice as far from the centre, a quarter of the pull. Astronauts float because they are falling around the Earth, not because gravity has gone: at the height of the space station it is still about 90% as strong as on the ground.",
+          "reveal": {
+            "kind": "curve",
+            "plot": "100/x^2",
+            "x": [
+              1,
+              4
+            ],
+            "mark": {
+              "x": 2,
+              "label": "Twice as far: 25%"
+            },
+            "caption": "Earth's pull, by distance from its centre"
+          }
         },
         {
           "kind": "estimate",
@@ -1530,7 +1820,20 @@
           "answer": 44,
           "tolerance": 4,
           "unit": "%",
-          "why": "1.5 × 1.5 = 2.25, and 100 ÷ 2.25 is about 44%. A solar panel on Mars needs more than twice the area to collect the same power."
+          "why": "1.5 × 1.5 = 2.25, and 100 ÷ 2.25 is about 44%. A solar panel on Mars needs more than twice the area to collect the same power.",
+          "reveal": {
+            "kind": "bars",
+            "labels": [
+              "Earth",
+              "Mars"
+            ],
+            "values": [
+              100,
+              44
+            ],
+            "highlight": 1,
+            "caption": "Sunlight, as % of sunlight at Earth"
+          }
         }
       ]
     },
@@ -1580,7 +1883,26 @@
             "That leaves out the + 32 in the formula.",
             "That doubles the 100. With a = 1 the formula gives 1 × 100 + 32."
           ],
-          "why": "1 × 100 + 32 = 132. The truth is 212, so the model is off by 80. That gap is called the error, or the loss. Training is nothing more than making it small."
+          "why": "1 × 100 + 32 = 132. The truth is 212, so the model is off by 80. That gap is called the error, or the loss. Training is nothing more than making it small.",
+          "reveal": {
+            "kind": "line",
+            "range": [
+              0,
+              250
+            ],
+            "points": [
+              {
+                "at": 132,
+                "label": "Predicted: 132"
+              },
+              {
+                "at": 212,
+                "label": "True: 212"
+              }
+            ],
+            "highlight": 0,
+            "caption": "The gap between them is the error"
+          }
         },
         {
           "kind": "choice",
@@ -1594,7 +1916,35 @@
             "The prediction is a × 100 + 32. A smaller a makes it smaller, and it is already too low.",
             "With one weight, guessing would get there in the end. With billions it never would, so training works out the direction first."
           ],
-          "why": "Raising a raises a × 100 + 32. Working out which direction lowers the error and stepping that way is called gradient descent. Real training does it for billions of weights at once."
+          "why": "Raising a raises a × 100 + 32. Working out which direction lowers the error and stepping that way is called gradient descent. Real training does it for billions of weights at once.",
+          "visual": {
+            "kind": "line",
+            "range": [
+              0,
+              250
+            ],
+            "points": [
+              {
+                "at": 132,
+                "label": "Predicted: 132"
+              },
+              {
+                "at": 212,
+                "label": "True: 212"
+              }
+            ],
+            "highlight": 0,
+            "caption": "The prediction falls short by 80"
+          },
+          "reveal": {
+            "kind": "curve",
+            "plot": "x*100+32",
+            "x": [
+              0.5,
+              2.5
+            ],
+            "caption": "The prediction for 100°C, as a goes from 0.5 to 2.5"
+          }
         },
         {
           "kind": "explore",
@@ -1643,7 +1993,20 @@
           "answer": 98.6,
           "tolerance": 2,
           "unit": "°F",
-          "why": "1.8 × 37 + 32 = 98.6°F, which is right, though the model only ever saw boiling water. A well-set weight captures the pattern, not just the example. That is called generalising."
+          "why": "1.8 × 37 + 32 = 98.6°F, which is right, though the model only ever saw boiling water. A well-set weight captures the pattern, not just the example. That is called generalising.",
+          "reveal": {
+            "kind": "curve",
+            "plot": "1.8*x+32",
+            "x": [
+              0,
+              100
+            ],
+            "mark": {
+              "x": 37,
+              "label": "37°C: 98.6°F"
+            },
+            "caption": "The trained model, from 0°C to 100°C"
+          }
         },
         {
           "kind": "order",
@@ -1654,7 +2017,17 @@
             "Work out which way each weight should move",
             "Nudge every weight a little that way"
           ],
-          "why": "Predict, measure, find the direction, nudge. Repeat the loop over a vast number of examples and the weights settle where the errors are small."
+          "why": "Predict, measure, find the direction, nudge. Repeat the loop over a vast number of examples and the weights settle where the errors are small.",
+          "reveal": {
+            "kind": "chain",
+            "items": [
+              "Predict",
+              "Measure the error",
+              "Find the direction",
+              "Nudge"
+            ],
+            "caption": "One round, repeated again and again"
+          }
         },
         {
           "kind": "choice",
@@ -1699,7 +2072,22 @@
             "If the answer is \"lower\", you have ruled out one number and 99 remain.",
             "37 leaves 63 numbers if the answer is \"higher\". The middle never leaves more than 50."
           ],
-          "why": "50 splits the range in two, so whatever I answer, half the numbers are ruled out. Guess 1 and, unless you're lucky, you rule out a single number."
+          "why": "50 splits the range in two, so whatever I answer, half the numbers are ruled out. Guess 1 and, unless you're lucky, you rule out a single number.",
+          "reveal": {
+            "kind": "bars",
+            "labels": [
+              "Guess 50",
+              "Guess 37",
+              "Guess 1"
+            ],
+            "values": [
+              50,
+              37,
+              1
+            ],
+            "highlight": 0,
+            "caption": "Numbers ruled out, at the least"
+          }
         },
         {
           "kind": "estimate",
@@ -1712,7 +2100,20 @@
           "answer": 7,
           "tolerance": 0,
           "unit": "guesses",
-          "why": "7. Each guess halves what is left: 100, 50, 25, 13, 7, 4, 2, 1. Seven higher-or-lower answers can tell apart 2 × 2 × 2 × 2 × 2 × 2 × 2 = 128 things, and 128 is more than 100."
+          "why": "7. Each guess halves what is left: 100, 50, 25, 13, 7, 4, 2, 1. Seven higher-or-lower answers can tell apart 2 × 2 × 2 × 2 × 2 × 2 × 2 = 128 things, and 128 is more than 100.",
+          "reveal": {
+            "kind": "curve",
+            "plot": "100*0.5^x",
+            "x": [
+              0,
+              7
+            ],
+            "mark": {
+              "x": 7,
+              "label": "7 guesses: 1 left"
+            },
+            "caption": "Numbers still possible after each guess"
+          }
         },
         {
           "kind": "order",
@@ -1723,7 +2124,17 @@
             "Throw away the half that can't contain it",
             "Repeat on the half that is left"
           ],
-          "why": "Middle, compare, discard, repeat. Each round costs one look and halves the problem. Dictionaries, contact lists and database indexes are all searched with this idea."
+          "why": "Middle, compare, discard, repeat. Each round costs one look and halves the problem. Dictionaries, contact lists and database indexes are all searched with this idea.",
+          "reveal": {
+            "kind": "chain",
+            "items": [
+              "Middle",
+              "Compare",
+              "Drop half",
+              "Repeat"
+            ],
+            "caption": "Each round halves the list"
+          }
         },
         {
           "kind": "read",
@@ -1735,7 +2146,12 @@
             "x": [
               1,
               1000
-            ]
+            ],
+            "mark": {
+              "x": 1000,
+              "label": "1,000 items: 10 looks"
+            },
+            "caption": "Looks needed, as the list grows"
           }
         },
         {
@@ -1749,7 +2165,20 @@
           "answer": 20,
           "tolerance": 0,
           "unit": "looks",
-          "why": "20. Ten halvings shrink about a thousand to one, since 2 multiplied by itself 10 times is 1,024. A million is a thousand thousands, so it takes twenty. Checking one by one could take a million looks."
+          "why": "20. Ten halvings shrink about a thousand to one, since 2 multiplied by itself 10 times is 1,024. A million is a thousand thousands, so it takes twenty. Checking one by one could take a million looks.",
+          "reveal": {
+            "kind": "bars",
+            "labels": [
+              "One by one",
+              "Binary search"
+            ],
+            "values": [
+              1000000,
+              20
+            ],
+            "highlight": 1,
+            "caption": "Looks needed, at most, among a million names"
+          }
         },
         {
           "kind": "choice",
@@ -1765,7 +2194,22 @@
             "20 more looks would handle a list about a million times longer, not twice as long.",
             "That is the cost of reading the new names one at a time. Binary search drops half the list with each look."
           ],
-          "why": "One extra halving undoes one doubling. Even a sorted list of all 8 billion people on Earth would need only 33 looks."
+          "why": "One extra halving undoes one doubling. Even a sorted list of all 8 billion people on Earth would need only 33 looks.",
+          "reveal": {
+            "kind": "bars",
+            "labels": [
+              "1 million",
+              "2 million",
+              "8 billion"
+            ],
+            "values": [
+              20,
+              21,
+              33
+            ],
+            "highlight": 1,
+            "caption": "Looks binary search needs"
+          }
         },
         {
           "kind": "choice",
@@ -1821,7 +2265,28 @@
           "answer": 34,
           "tolerance": 10,
           "unit": "%",
-          "why": "About a third, by his own measure. Nonsense syllables are an extreme case, and meaningful material fades more slowly. But the shape holds: the steepest loss comes first."
+          "why": "About a third, by his own measure. Nonsense syllables are an extreme case, and meaningful material fades more slowly. But the shape holds: the steepest loss comes first.",
+          "reveal": {
+            "kind": "bars",
+            "labels": [
+              "20 min",
+              "1 hour",
+              "9 hours",
+              "1 day",
+              "6 days",
+              "31 days"
+            ],
+            "values": [
+              58,
+              44,
+              36,
+              34,
+              25,
+              21
+            ],
+            "highlight": 3,
+            "caption": "Ebbinghaus's results: % still held"
+          }
         },
         {
           "kind": "read",
@@ -1833,7 +2298,8 @@
             "x": [
               0,
               14
-            ]
+            ],
+            "caption": "A simple model: % remembered, day by day"
           }
         },
         {
@@ -1898,7 +2364,25 @@
             "3 weeks",
             "2 months"
           ],
-          "why": "Each successful recall flattens the curve, so the gaps can grow. Five short reviews spread over about three months hold a memory far better than hours of cramming. Spaced-repetition flashcard apps do this scheduling for you."
+          "why": "Each successful recall flattens the curve, so the gaps can grow. Five short reviews spread over about three months hold a memory far better than hours of cramming. Spaced-repetition flashcard apps do this scheduling for you.",
+          "reveal": {
+            "kind": "bars",
+            "labels": [
+              "1st",
+              "2nd",
+              "3rd",
+              "4th",
+              "5th"
+            ],
+            "values": [
+              1,
+              3,
+              7,
+              21,
+              60
+            ],
+            "caption": "Days to wait before each review"
+          }
         },
         {
           "kind": "choice",
@@ -1955,7 +2439,8 @@
               "Already spent",
               "Same either way",
               "Compare futures only"
-            ]
+            ],
+            "caption": "How to weigh what is already spent"
           }
         },
         {
@@ -1969,7 +2454,26 @@
           "answer": 2,
           "tolerance": 0,
           "unit": "million",
-          "why": "2 million better off. From here, finishing costs 1 and brings in 3. Counting the 9 gives 3 − 10 = −7, which looks like a reason to stop. But stopping doesn't return the 9: it leaves the firm at −9 instead of −7."
+          "why": "2 million better off. From here, finishing costs 1 and brings in 3. Counting the 9 gives 3 − 10 = −7, which looks like a reason to stop. But stopping doesn't return the 9: it leaves the firm at −9 instead of −7.",
+          "reveal": {
+            "kind": "line",
+            "range": [
+              -10,
+              0
+            ],
+            "points": [
+              {
+                "at": -9,
+                "label": "Stop: −9"
+              },
+              {
+                "at": -7,
+                "label": "Finish: −7"
+              }
+            ],
+            "highlight": 1,
+            "caption": "Where the firm ends up, in millions"
+          }
         },
         {
           "kind": "choice",
@@ -1985,7 +2489,26 @@
             "Being nearly done is worth something only if the last step pays. Here it costs 1 to get 0.5.",
             "Only if the extra spending brings in more than it costs. Nothing in these numbers says it would."
           ],
-          "why": "Finishing now costs 1 to gain 0.5. Saying we've come too far to stop is the sunk cost talking. The 9 million argues for nothing, because it is gone on both paths."
+          "why": "Finishing now costs 1 to gain 0.5. Saying we've come too far to stop is the sunk cost talking. The 9 million argues for nothing, because it is gone on both paths.",
+          "reveal": {
+            "kind": "line",
+            "range": [
+              -10,
+              0
+            ],
+            "points": [
+              {
+                "at": -9,
+                "label": "Stop: −9"
+              },
+              {
+                "at": -9.5,
+                "label": "Finish: −9.5"
+              }
+            ],
+            "highlight": 0,
+            "caption": "Where the firm ends up, in millions"
+          }
         },
         {
           "kind": "order",
@@ -1995,7 +2518,30 @@
             "Spent 0, needs 2, will bring in 4",
             "Spent 20, needs 3 more, will bring in 2"
           ],
-          "why": "Look only forward: 5 − 1 = +4, then 4 − 2 = +2, then 2 − 3 = −1. The project with 20 already in it is the only one not worth another penny."
+          "why": "Look only forward: 5 − 1 = +4, then 4 − 2 = +2, then 2 − 3 = −1. The project with 20 already in it is the only one not worth another penny.",
+          "reveal": {
+            "kind": "line",
+            "range": [
+              -2,
+              5
+            ],
+            "points": [
+              {
+                "at": 4,
+                "label": "Spent 9: +4"
+              },
+              {
+                "at": 2,
+                "label": "Spent 0: +2"
+              },
+              {
+                "at": -1,
+                "label": "Spent 20: −1"
+              }
+            ],
+            "highlight": 0,
+            "caption": "What each brings from here on, in millions"
+          }
         },
         {
           "kind": "choice",

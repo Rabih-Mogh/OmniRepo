@@ -89,10 +89,36 @@
     <string name="sounds_about">نغمة قصيرة واهتزازة خفيفة عند الإجابة وعند إنهاء درس أو بلوغ هدفك. تصمت النغمات ما دام الهاتف على الوضع الصامت.</string>
     <string name="wishes_title">ما أريد أن أتعلّمه</string>
     <string name="wishes_about">المقاطع التي تطابق القائمة تأتي أولاً. لتُصنع مقاطع ودروس جديدة لها، أرسل القائمة.</string>
+    <string name="wishes_about_writer">المقاطع التي تطابق القائمة تأتي أولاً، والمقاطع التالية التي تُكتب على هذا الهاتف تُصنع لها.</string>
     <string name="wishes_empty">لا شيء بعد.</string>
     <string name="wishes_send">أرسل القائمة</string>
     <string name="wishes_send_about">يفتح هذا بلاغاً (issue) جديداً في مستودع التطبيق على GitHub، وفيه قائمتك وملخّص لما شدّ انتباهك. أرسله من هناك وأنت مسجّل الدخول بحساب صاحب المستودع، فتأخذ به دفعة الصباح التالي. البلاغ علني.</string>
     <string name="wishes_send_failed">لا يوجد على الهاتف تطبيق يفتح صفحات الويب.</string>
+    <!-- Reels written on the phone -->
+    <string name="writer_title">مقاطع تُكتب على هذا الهاتف</string>
+    <string name="writer_about">بمفتاح مجاني من Google يكتب التطبيق لك مقاطع ودروساً جديدة بنموذج Gemini. لا يطلب ذلك إلا حين توشك مقاطعك على النفاد أو يمضي عليها أكثر من أسبوع، ومرة واحدة في اليوم على الأكثر.</string>
+    <string name="writer_steps">١. افتح Google AI Studio وسجّل الدخول بحساب Google.\n٢. اقبل شروطه. يُنشأ لك مفتاح؛ وإن لم ترَ مفتاحاً فاضغط Create API key.\n٣. انسخ المفتاح والصقه هنا.</string>
+    <string name="writer_open">افتح Google AI Studio</string>
+    <string name="writer_key_hint">الصق المفتاح</string>
+    <string name="writer_key_save">حفظ</string>
+    <string name="writer_key_saved">المفتاح محفوظ، وينتهي بـ %1$s</string>
+    <string name="writer_key_remove">إزالة</string>
+    <string name="writer_now">اكتب مقاطع جديدة الآن</string>
+    <string name="writer_waiting">لا حاجة إلى الكتابة بعد: لديك ما يكفي من المقاطع الحديثة.</string>
+    <string name="writer_written">كُتبت مقاطع اليوم. يمكن كتابة المزيد غداً.</string>
+    <string name="writer_checking">جارٍ سؤال Google عن المفتاح…</string>
+    <string name="writer_works">المفتاح يعمل.</string>
+    <string name="writer_working">جارٍ الكتابة، الخطوة %1$d من %2$d: %3$s. يستغرق ذلك بضع دقائق.</string>
+    <string name="writer_step_news">الأخبار</string>
+    <string name="writer_step_reels">المقاطع</string>
+    <string name="writer_step_lessons">الدروس</string>
+    <string name="writer_done">أُضيف إلى مقاطعك %1$d من المقاطع الجديدة و%2$d من الدروس.</string>
+    <string name="writer_failed_offline">تعذّر الوصول إلى Google. هل الهاتف متصل بالإنترنت؟</string>
+    <string name="writer_failed_key">لم يقبل Google هذا المفتاح. تأكد من نسخه كاملاً، أو أنشئ مفتاحاً جديداً.</string>
+    <string name="writer_failed_quota">استُنفد الحدّ المجاني للمفتاح حالياً. يبدأ من جديد غداً.</string>
+    <string name="writer_failed_empty">ما وصل خالف قواعد كثيرة فلا يصلح. حاول مرة أخرى.</string>
+    <string name="writer_failed_other">ردّ Google بخطأ:</string>
+    <string name="writer_privacy">يبقى المفتاح على هذا الهاتف ولا يُرسل إلا إلى Google. يخبر كل طلب Google بما تريد تعلّمه وبالمواضيع التي شدّت انتباهك. في الخطة المجانية قد يستخدم Google ما يُرسل لتحسين منتجاته.</string>
     <string name="taste_title">ما تعلّمه «شرارة»</string>
     <string name="taste_about">مقدار ما شدّ كل موضوع انتباهك حتى الآن. بهذا تُرتَّب مقاطعك.</string>
     <string name="taste_empty">شاهد بضعة مقاطع أولاً.</string>
@@ -110,7 +136,7 @@
         <item quantity="many">%1$d مقطعاً جديداً.</item>
         <item quantity="other">%1$d مقطع جديد.</item>
     </plurals>
-    <string name="library_nothing">لا جديد. تصل دفعة كل صباح.</string>
+    <string name="library_nothing">لا جديد على GitHub.</string>
     <string name="library_failed">تعذّر الوصول إلى GitHub. هل الهاتف متصل بالإنترنت؟</string>
 
     <!-- App updates -->

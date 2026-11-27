@@ -57,12 +57,16 @@ class LessonTest {
     @Test
     fun `every step answered right`() {
         open()
-        // The lesson opens by asking.
+        // The lesson opens by asking, with a picture beside the question and another kept for the answer.
         compose.onNodeWithText("Check").assertIsNotEnabled()
+        compose.onNodeWithText("Four people").assertIsDisplayed()
+        compose.onNodeWithText("Pairs among them").assertDoesNotExist()
+        picture("choice-asked")
         tap("6")
         tap("Check")
         compose.onNodeWithText("Right").assertIsDisplayed()
         compose.onNodeWithText("3 + 2 + 1 = 6.").assertIsDisplayed()
+        compose.onNodeWithText("Pairs among them").assertIsDisplayed()
         picture("choice")
         tap("Continue")
 
@@ -77,6 +81,7 @@ class LessonTest {
         tap("23 people")
         tap("Check")
         compose.onNodeWithText("Right").assertIsDisplayed()
+        compose.onNodeWithText("How many pairs each makes").assertIsDisplayed()
         picture("order")
         tap("Continue")
 
@@ -85,6 +90,9 @@ class LessonTest {
         compose.onNodeWithText("24 people").assertIsDisplayed()
         tap("Check")
         compose.onNodeWithText("Right").assertIsDisplayed()
+        // The explanation's picture: the two curves by name.
+        compose.onNodeWithText("Any two").assertIsDisplayed()
+        compose.onNodeWithText("The chance of a shared birthday").assertIsDisplayed()
         picture("estimate")
         tap("Continue")
 

@@ -11,8 +11,11 @@ import java.util.Locale
 object Letter {
     const val TITLE = "Spark wishes"
 
-    fun write(wishes: List<String>, taste: Taste): String = buildString {
-        append("Sent from the Spark app. The next scheduled run reads the newest issue with this title.\n\n")
+    fun write(wishes: List<String>, taste: Taste): String =
+        "Sent from the Spark app. The next scheduled run reads the newest issue with this title.\n\n" + reader(wishes, taste)
+
+    /** Who the reader is, for whoever writes for them: their wishes, then their taste. */
+    fun reader(wishes: List<String>, taste: Taste): String = buildString {
         append("## Wishes\n")
         if (wishes.isEmpty()) append("(none)\n")
         // One line each, so a wish can't pass for a heading or a second wish.

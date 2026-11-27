@@ -12,7 +12,7 @@ affect each other and can use different languages or toolchains.
 | [Accent Coach](apps/accent-coach/) | Read a sentence aloud and see the sounds you made next to a native American speaker's, with non-native sounds highlighted; lessons and drills on the hardest sounds, your own hard words, and a streak | Android |
 | [Recitation](apps/recitation/) | Listen to a recitation of the Quran from a YouTube playlist and follow it word by word, with each word's meaning and the word being recited lit up | Android |
 | [Safeguard](apps/safeguard/) | Daily allowances and closed hours for the apps and websites you choose, apps kept off the phone, websites and words closed in any browser; once locked it resists being loosened or uninstalled | Android |
-| [Spark](apps/spark/) | A feed of short reels that teach, ordered by what holds your attention, with interactive lessons attached; a new batch made for what you asked to learn is prepared every morning | Android |
+| [Spark](apps/spark/) | A feed of short reels that teach, ordered by what holds your attention, with interactive lessons attached; when the feed runs low it writes new ones for what you asked to learn, with a free Gemini key of your own | Android |
 
 ## Layout
 

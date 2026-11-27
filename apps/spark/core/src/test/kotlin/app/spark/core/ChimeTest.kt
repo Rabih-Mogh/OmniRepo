@@ -55,6 +55,16 @@ class ChimeTest {
     }
 
     @Test
+    fun `right answers in a row climb a scale, as far as a fifth`() {
+        assertEquals(1f, Chime.climb(0))
+        val rates = (0..8).map(Chime::climb)
+        for (i in 1..4) assertTrue(rates[i] > rates[i - 1], "$rates")
+        // A fifth is half as fast again, and there it stays.
+        assertEquals(1.5f, rates[4], 0.01f)
+        assertEquals(rates[4], rates[8])
+    }
+
+    @Test
     fun `the file is a WAV of one 16-bit channel`() {
         val samples = Chime.FINISH.samples()
         val wav = Chime.FINISH.wav()

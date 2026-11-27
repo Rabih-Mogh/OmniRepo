@@ -1,22 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Deep indigo, a little lighter towards the top. -->
+<!-- Deep indigo, with far-off nerve cells and the threads between them. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:pathData="M0,0 H108 V108 H0 Z">
+    <!-- Deep indigo -->
+    <path
+        android:pathData="M0,0 h108 v108 h-108 Z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:type="linear"
+                android:endX="108"
+                android:endY="108"
                 android:startX="0"
                 android:startY="0"
-                android:endX="0"
-                android:endY="108">
-                <item android:offset="0" android:color="#FF3B2F8F" />
-                <item android:offset="1" android:color="#FF14103A" />
+                android:type="linear">
+                <item android:color="#FF4B3FB5" android:offset="0" />
+                <item android:color="#FF120D38" android:offset="1" />
             </gradient>
         </aapt:attr>
     </path>
+    <!-- Far-off cells and the threads between them -->
+    <path
+        android:pathData="M22,62 L31,71 L24,84 M31,71 L43,76 M86,46 L77,37 L84,24 M77,37 L65,32 M70,84 L78,76 M38,24 L30,32"
+        android:strokeColor="#21FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.1" />
+    <path
+        android:fillColor="#4CFFFFFF"
+        android:pathData="M20.5,62 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0 Z" />
+    <path
+        android:fillColor="#4CFFFFFF"
+        android:pathData="M29,71 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0 Z" />
+    <path
+        android:fillColor="#4CFFFFFF"
+        android:pathData="M41.6,76 a1.4,1.4 0 1,0 2.8,0 a1.4,1.4 0 1,0 -2.8,0 Z" />
+    <path
+        android:fillColor="#4CFFFFFF"
+        android:pathData="M84.5,46 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0 Z" />
+    <path
+        android:fillColor="#4CFFFFFF"
+        android:pathData="M75,37 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0 Z" />
+    <path
+        android:fillColor="#4CFFFFFF"
+        android:pathData="M63.6,32 a1.4,1.4 0 1,0 2.8,0 a1.4,1.4 0 1,0 -2.8,0 Z" />
+    <path
+        android:fillColor="#4CFFFFFF"
+        android:pathData="M76.4,76 a1.6,1.6 0 1,0 3.2,0 a1.6,1.6 0 1,0 -3.2,0 Z" />
+    <path
+        android:fillColor="#4CFFFFFF"
+        android:pathData="M28.4,32 a1.6,1.6 0 1,0 3.2,0 a1.6,1.6 0 1,0 -3.2,0 Z" />
 </vector>

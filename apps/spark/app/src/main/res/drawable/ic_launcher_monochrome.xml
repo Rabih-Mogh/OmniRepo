@@ -1,14 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The same two stars in one colour, for themed icons: Android tints it itself. -->
+<!-- One colour, for Android 13+ themed icons: the two nerve cells and the spark. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M51,31 C53,46 59,52 74,54 C59,56 53,62 51,77 C49,62 43,56 28,54 C43,52 49,46 51,31 Z" />
+        android:pathData="M39.73,37.82 Q37.82,33.12 39.04,28.42 M36.95,41.12 Q32.6,40.43 29.12,42.69 M38.86,46.34 Q36.77,50.17 33.47,52.78 M45.3,38.86 Q49.3,36.25 50.87,32.25 M45.3,45.65 Q47.74,46.52 48.61,49.82 M68.27,70.18 Q70.18,74.88 68.96,79.58 M71.05,66.88 Q75.4,67.57 78.88,65.31 M69.14,61.66 Q71.23,57.83 74.53,55.22 M62.7,69.14 Q58.7,71.75 57.13,75.75 M62.7,62.35 Q60.26,61.48 59.39,58.18"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="2.6" />
+    <path
+        android:pathData="M38.51,33.29 Q35.38,31.9 33.64,29.29 M33.12,40.69 Q31.03,38.34 28.42,37.99 M48.26,36.25 Q51.91,36.08 54.35,33.64 M69.49,74.71 Q72.62,76.1 74.36,78.71 M74.88,67.31 Q76.97,69.66 79.58,70.01 M59.74,71.75 Q56.09,71.92 53.65,74.36"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="1.9" />
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M70,32 C70.8,37 73,39.2 78,40 C73,40.8 70.8,43 70,48 C69.2,43 67,40.8 62,40 C67,39.2 69.2,37 70,32 Z" />
+        android:pathData="M37.34,28.42 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z M27.42,42.69 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z M31.77,52.78 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z M49.17,32.25 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z M31.94,29.29 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z M26.72,37.99 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z M52.65,33.64 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z M67.26,79.58 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z M77.18,65.31 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z M72.83,55.22 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z M55.43,75.75 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z M72.66,78.71 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z M77.88,70.01 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z M51.95,74.36 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M35.18,42.26 a6.2,6.2 0 1,0 12.4,0 a6.2,6.2 0 1,0 -12.4,0 Z M60.42,65.75 a6.2,6.2 0 1,0 12.4,0 a6.2,6.2 0 1,0 -12.4,0 Z" />
+    <path
+        android:pathData="M62.6,44.6 L65.8,41.4 M64.4,50.2 L68.4,48.8 M45.4,63.4 L42.2,66.6 M43.6,57.8 L39.6,59.2"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="1.7" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M58.4,42.6 L48.2,56 H53.4 L50,65.4 L59.8,52 H54.6 Z" />
 </vector>

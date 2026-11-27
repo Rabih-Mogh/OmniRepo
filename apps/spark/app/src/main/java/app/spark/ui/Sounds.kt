@@ -6,6 +6,7 @@ import android.media.AudioManager
 import android.media.SoundPool
 import android.os.Build
 import android.view.HapticFeedbackConstants
+import android.view.View
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalView
@@ -65,28 +66,38 @@ object Sounds {
 
     internal fun file(context: Context, chime: Chime) = File(File(context.cacheDir, "chimes"), chime.name.lowercase() + ".wav")
 
-    /** Plays [chime], unless sounds are off, the phone is on silent or vibrate, or it isn't ready yet. */
-    fun play(chime: Chime) {
+    /**
+     * Plays [chime], unless sounds are off, the phone is on silent or vibrate, or it isn't
+     * ready yet. A [rate] above 1 plays it faster, and so higher.
+     */
+    fun play(chime: Chime, rate: Float = 1f) {
         if (!Store.kept.value.sounds) return
         if (audio?.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
         val id = ids[chime]?.takeIf(loaded::contains) ?: return
-        pool?.play(id, VOLUME, VOLUME, 1, 0, 1f)
+        pool?.play(id, VOLUME, VOLUME, 1, 0, rate)
     }
 }
 
 /**
- * Gives a way to mark a moment: its sound and a touch from the vibration motor. The touch
+ * A way to mark a moment: its sound and a touch from the vibration motor. The touch
  * follows the phone's own setting for touch feedback; both stop when sounds are turned off.
  */
-@Composable
-fun rememberFeel(): (Chime) -> Unit {
-    val view = LocalView.current
-    return remember(view) {
-        { chime ->
-            Sounds.play(chime)
-            if (Store.kept.value.sounds) view.performHapticFeedback(touch(chime))
-        }
+class Feel(private val view: View) {
+    operator fun invoke(chime: Chime, rate: Float = 1f) {
+        Sounds.play(chime, rate)
+        if (Store.kept.value.sounds) view.performHapticFeedback(touch(chime))
     }
+
+    /** The touch alone, for something that happens many times over: a slider crossing a notch. */
+    fun tick() {
+        if (Store.kept.value.sounds) view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+    }
+}
+
+@Composable
+fun rememberFeel(): Feel {
+    val view = LocalView.current
+    return remember(view) { Feel(view) }
 }
 
 private fun touch(chime: Chime): Int = when (chime) {

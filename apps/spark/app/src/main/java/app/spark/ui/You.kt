@@ -52,13 +52,14 @@ import app.spark.core.Lesson
 import app.spark.core.Letter
 import app.spark.data.Library
 import app.spark.data.Store
+import app.spark.data.Writer
 import kotlinx.coroutines.launch
 
 private const val ISSUES = "https://github.com/Rabih-Mogh/OmniRepo/issues/new"
 
 /**
  * The screen about the user: the streak and the day, the goal, sounds, what they want to learn,
- * what the app has learned about them, every lesson, and the library.
+ * the reels written on the phone, what the app has learned about them, every lesson, and the library.
  */
 @Composable
 fun You(kept: Store.Kept, shelf: Library.Shelf, onBack: () -> Unit, onLesson: (Lesson) -> Unit) {
@@ -69,6 +70,7 @@ fun You(kept: Store.Kept, shelf: Library.Shelf, onBack: () -> Unit, onLesson: (L
     val days = kept.days.on(today)
     val fetch by Library.state.collectAsStateWithLifecycle()
     var noBrowser by remember { mutableStateOf(false) }
+    val writes = Writer.key.collectAsStateWithLifecycle().value != null
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         item {
@@ -137,21 +139,26 @@ fun You(kept: Store.Kept, shelf: Library.Shelf, onBack: () -> Unit, onLesson: (L
         }
 
         item {
-            Section(stringResource(R.string.wishes_title), stringResource(R.string.wishes_about)) {
+            // With a key, the list goes straight to the reels written on this phone; without one, it can be sent off.
+            Section(stringResource(R.string.wishes_title), stringResource(if (writes) R.string.wishes_about_writer else R.string.wishes_about)) {
                 WishEditor(kept.wishes)
-                OutlinedButton(
-                    onClick = {
-                        val url = Uri.parse(ISSUES).buildUpon()
-                            .appendQueryParameter("title", Letter.TITLE)
-                            .appendQueryParameter("body", Letter.write(kept.wishes, kept.taste))
-                            .build()
-                        noBrowser = !openPage(context, url)
-                    },
-                    enabled = kept.wishes.isNotEmpty(),
-                ) { Text(stringResource(R.string.wishes_send)) }
-                Note(stringResource(if (noBrowser) R.string.wishes_send_failed else R.string.wishes_send_about))
+                if (!writes) {
+                    OutlinedButton(
+                        onClick = {
+                            val url = Uri.parse(ISSUES).buildUpon()
+                                .appendQueryParameter("title", Letter.TITLE)
+                                .appendQueryParameter("body", Letter.write(kept.wishes, kept.taste))
+                                .build()
+                            noBrowser = !openPage(context, url)
+                        },
+                        enabled = kept.wishes.isNotEmpty(),
+                    ) { Text(stringResource(R.string.wishes_send)) }
+                    Note(stringResource(if (noBrowser) R.string.wishes_send_failed else R.string.wishes_send_about))
+                }
             }
         }
+
+        item { WriterSection() }
 
         item {
             Section(stringResource(R.string.taste_title), stringResource(R.string.taste_about)) {

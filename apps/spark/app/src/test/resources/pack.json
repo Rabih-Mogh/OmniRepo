@@ -44,10 +44,15 @@
       "summary": "Why coincidences are more common than they feel.",
       "steps": [
         {"kind": "choice", "text": "How many pairs do 4 people make?", "options": ["6", "4", "8"],
-         "mistakes": ["That counts the people, not the pairs.", "That counts every person twice."], "why": "3 + 2 + 1 = 6."},
+         "mistakes": ["That counts the people, not the pairs.", "That counts every person twice."], "why": "3 + 2 + 1 = 6.",
+         "visual": {"kind": "grid", "rows": 1, "columns": 4, "caption": "Four people"},
+         "reveal": {"kind": "bars", "labels": ["2 people", "3 people", "4 people"], "values": [1, 3, 6], "highlight": 2, "caption": "Pairs among them"}},
         {"kind": "read", "title": "Pairs grow fast", "text": "Each new person pairs with everyone already there.\nSo pairs pile up.", "visual": {"kind": "number", "value": 253, "suffix": " pairs"}},
-        {"kind": "order", "text": "Put these in order, fewest pairs first.", "items": ["5 people", "10 people", "23 people"], "why": "More people, more pairs."},
-        {"kind": "estimate", "text": "How many people for a 50% chance of a shared birthday?", "range": [2, 100], "step": 1, "answer": 23, "tolerance": 3, "unit": "people", "why": "23 people make 253 pairs."},
+        {"kind": "order", "text": "Put these in order, fewest pairs first.", "items": ["5 people", "10 people", "23 people"], "why": "More people, more pairs.",
+         "reveal": {"kind": "line", "range": [0, 300], "points": [{"at": 10, "label": "5 people"}, {"at": 45, "label": "10 people"}, {"at": 253, "label": "23 people"}], "highlight": 2, "caption": "How many pairs each makes"}},
+        {"kind": "estimate", "text": "How many people for a 50% chance of a shared birthday?", "range": [2, 100], "step": 1, "answer": 23, "tolerance": 3, "unit": "people", "why": "23 people make 253 pairs.",
+         "reveal": {"kind": "curve", "plot": "1-exp(-x*(x-1)/730)", "x": [0, 60], "versus": "1-(364/365)^x", "labels": ["Any two", "You and one"],
+                    "mark": {"x": 23, "label": "23 people: 50%"}, "caption": "The chance of a shared birthday"}},
         {"kind": "explore", "text": "Drag a until the curve passes through the dot.", "plot": "a*x*(x-1)/2", "x": [0, 10], "y": [0, 50],
          "param": {"range": [0, 2], "step": 0.1, "start": 0.2}, "target": {"x": 10, "y": 45},
          "show": [{"label": "Pairs among 10", "value": "a*45"}], "why": "With a = 1 the curve counts pairs: 10 people make 45."}
