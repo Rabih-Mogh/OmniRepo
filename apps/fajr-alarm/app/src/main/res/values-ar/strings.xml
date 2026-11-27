@@ -279,6 +279,8 @@
     <string name="prayer_imsak">الإمساك</string>
     <string name="prayer_duha">الضحى</string>
     <string name="prayer_dhuhr">الظهر</string>
+    <!-- Dhuhr on a Friday -->
+    <string name="prayer_jumuah">الجمعة</string>
     <string name="prayer_asr">العصر</string>
     <string name="prayer_maghrib">المغرب</string>
     <string name="prayer_isha">العشاء</string>
@@ -329,7 +331,7 @@
     <!-- The icon before each prayer in the list: what kind of prayer it is, read out by a screen reader -->
     <string name="mark_obligatory">فريضة</string>
     <string name="mark_nafl">نافلة</string>
-    <string name="nafl_hint">لكل صلاة أيقونتها. الأيقونة الوردية صلاة تطوّع (نافلة): الضحى، حتى ما قبل الظهر بـ 10 دقائق، وقيام الليل، من الثلث الأخير من الليل حتى الفجر. الإمساك والشروق ومنتصف الليل ليست صلوات ولا أيقونة لها.</string>
+    <string name="nafl_hint">لكل وقت أيقونته. الأيقونة الوردية صلاة تطوّع (نافلة): الضحى، حتى ما قبل الظهر بـ 10 دقائق، وقيام الليل، من الثلث الأخير من الليل حتى الفجر. الإمساك والشروق ومنتصف الليل ليست صلوات، وأيقوناتها أهدأ لوناً.</string>
     <!-- Under a prayer's start in the list: when its time runs out. %1$s a clock time -->
     <string name="until_time">حتى %1$s</string>
 
@@ -396,5 +398,5 @@
     <string name="isha_end_fajr">عند الفجر: نهاية وقته</string>
     <string name="isha_end_midnight">عند منتصف الليل: يُكره التأخير بعده (الحنفي)</string>
     <string name="isha_end_first_third">بعد ثلث الليل الأول: نهاية وقت الاختيار (الشافعي، المالكي، الحنبلي)</string>
-    <string name="ends_hint">يمتدّ وقت العصر إلى المغرب ووقت العشاء إلى الفجر. وتختلف المذاهب في الحدّ الذي يُكره تأخير الصلاة بعده أو لا يجوز إلا لعذر. اختر ما تتبعه: تعرضه القائمة والأدوات نهايةً للوقت، وتبقى الصلاة هي الحالية حتى ينتهي وقتها فعلاً. راجع اختيارك مع عالم تثق به.</string>
+    <string name="ends_hint">يمتدّ وقت العصر إلى المغرب ووقت العشاء إلى الفجر. وتختلف المذاهب في الحدّ الذي يُكره تأخير الصلاة بعده أو لا يجوز إلا لعذر. اختر ما تتبعه: تعتمده القائمة والأدوات والعدّ التنازلي نهايةً للوقت. ومن بعده حتى دخول الصلاة التالية لا تكون هناك صلاة حالية، ويكون العدّ التنازلي إلى الصلاة التالية. راجع اختيارك مع عالم تثق به.</string>
 </resources>

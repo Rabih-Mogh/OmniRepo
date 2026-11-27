@@ -128,12 +128,10 @@ private fun PrayerAlert(moment: PrayerMoment, onDismiss: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.weight(1f))
-        moment.prayer.icon?.let {
-            Icon(painterResource(it), contentDescription = null, tint = pale, modifier = Modifier.size(36.dp))
-            Spacer(Modifier.height(12.dp))
-        }
+        Icon(painterResource(moment.prayer.icon), contentDescription = null, tint = pale, modifier = Modifier.size(36.dp))
+        Spacer(Modifier.height(12.dp))
         Text(
-            stringResource(moment.prayer.label),
+            stringResource(moment.label),
             style = MaterialTheme.typography.headlineSmall,
             color = pale,
             textAlign = TextAlign.Center,

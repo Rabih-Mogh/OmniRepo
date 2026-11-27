@@ -6,12 +6,12 @@ import java.time.ZonedDateTime
 
 /** Where a moment falls among the prayers. */
 data class PrayerNow(
-    /** The prayer whose time it is and when it started, or null between sunrise and Dhuhr. */
-    val current: PrayerMoment?,
     /**
-     * What to count down to for [current]: the end chosen for it in the settings while
-     * that is still ahead, then the end of its time. Null with no current prayer.
+     * The prayer whose time it is and when it started. Null when none is: between sunrise
+     * and Dhuhr, and after the end chosen in the settings for Asr or Isha has passed.
      */
+    val current: PrayerMoment?,
+    /** When [current]'s time runs out, as chosen in the settings; null with no current prayer. */
     val currentEnds: ZonedDateTime?,
     /** The next of the five prayers. */
     val next: PrayerMoment,
@@ -45,9 +45,9 @@ object PrayerClock {
 
     /**
      * Fajr's time ends at sunrise and Isha's at the next Fajr; every other prayer's
-     * ends when the next one starts. Asr and Isha can be shown as ending earlier, at a
-     * point a school sets within their time ([PrayerCalcParams.asrEnd], [PrayerCalcParams.ishaEnd]):
-     * the prayer stays the current one until its time really ends. Of the voluntary
+     * ends when the next one starts. Asr and Isha can end earlier, at a point a school
+     * sets within their time ([PrayerCalcParams.asrEnd], [PrayerCalcParams.ishaEnd]):
+     * from then until the next prayer starts none is current. Of the voluntary
      * ones, Duha's ends shortly before Dhuhr and the night prayer's at Fajr. Null with
      * no times to go by (polar day or night).
      */
@@ -74,7 +74,7 @@ object PrayerClock {
             else -> firstAfter(started) { it.obligatory }
         }
 
-        /** The end to show for it: the one chosen in the settings where it falls inside the prayer's time. */
+        /** When its time runs out here: the end chosen in the settings where that falls inside the prayer's time. */
         fun shownEndOf(started: PrayerMoment, itsDay: DailyTimes): ZonedDateTime? {
             val end = endOf(started) ?: return null
             val chosen = when (started.prayer) {
@@ -94,9 +94,9 @@ object PrayerClock {
         }
 
         val started = timeline.lastOrNull { it.first.prayer.obligatory && !it.first.at.isAfter(now) }
-        val ends = started?.let { endOf(it.first) }
+        val ends = started?.let { shownEndOf(it.first, it.second) }
         val current = started?.first?.takeIf { ends != null && ends.isAfter(now) }
-        val currentEnds = if (current == null) null else shownEndOf(current, started.second)?.takeIf { it.isAfter(now) } ?: ends
+        val currentEnds = ends.takeIf { current != null }
         val dayEnds = day.moments().mapNotNull { m -> shownEndOf(m, day)?.let { m.prayer to it } }.toMap()
         val upcoming = timeline.map { it.first }.filter { it.at.isAfter(now) }
         val maghribToday = timeline.firstOrNull { (m, itsDay) -> itsDay.date == today && m.prayer == PrayerTime.MAGHRIB }?.first?.at

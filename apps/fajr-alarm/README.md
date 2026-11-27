@@ -59,7 +59,7 @@ How it works and its limits:
 
 **Pages.** The app opens on the prayers: the moon at the top, then the day's times. The button at the top left opens a side menu with the other pages: **Fajr alarm** (the next alarm, the last one, and the settings for the alarm, its sound and its mission, each folded up to a line that says what is set), **Location**, **Calculation** and **Lock screen & widgets**. Back returns to the prayers.
 
-**The times.** The **Times of the day** card lists the day from Imsak to Qiyam, the night prayer, with the current prayer marked and the time it has left. Each prayer, obligatory or voluntary, has its icon before its name, when it starts and, under that, when its time runs out. The icons of the two voluntary prayers (nafl), Duha and Qiyam, are pink. Imsak, Shuruq (sunrise) and midnight are not prayers: they have no icon and are single moments with no end. What the icons mean is under **About these times**.
+**The times.** The **Times of the day** card lists the day from Imsak to Qiyam, the night prayer, with the current prayer marked and the time it has left. Each prayer, obligatory or voluntary, has its icon before its name, when it starts and, under that, when its time runs out. The icons of the two voluntary prayers (nafl), Duha and Qiyam, are pink. Imsak, Shuruq (sunrise) and midnight are not prayers: their icons are quieter (a fork and knife struck through, the whole sun clear of the peaks it was behind at Fajr, a disc half dark) and they are single moments with no end. What the icons mean is under **About these times**.
 
 | Time | How it is worked out |
 |---|---|
@@ -67,7 +67,7 @@ How it works and its limits:
 | Fajr, Isha | The sun at the method's angle below the horizon. Umm al-Qura, Gulf and Qatar put Isha 90 minutes after Maghrib instead (Umm al-Qura's 120 minutes in Ramadan is not applied). The high-latitude rule applies to both |
 | Shuruq (sunrise), Maghrib | The sun's upper edge on the horizon. The Tehran method puts Maghrib at 4.5° below it |
 | Duha | 15 minutes after sunrise: the start of the Duha prayer's time, which is taken to run until 10 minutes before Dhuhr |
-| Dhuhr | Solar noon, with no minutes added |
+| Dhuhr | Solar noon, with no minutes added. On a Friday the list, the widgets and its notice call it Jumu'ah; the settings keep calling it Dhuhr |
 | Asr | When a shadow is longer than at noon by the object's height (standard), or by twice its height (Hanafi) |
 | Midnight | Halfway from sunset to the next Fajr |
 | Qiyam (last third) | Two thirds of the way from sunset to the next Fajr, where the last third of the night begins: the time for the night prayer (Qiyam, Tahajjud), until that Fajr |
@@ -81,7 +81,7 @@ A prayer's time is taken to end when the next prayer starts. Fajr ends at sunris
 | Asr ends | At Maghrib (the default). When a shadow is twice its object's height longer than at noon: the end of the preferred time, labelled Shafi'i and Hanbali. 20 minutes before sunset, as the sun yellows: labelled Hanafi and Maliki |
 | Isha ends | At Fajr (the default). At midnight, halfway from sunset to Fajr: labelled Hanafi. After the first third of the night: the end of the preferred time, labelled Shafi'i, Maliki and Hanbali |
 
-The prayer stays the current one until its time is really over: the countdown runs to the chosen end first and then to Maghrib or Fajr. With Hanafi Asr, which starts when the shadow is twice as long, that choice for the end falls back to Maghrib. The 20 minutes for the yellowing sun is an approximation of mine, and so is which school each choice is labelled with: check them with a scholar you trust. When Asr starts is the separate **Asr** setting.
+The countdown runs to the chosen end. From then until the next prayer starts no prayer is current, as between sunrise and Dhuhr, and the countdown is to the next one. With Hanafi Asr, which starts when the shadow is twice as long, that choice for the end falls back to Maghrib. The 20 minutes for the yellowing sun is an approximation of mine, and so is which school each choice is labelled with: check them with a scholar you trust. When Asr starts is the separate **Asr** setting.
 
 **What the phone does at each time.** Beside every time except Fajr is an icon that shows what the phone will do when it arrives, and opens the choice when tapped:
 
@@ -118,11 +118,11 @@ Both show more when you make them bigger (touch and hold the widget, then drag i
 
 **The dates.** The top line has the Hijri date, with its year from 280 dp wide, and the day's date. The Hijri date comes from the Umm al-Qura calendar built into Android, which is calculated, and moves on at Maghrib, when the Islamic day begins. **Calculation → Hijri date adjustment** adds or takes off up to two days where a country announced the month differently. The same date is beside **Today** in the app.
 
-**The time left.** The highlighted row has a live countdown at its right, the size of the clock times, on a filled pill in the colour of the row's text so that it stands apart: to the end of the prayer's time while it is the current one, or to its start while the highlighted row is the next prayer. Where the widget is wide enough (360 dp in two columns, 280 dp in one) the row keeps its clock time as well and the pill has an hourglass; narrower than that, the countdown takes the clock time's place. Nothing else in the widget repeats it.
+**The time left.** The highlighted row has a live countdown at its right, the size of the clock times. While a prayer is current it is the time that prayer has left, to the end chosen for it in the settings, on a pill filled with the colour of the row's text and behind an hourglass. When none is current (between sunrise and Dhuhr, or after an end chosen for Asr or Isha) the highlighted row is the next prayer and the countdown is the wait for it to start: the pill is then only an outline, behind a clock. Where the widget is wide enough (360 dp in two columns, 280 dp in one) the row keeps its clock time as well and the pill has its icon; narrower than that, the countdown takes the clock time's place. Nothing else in the widget repeats it.
 
 **Which times.** **Lock screen & widgets → Times in the widgets** chooses the times both widgets list; they fill two columns as evenly as they come. If the current prayer isn't among them the next one is highlighted, and the line at the top still names the current one.
 
-In both widgets, at every size, each prayer has the same icon before its name as in the app, pink for a voluntary prayer.
+In both widgets, at every size, each time has the same icon before its name as in the app, pink for a voluntary prayer. The icons are 16, 20 or 24 dp: as big as the height of a row allows, so they grow when the widget is made taller or lists fewer times, and held back where the widget is too narrow for a bigger icon beside the name.
 
 **Colours.** **Lock screen & widgets → Widget colours** chooses the theme for both widgets: Frost (a white pane with blue text and a blue highlight; the default), Cobalt (deep blue with a green highlight), See-through (a dark pane the wallpaper shows through), Night (the app's blue and gold), Black, Light, Follow the phone, which is Light in light mode and Night in dark mode, or **Your own colours**. Under the choice are the three colours in use, the background, the text and the highlight behind the current prayer, and a slider for how solid the background is. Tapping a colour opens a palette of greys and eleven hues in six shades, and for the background also **Transparent**, which leaves the widget with no background at all; picking one starts from the theme in use, changes that colour and makes the theme your own. The quieter shades are mixed from the text and background colours. In every built-in theme a passed time is quieter than one to come but still well clear of the background; a test holds the contrast. On Android 12 and later the home screen switches "Follow the phone" by itself; before that it changes the next time the widget is drawn.
 

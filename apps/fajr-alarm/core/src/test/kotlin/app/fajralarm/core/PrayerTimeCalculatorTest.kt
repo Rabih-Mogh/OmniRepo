@@ -314,7 +314,7 @@ class PrayerClockTest {
     }
 
     @Test
-    fun asrCanBeShownEndingWhereASchoolSetsItAndStaysCurrentUntilMaghrib() {
+    fun asrEndsWhereASchoolSetsItAndThenNoPrayerIsCurrent() {
         fun clock(hour: Int, minute: Int, end: AsrEnd) =
             assertNotNull(PrayerClock.at(ZonedDateTime.of(date, LocalTime.of(hour, minute), zone), params.copy(asrEnd = end)))
         val twice = assertNotNull(today.asrShadowTwice)
@@ -328,12 +328,15 @@ class PrayerClockTest {
         assertEquals(twice, early.dayEnds[PrayerTime.ASR])
         assertEquals(twice, early.currentEnds)
         assertEquals(twice, early.nextChange)
-        // Past it Asr is still the current prayer, now until Maghrib.
+        // Past it no prayer is current: what is counted down to is Maghrib's start.
         val late = clock(16, 0, AsrEnd.SHADOW_TWICE)
-        assertEquals(PrayerTime.ASR, late.current?.prayer)
-        assertEquals(today.maghrib, late.currentEnds)
+        assertNull(late.current)
+        assertNull(late.currentEnds)
+        assertEquals(PrayerMoment(PrayerTime.MAGHRIB, today.maghrib!!), late.next)
         assertEquals(twice, late.dayEnds[PrayerTime.ASR])
         assertEquals(late.nextEvent.at, late.nextChange)
+        // With the end left at Maghrib, Asr is current right up to it.
+        assertEquals(PrayerTime.ASR, clock(16, 0, AsrEnd.MAGHRIB).current?.prayer)
 
         assertEquals(today.sunset!!.minusMinutes(20), clock(15, 0, AsrEnd.SUN_YELLOWS).dayEnds[PrayerTime.ASR])
         // With Hanafi Asr the twice-as-long shadow is where Asr starts, so it can't also end there.
@@ -347,7 +350,7 @@ class PrayerClockTest {
     }
 
     @Test
-    fun ishaCanBeShownEndingAtMidnightOrTheFirstThird() {
+    fun ishaEndsAtMidnightOrTheFirstThirdWhenChosen() {
         val tomorrow = PrayerTimeCalculator.compute(date.plusDays(1), zone, params)
         fun clock(end: IshaEnd) =
             assertNotNull(PrayerClock.at(ZonedDateTime.of(date, LocalTime.of(19, 0), zone), params.copy(ishaEnd = end)))
@@ -361,12 +364,15 @@ class PrayerClockTest {
             Duration.between(today.sunset, tomorrow.fajr).dividedBy(3),
             Duration.between(today.sunset, third),
         )
-        // After the first third Isha is still current, until Fajr.
+        // After the first third no prayer is current, until Fajr.
         val late = assertNotNull(
             PrayerClock.at(ZonedDateTime.of(date, LocalTime.of(23, 30), zone), params.copy(ishaEnd = IshaEnd.FIRST_THIRD)),
         )
-        assertEquals(PrayerTime.ISHA, late.current?.prayer)
-        assertEquals(tomorrow.fajr, late.currentEnds)
+        assertNull(late.current)
+        assertEquals(PrayerMoment(PrayerTime.FAJR, tomorrow.fajr!!), late.next)
+        // Before it Isha is current and runs out at the first third, not at Fajr.
+        assertEquals(third, clock(IshaEnd.FIRST_THIRD).currentEnds)
+        assertEquals(PrayerTime.ISHA, clock(IshaEnd.FIRST_THIRD).current?.prayer)
     }
 
     @Test

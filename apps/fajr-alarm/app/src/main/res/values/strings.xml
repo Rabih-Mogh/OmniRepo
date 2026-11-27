@@ -263,6 +263,8 @@
     <string name="prayer_imsak">Imsak</string>
     <string name="prayer_duha">Duha</string>
     <string name="prayer_dhuhr">Dhuhr</string>
+    <!-- Dhuhr on a Friday -->
+    <string name="prayer_jumuah">Jumu\'ah</string>
     <string name="prayer_asr">Asr</string>
     <string name="prayer_maghrib">Maghrib</string>
     <string name="prayer_isha">Isha</string>
@@ -313,7 +315,7 @@
     <!-- The icon before each prayer in the list: what kind of prayer it is, read out by a screen reader -->
     <string name="mark_obligatory">Obligatory</string>
     <string name="mark_nafl">Nafl</string>
-    <string name="nafl_hint">Each prayer has its icon. A pink one is a voluntary prayer (nafl): Duha, until 10 minutes before Dhuhr, and Qiyam, the night prayer, from the last third of the night until Fajr. Imsak, Shuruq and midnight are not prayers and have none.</string>
+    <string name="nafl_hint">Each time has its icon. A pink one is a voluntary prayer (nafl): Duha, until 10 minutes before Dhuhr, and Qiyam, the night prayer, from the last third of the night until Fajr. Imsak, Shuruq and midnight are not prayers: their icons are quieter.</string>
     <!-- Under a prayer's start in the list: when its time runs out. %1$s a clock time -->
     <string name="until_time">until %1$s</string>
 
@@ -380,5 +382,5 @@
     <string name="isha_end_fajr">At Fajr: the end of its time</string>
     <string name="isha_end_midnight">At midnight: disliked after it (Hanafi)</string>
     <string name="isha_end_first_third">After the first third of the night: the end of the preferred time (Shafi\'i, Maliki, Hanbali)</string>
-    <string name="ends_hint">Asr\'s time lasts until Maghrib and Isha\'s until Fajr. The schools differ on the point inside it after which delaying the prayer is disliked, or is only for someone with an excuse. Choose the one you follow: the list and the widgets show it as the end, and the prayer stays the current one until its time is over. Check the choice with a scholar you trust.</string>
+    <string name="ends_hint">Asr\'s time lasts until Maghrib and Isha\'s until Fajr. The schools differ on the point inside it after which delaying the prayer is disliked, or is only for someone with an excuse. Choose the one you follow: the list, the widgets and the countdown take it as the end. From then until the next prayer starts none is current, and the countdown is to that next one. Check the choice with a scholar you trust.</string>
 </resources>

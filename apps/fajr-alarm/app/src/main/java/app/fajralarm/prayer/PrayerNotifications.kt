@@ -59,7 +59,7 @@ object PrayerNotifications {
         val n = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(
-                context.getString(R.string.prayer_alert_title, context.getString(moment.prayer.label), moment.at.clockTime(context)),
+                context.getString(R.string.prayer_alert_title, context.getString(moment.label), moment.at.clockTime(context)),
             )
             .setContentText(context.getString(moment.prayer.alertText))
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
@@ -140,12 +140,12 @@ class CurrentPrayerText(
     companion object {
         fun of(context: Context, state: PrayerNow): CurrentPrayerText {
             val next = context.getString(
-                R.string.next_prayer, context.getString(state.next.prayer.label), state.next.at.clockTime(context),
+                R.string.next_prayer, context.getString(state.next.label), state.next.at.clockTime(context),
             )
             val current = state.current
             val ends = state.currentEnds
             return if (current != null && ends != null) {
-                val name = context.getString(current.prayer.label)
+                val name = context.getString(current.label)
                 CurrentPrayerText(
                     headline = context.getString(R.string.now_ends_in, name),
                     plain = context.getString(R.string.now_until, name, ends.clockTime(context)),
@@ -153,7 +153,7 @@ class CurrentPrayerText(
                     countsDownTo = ends,
                 )
             } else {
-                val name = context.getString(state.next.prayer.label)
+                val name = context.getString(state.next.label)
                 CurrentPrayerText(
                     headline = context.getString(R.string.now_starts_in, name),
                     plain = context.getString(R.string.now_at, name, state.next.at.clockTime(context)),

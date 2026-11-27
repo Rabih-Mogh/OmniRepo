@@ -73,6 +73,9 @@ object PrayerWidgets {
     // By width: the Hijri date has its year from 280dp. The gold row has the time left
     // at its right, the size of the clock times. Where the widget is narrower than
     // ROOMY_* that takes the place of the row's clock time.
+    //
+    // The icons grow with the room a row has: see iconSize.
+    private const val ROOMIER_ROWS_HEIGHT = 140f
     private const val NEXT_LINE_HEIGHT = 170f
     private const val ONE_COLUMN_HEIGHT = 250f
     private const val FOOTER_HEIGHT = 330f
@@ -80,7 +83,7 @@ object PrayerWidgets {
     private const val ROOMY_TWO_COLUMNS = 360f
     private const val ROOMY_ONE_COLUMN = 280f
     private const val FULL_RANGE_WIDTH = 340f
-    internal val TIMES_SIZES = listOf(110f, NEXT_LINE_HEIGHT).flatMap { height ->
+    internal val TIMES_SIZES = listOf(110f, ROOMIER_ROWS_HEIGHT, NEXT_LINE_HEIGHT).flatMap { height ->
         listOf(220f, YEAR_WIDTH, ROOMY_TWO_COLUMNS).map { SizeF(it, height) }
     } + listOf(ONE_COLUMN_HEIGHT, FOOTER_HEIGHT).flatMap { height ->
         listOf(220f, ROOMY_ONE_COLUMN, FULL_RANGE_WIDTH).map { SizeF(it, height) }
@@ -176,10 +179,8 @@ object PrayerWidgets {
                 paint(context, id, TEXT, palette.muted)
             }
             // Only where it says something the gold row doesn't: the next prayer, when the current one ends before it starts.
-            show(
-                R.id.widget_next_line,
-                state?.currentEnds != null && state.currentEnds != state.next.at && size.height >= NEXT_LINE_HEIGHT,
-            )
+            val nextLine = state?.currentEnds != null && state.currentEnds != state.next.at && size.height >= NEXT_LINE_HEIGHT
+            show(R.id.widget_next_line, nextLine)
             show(R.id.widget_footer, state != null && footer)
             if (state == null) {
                 setTextViewText(R.id.widget_headline, context.getString(R.string.widget_set_location))
@@ -193,7 +194,7 @@ object PrayerWidgets {
                 hijriDate(context, state.hijriDay, settings.hijriAdjustDays, withYear = size.width >= YEAR_WIDTH),
             )
             setTextViewText(R.id.widget_date, state.day.date.format(dayFormat()))
-            setTextViewText(R.id.widget_next, context.getString(R.string.next_prayer_in, context.getString(state.next.prayer.label)))
+            setTextViewText(R.id.widget_next, context.getString(R.string.next_prayer_in, context.getString(state.next.label)))
             setCountdown(R.id.widget_next_countdown, state.next.at)
             if (footer) setTextViewText(R.id.widget_footer, footerText(context, settings))
             fillTable(
@@ -206,6 +207,12 @@ object PrayerWidgets {
                 },
                 countdown = true,
                 roomy = size.width >= if (oneColumn) ROOMY_ONE_COLUMN else ROOMY_TWO_COLUMNS,
+                iconDp = iconSize(
+                    size, oneColumn,
+                    rows = state.day.moments().count { it.prayer in settings.widgetTimes },
+                    // The edges and the top line, then the lines that only some sizes have.
+                    taken = 32f + (if (nextLine) 16f else 0f) + (if (footer) 18f else 0f),
+                ),
                 // Two columns stay at the smaller size, or the framed time left would crowd the prayer's name.
                 textSp = when {
                     footer -> 14f
@@ -249,7 +256,7 @@ object PrayerWidgets {
             // In one cell just the prayer's name: the countdown under it is to its end, or to its start.
             setTextViewText(
                 R.id.widget_headline,
-                if (sentence) text.headline else context.getString((state.current ?: state.next).prayer.shortLabel),
+                if (sentence) text.headline else context.getString((state.current ?: state.next).shortLabel),
             )
             setCountdown(R.id.widget_countdown, text.countsDownTo)
             // One cell tall there is little room over and under the countdown, one cell wide beside it.
@@ -278,6 +285,7 @@ object PrayerWidgets {
                     // The big countdown is right above the table.
                     countdown = false,
                     roomy = false,
+                    iconDp = SMALL_ICON,
                     textSp = if (oneColumn) 13f else 12f,
                 )
             } else {
@@ -337,9 +345,10 @@ object PrayerWidgets {
      * Fills the table with the times of the listed day, in the order they come. In two
      * columns they read down the first and then down the second. In one column there is
      * room for when each prayer ends.
-     * Each prayer has its icon before its name, pink for a voluntary one. With
-     * [countdown] the gold row has the time left at its right, on a filled pill behind an hourglass:
-     * to the prayer's end, or to its start where the gold row is the next prayer.
+     * Each time has its icon before its name, pink for a voluntary prayer. With
+     * [countdown] the gold row counts down at its right: the time the current prayer has
+     * left, to the end chosen for it, on a filled pill behind an hourglass; or, with no
+     * prayer current, the wait for the next one on an outlined pill behind a clock.
      * Unless the row is [roomy] that takes the place of its clock time.
      */
     private fun RemoteViews.fillTable(
@@ -351,6 +360,7 @@ object PrayerWidgets {
         times: Times,
         countdown: Boolean,
         roomy: Boolean,
+        iconDp: Int,
         textSp: Float,
     ) {
         clearTable()
@@ -383,7 +393,7 @@ object PrayerWidgets {
             val until = if (moment == state.current) state.currentEnds else moment.at
             val counting = isMarked && countdown && until != null
             val cell = row(
-                name = context.getString(moment.prayer.shortLabel),
+                name = context.getString(moment.shortLabel),
                 time = if (counting && !roomy) "" else when (times) {
                     Times.START_SHORT -> moment.at.shortClockTime(context)
                     Times.RANGE -> listOfNotNull(moment.at, end).joinToString(" – ") { it.shortClockTime(context) }
@@ -398,26 +408,40 @@ object PrayerWidgets {
                     setViewVisibility(R.id.row_highlight, View.VISIBLE)
                     paint(context, R.id.row_highlight, TINT, palette.highlight)
                 }
-                moment.prayer.icon?.let { icon ->
-                    setViewVisibility(R.id.row_mark, View.VISIBLE)
-                    setImageViewResource(R.id.row_mark, icon)
-                    val tone = when {
-                        moment.prayer.nafl -> if (passed) palette.naflPassed else palette.nafl
-                        else -> onGold ?: faded ?: palette.text
-                    }
-                    paint(context, R.id.row_mark, TINT, tone)
+                // Its icon, at the size the row has room for: pink for a voluntary prayer, quiet
+                // for the times that are not prayers.
+                val mark = when (iconDp) {
+                    LARGE_ICON -> R.id.row_mark_large
+                    MEDIUM_ICON -> R.id.row_mark_medium
+                    else -> R.id.row_mark
                 }
+                setViewVisibility(mark, View.VISIBLE)
+                setImageViewResource(mark, moment.prayer.icon)
+                paint(
+                    context, mark, TINT,
+                    when {
+                        moment.prayer.nafl -> if (passed) palette.naflPassed else palette.nafl
+                        else -> onGold ?: faded ?: if (moment.prayer.obligatory) palette.text else palette.muted
+                    },
+                )
                 if (counting && until != null) {
                     setViewVisibility(R.id.row_left, View.VISIBLE)
                     setCountdown(R.id.row_countdown, until)
                     // As big as the clock times it sits among.
                     setTextViewTextSize(R.id.row_countdown, TypedValue.COMPLEX_UNIT_SP, textSp)
-                    // On a pill filled with the colour of the row's text, and itself in the row's own colour.
+                    // Time left in the current prayer: an hourglass, on a pill filled with the colour of the
+                    // row's text. No prayer current, so a wait for this one to start: a clock, and the pill
+                    // is only an outline.
+                    val waiting = moment != state.current
                     paint(context, R.id.row_left_frame, TINT, palette.onGold)
-                    // In a tight row of two columns the pill alone marks it: the hourglass would cost the name its room.
+                    show(R.id.row_left_fill, waiting)
+                    if (waiting) paint(context, R.id.row_left_fill, TINT, palette.highlight)
+                    val ink = if (waiting) palette.onGold else palette.highlight
+                    // In a tight row of two columns the pill alone marks it: the icon would cost the name its room.
                     setViewVisibility(R.id.row_left_icon, if (roomy || oneColumn) View.VISIBLE else View.GONE)
-                    paint(context, R.id.row_left_icon, TINT, palette.highlight)
-                    paint(context, R.id.row_countdown, TEXT, palette.highlight)
+                    setImageViewResource(R.id.row_left_icon, if (waiting) R.drawable.ic_clock else R.drawable.ic_hourglass)
+                    paint(context, R.id.row_left_icon, TINT, ink)
+                    paint(context, R.id.row_countdown, TEXT, ink)
                 }
             }
             addView(if (index < firstColumn) R.id.table_start else R.id.table_end, cell)
@@ -428,6 +452,32 @@ object PrayerWidgets {
                 addView(R.id.table_end, RemoteViews(context.packageName, layout))
             }
         }
+    }
+
+    private const val SMALL_ICON = 16
+    private const val MEDIUM_ICON = 20
+    private const val LARGE_ICON = 24
+
+    /**
+     * How big the rows' icons are, in dp: as big as the height of a row allows, held back
+     * where the widget is too narrow for a bigger icon beside the name and the times.
+     * [rows] is how many times are listed and [taken] the height the rest of the widget uses.
+     */
+    private fun iconSize(size: SizeF, oneColumn: Boolean, rows: Int, taken: Float): Int {
+        val perColumn = (if (oneColumn) rows else (rows + 1) / 2).coerceAtLeast(1)
+        val rowHeight = (size.height - taken) / perColumn
+        val byHeight = when {
+            rowHeight >= 28 -> LARGE_ICON
+            rowHeight >= 23 -> MEDIUM_ICON
+            else -> SMALL_ICON
+        }
+        val byWidth = when {
+            oneColumn -> if (size.width >= ROOMY_ONE_COLUMN) LARGE_ICON else MEDIUM_ICON
+            size.width >= ROOMY_TWO_COLUMNS -> LARGE_ICON
+            size.width >= YEAR_WIDTH -> MEDIUM_ICON
+            else -> SMALL_ICON
+        }
+        return minOf(byHeight, byWidth)
     }
 
     /** The bottom line of the tallest widget: the next alarm. */

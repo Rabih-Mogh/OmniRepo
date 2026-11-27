@@ -18,9 +18,11 @@ import app.fajralarm.core.IshaEnd
 import app.fajralarm.core.LockScreenCountdown
 import app.fajralarm.core.MoonPhaseName
 import app.fajralarm.core.PrayerAlert
+import app.fajralarm.core.PrayerMoment
 import app.fajralarm.core.PrayerTime
 import app.fajralarm.core.WidgetTheme
 import app.fajralarm.data.StopReason
+import java.time.DayOfWeek
 import java.time.Duration
 import java.time.ZonedDateTime
 import java.util.Date
@@ -111,10 +113,13 @@ val PrayerTime.label: Int
         PrayerTime.LAST_THIRD -> R.string.prayer_last_third
     }
 
-/** The picture that goes with a prayer; Imsak, sunrise and midnight are not prayers and have none. */
+/** The picture that goes with a time of the day. */
 @get:DrawableRes
-val PrayerTime.icon: Int?
+val PrayerTime.icon: Int
     get() = when (this) {
+        PrayerTime.IMSAK -> R.drawable.ic_time_imsak
+        PrayerTime.SUNRISE -> R.drawable.ic_time_shuruq
+        PrayerTime.MIDNIGHT -> R.drawable.ic_time_midnight
         PrayerTime.FAJR -> R.drawable.ic_prayer_fajr
         PrayerTime.DUHA -> R.drawable.ic_prayer_duha
         PrayerTime.DHUHR -> R.drawable.ic_prayer_dhuhr
@@ -122,7 +127,6 @@ val PrayerTime.icon: Int?
         PrayerTime.MAGHRIB -> R.drawable.ic_prayer_maghrib
         PrayerTime.ISHA -> R.drawable.ic_prayer_isha
         PrayerTime.LAST_THIRD -> R.drawable.ic_prayer_qiyam
-        PrayerTime.IMSAK, PrayerTime.SUNRISE, PrayerTime.MIDNIGHT -> null
     }
 
 @get:StringRes
@@ -192,6 +196,22 @@ val WidgetTheme.label: Int
         WidgetTheme.SYSTEM -> R.string.widget_theme_system
         WidgetTheme.CUSTOM -> R.string.widget_theme_custom
     }
+
+/**
+ * The name of a time on its own day: Dhuhr is Jumu'ah on a Friday. Settings that hold
+ * for every day keep calling it Dhuhr.
+ */
+@get:StringRes
+val PrayerMoment.label: Int
+    get() = if (isJumuah) R.string.prayer_jumuah else prayer.label
+
+/** The same where there is little room, as in a widget. */
+@get:StringRes
+val PrayerMoment.shortLabel: Int
+    get() = if (isJumuah) R.string.prayer_jumuah else prayer.shortLabel
+
+private val PrayerMoment.isJumuah: Boolean
+    get() = prayer == PrayerTime.DHUHR && at.dayOfWeek == DayOfWeek.FRIDAY
 
 /** The name where there is little room, as in a widget. */
 @get:StringRes

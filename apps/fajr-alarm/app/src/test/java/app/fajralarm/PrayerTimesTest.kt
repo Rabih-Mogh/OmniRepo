@@ -48,6 +48,7 @@ import app.fajralarm.core.WidgetTheme
 import app.fajralarm.data.SettingsStore
 import app.fajralarm.prayer.PrayerTicker
 import app.fajralarm.ui.MainActivity
+import app.fajralarm.ui.label
 import app.fajralarm.ui.PrayerAlertActivity
 import app.fajralarm.widget.CurrentPrayerWidget
 import app.fajralarm.widget.PrayerTimesWidget
@@ -66,6 +67,8 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.time.DayOfWeek
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -118,7 +121,9 @@ class PrayerTimesTest {
             compose.waitForIdle()
             compose.onNodeWithText("TIMES OF THE DAY").assertIsDisplayed()
             compose.onNodeWithText("MOON").assertIsDisplayed()
-            listOf("Imsak", "Shuruq", "Duha", "Dhuhr", "Asr", "Maghrib", "Isha", "Midnight", "Qiyam (last third)").forEach {
+            // The noon prayer goes by Jumu'ah when the day listed is a Friday.
+            val noon = if (now().day.date.dayOfWeek == DayOfWeek.FRIDAY) "Jumu'ah" else "Dhuhr"
+            listOf("Imsak", "Shuruq", "Duha", noon, "Asr", "Maghrib", "Isha", "Midnight", "Qiyam (last third)").forEach {
                 // "Asr" is also the name of a calculation setting further down.
                 compose.onAllNodesWithText(it).onFirst().assertIsDisplayed()
             }
@@ -348,7 +353,7 @@ class PrayerTimesTest {
         assertTrue("counts down to $target, was ${notice.`when`}", abs(notice.`when` - target) < 2_000)
         assertEquals(Notification.VISIBILITY_PUBLIC, notice.visibility)
         val title = notice.extras.getString(Notification.EXTRA_TITLE)!!
-        val name = (state.current ?: state.next).prayer.name.lowercase().replaceFirstChar { it.uppercase() }
+        val name = app.getString((state.current ?: state.next).label)
         assertTrue(title, title.startsWith(name) && (" until " in title || " at " in title))
         // It has to be right the moment the screen lights up, so the phone is woken to change it.
         assertEquals(listOf(state.nextEvent.millis() to true), queued())
@@ -418,15 +423,62 @@ class PrayerTimesTest {
             assertTrue("after the name, not beside it", row.indexOfChild(it.findViewById(R.id.row_left)) > row.indexOfChild(it.findViewById(R.id.row_name)))
         }
         assertEquals("only the gold row counts down", 1, rows(small).count { it.counts() })
-        // Each prayer has its icon before its name; Imsak, Shuruq and midnight, which are not prayers, have none.
+        // Time left in the current prayer: an hourglass on the filled pill, in a row with room for the icon.
+        fun View.pillIcon() = findViewById<ImageView>(R.id.row_left_icon)
+            .let { app.resources.getResourceEntryName(shadowOf(it.drawable).createdFromResId) }
+        fun View.outlined() = findViewById<View>(R.id.row_left_fill).visibility == View.VISIBLE
+        fun View.countsTo() = findViewById<Chronometer>(R.id.row_countdown).base
+        fun goldOf(state: PrayerNow, settings: AlarmSettings = beirut) = rows(times(state, 300, 400, settings)).single { it.gold() }
+        goldOf(afternoon).let {
+            assertEquals("Asr", it.name())
+            assertEquals("ic_hourglass", it.pillIcon())
+            assertFalse(it.outlined())
+        }
+        // It runs to the end chosen in the settings: with Asr ending when the sun yellows, that much sooner.
+        val yellows = beirut.copy(asrEnd = AsrEnd.SUN_YELLOWS)
+        val sooner = Duration.between(at(15, 0, yellows).currentEnds, afternoon.currentEnds)
+        assertTrue("the chosen end is before Maghrib: $sooner", sooner > Duration.ofMinutes(15))
+        assertTrue(abs(goldOf(afternoon).countsTo() - goldOf(at(15, 0, yellows), yellows).countsTo() - sooner.toMillis()) < 2_000)
+        // Past that end no prayer is current: the next one is marked and what counts down is the wait for it,
+        // behind a clock on a pill that is only an outline.
+        val waiting = at(16, 20, yellows)
+        assertNull(waiting.current)
+        goldOf(waiting, yellows).let {
+            assertEquals("Maghrib", it.name())
+            assertTrue(it.counts())
+            assertEquals("ic_clock", it.pillIcon())
+            assertTrue(it.outlined())
+        }
+        assertEquals("with the end left at Maghrib it is still Asr", "Asr", goldOf(at(16, 20)).name())
+        // The same in the morning, when no prayer's time has come.
+        goldOf(at(9, 0)).let {
+            assertEquals("Dhuhr", it.name())
+            assertEquals("ic_clock", it.pillIcon())
+            assertTrue(it.outlined())
+        }
+        picture("widget-times-waiting", times(waiting, 300, 400, yellows), 300, 400)
+        picture("widget-times-waiting-small", times(waiting, 300, 120, yellows), 300, 120)
+        // Every time has its icon before its name, Imsak, Shuruq and midnight included.
         assertEquals(
             mapOf(
-                "Imsak" to null, "Fajr" to "ic_prayer_fajr", "Shuruq" to null, "Duha" to "ic_prayer_duha",
+                "Imsak" to "ic_time_imsak", "Fajr" to "ic_prayer_fajr", "Shuruq" to "ic_time_shuruq", "Duha" to "ic_prayer_duha",
                 "Dhuhr" to "ic_prayer_dhuhr", "Asr" to "ic_prayer_asr", "Maghrib" to "ic_prayer_maghrib",
-                "Isha" to "ic_prayer_isha", "Midnight" to null, "Qiyam" to "ic_prayer_qiyam",
+                "Isha" to "ic_prayer_isha", "Midnight" to "ic_time_midnight", "Qiyam" to "ic_prayer_qiyam",
             ),
             rows(small).associate { it.name() to it.icon() },
         )
+
+        // The icons are as big as the rows have room for: taller rows, and a wide enough widget, make them grow.
+        fun iconsAt(width: Int, height: Int, settings: AlarmSettings = beirut) =
+            rows(times(afternoon, width, height, settings)).mapNotNull { it.iconDp() }.distinct()
+        assertEquals("at its smallest", listOf(16), iconsAt(300, 120))
+        assertEquals("taller rows", listOf(20), iconsAt(300, 200))
+        assertEquals("taller and wider", listOf(24), iconsAt(370, 200))
+        assertEquals("narrow: held back however tall the rows", listOf(16), iconsAt(250, 200))
+        assertEquals("one column, just tall enough for it", listOf(20), iconsAt(250, 270))
+        assertEquals("one column with room", listOf(24), iconsAt(350, 350))
+        val prayersOnly = beirut.copy(widgetTimes = PrayerTime.values().filter { it.obligatory }.toSet())
+        assertEquals("fewer times listed leave each row taller", listOf(20), iconsAt(300, 120, prayersOnly))
 
         // With room to spare the clock time stays beside it.
         val roomy = times(afternoon, 370, 150)
@@ -511,6 +563,19 @@ class PrayerTimesTest {
         assertTrue("Asr no longer ends at Maghrib: $chosen", chosen["Asr"] != ends["Asr"] && chosen["Asr"] != "")
         assertTrue("Isha no longer ends at Fajr: $chosen", chosen["Isha"] != ends["Isha"] && chosen["Isha"] != "")
         assertEquals("the others are as they were", ends - "Asr" - "Isha", chosen - "Asr" - "Isha")
+
+        // On a Friday the noon prayer is Jumu'ah, in the table and in its notification; the other days it is Dhuhr.
+        val friday = PrayerClock.at(
+            ZonedDateTime.of(LocalDate.of(2026, 11, 27), LocalTime.of(9, 0), ZoneId.of("Asia/Beirut")), beirut.calcParams()!!,
+        )!!
+        val onFriday = times(friday, 300, 150)
+        assertEquals(names.map { if (it == "Dhuhr") "Jumu'ah" else it }, rows(onFriday).map { it.name() })
+        assertEquals("Jumu'ah", rows(onFriday).single { it.gold() }.name())
+        assertEquals("ic_prayer_dhuhr", rows(onFriday).single { it.gold() }.icon())
+        assertEquals("Jumu'ah", PrayerWidgets.currentViews(app, friday, beirut, size(60, 60)).apply(app, FrameLayout(app)).text(R.id.widget_headline))
+        assertEquals("Jumu'ah starts in", PrayerWidgets.currentViews(app, friday, beirut, size(156, 84)).apply(app, FrameLayout(app)).text(R.id.widget_headline))
+        assertEquals(R.string.prayer_jumuah, friday.next.label)
+        assertEquals(R.string.prayer_dhuhr, afternoon.day.moments().single { it.prayer == PrayerTime.DHUHR }.label)
 
         // Only the times chosen for the widgets are listed, in two columns as even as they come.
         val five = beirut.copy(widgetTimes = setOf(PrayerTime.FAJR, PrayerTime.DHUHR, PrayerTime.ASR, PrayerTime.MAGHRIB, PrayerTime.ISHA))
@@ -698,6 +763,10 @@ class PrayerTimesTest {
         assertEquals(listOf("افتح مواقيت الصلاة لتحديد موقعك"), texts(empty).filter { it.isNotEmpty() })
         assertEquals(View.GONE, empty.findViewById<View>(R.id.widget_countdown).visibility)
         assertEquals(View.GONE, empty.findViewById<View>(R.id.widget_table).visibility)
+        val friday = PrayerClock.at(
+            ZonedDateTime.of(LocalDate.of(2026, 11, 27), LocalTime.of(9, 0), ZoneId.of("Asia/Beirut")), beirut.calcParams()!!,
+        )!!
+        assertEquals("الجمعة", rows(times(friday, 300, 150)).single { it.gold() }.name())
         val emptyTimes = times(null, 330, 350)
         assertEquals(listOf("افتح مواقيت الصلاة لتحديد موقعك"), texts(emptyTimes).filter { it.isNotEmpty() })
         assertTrue(rows(emptyTimes).isEmpty())
@@ -765,10 +834,15 @@ class PrayerTimesTest {
     private fun View.nameColor() = findViewById<TextView>(R.id.row_name).currentTextColor
 
     /** The icon before a row's name, by its file's name; null where the row has none. */
-    private fun View.icon(): String? {
-        val mark = findViewById<ImageView>(R.id.row_mark)
-        return if (mark.visibility != View.VISIBLE) null else app.resources.getResourceEntryName(shadowOf(mark.drawable).createdFromResId)
-    }
+    private fun View.icon(): String? = shownMark()?.let { app.resources.getResourceEntryName(shadowOf(it.drawable).createdFromResId) }
+
+    /** The one of a row's three icon sizes that is showing. */
+    private fun View.shownMark(): ImageView? =
+        listOf(R.id.row_mark, R.id.row_mark_medium, R.id.row_mark_large)
+            .map { findViewById<ImageView>(it) }.singleOrNull { it.visibility == View.VISIBLE }
+
+    /** How big a row's icon is, in dp. */
+    private fun View.iconDp(): Int? = shownMark()?.let { Math.round(it.layoutParams.width / resources.displayMetrics.density) }
 
     /** Saves a picture of [view] at [widthDp] x [heightDp] to app/build/screens. */
     private fun picture(name: String, view: View, widthDp: Int, heightDp: Int) {

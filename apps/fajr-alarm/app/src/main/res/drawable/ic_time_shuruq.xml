@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shuruq, sunrise: the whole sun clear of the peaks it was behind at Fajr. White, to be tinted where it is shown. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M13.5,7 a3.3,3.3 0 1,0 6.6,0 a3.3,3.3 0 1,0 -6.6,0 Z" />
+    <path
+        android:pathData="M16.80,2.10 L16.80,0.70 M20.26,3.54 L21.25,2.55 M21.70,7.00 L23.10,7.00 M13.34,3.54 L12.35,2.55 M11.90,7.00 L10.50,7.00 M13.34,10.46 L12.35,11.45 M16.80,11.90 L16.80,13.30 M20.26,10.46 L21.25,11.45"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="1.5" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M1.5,21.5 L8.5,12 L12.5,17.5 L14.8,15 L22.5,21.5 Z" />
+</vector>

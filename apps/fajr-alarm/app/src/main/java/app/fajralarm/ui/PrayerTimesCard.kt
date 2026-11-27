@@ -88,7 +88,7 @@ internal fun PrayerTimesCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    stringResource((current ?: state.next).prayer.label),
+                    stringResource((current ?: state.next).label),
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -102,7 +102,7 @@ internal fun PrayerTimesCard(
                 )
             }
             Text(
-                stringResource(R.string.next_prayer, stringResource(state.next.prayer.label), state.next.at.clockTime(context)),
+                stringResource(R.string.next_prayer, stringResource(state.next.label), state.next.at.clockTime(context)),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -135,7 +135,7 @@ internal fun PrayerTimesCard(
                     val weight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal
                     PrayerMark(moment.prayer, color, Modifier.alpha(if (passed) 0.6f else 1f))
                     Text(
-                        stringResource(moment.prayer.label),
+                        stringResource(moment.label),
                         Modifier.weight(1f).padding(start = 10.dp, end = 8.dp).alpha(if (passed) 0.6f else 1f),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = weight,
@@ -213,22 +213,21 @@ internal fun PrayerTimesCard(
 }
 
 /**
- * The icon before a prayer's name, pink for a voluntary one. Imsak, sunrise and midnight are
- * not prayers and keep the gap.
+ * The icon before a time's name: in the row's own colour for the five prayers, pink for
+ * a voluntary one, quiet for Imsak, sunrise and midnight, which are not prayers.
  */
 @Composable
 private fun PrayerMark(prayer: PrayerTime, color: Color, modifier: Modifier = Modifier) {
-    val icon = prayer.icon
-    if (icon == null) {
-        Spacer(modifier.size(20.dp))
-    } else {
-        Icon(
-            painterResource(icon),
-            contentDescription = stringResource(if (prayer.nafl) R.string.mark_nafl else R.string.mark_obligatory),
-            tint = if (prayer.nafl) MaterialTheme.colorScheme.tertiary else color,
-            modifier = modifier.size(20.dp),
-        )
-    }
+    Icon(
+        painterResource(prayer.icon),
+        contentDescription = when {
+            prayer.nafl -> stringResource(R.string.mark_nafl)
+            prayer.obligatory -> stringResource(R.string.mark_obligatory)
+            else -> null
+        },
+        tint = if (prayer.nafl) MaterialTheme.colorScheme.tertiary else color,
+        modifier = modifier.size(20.dp),
+    )
 }
 
 /**

@@ -6,7 +6,8 @@
     android:gravity="center_vertical"
     android:orientation="horizontal">
 
-    <!-- Kept as a gap before Imsak, sunrise and midnight, which are not prayers. -->
+    <!-- The time's icon, in three sizes: the one that suits the row's height is shown, since a
+         view's size can't be set from outside on older phones. -->
     <ImageView
         android:id="@+id/row_mark"
         android:layout_width="16dp"
@@ -14,7 +15,25 @@
         android:layout_marginEnd="5dp"
         android:importantForAccessibility="no"
         android:src="@drawable/ic_prayer_dhuhr"
-        android:visibility="invisible" />
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/row_mark_medium"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginEnd="5dp"
+        android:importantForAccessibility="no"
+        android:src="@drawable/ic_prayer_dhuhr"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/row_mark_large"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginEnd="6dp"
+        android:importantForAccessibility="no"
+        android:src="@drawable/ic_prayer_dhuhr"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/row_name"
@@ -28,7 +47,8 @@
         android:textColor="@color/widget_text"
         android:textSize="12sp" />
 
-    <!-- On the current prayer's row: the time it has left, at the right, behind an hourglass on a filled pill. -->
+    <!-- On the highlighted row, at the right: the time the current prayer has left, behind an hourglass on a
+         filled pill; or the wait for the next one, behind a clock on an outlined pill. -->
     <RelativeLayout
         android:id="@+id/row_left"
         android:layout_width="wrap_content"
@@ -49,13 +69,29 @@
             android:scaleType="fitXY"
             android:src="@drawable/widget_chip" />
 
+        <!-- Shown where the row is the next prayer, not the current one: the row's own colour inside
+             the pill leaves only its outline, so a wait reads differently from time left. -->
+        <ImageView
+            android:id="@+id/row_left_fill"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignBottom="@+id/row_left_content"
+            android:layout_alignEnd="@+id/row_left_content"
+            android:layout_alignStart="@+id/row_left_content"
+            android:layout_alignTop="@+id/row_left_content"
+            android:layout_margin="1.5dp"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY"
+            android:src="@drawable/widget_chip"
+            android:visibility="gone" />
+
         <LinearLayout
             android:id="@+id/row_left_content"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingHorizontal="4dp"
+            android:paddingHorizontal="3dp"
             android:paddingVertical="1dp">
 
             <ImageView
