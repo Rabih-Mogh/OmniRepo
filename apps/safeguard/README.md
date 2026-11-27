@@ -34,8 +34,10 @@ resists being switched off, loosened or uninstalled.
 
 ## Setting up
 
-Install `apk/safeguard-release.apk`, open the app, and work down the red cards at the top.
-Each one has a button that opens the right settings page.
+Install `apk/safeguard-release.apk` and open the app. Its first page lists the others, one
+for each kind of rule: **Time limits**, **Blocked apps**, **Blocked websites**, **Blocked
+words**, **Locking** and **Setup**. Open **Setup**, which is red until everything on it is
+switched on, and work down its cards. Each one has a button that opens the right settings page.
 
 1. **Accessibility**: switch Safeguard on under the phone's Accessibility settings. This is
    what lets it see which app is in front. On Android 13 and later the phone may say the
@@ -45,7 +47,8 @@ Each one has a button that opens the right settings page.
    is switched off again.
 3. **Updates**: allow Safeguard to install its own updates, so an update never needs a
    settings page that a locked Safeguard keeps closed.
-4. Set the limits and lists the way you want them, choose the waiting period, and tap **Lock**.
+4. Set the limits and lists the way you want them on their pages, then open **Locking**,
+   choose the waiting period, and tap **Lock**.
 
 ## How it works, and its limits
 
@@ -98,7 +101,7 @@ safeguard/
 └── app/    Android app (Kotlin, Jetpack Compose, Material 3)
     ├── data/    The rules, waiting changes and the day's use, kept in SharedPreferences
     ├── guard/   The accessibility service that watches and closes; the device admin receiver
-    ├── ui/      The main screen, the limit editor, the screen shown over what was closed
+    ├── ui/      The first page and the page for each kind of rule, the limit editor, the screen shown over what was closed
     └── update/  The self-updater
 ```
 
@@ -132,7 +135,7 @@ All text is in `app/src/main/res/values/strings.xml` (English) and
 The app updates itself from this repo. Each time it opens it looks for a newer build, and
 a pop-up offers it with an **Update** button when there is one. **Later** closes the pop-up
 for now. The version and a **Check for updates** button, which brings the pop-up back, are
-at the bottom of the screen.
+at the bottom of the first page.
 
 - The download is checked against the published SHA-256 before Android installs it.
 - The download carries on when the screen turns off or you leave the app, and shows its

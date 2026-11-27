@@ -8,7 +8,21 @@
     <string name="admin_about">Keeps Safeguard from being uninstalled while this is on. It uses no other device admin power.</string>
     <string name="admin_warning">Safeguard can be uninstalled once this is off.</string>
 
+    <!-- The first page, which lists the others -->
+    <string name="back">Back</string>
+    <string name="none_yet">None yet</string>
+    <string name="waiting_list">Waiting: %1$s</string>
+
     <!-- Setting up -->
+    <string name="setup_title">Setup</string>
+    <string name="setup_missing">Still to switch on: %1$s</string>
+    <string name="setup_done">Everything the phone needs is switched on.</string>
+    <string name="setup_watch">Accessibility</string>
+    <string name="setup_admin">Device admin</string>
+    <string name="setup_installs">Updates</string>
+    <string name="watch_on_title">Safeguard is watching</string>
+    <string name="admin_on_title">Safeguard can\'t be uninstalled</string>
+    <string name="installs_on_title">Safeguard can install its updates</string>
     <string name="watch_off_title">Safeguard isn\'t watching</string>
     <string name="watch_off_body">Nothing is closed until Safeguard is switched on under the phone\'s Accessibility settings. If the phone says the setting is restricted, open the app\'s info page, tap the three dots at the top and choose Allow restricted settings, then try again.</string>
     <string name="watch_open">Open Accessibility settings</string>
@@ -22,8 +36,9 @@
     <string name="installs_allow">Allow updates</string>
 
     <!-- Locking -->
+    <string name="lock_page">Locking</string>
     <string name="lock_off_title">Unlocked</string>
-    <string name="lock_off_body">Every change takes effect at once, and Safeguard can be switched off or removed. Lock it when the lists below are as you want them.</string>
+    <string name="lock_off_body">Every change takes effect at once, and Safeguard can be switched off or removed. Lock it when the limits and lists are as you want them.</string>
     <string name="lock">Lock</string>
     <string name="lock_confirm_title">Lock Safeguard?</string>
     <string name="lock_confirm_body">From then on, taking anything off the lists, loosening a limit, unlocking, switching Safeguard off or removing it takes %1$s from when you ask.</string>
@@ -50,7 +65,7 @@
     <string name="left_m">%1$d min</string>
     <string name="left_soon">less than a minute</string>
     <string name="withdraw">Withdraw</string>
-    <string name="queued">This takes effect in %1$s. It is listed under Waiting until then.</string>
+    <string name="queued">This takes effect in %1$s. Until then it is listed under Locking, where you can withdraw it.</string>
     <string name="change_unlock">Unlock Safeguard</string>
     <string name="change_drop_site">Stop blocking %1$s</string>
     <string name="change_drop_keyword">Stop blocking the word “%1$s”</string>
@@ -68,7 +83,7 @@
     <string name="limit_hours_all_day">Closed %1$s, all day</string>
     <string name="limit_no_hours">No closed hours</string>
     <string name="every_day">every day</string>
-    <string name="comma">, </string>
+    <string name="comma">", "</string>
     <string name="limit_add">Add a limit</string>
     <string name="limit_new">New limit</string>
     <string name="limit_name">Name</string>

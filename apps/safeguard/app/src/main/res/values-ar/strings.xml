@@ -8,7 +8,21 @@
     <string name="admin_about">يمنع إلغاء تثبيت «الحارس» ما دام هذا مفعّلاً. لا يستخدم أي صلاحية أخرى لمشرف الجهاز.</string>
     <string name="admin_warning">يمكن إلغاء تثبيت «الحارس» بعد إيقاف هذا.</string>
 
+    <!-- The first page, which lists the others -->
+    <string name="back">رجوع</string>
+    <string name="none_yet">لا شيء بعد</string>
+    <string name="waiting_list">قيد الانتظار: %1$s</string>
+
     <!-- Setting up -->
+    <string name="setup_title">الإعداد</string>
+    <string name="setup_missing">ما زال يحتاج إلى تشغيل: %1$s</string>
+    <string name="setup_done">كل ما يحتاج إليه الهاتف مشغَّل.</string>
+    <string name="setup_watch">تسهيلات الاستخدام</string>
+    <string name="setup_admin">مشرف الجهاز</string>
+    <string name="setup_installs">التحديثات</string>
+    <string name="watch_on_title">«الحارس» يراقب</string>
+    <string name="admin_on_title">لا يمكن إلغاء تثبيت «الحارس»</string>
+    <string name="installs_on_title">«الحارس» يستطيع تثبيت تحديثاته</string>
     <string name="watch_off_title">«الحارس» لا يراقب</string>
     <string name="watch_off_body">لن يُغلق شيء إلى أن يُشغَّل «الحارس» من إعدادات تسهيلات الاستخدام في الهاتف. إذا قال الهاتف إن الإعداد مقيَّد، فافتح صفحة معلومات التطبيق، واضغط على النقاط الثلاث في الأعلى واختر «السماح بالإعدادات المقيَّدة»، ثم حاول مجدداً.</string>
     <string name="watch_open">فتح إعدادات تسهيلات الاستخدام</string>
@@ -22,8 +36,9 @@
     <string name="installs_allow">السماح بالتحديثات</string>
 
     <!-- Locking -->
+    <string name="lock_page">القفل</string>
     <string name="lock_off_title">غير مقفل</string>
-    <string name="lock_off_body">كل تغيير يسري فوراً، ويمكن إيقاف «الحارس» أو إزالته. اقفله حين تصبح القوائم أدناه كما تريد.</string>
+    <string name="lock_off_body">كل تغيير يسري فوراً، ويمكن إيقاف «الحارس» أو إزالته. اقفله حين تصبح الحدود والقوائم كما تريد.</string>
     <string name="lock">قفل</string>
     <string name="lock_confirm_title">قفل «الحارس»؟</string>
     <string name="lock_confirm_body">بعد القفل، حذف أي شيء من القوائم أو تخفيف حدّ أو فتح القفل أو إيقاف «الحارس» أو إزالته يستغرق %1$s من وقت طلبك.</string>
@@ -58,7 +73,7 @@
     <string name="left_m">%1$d د</string>
     <string name="left_soon">أقل من دقيقة</string>
     <string name="withdraw">سحب الطلب</string>
-    <string name="queued">يسري هذا بعد %1$s. تجده تحت «قيد الانتظار» إلى ذلك الحين.</string>
+    <string name="queued">يسري هذا بعد %1$s. تجده إلى ذلك الحين في صفحة «القفل»، ويمكنك سحبه من هناك.</string>
     <string name="change_unlock">فتح قفل «الحارس»</string>
     <string name="change_drop_site">إيقاف حظر %1$s</string>
     <string name="change_drop_keyword">إيقاف حظر الكلمة «%1$s»</string>
@@ -76,7 +91,7 @@
     <string name="limit_hours_all_day">مغلق %1$s، طوال اليوم</string>
     <string name="limit_no_hours">بلا ساعات إغلاق</string>
     <string name="every_day">كل يوم</string>
-    <string name="comma">، </string>
+    <string name="comma">"، "</string>
     <string name="limit_add">إضافة حدّ</string>
     <string name="limit_new">حدّ جديد</string>
     <string name="limit_name">الاسم</string>
