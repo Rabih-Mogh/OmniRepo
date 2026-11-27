@@ -1,6 +1,7 @@
 package app.recitation.data
 
 import android.content.Context
+import app.recitation.core.Glosses
 import app.recitation.core.SURAHS
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -37,7 +38,8 @@ enum class Kind(val key: String) {
  * One thing of a [kind] to choose. [id] is a script's key, the code of a language of word
  * meanings, or Quran.com's number for a translation or an exegesis. [name] is what it is
  * called (a script's is in the app's own words instead), [language] the language it is in
- * as Quran.com names it, [author] who made it, and [rtl] whether it reads from the right.
+ * as Quran.com names it, [author] who made it or where it is from, and [rtl] whether it
+ * reads from the right.
  */
 data class Pack(val kind: Kind, val id: String, val name: String, val language: String = "", val author: String = "", val rtl: Boolean = false) {
     /** Its name on the phone's storage, and wherever one is told from another. */
@@ -71,9 +73,17 @@ data class Pack(val kind: Kind, val id: String, val name: String, val language: 
         /** The translation that comes with every surah's words. */
         val SAHEEH = Pack(Kind.TRANSLATION, "20", "Saheeh International", "english", "Saheeh International")
 
-        /** The languages Quran.com has each word's meaning in, by their own names. */
+        /**
+         * Word meanings in Arabic. Quran.com has none: these are QuranEnc.com's «معاني الكلمات»,
+         * which explain the words and phrases a reader of Arabic may not know, a verse at a
+         * time, and leave the rest alone.
+         */
+        val ARABIC = Pack(Kind.MEANINGS, "ar", "العربية", "arabic", "معاني الكلمات · QuranEnc.com", rtl = true)
+
+        /** The languages each word's meaning can be had in, by their own names: Quran.com's, and Arabic. */
         val MEANINGS = listOf(
             ENGLISH,
+            ARABIC,
             Pack(Kind.MEANINGS, "ur", "اردو", "urdu", rtl = true),
             Pack(Kind.MEANINGS, "fa", "فارسی", "persian", rtl = true),
             Pack(Kind.MEANINGS, "tr", "Türkçe", "turkish"),
@@ -95,7 +105,8 @@ class Explained(val pack: Pack, val from: Int, val text: String)
 
 /**
  * The scripts, word meanings, translations and exegeses a reader can choose beyond what
- * comes with the app: from Quran.com, a surah to a file, kept on the phone once fetched.
+ * comes with the app: from Quran.com (the Arabic word meanings from QuranEnc.com), a
+ * surah to a file, kept on the phone once fetched.
  * What is asked for is put in a queue ([want]) that the background work empties, the way
  * it downloads everything else (see PrepareWorker): with the app closed, picking up where
  * it stopped, the surah being read first.
@@ -148,11 +159,18 @@ class Extras(private val context: Context) {
      * [verses] of [surah] as the reader has chosen to see them: the words' meanings in
      * [meanings]' language and the verses in [translation], wherever those are on the
      * phone (what comes with the surah's words stands until they are), and the IndoPak
-     * spelling if that is the script.
+     * spelling if that is the script. The Arabic meanings come a verse at a time and are
+     * put under the words they explain (see [Glosses]); a word they say nothing of has none.
      */
     fun dress(verses: List<Verse>, surah: Int, script: Script, meanings: Pack, translation: Pack): List<Verse> {
         val spelt = if (script == Script.INDOPAK) words(Pack.INDOPAK, surah) else null
-        val meant = if (meanings.inApp) null else words(meanings, surah)
+        val arabic = meanings.key == Pack.ARABIC.key
+        val meant = when {
+            meanings.inApp -> null
+            // A verse's lines, each found its word by the word's everyday spelling.
+            arabic -> texts(meanings, surah)?.let { told -> Glosses.place(verses.map { verse -> verse.words.map { it.everyday } }, told) }
+            else -> words(meanings, surah)
+        }
         val said = if (translation.inApp) null else texts(translation, surah)
         if (spelt == null && meant == null && said == null) return verses
         return verses.mapIndexed { v, verse ->
@@ -161,7 +179,9 @@ class Extras(private val context: Context) {
             val meaning = meant?.getOrNull(v)?.takeIf { it.size == verse.words.size }
             Verse(
                 if (spelling == null && meaning == null) verse.words else verse.words.mapIndexed { k, word ->
-                    Word(word.arabic, meaning?.get(k)?.ifEmpty { null } ?: word.meaning, word.madinah, spelling?.get(k)?.ifEmpty { null } ?: word.indopak, word.everyday)
+                    // A word the Arabic meanings pass over has none: the English one is not put in its place.
+                    val means = if (meaning == null) word.meaning else if (arabic) meaning[k] else meaning[k].ifEmpty { word.meaning }
+                    Word(word.arabic, means, word.madinah, spelling?.get(k)?.ifEmpty { null } ?: word.indopak, word.everyday)
                 },
                 said?.getOrNull(v)?.ifEmpty { null } ?: verse.translation,
             )
@@ -176,18 +196,19 @@ class Extras(private val context: Context) {
         return Explained(pack, from, all.getOrNull(from - 1).orEmpty())
     }
 
-    /** Fetches [surah] of [pack] from Quran.com and keeps it. */
+    /** Fetches [surah] of [pack] from where it is had (Quran.com; QuranEnc.com for the Arabic word meanings) and keeps it. */
     suspend fun fetch(pack: Pack, surah: Int) = withContext(Dispatchers.IO) {
         val fetched = try {
             when (pack.kind) {
                 Kind.SCRIPT -> wordsOf(surah, "word_fields=text_${pack.id}") { it.optString("text_${pack.id}") }
-                Kind.MEANINGS -> wordsOf(surah, "word_fields=text_uthmani&language=${pack.id}") { it.optJSONObject("translation")?.optString("text").orEmpty() }
+                Kind.MEANINGS -> if (pack.key == Pack.ARABIC.key) arabicMeanings(surah) else
+                    wordsOf(surah, "word_fields=text_uthmani&language=${pack.id}") { it.optJSONObject("translation")?.optString("text").orEmpty() }
                 Kind.TRANSLATION -> translation(pack.id, surah)
                 Kind.EXEGESIS -> exegesis(pack.id, surah)
             }
         } catch (e: JSONException) {
-            // A page that isn't Quran.com's answer, such as a Wi-Fi sign-in page: no better than no connection.
-            throw IOException("Quran.com's answer couldn't be read", e)
+            // A page that isn't the answer asked for, such as a Wi-Fi sign-in page: no better than no connection.
+            throw IOException("The answer couldn't be read", e)
         }
         dir(pack).mkdirs()
         File(dir(pack), ABOUT).takeIf { !it.exists() }?.writeWhole(pack.json().toString())
@@ -217,6 +238,24 @@ class Extras(private val context: Context) {
     private fun translation(id: String, surah: Int): JSONArray {
         val all = JSONObject(get("$api/quran/translations/$id?chapter_number=$surah")).getJSONArray("translations")
         return whole(JSONArray().also { out -> for (i in 0 until all.length()) out.put(QuranStore.plain(all.getJSONObject(i).optString("text"))) }, surah)
+    }
+
+    /**
+     * Each verse's meanings as QuranEnc.com gives them, untouched: lines of "the words: what
+     * they mean", and nothing for a verse with no word to explain. They are kept as they
+     * come and found their words when they are shown, against the words then on the page.
+     */
+    private fun arabicMeanings(surah: Int): JSONArray {
+        val verses = SURAHS[surah - 1].verses
+        val texts = arrayOfNulls<String>(verses)
+        val all = JSONObject(get("$quranEnc/translation/sura/$ARABIC_MEANINGS/$surah")).getJSONArray("result")
+        for (i in 0 until all.length()) {
+            val one = all.getJSONObject(i)
+            val verse = one.optString("aya").toIntOrNull() ?: continue
+            if (verse in 1..verses) texts[verse - 1] = if (one.isNull("translation")) "" else one.optString("translation")
+        }
+        if (texts.any { it == null }) throw IOException("QuranEnc.com sent ${texts.count { it != null }} of surah $surah's $verses verses")
+        return JSONArray().also { out -> for (text in texts) out.put(text.orEmpty()) }
     }
 
     /** A verse explained together with the ones before it comes with nothing of its own: it is kept empty, in its place. */
@@ -293,7 +332,7 @@ class Extras(private val context: Context) {
             setRequestProperty("Accept", "application/json")
         }
         try {
-            if (conn.responseCode != HttpURLConnection.HTTP_OK) throw IOException("Quran.com answered HTTP ${conn.responseCode}")
+            if (conn.responseCode != HttpURLConnection.HTTP_OK) throw IOException("${URL(url).host} answered HTTP ${conn.responseCode}")
             return conn.inputStream.bufferedReader().use { it.readText() }
         } finally {
             conn.disconnect()
@@ -342,6 +381,10 @@ class Extras(private val context: Context) {
     companion object {
         /** Where Quran.com is asked. */
         @Volatile internal var api = "https://api.quran.com/api/v4"
+
+        /** Where QuranEnc.com is asked, and what it calls its Arabic word meanings. */
+        @Volatile internal var quranEnc = "https://quranenc.com/api/v1"
+        private const val ARABIC_MEANINGS = "arabic_seraj"
 
         /** The surah being read: fetched before the rest of whatever is being fetched. */
         @Volatile var reading = 0

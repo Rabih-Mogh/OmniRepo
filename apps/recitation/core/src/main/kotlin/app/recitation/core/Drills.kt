@@ -175,7 +175,7 @@ object Drills {
         val measures = word.measures.filter { topicOf(it.awaited) == drill.topic }
             // Something else wrong at the same place (a doubled letter said once) is not this exercise's to tell.
             .map { m -> if (m.fault == null || topicOf(m.fault, m.awaited.madd) == drill.topic) m else Measure(m.awaited, m.wanted, m.wanted, null) }
-        WordRecited(word.index, word.stopped, kept, if (drill.topic == Topic.STOP) word.madds else emptyList(), word.wanted, word.listened.filter { topicOf(it) == drill.topic }, measures)
+        WordRecited(word.index, word.stopped, kept, if (drill.topic == Topic.STOP) word.madds else emptyList(), word.wanted, word.listened.filter { topicOf(it) == drill.topic }, measures, word.heardFrom, word.heardUntil)
     }
 
     /**

@@ -1,5 +1,6 @@
 package app.recitation.data
 
+import app.recitation.core.Case
 import app.recitation.core.Family
 import app.recitation.core.Rule
 import java.io.File
@@ -18,8 +19,12 @@ class Spot(
 /** A verse to echo: [verse] of [surah] (both from 1) as [sound] has it recited, from [fromMs] until [untilMs]. */
 class Echo(val surah: Int, val verse: Int, val sound: File, val fromMs: Int, val untilMs: Int)
 
-/** Words of a recording that show a rule, to be heard in a lesson: [words] as written, in [sound] from [fromMs] until [untilMs]. */
-class Hear(val words: String, val sound: File, val fromMs: Int, val untilMs: Int)
+/**
+ * Words of a recording that show a rule, to be heard in a lesson: [words] as written, in
+ * [sound] from [fromMs] until [untilMs]. [case] is what makes them an example of it: the
+ * letter the rule falls on in them and what brings it about, for saying so under them.
+ */
+class Hear(val words: String, val sound: File, val fromMs: Int, val untilMs: Int, val case: Case? = null)
 
 /**
  * A verse as the reciter of a recording on the phone says it: [sound] from [fromMs] until

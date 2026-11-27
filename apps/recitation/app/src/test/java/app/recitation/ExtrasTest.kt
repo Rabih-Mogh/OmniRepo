@@ -47,6 +47,8 @@ class ExtrasTest {
                         "/verses/by_chapter/108" in path -> words(if ("language=ur" in path) "translation" else "text_indopak")
                         "/quran/translations/131" in path -> """{"translations":[{"text":"Un<sup foot_note=1>1</sup>"},{"text":"Deux"},{"text":"Trois"}]}"""
                         "/tafsirs/169/by_chapter/108" in path -> """{"tafsirs":[{"verse_key":"108:1","text":"<h2>The river</h2><p>Al-Kawthar is a river.</p><p>Second paragraph.</p>"},{"verse_key":"108:2","text":""},{"verse_key":"108:3","text":"<p>The one cut off.</p>"}],"pagination":{"next_page":null}}"""
+                        // QuranEnc.com's Arabic word meanings: a verse at a time, and none for the second verse.
+                        "/translation/sura/arabic_seraj/108" in path -> """{"result":[{"sura":"108","aya":"1","translation":"كلمة01: المعنى الأول."},{"sura":"108","aya":"2","translation":""},{"sura":"108","aya":"3","translation":"كلمة20 كلمة21: معنى الكلمتين معاً.\nغريبة: ليست في الآية."}]}"""
                         "/resources/languages" in path -> """{"languages":[{"name":"Urdu","direction":"rtl"},{"name":"French","direction":"ltr"}]}"""
                         "/resources/translations" in path -> """{"translations":[{"id":131,"name":"Hamidullah","author_name":"Muhammad Hamidullah","language_name":"french"},{"id":97,"name":"Maududi","author_name":"Abul Ala Maududi","language_name":"urdu"}]}"""
                         "/resources/tafsirs" in path -> """{"tafsirs":[{"id":169,"name":"Ibn Kathir (Abridged)","author_name":"Hafiz Ibn Kathir","language_name":"english"}]}"""
@@ -73,12 +75,13 @@ class ExtrasTest {
     @Before
     fun there() {
         Extras.api = server.url("/").toString().trimEnd('/')
+        Extras.quranEnc = server.url("/").toString().trimEnd('/')
     }
 
     @After
     fun stop() {
         server.shutdown()
-        for (pack in listOf(urdu, french, ibnKathir, Pack.INDOPAK)) extras.delete(pack)
+        for (pack in listOf(urdu, french, ibnKathir, Pack.INDOPAK, Pack.ARABIC)) extras.delete(pack)
     }
 
     @Test
@@ -101,6 +104,30 @@ class ExtrasTest {
         val before = asked.size
         Extras(context).dress(kawthar, 108, Script.MADINAH, urdu, french)
         assertEquals(before, asked.size)
+    }
+
+    @Test
+    fun wordMeaningsInArabicComeAVerseAtATimeAndStandUnderTheWordsTheyExplain() = runBlocking {
+        val extras = extras
+        // Arabic is among the languages to choose, though Quran.com has no word meanings in it.
+        assertTrue(Pack.ARABIC in extras.catalogue(Kind.MEANINGS))
+        assertFalse(Pack.ARABIC.inApp)
+        // Until its surah is on the phone, the meanings that came with the words stand.
+        assertEquals("word 00", extras.dress(kawthar, 108, Script.MADINAH, Pack.ARABIC, Pack.SAHEEH)[0].words[0].meaning)
+        extras.fetch(Pack.ARABIC, 108)
+        assertTrue("it is asked of QuranEnc.com", asked.any { "/translation/sura/arabic_seraj/108" in it })
+        val dressed = extras.dress(kawthar, 108, Script.MADINAH, Pack.ARABIC, Pack.SAHEEH)
+        // The word explained has its meaning (these two are the same letters, so the first is taken); the one
+        // beside it has none, and no English one in its place.
+        assertEquals(listOf("المعنى الأول.", ""), dressed[0].words.map { it.meaning })
+        // A verse with nothing to explain has nothing under any word.
+        assertEquals(listOf("", ""), dressed[1].words.map { it.meaning })
+        // A meaning of two words stands under the first; a line whose words aren't in the verse is kept whole under the last.
+        assertEquals(listOf("معنى الكلمتين معاً.", "غريبة: ليست في الآية."), dressed[2].words.map { it.meaning })
+        // The translation is another choice, and untouched by this one.
+        assertEquals("Verse 0", dressed[0].translation)
+        // Kept as it came, a verse to a line.
+        assertEquals(3, extras.texts(Pack.ARABIC, 108)?.size)
     }
 
     @Test

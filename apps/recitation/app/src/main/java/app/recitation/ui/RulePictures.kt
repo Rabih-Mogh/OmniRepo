@@ -294,8 +294,8 @@ private fun Lane(name: String, beats: List<Beat>, height: Dp, cell: @Composable 
 /** Where the tip of the tongue is. */
 enum class Tip { DOWN, GUM, NEAR, TEETH }
 
-/** How the back of the tongue lies: flat, raised towards the palate, or shut against it (further back for ق than for ك). */
-enum class Back { FLAT, RAISED, SHUT, SHUT_DEEP }
+/** How the body of the tongue lies: flat, its back raised towards the palate, its middle raised (as for ي), or its back shut against the palate (further back for ق than for ك). */
+enum class Back { FLAT, RAISED, MIDDLE, SHUT, SHUT_DEEP }
 
 /** A place in the mouth or the throat where a letter is made, to put a mark on. */
 enum class Place(val x: Float, val y: Float, val nameX: Float = x, val nameY: Float = y) {
@@ -307,10 +307,14 @@ enum class Place(val x: Float, val y: Float, val nameX: Float = x, val nameY: Fl
  * The mouth as a letter is made, seen from the side, facing left: where the [tip] of the
  * tongue is and how its [back] lies; whether the [lips] are shut; and whether the sound
  * goes out through the [nose] (the soft palate hangs down and lets it up) or through the
- * mouth. [air] draws the way the sound takes. [marks] are the places to point at, each
+ * mouth. [round] pushes the lips forward, as for و, and [wide] drops the jaw, as for an
+ * alif. [air] draws the way the sound takes. [marks] are the places to point at, each
  * with the letters made there.
  */
-class Mouth(val tip: Tip = Tip.DOWN, val back: Back = Back.FLAT, val lips: Boolean = false, val nose: Boolean = false, val air: Boolean = true, val marks: List<Pair<Place, String>> = emptyList())
+class Mouth(
+    val tip: Tip = Tip.DOWN, val back: Back = Back.FLAT, val lips: Boolean = false, val nose: Boolean = false, val air: Boolean = true,
+    val marks: List<Pair<Place, String>> = emptyList(), val round: Boolean = false, val wide: Boolean = false,
+)
 
 /** A [Mouth], drawn. [ink] is the colour of the way the sound takes and of the marks. */
 @Composable
@@ -330,8 +334,10 @@ fun MouthPicture(mouth: Mouth, ink: Color, modifier: Modifier = Modifier) {
         fun Path.curve(a: Float, b: Float, c: Float, d: Float, x: Float, y: Float) = cubicTo(at(a, b).x, at(a, b).y, at(c, d).x, at(c, d).y, at(x, y).x, at(x, y).y)
         val thin = Stroke(1.6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
         val shut = mouth.lips
-        // The jaw drops a little when the lips part.
-        val drop = if (shut) 0f else 2.5f
+        // The jaw drops a little when the lips part: more for an open vowel, less behind rounded lips.
+        val drop = if (shut) 0f else if (mouth.wide) 6.5f else if (mouth.round) 1.6f else 2.5f
+        // Rounded lips stand forward of where they rest.
+        val out = if (mouth.round) 3.4f else 0f
 
         // The face, from the brow down to the neck, with the lips shut or parted.
         val face = Path().apply {
@@ -339,11 +345,11 @@ fun MouthPicture(mouth: Mouth, ink: Color, modifier: Modifier = Modifier) {
             curve(39.5f, 20f, 38f, 25f, 38f, 30f)
             curve(36f, 36f, 27f, 41f, 22f, 47f)
             curve(20f, 50f, 24f, 53f, 31f, 53f)
-            curve(28f, 55f, 25f, 59f, 28.5f, if (shut) 62.5f else 61f)
+            curve(28f - out / 2, 55f, 25f - out, 59f, 28.5f - out, if (shut) 62.5f else 61f)
         }
         val jaw = Path().apply {
-            from(28.5f, 62.5f + drop)
-            curve(24.5f, 64f + drop, 25f, 69f + drop, 31f, 70.5f + drop)
+            from(28.5f - out, 62.5f + drop)
+            curve(24.5f - out, 64f + drop, 25f - out / 2, 69f + drop, 31f, 70.5f + drop)
             curve(30f, 76f + drop, 30f, 83f, 36f, 88f)
             curve(44f, 93f, 52f, 92f, 58f, 94f)
             to(60f, 100f)
@@ -377,6 +383,7 @@ fun MouthPicture(mouth: Mouth, ink: Color, modifier: Modifier = Modifier) {
         val (hx, hy) = when (mouth.back) {
             Back.FLAT -> 56f to 65f
             Back.RAISED -> 57f to 59.5f
+            Back.MIDDLE -> 50f to 58.6f
             Back.SHUT -> 54f to 56.4f
             Back.SHUT_DEEP -> 61f to 56.6f
         }
@@ -416,8 +423,8 @@ fun MouthPicture(mouth: Mouth, ink: Color, modifier: Modifier = Modifier) {
                 way.from(69.5f, 90f)
                 way.curve(69.5f, 74f, 69f, 64f, 62f, 60.5f)
                 way.curve(54f, 58f, 44f, 58f, 34f, 61.8f + drop / 2)
-                way.to(15f, 62.5f + drop / 2)
-                tip = at(15f, 62.5f + drop / 2)
+                way.to(15f - out, 62.5f + drop / 2)
+                tip = at(15f - out, 62.5f + drop / 2)
                 before = at(34f, 61.8f + drop / 2)
             }
             drawPath(way, ink, style = Stroke(2.4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round, pathEffect = PathEffect.dashPathEffect(floatArrayOf(7.dp.toPx(), 5.dp.toPx()))))
@@ -458,17 +465,91 @@ private const val VIEW_TOP = 26f
 private const val VIEW_WIDTH = 72f
 private const val VIEW_HEIGHT = 72f
 
-/** A mouth with what it shows: over it the letter it is the mouth of, where it is one's; under it, a line of words. */
-private class Figure(val mouth: Mouth, val caption: Int?, val letter: String = "")
+/** One part of the mouth and what it does: both are strings of the app. */
+private class Part(val name: Int, val does: Int)
 
-/** The mouths that show how [topic] is made (for letters, the two of [letters]), with a line on what they show; none where a mouth has nothing to show. */
+/**
+ * A mouth with what it shows: the letter it is the mouth of, where it is one's; a line of
+ * words; and, for a rule, what each part of the mouth does while it is said ([parts]).
+ */
+private class Figure(val mouth: Mouth, val caption: Int?, val letter: String = "", val parts: List<Part> = emptyList())
+
+/** The three long vowels' mouths, which every madd is held in: an alif, a و and a ي. */
+private val LONG_VOWELS = listOf(
+    Figure(
+        Mouth(wide = true), null, "ـَا",
+        listOf(Part(R.string.part_jaw, R.string.mouth_madd_alif_jaw), Part(R.string.part_tongue, R.string.mouth_madd_alif_tongue), Part(R.string.part_lips, R.string.mouth_madd_alif_lips)),
+    ),
+    Figure(Mouth(back = Back.RAISED, round = true), null, "ـُو", listOf(Part(R.string.part_lips, R.string.mouth_madd_waw_lips), Part(R.string.part_tongue, R.string.mouth_madd_waw_tongue))),
+    Figure(Mouth(back = Back.MIDDLE), null, "ـِي", listOf(Part(R.string.part_tongue, R.string.mouth_madd_ya_tongue), Part(R.string.part_jaw_lips, R.string.mouth_madd_ya_lips))),
+)
+
+/**
+ * The mouths that show how [topic] is made (for letters, the two of [letters]), with a line
+ * on what they show; none where a mouth has nothing to show. A rule's mouths each say
+ * what the tongue, the lips, the jaw and the nose do, and for how long.
+ */
 private fun figuresOf(topic: Topic, letters: String): Pair<List<Figure>, Int?> = when (topic) {
-    Topic.GHUNNAH -> listOf(Figure(Mouth(tip = Tip.GUM, nose = true), R.string.mouth_nun, "نّ"), Figure(Mouth(lips = true, nose = true), R.string.mouth_mim, "مّ")) to R.string.mouth_nose
-    Topic.IKHFA -> listOf(Figure(Mouth(tip = Tip.GUM, nose = true), R.string.mouth_izhar), Figure(Mouth(tip = Tip.NEAR, nose = true), R.string.mouth_ikhfa)) to R.string.mouth_ikhfa_note
-    Topic.IQLAB -> listOf(Figure(Mouth(lips = true, nose = true), null)) to R.string.mouth_iqlab
+    Topic.GHUNNAH -> listOf(
+        Figure(
+            Mouth(tip = Tip.GUM, nose = true), null, "نّ",
+            listOf(
+                Part(R.string.part_tip, R.string.mouth_ghunnah_nun_tip), Part(R.string.part_lips, R.string.mouth_ghunnah_nun_lips),
+                Part(R.string.part_nose, R.string.mouth_ghunnah_nose), Part(R.string.part_hold, R.string.mouth_ghunnah_nun_hold),
+            ),
+        ),
+        Figure(
+            Mouth(lips = true, nose = true), null, "مّ",
+            listOf(
+                Part(R.string.part_lips, R.string.mouth_ghunnah_mim_lips), Part(R.string.part_tongue, R.string.mouth_ghunnah_mim_tongue),
+                Part(R.string.part_nose, R.string.mouth_ghunnah_nose), Part(R.string.part_hold, R.string.mouth_ghunnah_mim_hold),
+            ),
+        ),
+    ) to R.string.mouth_nose
+    Topic.IKHFA -> listOf(
+        Figure(
+            Mouth(tip = Tip.NEAR, nose = true), R.string.mouth_ikhfa, "",
+            listOf(
+                Part(R.string.part_tip, R.string.mouth_ikhfa_tip), Part(R.string.part_back, R.string.mouth_ikhfa_back), Part(R.string.part_lips, R.string.mouth_ikhfa_lips),
+                Part(R.string.part_nose, R.string.mouth_ikhfa_nose), Part(R.string.part_hold, R.string.mouth_ikhfa_hold),
+            ),
+        ),
+        Figure(Mouth(tip = Tip.GUM, nose = true), R.string.mouth_izhar, "", listOf(Part(R.string.part_tip, R.string.mouth_izhar_tip), Part(R.string.part_nose, R.string.mouth_izhar_nose))),
+    ) to R.string.mouth_ikhfa_note
+    Topic.IQLAB -> listOf(
+        Figure(
+            Mouth(lips = true, nose = true), null, "نۢ ب",
+            listOf(
+                Part(R.string.part_lips, R.string.mouth_iqlab_lips), Part(R.string.part_tongue, R.string.mouth_iqlab_tongue),
+                Part(R.string.part_nose, R.string.mouth_iqlab_nose), Part(R.string.part_hold, R.string.mouth_iqlab_hold),
+            ),
+        ),
+    ) to null
+    Topic.IDGHAM -> listOf(
+        // Shown merging into a ي: the middle of the tongue raised, the sound in the nose.
+        Figure(
+            Mouth(back = Back.MIDDLE, nose = true), R.string.mouth_idgham_with, "",
+            listOf(
+                Part(R.string.part_tip, R.string.mouth_idgham_tip), Part(R.string.part_next, R.string.mouth_idgham_next),
+                Part(R.string.part_nose, R.string.mouth_idgham_nose), Part(R.string.part_hold, R.string.mouth_idgham_hold),
+            ),
+        ),
+        // And into a ل: the tip on the gum, the sound out of the mouth.
+        Figure(
+            Mouth(tip = Tip.GUM), R.string.mouth_idgham_without, "",
+            listOf(Part(R.string.part_tip, R.string.mouth_idgham_without_tip), Part(R.string.part_nose, R.string.mouth_idgham_without_nose), Part(R.string.part_hold, R.string.mouth_idgham_without_hold)),
+        ),
+    ) to null
     Topic.QALQALAH -> listOf(
-        Figure(Mouth(air = false, marks = listOf(Place.LIPS to "ب", Place.GUM to "د ط", Place.PALATE to "ج", Place.BACK to "ق")), null),
+        Figure(
+            Mouth(air = false, marks = listOf(Place.LIPS to "ب", Place.GUM to "د ط", Place.PALATE to "ج", Place.BACK to "ق")), null, "",
+            listOf(
+                Part(R.string.part_place, R.string.mouth_qalqalah_place), Part(R.string.part_then, R.string.mouth_qalqalah_then),
+                Part(R.string.part_jaw_lips, R.string.mouth_qalqalah_jaw), Part(R.string.part_nose, R.string.mouth_qalqalah_nose),
+            ),
+        ),
     ) to R.string.mouth_qalqalah
+    Topic.MADD_NATURAL, Topic.MADD_MUNFASIL, Topic.MADD_MUTTASIL, Topic.MADD_LAZIM, Topic.MADD_ARID -> LONG_VOWELS to R.string.mouth_madd_note
     Topic.LETTERS -> when (letters) {
         "صس" -> pair(letters, Mouth(back = Back.RAISED, air = false, marks = listOf(Place.LOW_TEETH to "")), R.string.mouth_heavy, Mouth(air = false, marks = listOf(Place.LOW_TEETH to "")), R.string.mouth_light)
         "ضد" -> pair(letters, Mouth(tip = Tip.GUM, back = Back.RAISED, air = false, marks = listOf(Place.SIDE to "")), R.string.mouth_side, Mouth(tip = Tip.GUM, air = false, marks = listOf(Place.GUM to "")), R.string.mouth_tip)
@@ -479,7 +560,7 @@ private fun figuresOf(topic: Topic, letters: String): Pair<List<Figure>, Int?> =
         "عء" -> pair(letters, Mouth(air = false, marks = listOf(Place.THROAT_MID to "")), R.string.mouth_throat_mid, Mouth(air = false, marks = listOf(Place.THROAT_DEEP to "")), R.string.mouth_throat_deep)
         else -> emptyList<Figure>() to null
     }
-    else -> emptyList<Figure>() to null
+    Topic.STOP -> emptyList<Figure>() to null
 }
 
 private fun pair(letters: String, first: Mouth, firstSays: Int, second: Mouth, secondSays: Int): Pair<List<Figure>, Int?> =
@@ -490,9 +571,12 @@ fun hasPicture(topic: Topic, letters: String = ""): Boolean = stripsOf(topic).is
 
 /**
  * A rule in pictures. How it is made: the mouth from the side, with where the tongue and
- * the lips are and which way the sound goes out. And how long it lasts: an example laid
- * out in time (see [SoundStrip]). [short] leaves it at the first example, for the foot of
- * an exercise. [ink] is the rule's colour.
+ * the lips are and which way the sound goes out, and beside each mouth what every part of
+ * it does while the rule is said: the tongue's tip and its back, the lips, the jaw, the
+ * nose, and for how long. And how long it lasts: an example laid out in time (see
+ * [SoundStrip]). Two letters to tell apart have their two mouths side by side instead.
+ * [short] leaves it at the first example, for the foot of an exercise. [ink] is the
+ * rule's colour.
  */
 @Composable
 fun RulePicture(topic: Topic, letters: String, ink: Color, modifier: Modifier = Modifier, short: Boolean = false) {
@@ -502,17 +586,38 @@ fun RulePicture(topic: Topic, letters: String, ink: Color, modifier: Modifier = 
     val reading = LocalLayoutDirection.current
     Column(modifier.testTag("rule-picture"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (figures.isNotEmpty() && !short) {
-            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(colors.surfaceContainerLow).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Read from the right, as the letters over them are.
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)) {
-                        for (figure in figures) {
-                            Column(Modifier.weight(1f, fill = false).widthIn(max = 190.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                MouthPicture(figure.mouth, ink, Modifier.fillMaxWidth().testTag("mouth"))
-                                if (figure.letter.isNotEmpty()) Text(figure.letter, fontFamily = QuranFont, fontSize = 28.sp, lineHeight = 44.sp, color = ink)
-                                figure.caption?.let {
-                                    CompositionLocalProvider(LocalLayoutDirection provides reading) {
-                                        Text(stringResource(it), style = MaterialTheme.typography.bodySmall, color = colors.onSurface, textAlign = TextAlign.Center)
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(colors.surfaceContainerLow).padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (figures.any { it.parts.isNotEmpty() }) {
+                    // A rule: each mouth with what every part of it does, said beside it.
+                    Text(stringResource(R.string.lesson_parts), style = MaterialTheme.typography.labelLarge, color = colors.onSurface)
+                    for ((i, figure) in figures.withIndex()) {
+                        if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(colors.outlineVariant))
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            MouthPicture(figure.mouth, ink, Modifier.width(118.dp).testTag("mouth"))
+                            Column(Modifier.weight(1f).testTag("mouth-parts"), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                if (figure.letter.isNotEmpty()) Text(figure.letter, fontFamily = QuranFont, fontSize = 26.sp, lineHeight = 40.sp, color = ink)
+                                figure.caption?.let { Text(stringResource(it), style = MaterialTheme.typography.titleSmall, color = colors.onSurface) }
+                                for (part in figure.parts) {
+                                    Column {
+                                        Text(stringResource(part.name), style = MaterialTheme.typography.labelMedium, color = ink)
+                                        Text(stringResource(part.does), style = MaterialTheme.typography.bodyMedium, color = colors.onSurface)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Two letters: read from the right, as the letters under them are.
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)) {
+                            for (figure in figures) {
+                                Column(Modifier.weight(1f, fill = false).widthIn(max = 190.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    MouthPicture(figure.mouth, ink, Modifier.fillMaxWidth().testTag("mouth"))
+                                    if (figure.letter.isNotEmpty()) Text(figure.letter, fontFamily = QuranFont, fontSize = 28.sp, lineHeight = 44.sp, color = ink)
+                                    figure.caption?.let {
+                                        CompositionLocalProvider(LocalLayoutDirection provides reading) {
+                                            Text(stringResource(it), style = MaterialTheme.typography.bodySmall, color = colors.onSurface, textAlign = TextAlign.Center)
+                                        }
                                     }
                                 }
                             }

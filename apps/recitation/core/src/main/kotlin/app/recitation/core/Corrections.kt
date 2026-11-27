@@ -127,7 +127,9 @@ class Measure(val awaited: Awaited, val heard: Int, val wanted: Int, val fault: 
  * on it mid-verse ([stopped]), what to correct in it, and how long its madds were held.
  * [wanted] is how it should have sounded, [listened] what was listened for in it, and
  * [measures] how each of those was heard. A word that wasn't said has nothing listened
- * for: it is told as not said, and nothing else.
+ * for: it is told as not said, and nothing else. [heardFrom] and [heardUntil] are where
+ * the word is in what was recited, in seconds from its start, for playing it back as it
+ * was said; -1 where that isn't known, or the word wasn't said.
  */
 class WordRecited(
     val index: Int,
@@ -137,6 +139,8 @@ class WordRecited(
     val wanted: String = "",
     val listened: List<Awaited> = emptyList(),
     val measures: List<Measure> = emptyList(),
+    val heardFrom: Float = -1f,
+    val heardUntil: Float = -1f,
 ) {
     val sound: Boolean get() = corrections.isEmpty()
 
@@ -202,7 +206,7 @@ object Corrections {
             } else {
                 // Stopped on, if a breath ended on it and it isn't the last word there is.
                 val word = said[j]
-                WordRecited(word.index, j++ in ends && k != expected.words - 1, word.corrections, word.madds, word.wanted, word.listened, word.measures)
+                WordRecited(word.index, j++ in ends && k != expected.words - 1, word.corrections, word.madds, word.wanted, word.listened, word.measures, word.heardFrom, word.heardUntil)
             }
         }
     }
@@ -414,7 +418,14 @@ object Corrections {
         }
 
         val stops = expected.ends.dropLast(1).toSet()
-        return List(words) { k -> WordRecited(expected.index[k], k in stops, notes[k], madds[k], ref.substring(expected.spans[2 * k], expected.spans[2 * k + 1]), listened[k], measures[k]) }
+        // Where each word is in what was recited: from when its first sound begins until the next word's does.
+        val timed = heard.times.size == got.length + 1
+        fun time(place: Int) = if (timed) heard.times[at[place].coerceIn(0, got.length)] else -1f
+        return List(words) { k ->
+            val a = expected.spans[2 * k]
+            val z = expected.spans[2 * k + 1]
+            WordRecited(expected.index[k], k in stops, notes[k], madds[k], ref.substring(a, z), listened[k], measures[k], if (passed[k]) -1f else time(a), if (passed[k]) -1f else time(z))
+        }
     }
 
     /** For each place in the expected script, the place in the heard one that answers to it. */

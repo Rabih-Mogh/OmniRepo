@@ -162,44 +162,48 @@ fun TajweedExercises(
 ) {
     val colors = MaterialTheme.colorScheme
     val tajweed = LocalTajweed.current
-    ExerciseCard(AppIcons.Book, stringResource(R.string.practice_learn_title), stringResource(R.string.practice_learn_body), trailing = { TeachSwitch() }) {
-        Text(
-            stringResource(R.string.practice_learned, RULE_TOPICS.count { tally.learned(it) }, RULE_TOPICS.size), Modifier.testTag("learned-count"),
-            style = MaterialTheme.typography.labelLarge, color = colors.primary,
-        )
-        // What the count counts: an exercise that went well, not a lesson that was opened.
-        Text(stringResource(R.string.practice_learned_how, Drills.needed(Drills.GOES), Drills.GOES), Modifier.testTag("learned-how"), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
-        // The rules in the order a learner meets them, each by its own name with the dot of its colour.
-        Column {
-            for (topic in RULE_TOPICS) {
-                val learned = tally.learned(topic)
-                Row(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button) { onLesson(topic, "") }.padding(horizontal = 4.dp, vertical = 11.dp).testTag("lesson-${topic.name}"),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Box(Modifier.size(12.dp).background(tajweed.ink(topic.rule()!!.family), CircleShape))
-                    Text(topic.named(), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                    // Ticked once learned; until then, the best its exercise has gone.
-                    if (learned) Icon(AppIcons.Check, stringResource(R.string.lesson_learned), Modifier.size(20.dp), tint = colors.primary)
-                    else tally.best(topic)?.let { (sound, of) -> Text(stringResource(R.string.score, sound, of), Modifier.testTag("best-${topic.name}"), style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant) }
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(20.dp), tint = colors.outline)
-                }
-            }
-        }
-    }
-    ExerciseCard(AppIcons.Retry, stringResource(R.string.practice_weak_title), stringResource(if (tally.open.isEmpty()) R.string.practice_weak_none else R.string.practice_weak_body)) {
-        if (tally.open.isNotEmpty()) {
-            // Where the reader is corrected most, with how often.
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                for ((topic, count) in tally.weakest.take(4)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Box(Modifier.size(10.dp).background(topic.rule()?.let { tajweed.ink(it.family) } ?: colors.error, CircleShape))
-                        Text(if (topic == Topic.LETTERS) stringResource(R.string.practice_pairs_title) else topic.named(), style = MaterialTheme.typography.bodyMedium)
-                        Text(stringResource(R.string.number, count), style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant)
+    // The lessons' card and the card of weak spots beside it, which name the rules, are in the language
+    // chosen for teaching, the rules by their names in it. The first has the switch that changes it.
+    Taught {
+        ExerciseCard(AppIcons.Book, stringResource(R.string.practice_learn_title), stringResource(R.string.practice_learn_body), trailing = { TeachSwitch() }) {
+            Text(
+                stringResource(R.string.practice_learned, RULE_TOPICS.count { tally.learned(it) }, RULE_TOPICS.size), Modifier.testTag("learned-count"),
+                style = MaterialTheme.typography.labelLarge, color = colors.primary,
+            )
+            // What the count counts: an exercise that went well, not a lesson that was opened.
+            Text(stringResource(R.string.practice_learned_how, Drills.needed(Drills.GOES), Drills.GOES), Modifier.testTag("learned-how"), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+            // The rules in the order a learner meets them, each by its own name with the dot of its colour.
+            Column {
+                for (topic in RULE_TOPICS) {
+                    val learned = tally.learned(topic)
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button) { onLesson(topic, "") }.padding(horizontal = 4.dp, vertical = 11.dp).testTag("lesson-${topic.name}"),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Box(Modifier.size(12.dp).background(tajweed.ink(topic.rule()!!.family), CircleShape))
+                        Text(topic.named(), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                        // Ticked once learned; until then, the best its exercise has gone.
+                        if (learned) Icon(AppIcons.Check, stringResource(R.string.lesson_learned), Modifier.size(20.dp), tint = colors.primary)
+                        else tally.best(topic)?.let { (sound, of) -> Text(stringResource(R.string.score, sound, of), Modifier.testTag("best-${topic.name}"), style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant) }
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(20.dp), tint = colors.outline)
                     }
                 }
             }
-            ThemeButton(stringResource(R.string.practice_weak_go), onWeak, Modifier.fillMaxWidth().testTag("weak-go"), icon = AppIcons.Mic, filled = true)
+        }
+        ExerciseCard(AppIcons.Retry, stringResource(R.string.practice_weak_title), stringResource(if (tally.open.isEmpty()) R.string.practice_weak_none else R.string.practice_weak_body)) {
+            if (tally.open.isNotEmpty()) {
+                // Where the reader is corrected most, with how often.
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    for ((topic, count) in tally.weakest.take(4)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Box(Modifier.size(10.dp).background(topic.rule()?.let { tajweed.ink(it.family) } ?: colors.error, CircleShape))
+                            Text(if (topic == Topic.LETTERS) stringResource(R.string.practice_pairs_title) else topic.named(), style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.number, count), style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant)
+                        }
+                    }
+                }
+                ThemeButton(stringResource(R.string.practice_weak_go), onWeak, Modifier.fillMaxWidth().testTag("weak-go"), icon = AppIcons.Mic, filled = true)
+            }
         }
     }
     ExerciseCard(AppIcons.Meanings, stringResource(R.string.practice_pairs_title), stringResource(R.string.practice_pairs_body)) {
@@ -357,6 +361,7 @@ fun DrillScreen(
         top = { DrillPips(results, drills.size, at, learning = drills.map { it.topic to it.letters }.distinct().size == 1) },
         guide = { DrillGuide(drill.topic, drill.letters, ink) },
         summary = false, card = !measured,
+        onPlayBack = { reciter.play(it) },
     )
 }
 
@@ -798,6 +803,7 @@ fun EchoScreen(echoes: List<Echo>, verseOf: suspend (VerseRef) -> Verse?, fetchi
             (state as? Reciting.Heard)?.let { MaddsBeside(verse, theirs, it.words) }
         },
         canPrevious = at > 0, canNext = at < echoes.lastIndex,
+        onPlayBack = { reciter.play(it) },
     )
 }
 

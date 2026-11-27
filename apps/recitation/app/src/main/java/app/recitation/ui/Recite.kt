@@ -103,7 +103,8 @@ sealed interface Reciting {
  * the rule falls on in the rule's colour ([focus], for each word the stretches of it, in
  * [focusInk]), stands how far it has got over the verse ([top]), and judges that rule
  * alone: it leaves out the count of sound words ([summary]) and, where it tells what was
- * heard in its own way, what there is to go over word by word ([card]).
+ * heard in its own way, what there is to go over word by word ([card]). A word with
+ * something to go over can be played back as the reader said it ([onPlayBack]).
  *
  * It is in the language chosen for teaching (see [Taught]), which its top bar changes.
  */
@@ -135,6 +136,7 @@ fun ReciteContent(
     guide: (@Composable () -> Unit)? = null,
     summary: Boolean = true,
     card: Boolean = true,
+    onPlayBack: ((WordRecited) -> Unit)? = null,
 ) = Taught {
     val colors = MaterialTheme.colorScheme
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
@@ -197,7 +199,8 @@ fun ReciteContent(
                     // How it should go, in the reciter's own voice.
                     if (onHear != null) ThemeButton(stringResource(R.string.echo_play), onHear, Modifier.testTag("hear-reciter"), icon = AppIcons.Sound)
                 }
-                Reciting.Listening -> {}
+                // It closes the microphone by itself when the reader falls silent: said, so they don't wait to be asked.
+                Reciting.Listening -> Text(stringResource(R.string.recite_stops_itself), Modifier.testTag("listening-hint"), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 // What is being done is a picture: the ear in its turning ring, the fetch with its ring filling.
                 Reciting.Checking -> Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     WorkIcon(Picture(AppIcons.Ear), stringResource(R.string.recite_checking), size = 56.dp)
@@ -219,7 +222,7 @@ fun ReciteContent(
                         }
                     }
                     val picked = byWord[chosen]?.takeIf { !it.sound }
-                    if (picked != null && card) CorrectionsCard(picked) else if (sound != byWord.size && card) {
+                    if (picked != null && card) CorrectionsCard(picked, onPlayBack = onPlayBack?.takeIf { picked.heardFrom >= 0f }?.let { play -> { play(picked) } }) else if (sound != byWord.size && card) {
                         Text(stringResource(R.string.recite_tap), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                     }
                     guide?.invoke()
@@ -286,10 +289,12 @@ internal fun WordRecited.colour(): Color? {
  * put it right; then its madds as they were held. A point of tajweed is headed by its
  * family of rules, with the dot of its colour as in the legend: tapping that opens the
  * page that sets the rules out. It is in the language chosen for teaching (see [Taught]);
- * where it stands by itself on a page, [switch] gives it the way to change that.
+ * where it stands by itself on a page, [switch] gives it the way to change that. At its
+ * foot, where the reader's own voice is at hand, the way to hear the word as they said it
+ * ([onPlayBack]).
  */
 @Composable
-internal fun CorrectionsCard(word: WordRecited, modifier: Modifier = Modifier, switch: Boolean = false) = Taught {
+internal fun CorrectionsCard(word: WordRecited, modifier: Modifier = Modifier, switch: Boolean = false, onPlayBack: (() -> Unit)? = null) = Taught {
     val colors = MaterialTheme.colorScheme
     val amber = LocalHighlight.current
     val tajweed = LocalTajweed.current
@@ -330,6 +335,8 @@ internal fun CorrectionsCard(word: WordRecited, modifier: Modifier = Modifier, s
                 }
             }
             if (word.stopped) Text(stringResource(R.string.recite_stopped_here), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+            // The word as the phone heard it: what was marked can be heard for what it was.
+            if (onPlayBack != null) ThemeButton(stringResource(R.string.recite_play_back), onPlayBack, Modifier.testTag("play-back"), icon = AppIcons.Sound)
         }
     }
 }
@@ -412,5 +419,6 @@ fun ReciteScreen(surah: Surah, startVerse: Int, verseOf: suspend (Int) -> Verse?
         onNext = { if (number < surah.verses && !reciter.listening) number++ },
         onBack = onBack,
         reached = reciter.reached,
+        onPlayBack = { reciter.play(it) },
     )
 }

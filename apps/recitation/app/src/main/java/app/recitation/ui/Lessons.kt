@@ -1,5 +1,6 @@
 package app.recitation.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,7 +28,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +49,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.recitation.R
+import app.recitation.core.Case
 import app.recitation.core.Drills
 import app.recitation.core.Rule
 import app.recitation.core.Topic
@@ -116,6 +121,8 @@ fun LessonContent(topic: Topic, letters: String, hears: List<Hear>, learned: Boo
     val lesson = lessonOf(topic, letters)
     val rule: Rule? = topic.rule()
     val ink = topic.ink() ?: colors.primary
+    // Which of the words to hear was played last: its case is told under it.
+    var told by remember(topic, letters) { mutableIntStateOf(-1) }
     Column(Modifier.fillMaxSize()) {
         Banner {
             Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -154,15 +161,27 @@ fun LessonContent(topic: Topic, letters: String, hears: List<Hear>, learned: Boo
             if (hears.isEmpty()) {
                 Text(stringResource(R.string.lesson_hear_none), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
             } else {
-                for (hear in hears) {
-                    Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(colors.surfaceContainerLow).clickable(role = Role.Button, onClickLabel = stringResource(R.string.spot_play)) { onHear(hear) }
-                            .padding(horizontal = 14.dp, vertical = 6.dp).testTag("lesson-hear"),
-                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    ) {
-                        Icon(AppIcons.Sound, null, Modifier.size(22.dp), tint = colors.primary)
-                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                            FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) { Shown(hear.words, topic, letters, ink, 26.sp, 54.sp) }
+                for ((i, hear) in hears.withIndex()) {
+                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(colors.surfaceContainerLow)) {
+                        Row(
+                            Modifier.fillMaxWidth().clickable(role = Role.Button, onClickLabel = stringResource(R.string.spot_play)) { told = i; onHear(hear) }
+                                .padding(horizontal = 14.dp, vertical = 6.dp).testTag("lesson-hear"),
+                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
+                            Icon(AppIcons.Sound, null, Modifier.size(22.dp), tint = colors.primary)
+                            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                // A word and the one it runs into are shown as recited on; a word alone, as the reciter left it.
+                                val stopped = hear.case?.let { it.stopped && ' ' !in hear.words } ?: (topic != Topic.MADD_NATURAL)
+                                FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) { Shown(hear.words, topic, letters, ink, 26.sp, 54.sp, stopped) }
+                            }
+                        }
+                        // Once it has been played: what makes these very words an example of the rule.
+                        val comment = hear.case?.let { commentOn(it, topic) }
+                        AnimatedVisibility(told == i && comment != null) {
+                            Text(
+                                comment.orEmpty(), Modifier.fillMaxWidth().background(ink.copy(alpha = 0.1f)).padding(horizontal = 14.dp, vertical = 10.dp).testTag("lesson-case"),
+                                style = MaterialTheme.typography.bodyMedium, color = colors.onSurface,
+                            )
                         }
                     }
                 }
@@ -176,7 +195,8 @@ fun LessonContent(topic: Topic, letters: String, hears: List<Hear>, learned: Boo
                 FlowRow(Modifier.fillMaxWidth().testTag("lesson-examples"), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     for ((i, example) in lesson.examples.split(" · ").withIndex()) {
                         if (i > 0) Text("·", fontFamily = QuranFont, fontSize = 28.sp, lineHeight = 58.sp, color = colors.outline)
-                        Shown(example, topic, letters, ink, 28.sp, 58.sp)
+                        // A natural madd is shown recited on: stopped on, a long vowel before the last letter is another madd.
+                        Shown(example, topic, letters, ink, 28.sp, 58.sp, stopped = topic != Topic.MADD_NATURAL)
                     }
                 }
             }
@@ -189,17 +209,58 @@ fun LessonContent(topic: Topic, letters: String, hears: List<Hear>, learned: Boo
 
 /**
  * A few words of the Quran ([words], with spaces between) that show [topic], each as a
- * piece of a row, the letters the topic falls on in [ink]. Words that show a stop are
- * left as they are: there the whole word is the point.
+ * piece of a row, the letters the topic falls on in [ink]. [stopped] says the reciter
+ * stops on the last of them. Words that show a stop are left as they are: there the whole
+ * word is the point.
  */
 @Composable
-private fun Shown(words: String, topic: Topic, letters: String, ink: Color, fontSize: TextUnit, lineHeight: TextUnit) {
+private fun Shown(words: String, topic: Topic, letters: String, ink: Color, fontSize: TextUnit, lineHeight: TextUnit, stopped: Boolean) {
     val each = words.split(' ').filter { it.isNotEmpty() }
-    val ranges = remember(words, topic, letters) {
-        // A natural madd is shown recited on: stopped on, a long vowel before the last letter is another madd.
-        if (topic == Topic.STOP) emptyList() else runCatching { Drills.letters(each, topic, letters, stopped = topic != Topic.MADD_NATURAL) }.getOrDefault(emptyList())
+    val ranges = remember(words, topic, letters, stopped) {
+        if (topic == Topic.STOP) emptyList() else runCatching { Drills.letters(each, topic, letters, stopped = stopped) }.getOrDefault(emptyList())
     }
     for ((w, word) in each.withIndex()) RuledWord(word, ranges.getOrNull(w).orEmpty(), ink, fontSize = fontSize, lineHeight = lineHeight)
+}
+
+/**
+ * What makes some words an example of a rule, said of those very words: which letter the
+ * rule falls on in them, what brings it about, and what the reciter does with it there.
+ * Null where there is nothing to say beyond the lesson.
+ */
+@Composable
+fun commentOn(case: Case, topic: Topic): String? {
+    val word = case.word
+    val into = case.into
+    return when {
+        topic == Topic.STOP -> stringResource(R.string.case_stop, word)
+        topic == Topic.LETTERS -> {
+            // Where the letter is made, as the lesson has it.
+            val tip = TIP_LETTERS.indexOf(case.letter.firstOrNull() ?: ' ').takeIf { it >= 0 }?.let { stringArrayResource(R.array.letter_tips)[it] }
+            listOfNotNull(stringResource(R.string.case_letter, word, case.letter), tip).joinToString(" ")
+        }
+        else -> when (case.rule) {
+            Rule.GHUNNAH -> stringResource(R.string.case_ghunnah, word, case.letter + "ّ")
+            Rule.IKHFA -> if (into.isEmpty()) null else listOfNotNull(
+                stringResource(if (case.tanween) R.string.case_ikhfa_tanween else R.string.case_ikhfa, word, into),
+                if (case.heavy) stringResource(R.string.case_ikhfa_heavy, into) else null,
+            ).joinToString(" ")
+            Rule.IKHFA_SHAFAWI -> stringResource(R.string.case_ikhfa_shafawi, word)
+            Rule.IQLAB -> stringResource(if (case.tanween) R.string.case_iqlab_tanween else R.string.case_iqlab, word)
+            Rule.IDGHAM_GHUNNAH -> if (into.isEmpty()) null else stringResource(if (case.tanween) R.string.case_idgham_ghunnah_tanween else R.string.case_idgham_ghunnah, word, into)
+            Rule.IDGHAM_BILA_GHUNNAH -> if (into.isEmpty()) null else stringResource(if (case.tanween) R.string.case_idgham_bila_tanween else R.string.case_idgham_bila, word, into)
+            Rule.IDGHAM_SHAFAWI -> stringResource(R.string.case_idgham_shafawi, word)
+            Rule.QALQALAH -> stringResource(if (case.stopped && into.isEmpty()) R.string.case_qalqalah_stop else R.string.case_qalqalah, word, case.letter)
+            Rule.MADD_TABII, null -> stringResource(R.string.case_madd_natural, word)
+            Rule.MADD_SILAH_SUGHRA -> stringResource(R.string.case_madd_silah, word)
+            Rule.MADD_IWAD -> stringResource(R.string.case_madd_iwad, word)
+            Rule.MADD_MUNFASIL, Rule.MADD_SILAH_KUBRA -> stringResource(R.string.case_madd_munfasil, word)
+            Rule.MADD_MUTTASIL -> stringResource(R.string.case_madd_muttasil, word)
+            Rule.MADD_LAZIM -> stringResource(R.string.case_madd_lazim, word)
+            Rule.MADD_ARID -> stringResource(R.string.case_madd_arid, word)
+            Rule.MADD_LIN -> stringResource(R.string.case_madd_lin, word)
+            else -> null
+        }
+    }
 }
 
 /** A part of a lesson: its heading and what it says. */

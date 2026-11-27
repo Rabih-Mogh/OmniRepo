@@ -145,6 +145,7 @@ import app.recitation.ui.DrillPips
 import app.recitation.ui.CorrectionsCard
 import app.recitation.ui.Teaching
 import app.recitation.ui.LocalTeaching
+import app.recitation.core.Case
 import app.recitation.core.Measure
 import androidx.compose.ui.test.assertTextEquals
 import app.recitation.ui.RulePicture
@@ -472,16 +473,56 @@ class ScreensTest {
     }
 
     @Test
-    @Config(qualifiers = "en-rUS-w411dp-h1700dp-420dpi")
+    @Config(qualifiers = "en-rUS-w411dp-h1500dp-420dpi")
+    fun theLessonsCardAndTheWeakSpotsBesideItTurnToArabicAndTheRestOfTheTabStaysAsThePhoneIs() {
+        var language: String? by mutableStateOf(null)
+        show("en-day-practise-in-arabic") {
+            CompositionLocalProvider(LocalTeaching provides Teaching(language) { language = it }) {
+                PracticeTab(emptyMap(), onRecite = {}, onExercise = {}, tally = Tally(learned = setOf("GHUNNAH")), canEcho = false)
+            }
+        }
+        // As the phone is, to begin with: the rules by their names in Latin letters.
+        compose.onNodeWithText("Learn tajweed").assertIsDisplayed()
+        compose.onNodeWithText("Iqlab").assertIsDisplayed()
+        compose.onNodeWithTag("teach-switch").assertTextEquals("العربية").performClick()
+        assertEquals("ar", language)
+        // The card is in Arabic now, the rules by their own names, and reads from the right.
+        compose.onNodeWithText("تعلَّم التجويد").assertIsDisplayed()
+        compose.onNodeWithText("الإقلاب").assertIsDisplayed()
+        compose.onNodeWithText("Iqlab").assertDoesNotExist()
+        val arabic = context.createConfigurationContext(android.content.res.Configuration(context.resources.configuration).apply { setLocale(java.util.Locale("ar")) })
+        compose.onNodeWithTag("learned-count").assertTextEquals(arabic.getString(R.string.practice_learned, 1, 10))
+        assertTrue(compose.onNodeWithTag("teach-switch").fetchSemanticsNode().boundsInRoot.left < compose.onNodeWithText("تعلَّم التجويد").fetchSemanticsNode().boundsInRoot.left)
+        // So does the card of weak spots next to it, which names the rules too.
+        compose.onNodeWithText(arabic.getString(R.string.practice_weak_title)).assertIsDisplayed()
+        // The other cards stay in the phone's language.
+        compose.onNodeWithText("Recite and be corrected").assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.practice_pairs_title)).assertIsDisplayed()
+        compose.onRoot().captureRoboImage("build/screens/en-day-practise-in-arabic.png")
+        compose.onNodeWithTag("teach-switch").assertTextEquals("English").performClick()
+        assertEquals("en", language)
+        compose.onNodeWithText("Iqlab").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h2300dp-420dpi")
     fun aRuleIsTaughtBeforeItIsPractised() {
         var heard: Hear? = null
         var practise = false
-        val hears = listOf(Hear("مِن قَبْلِ", File("a.m4a"), 12_000, 14_000), Hear("أَنتُمْ", File("a.m4a"), 40_000, 41_500))
+        val hears = listOf(
+            Hear("مِن قَبْلِ", File("a.m4a"), 12_000, 14_000, Case(app.recitation.core.Rule.IKHFA, "مِن", "ن", "ق", heavy = true)),
+            Hear("أَنتُمْ", File("a.m4a"), 40_000, 41_500, Case(app.recitation.core.Rule.IKHFA, "أَنتُمْ", "ن", "ت", stopped = true)),
+        )
         show("en-day-lesson") { LessonContent(Topic.IKHFA, "", hears, learned = true, onHear = { heard = it }, onPractise = { practise = true }, onBack = {}) }
         // The rule in pictures comes first: the mouth as it is made, beside the mouth of a clear nun, and the example laid out in time.
         val pictureAt = compose.onNodeWithTag("rule-picture").fetchSemanticsNode().boundsInRoot.top
         assertEquals(2, compose.onAllNodesWithTag("mouth").fetchSemanticsNodes().size)
-        compose.onNodeWithText("Hidden nun: the tip stays just off it").assertIsDisplayed()
+        compose.onNodeWithText("The hidden nun").assertIsDisplayed()
+        // What each part of the mouth does is said beside it: the tongue's tip and its back, the lips, the nose, and for how long.
+        compose.onNodeWithText("What each part of the mouth does").assertIsDisplayed()
+        for (part in listOf("Back of the tongue", "Lips", "For how long")) compose.onNodeWithText(part).assertIsDisplayed()
+        assertEquals(2, compose.onAllNodesWithText("Tip of the tongue").fetchSemanticsNodes().size)
+        compose.onNodeWithText("Apart. They never close.").assertIsDisplayed()
         compose.onNodeWithTag("strip").assertIsDisplayed()
         // Then the reciter's voice, before anything is said about the rule.
         val hearAt = compose.onAllNodesWithTag("lesson-hear").onFirst().fetchSemanticsNode().boundsInRoot.top
@@ -493,15 +534,26 @@ class ScreensTest {
         compose.onNodeWithText("shape the mouth for the letter that follows", substring = true).assertIsDisplayed()
         compose.onNodeWithText("The common slip").assertIsDisplayed()
         compose.onNodeWithContentDescription("Learned").assertIsDisplayed()
-        // Words from the reader's own recordings that show it, each played at a tap.
+        // Words from the reader's own recordings that show it, each played at a tap. Nothing is said of them before that.
+        compose.onNodeWithTag("lesson-case").assertDoesNotExist()
         compose.onAllNodesWithTag("lesson-hear").onFirst().performScrollTo().performClick()
         assertEquals(12_000, heard?.fromMs)
+        // Once one is played, what makes those very words an example stands under it: which letter, before which, and what that asks.
+        compose.onNodeWithTag("lesson-case").assertTextEquals(
+            "«مِن»: its nun comes before ق, one of the fifteen letters of ikhfa. The nun is hidden: two counts in the nose, with the tongue kept off the gum. ق is a heavy letter, so the nasal sound before it is heavy too.",
+        )
+        // And the other's own, when that one is played.
+        compose.onAllNodesWithTag("lesson-hear")[1].performClick()
+        compose.onNodeWithTag("lesson-case").assertTextEquals(
+            "«أَنتُمْ»: its nun comes before ت, one of the fifteen letters of ikhfa. The nun is hidden: two counts in the nose, with the tongue kept off the gum.",
+        )
+        compose.onRoot().captureRoboImage("build/screens/en-day-lesson-case.png")
         compose.onNodeWithTag("lesson-practise").performClick()
         assertTrue(practise)
     }
 
     @Test
-    @Config(qualifiers = "en-rUS-w411dp-h3100dp-420dpi")
+    @Config(qualifiers = "en-rUS-w411dp-h4300dp-420dpi")
     fun everyNasalRuleAndTheEchoHaveTheirPictures() {
         show("en-day-pictures-nasal") {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -511,14 +563,22 @@ class ScreensTest {
                 }
             }
         }
-        // A mouth for each of the two letters of the ghunnah, two for the hidden nun beside the clear one, one for the nun turned, one for the echo.
-        assertEquals(6, compose.onAllNodesWithTag("mouth").fetchSemanticsNodes().size)
+        // A mouth for each of the two letters of the ghunnah, two for the hidden nun beside the clear one, one for the nun
+        // turned, two for the nun merged (with its nasal sound and without), one for the echo.
+        assertEquals(8, compose.onAllNodesWithTag("mouth").fetchSemanticsNodes().size)
+        // And beside every one of them, what each part of the mouth does.
+        assertEquals(8, compose.onAllNodesWithTag("mouth-parts").fetchSemanticsNodes().size)
+        compose.onNodeWithText("Pressed on the gum behind the upper front teeth, and kept there.").assertIsDisplayed()
+        compose.onNodeWithText("Near the gum and not touching it. It waits close to where the next letter is made.").assertIsDisplayed()
+        compose.onNodeWithText("Closed lightly, as for a mim, without pressing. Then they open on the ب.").assertIsDisplayed()
+        compose.onNodeWithText("Nothing. All of the sound leaves by the mouth.").assertIsDisplayed()
+        compose.onNodeWithText("It springs open at once. That is the bounce.").assertIsDisplayed()
         // An example in time for each, two where the rule has two cases.
         assertEquals(7, compose.onAllNodesWithTag("strip").fetchSemanticsNodes().size)
     }
 
     @Test
-    @Config(qualifiers = "en-rUS-w411dp-h1500dp-420dpi")
+    @Config(qualifiers = "en-rUS-w411dp-h5200dp-420dpi")
     fun everyMaddIsLaidOutInItsCounts() {
         show("en-day-pictures-madd") {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -529,6 +589,10 @@ class ScreensTest {
             }
         }
         assertEquals(5, compose.onAllNodesWithTag("strip").fetchSemanticsNodes().size)
+        // Every madd is held in one of three mouths, each with what its parts do: an alif, a و and a ي.
+        assertEquals(15, compose.onAllNodesWithTag("mouth").fetchSemanticsNodes().size)
+        assertEquals(5, compose.onAllNodesWithText("Rounded and pushed forward, and they stay so.").fetchSemanticsNodes().size)
+        assertEquals(5, compose.onAllNodesWithText("Drops. The mouth is open.").fetchSemanticsNodes().size)
     }
 
     @Test
@@ -543,7 +607,7 @@ class ScreensTest {
     }
 
     @Test
-    @Config(qualifiers = "ar-w411dp-h1300dp-night-420dpi")
+    @Config(qualifiers = "ar-w411dp-h2300dp-night-420dpi")
     fun aLessonByNightInArabic() {
         var counted = false
         show("ar-night-lesson") { LessonContent(Topic.MADD_LAZIM, "", emptyList(), learned = false, onHear = {}, onPractise = {}, onBack = {}, onCount = { counted = true }) }
@@ -555,7 +619,7 @@ class ScreensTest {
     }
 
     @Test
-    @Config(qualifiers = "en-rUS-w411dp-h1700dp-420dpi")
+    @Config(qualifiers = "en-rUS-w411dp-h2100dp-420dpi")
     fun aLessonAndItsCorrectionsCanBeHadInArabicOnAPhoneInEnglish() {
         var language: String? by mutableStateOf(null)
         show("en-day-lesson-in-arabic") {
@@ -576,6 +640,37 @@ class ScreensTest {
         compose.onNodeWithTag("teach-switch").assertTextEquals("English").performClick()
         assertEquals("en", language)
         compose.onNodeWithText("When").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun aWordToGoOverCanBePlayedBackAsTheReaderSaidIt() {
+        // 1:2 recited with its last madd held short: that word is where it is in the take, from 3.1 s to 4.4 s.
+        val heard = List(4) { w ->
+            WordRecited(
+                w, false, if (w == 3) listOf(Correction(Fault.MADD_SHORT, clear = false, madd = Madd.ARID, wantedCounts = 4, heardCounts = 1)) else emptyList(), emptyList(),
+                heardFrom = if (w == 3) 3.1f else w.toFloat(), heardUntil = if (w == 3) 4.4f else w + 1f,
+            )
+        }
+        var played: WordRecited? = null
+        show("en-day-recite-play-back") {
+            ReciteContent(
+                app.recitation.core.SURAHS[0], 2, fatihah[1], Reciting.Heard(heard), needsModel = false, onMic = {}, onFetch = {}, onPrevious = {}, onNext = {}, onBack = {},
+                onPlayBack = { played = it },
+            )
+        }
+        compose.onNodeWithText("Play back how you said it").performClick()
+        assertEquals(3, played?.index)
+        assertEquals(3.1f, played?.heardFrom)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun whereTheReadersVoiceIsNotAtHandThereIsNothingToPlayBack() {
+        // On the page of a surah the card stands by itself, with no take to play from; and a word whose place in the take isn't known has none.
+        val word = WordRecited(1, false, listOf(Correction(Fault.GHUNNAH_SHORT, clear = false, wanted = "ن")), emptyList())
+        compose.setContent { RecitationTheme { Column { CorrectionsCard(word) } } }
+        compose.onNodeWithTag("play-back").assertDoesNotExist()
     }
 
     @Test
@@ -1852,6 +1947,45 @@ class ScreensTest {
         assertEquals(jalalayn, picked)
         compose.onNodeWithContentDescription("Take Hamidullah off the phone").performClick()
         assertEquals(hamidullah, deleted)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun theLanguagesOfWordMeaningsHaveArabicAmongThem() {
+        var picked: Pack? = null
+        show("en-day-pick-meanings") {
+            PickerContent(
+                Kind.MEANINGS, Pack.MEANINGS, listed = true, chosen = Pack.ENGLISH,
+                stateOf = { if (it.inApp) PackState.InApp else PackState.ToFetch }, onPick = { picked = it }, onNone = null, onDelete = {}, modifier = Modifier.padding(16.dp),
+            )
+        }
+        // Arabic, with where its meanings are from, right under the one that comes with the app.
+        compose.onNodeWithText("معاني الكلمات · QuranEnc.com").assertIsDisplayed()
+        assertTrue(compose.onNodeWithText("العربية").fetchSemanticsNode().boundsInRoot.top < compose.onNodeWithText("اردو").fetchSemanticsNode().boundsInRoot.top)
+        compose.onNodeWithText("العربية").performClick()
+        assertEquals(Pack.ARABIC, picked)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w411dp-h891dp-420dpi")
+    fun wordMeaningsInArabicStandUnderTheWordsThatWantExplaining() {
+        // Al-Fatihah's first five verses with QuranEnc.com's meanings, each put under its word.
+        val told = listOf(
+            "بِسْمِ اللهِ: أَيْ: أَبْتَدِئُ قِرَاءَتِي مُسْتَعِينًا بِاسْمِ اللهِ.\r\nالرَّحْمنِ: الَّذِي وَسِعَتْ رَحْمَتُهُ جَمِيعَ الْخَلْقِ.\r\nالرَّحِيمِ: الَّذِي يَرْحَمُ المُؤمِنِينَ.",
+            "رَبِّ: الرَّبُّ: المُرَبِّي لِخَلْقِهِ بِنِعَمِهِ.\nالْعَالَمِينَ: كُلِّ مَنْ سِوَى اللهِ تَعَالَى.",
+            "",
+            "يَوْمِ الدِّينِ: يَوْمِ الجَزَاءِ وَالحِسَابِ.",
+            "إِيَّاكَ نَعْبُدُ: لَا نَعْبُدُ إِلَّا أَنْتَ.\nوإِيَّاكَ نَسْتَعِينُ: لَا نَسْتَعِينُ فِي قَضَاءِ حَوَائِجِنَا إِلَّا بِكَ.",
+        )
+        val placed = app.recitation.core.Glosses.place(fatihah.map { verse -> verse.words.map { it.arabic } }, told)
+        val verses = fatihah.mapIndexed { v, verse -> Verse(verse.words.mapIndexed { k, word -> Word(word.arabic, placed[v][k]) }, verse.translation) }
+        show("en-day-reader-arabic-meanings") { Reader(0, verses = verses, playing = false) }
+        // The words that want explaining have their meaning, found though the page spells them as the mushaf does.
+        compose.onNodeWithText("كُلِّ مَنْ سِوَى اللهِ تَعَالَى.").assertIsDisplayed()
+        compose.onNodeWithText("يَوْمِ الجَزَاءِ وَالحِسَابِ.").assertIsDisplayed()
+        // A word every reader knows has nothing under it, and nothing in English either.
+        assertEquals("", verses[1].words[0].meaning)
+        compose.onNodeWithText("All praises and thanks").assertDoesNotExist()
     }
 
     @Test

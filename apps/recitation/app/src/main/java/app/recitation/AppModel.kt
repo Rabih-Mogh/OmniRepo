@@ -16,6 +16,7 @@ import app.recitation.core.Tajweed
 import app.recitation.core.SurahMatcher
 import app.recitation.core.SurahSearch
 import app.recitation.core.Timings
+import app.recitation.core.Cases
 import app.recitation.core.Drill
 import app.recitation.core.Drills
 import app.recitation.core.Family
@@ -392,9 +393,15 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Words that show [topic], from the recordings that have been listened to the end: the
-     * word the rule is in and the one after it, since most rules lie between two words,
-     * with where they are in the recording. A few, each from another verse.
+     * Words that show [topic], from the recordings that have been listened to the end, with
+     * where they are in the recording: the word the rule is in, and the one after it where
+     * the rule lies between the two. A few, each from another verse.
+     *
+     * They are taken only where the reciter of the recording really does the thing. A nun
+     * is hidden or merged into the next word only if the reciter runs on, and a long vowel
+     * before a word's last letter is drawn out only if the reciter stops there: so it goes
+     * by where this reciter stopped, which is told from the waits in the recording (see
+     * [Pointer.refine]), not by where a verse ends on the page (see [Cases]).
      */
     private suspend fun hears(topic: Topic, letters: String, count: Int): List<Hear> {
         val random = Random(System.nanoTime())
@@ -407,22 +414,23 @@ class AppModel(app: Application) : AndroidViewModel(app) {
             val timings = placed(track)?.takeIf { it.complete } ?: continue
             if (!quran.has(track.surah)) continue
             val verses = runCatching { quran.surah(track.surah) }.getOrNull() ?: continue
-            val forms = pool()[track.surah] ?: getApplication<Application>().assets.open("tajweed_reference.bin").use { TajweedReference.surah(it, track.surah) }
-            var fromThis = 0
-            for (v in verses.indices.shuffled(random)) {
-                // No more than two from one recording, so that more than one surah is heard.
-                if (found.size >= count || fromThis >= 2) break
-                val words = verses[v].words
-                val times = timings.verses.getOrNull(v) ?: continue
-                val verse = forms.getOrNull(v) ?: continue
-                // Only where the three count the verse's words alike: then a word is the same word in each.
-                if (verse.size != words.size || times.size != words.size || words.size > LONGEST_TO_LOOK_IN) continue
-                val at = Drills.places(verse, topic, letters).shuffled(random).firstOrNull() ?: continue
-                val first = if (topic == Topic.STOP) maxOf(0, at - 1) else at
-                val last = minOf(words.lastIndex, first + 1)
-                val until = times.getOrNull(last + 1)?.startMs ?: timings.startOfVerse(v + 1) ?: (times[last].startMs + 2_500)
-                found += Hear((first..last).joinToString(" ") { words[it].arabic }, sound, maxOf(0, times[first].startMs - 150), minOf(until, times[first].startMs + LONGEST_HEAR_MS))
-                fromThis++
+            val words = verses.map { verse -> verse.words.map { it.arabic } }
+            // Only where the recording and the page count every verse's words alike: then a word is the same word in each.
+            if (timings.verses.size != words.size || words.indices.any { timings.verses[it].size != words[it].size }) continue
+            val stops = Pointer.refine(words, timings).stops
+            // No more than two from one recording, so that more than one surah is heard; and each from another verse.
+            val places = Cases.places(words, stops, topic, letters).filter { words[it.verse].size <= LONGEST_TO_LOOK_IN }.shuffled(random).distinctBy { it.verse }.take(2)
+            for (place in places) {
+                if (found.size >= count) break
+                val times = timings.verses[place.verse]
+                val shown = verses[place.verse].words
+                // A stop is heard with the word before it; a rule that runs into the next word, with that word.
+                val first = if (topic == Topic.STOP) maxOf(0, place.word - 1) else place.word
+                val last = if (topic == Topic.STOP || place.case.stopped) place.word else minOf(shown.lastIndex, place.word + 1)
+                val until = times.getOrNull(last + 1)?.startMs ?: timings.startOfVerse(place.verse + 1) ?: (times[last].startMs + 2_500)
+                found += Hear(
+                    (first..last).joinToString(" ") { shown[it].arabic }, sound, maxOf(0, times[first].startMs - 150), minOf(until, times[first].startMs + LONGEST_HEAR_MS), place.case,
+                )
             }
         }
         return found

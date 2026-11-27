@@ -429,6 +429,29 @@ with the verse in large letters: there the words still to come are faint, and at
 surah's first verse the button for the verse before is plainly faint, and at its last
 the button for the verse after.
 
+**A word marked there can be played back as the reader said it.** Under what there is to
+go over in a word stands **Play back how you said it**: the word as the microphone took
+it, with a moment either side, so the reader hears what the phone heard. What was
+recited is kept in memory only, until the next verse is recited or the page is left, and
+each word is found in it by when its first sound and the next word's began
+(`WordRecited.heardFrom`). A word that wasn't said has nothing to play. On the page of a
+surah, where the reader is followed through many verses, there is no such button yet.
+
+**A verse recited there, or in an exercise, is gone over without a second press**
+(`core/Ending.kt`). The microphone closes by itself once the reader falls silent: after
+one second of quiet if the verse's last word has been reached, and after two and a half
+otherwise, which leaves room for a breath and for a stop made on purpose in the middle of
+a verse. And it closes by itself after eight seconds in which nothing that could be a
+voice has come (a microphone that gives nothing, a room with no one reciting): what was
+taken is gone over, and the page says nothing was heard. Quiet is judged by loudness
+against the take itself: a moment is quiet when it is under three tenths of the take's
+loud level, and a voice has been heard once the loud level stands about ten decibels
+clear of the quiet one. In a room so noisy that the voice doesn't stand clear, the
+microphone stays open, as long as the model makes out the verse's words, and the reader
+ends it with the button as before; the button ends it sooner at any time. Reciting a
+whole surah on its page is not ended this way: there a silence is a breath between
+verses. Checked on sounds made up for the tests, not on a voice in a room.
+
 How it listens:
 
 - **The model.** The model that follows a reciter's recording was trained on ordinary
@@ -511,19 +534,27 @@ are sound of the number needed. The rule is said in a line under the count.
 
 **The pictures** (`ui/RulePictures.kt`) are drawn by the app, not stored:
 
-- **The mouth, from the side**, for the rules that are a matter of where: a nun and a mim
-  held through the nose (the tongue's tip on the gum, or the lips shut, the soft palate
-  down, and the way the sound takes out of the nose), the hidden nun beside the clear one
-  (the tip just off the gum), the nun turned to a mim, the five places the letters of
-  qalqalah shut the sound off; and for a pair of letters, the two mouths side by side,
-  with the place each is made and the back of the tongue raised for the heavy one.
+- **The mouth, from the side, for every rule**, and beside each mouth what every part of
+  it does while the rule is said, a line to a part: the tip of the tongue, its back, the
+  lips, the jaw, the nose, and for how long. A doubled nun and a doubled mim (the tip on
+  the gum, or the lips shut, the soft palate down, the way the sound takes out of the
+  nose); the hidden nun beside a clear one to compare (the tip just off the gum); the
+  nun turned to a mim; the nun merged, once into a ي with the sound in the nose and once
+  into a ل with all of it out of the mouth; the five places the letters of qalqalah shut
+  the sound off; and for every madd the three mouths it is held in, an alif (the jaw
+  dropped), a و (the lips rounded and forward) and a ي (the middle of the tongue raised).
+  Two letters to tell apart have their two mouths side by side, with the place each is
+  made and the back of the tongue raised for the heavy one.
 - **An example laid out in time**, for every rule: what is said, each sound as wide as it
   is long, read from the right; under it what of that goes through the nose; under the
   sound the rule is about, its counts; and over it, where the mushaf writes something
   else than is said (a nun turned or merged), what it writes. A madd of four or five, or
   of two, four or six, has the counts it may also be held for left open. Its button
-  sends a line across at a measured pace (0.45 s a count), so two counts and six are seen
-  for how long they are.
+  plays the time through, not a recitation: a line crosses at a measured pace (0.45 s a
+  count) with a soft tick as each count of the rule's sound begins, so the counts are
+  seen and heard for how long they are and can be recited along with. The echo of a
+  qalqalah, which has no counts, ticks once where the letter springs open. The tick is
+  made by the app (a 45 ms note), at the loudness of the recitations.
 - A lesson on a madd has **Count it with your voice**, which opens the counting of a madd
   set to that madd's counts; Back returns to the lesson.
 
@@ -533,8 +564,9 @@ have not been looked over by a teacher of tajweed any more than the lessons' wor
 **In Arabic or in English, whichever the phone is in** (`ui/Teaching.kt`). The lessons,
 the exercises and every correction can be turned to Arabic on a phone set to English,
 and to English on one set to Arabic: a switch in the top bar of a lesson, of an exercise
-and of reciting a verse, on the lessons' card on the Practise tab, and on the card of
-corrections on the page of a surah. It is one choice for all of them, kept from then on;
+and of reciting a verse, on the lessons' card on the Practise tab (which turns with it,
+as does the card of weak spots next to it: their words, and the rules by their Arabic
+names), and on the card of corrections on the page of a surah. It is one choice for all of them, kept from then on;
 the rest of the app stays in the phone's language. Inside what is taught the app's own
 strings of that language are used and the page is laid out from the side that language
 reads from.
@@ -543,10 +575,27 @@ reads from.
 been listened to has the words, they are played from it, a stretch at a time, apart from
 the player the recitations go through (which is paused meanwhile):
 
-- A lesson opens on the reciter: up to five stretches of the reader's recordings that
-  show the rule (the word it is in and the one after, since most rules lie between two
-  words), from more than one surah, the short surahs first. Each is played at a tap, and
-  nothing is played until one is tapped. What the rule is comes after them on the page.
+- A lesson has up to five stretches of the reader's recordings that show the rule (the
+  word it is in, and the one after where the rule lies between the two), from more than
+  one surah, the short surahs first. Each is played at a tap, and nothing is played until
+  one is tapped.
+- **They are cut by the app from whatever recordings are on the phone, so they are taken
+  only where that reciter really does the thing** (`core/Cases.kt`). A nun at the end of
+  a word is hidden, turned or merged only if the reciter runs on into the next word; a
+  long vowel before a word's last letter is drawn out, and a ق ط ب ج د at a word's end
+  bounces, only if the reciter stops there. So the examples go by where this reciter
+  stopped, as the page of a surah does for its colours (`Pointer.refine`: the wait after
+  a word's last sound), not by where a verse ends on paper: a reciter who takes a breath
+  between two words gives no example of the rule that would have joined them, and one
+  who runs two verses together gives no madd of a stop at the first one's end. Where the
+  reciter stopped is an estimate from the timing, so now and then an example can still be
+  taken where the rule wasn't done; it was right on the made-up cases of the tests and
+  has not been checked against recordings by ear.
+- **A tap on one also says, under it, what makes those very words an example**: which
+  letter the rule falls on, the letter after it that brings the rule about, and what
+  that asks ("«مِن»: its nun comes before ق, one of the fifteen letters of ikhfa … ق is
+  a heavy letter, so the nasal sound before it is heavy too"), or that the reciter stops
+  on the word and what that does to it.
 - In an exercise, **Hear the reciter** plays the verse before it is recited, and after a
   verse that wasn't sound for its rule, **Hear how the reciter says it** plays the words
   the rule is in. The verses of an exercise are chosen from surahs that have a recording
@@ -685,10 +734,25 @@ A row for each says what is chosen now; a tap opens the list.
 | | What there is to choose | What comes without a download |
 |---|---|---|
 | **Script** | The four below | All but IndoPak |
-| **Word meanings in** | English, Urdu, Persian, Turkish, Indonesian, Bengali, Hindi, Tamil: the languages Quran.com has every word's meaning in | English |
+| **Word meanings in** | English, Urdu, Persian, Turkish, Indonesian, Bengali, Hindi, Tamil: the languages Quran.com has every word's meaning in. And Arabic, from QuranEnc.com (below) | English |
 | **Translation** | Every translation Quran.com lists (126 in 69 languages when this was written), under their languages, the phone's own first; the list can be searched | Saheeh International |
 | **Exegesis (tafsir)** | Every exegesis Quran.com lists (20: Arabic, English, Urdu, Bengali, Russian, Kurdish) | None: none is chosen until the reader chooses one |
 
+- **Word meanings in Arabic are of another kind, and from another place.** Quran.com has
+  no word meanings in Arabic, so these are QuranEnc.com's «معاني الكلمات» (its
+  `arabic_seraj`). They are what an Arabic mushaf prints in its margin: a meaning for
+  the words and phrases a reader of Arabic may not know, and nothing for the rest. In the
+  42 surahs looked at (1, 2, 18, 36, 67 and 78 to 114), 62 verses in 100 have at least
+  one, and about one word in nine stands under one. They come a verse at a time, as lines
+  of "the words: what they mean", and the app finds each line its word
+  (`core/Glosses.kt`): by the word's letters alone, in everyday spelling, allowing one
+  letter in four to differ, and looking in the verse before and after for a line the
+  source has a verse off. Of 973 lines in those surahs, 968 found their word in their own
+  verse and the other five in the verse beside it. A meaning of several words stands
+  under the first of them and the rest have "…"; a line found nowhere would be shown
+  whole under its verse's last word, so nothing of the source is left out. The text is
+  shown as it comes, vowels and all; a word with no meaning has none, not the English
+  one. QuranEnc.com gives no version number for it through its API.
 - **Each one in a list says where it stands:** a tick on the one chosen; "With the app"
   on what needs no download; its size and a bin on one that is on the phone (the bin
   takes it off again; the one in use has none); a ring filling on the one being
@@ -1074,6 +1138,7 @@ to four threads, with the same result.
 | What | From | Licence |
 |---|---|---|
 | Quran text (Uthmani, IndoPak and everyday spellings), word meanings, and whichever translations and exegeses the reader chooses | [Quran.com](https://quran.com) API, fetched by the app and kept on the phone; not stored in this repo | Their own terms, and each translation's and exegesis's own |
+| Word meanings in Arabic, if the reader chooses them | [QuranEnc.com](https://quranenc.com)'s «اللغة العربية - معاني الكلمات» (`arabic_seraj`), fetched by the app from its API and kept on the phone; not stored in this repo. Shown unaltered, with its source named where it is chosen | QuranEnc.com's terms: may be republished unmodified, with the source named |
 | Speech model, for the recordings and for the reader reciting | [HisnLabs Tajweed v2](https://huggingface.co/Hisnlabs/tajweed-v2), int8 ONNX, in [models/tajweed-v2](models/tajweed-v2) and fetched by the app. Its base is the encoder of tarteel-ai/whisper-base-ar-quran; its teacher was Quran Muaalem | Apache-2.0 ([text](licenses/Apache-2.0.txt)) |
 | How a recitation is compared with the verse | The rule engine published with that model (`imam.py`), written again in Kotlin | Apache-2.0 ([text](licenses/Apache-2.0.txt)) |
 | What each word should sound like (`tajweed_reference.bin`) | Written with [quran-transcript](https://github.com/obadx/quran-transcript), from the Tanzil Uthmani text it carries (Tanzil Project, tanzil.net) | MIT for quran-transcript; Creative Commons Attribution 3.0 for the Tanzil text ([both](licenses/QuranTranscript-MIT-Tanzil.txt)) |

@@ -146,6 +146,41 @@ class CorrectionsTest {
     }
 
     @Test
+    fun `each word that was said is placed in what was recited, for playing it back`() {
+        /** The case as the app hears it: with when its last sound ended, which the cases' own times leave out. */
+        fun timed(heard: HeardScript) = HeardScript(heard.symbols, heard.sureness, heard.times + floatArrayOf((heard.times.lastOrNull() ?: 0f) + 0.1f))
+        var placed = 0
+        for (case in cases()) {
+            val heard = timed(case.heard)
+            val words = Corrections.of(Expected.recited(TajweedReference.verse(case.reference), heard.symbols), heard)
+            val end = heard.times.last()
+            var before = -1f
+            for (word in words) {
+                if (word.unsaid) {
+                    // Nothing of a word that wasn't said can be played.
+                    assertEquals(-1f, word.heardFrom, case.name)
+                    continue
+                }
+                // In the take, and not before the word before it (a reciter who goes back says a word again later on).
+                assertTrue(word.heardFrom >= 0f && word.heardUntil <= end + 0.001f && word.heardUntil >= word.heardFrom, "${case.name}: ${word.heardFrom}..${word.heardUntil} of $end")
+                assertTrue(word.heardFrom >= before - 0.001f, "${case.name}: a word begins before the one before it")
+                before = word.heardFrom
+                placed++
+            }
+            // Without a time for every sound and for the end, as the cases come, nothing is placed.
+            assertTrue(Corrections.of(Expected.recited(TajweedReference.verse(case.reference), case.heard.symbols), case.heard).all { it.heardFrom == -1f }, case.name)
+        }
+        assertTrue(placed > 2_000, "$placed words placed")
+        // Al-Fatihah's second verse: four words, one after another, the last ending where the recitation does.
+        val fatihah = cases().first { it.name.contains(" 1:2 as recited") }
+        val heard = timed(fatihah.heard)
+        val words = Corrections.of(Expected.recited(TajweedReference.verse(fatihah.reference), heard.symbols), heard)
+        assertEquals(4, words.size)
+        for (k in 1..3) assertEquals(words[k - 1].heardUntil, words[k].heardFrom, 0.001f)
+        assertEquals(heard.times.last(), words[3].heardUntil, 0.001f)
+    }
+
+    @Test
     fun `a word that was not said is told as not said, and judged for nothing`() {
         var tried = 0
         var blamed = 0

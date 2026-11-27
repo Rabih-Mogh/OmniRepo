@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
@@ -22,6 +23,7 @@ import androidx.core.content.ContextCompat
 import app.recitation.R
 import app.recitation.core.Corrections
 import app.recitation.core.Drill
+import app.recitation.core.Ending
 import app.recitation.core.Expected
 import app.recitation.core.Follower
 import app.recitation.core.Mel
@@ -46,8 +48,8 @@ import kotlinx.coroutines.withContext
 /**
  * Listens to the reader reciting to the phone and corrects them, all on the phone. Either
  * one verse it is told ([toggle]): the microphone is opened, the word being recited is
- * found as it goes, and when the reader is done the tajweed model listens and the
- * corrections are worked out. Or a surah, from wherever the reader begins ([follow]): the
+ * found as it goes, and when the reader is done (they fall silent, or press the button
+ * again) the tajweed model listens and the corrections are worked out. Or a surah, from wherever the reader begins ([follow]): the
  * verse and the word are found by what is heard, and each verse is gone over as the reader
  * goes on to the next (see [Follower]). The verses recited before keep what was heard of
  * them. It lives as long as the screen that made it, and lets go of the microphone with it.
@@ -76,6 +78,26 @@ class Reciter(private val context: Context, private val scope: CoroutineScope, p
 
     /** Asks the reader to allow the microphone; [allowed] is told the answer. Set by the screen. */
     var ask: () -> Unit = {}
+
+    // What was last recited for one verse, as the microphone took it, and which verse: for playing a word of it back.
+    private var take: FloatArray? = null
+    private var takeOf = 0
+    private val player = TakePlayer()
+
+    /** Whether [word], of the verse recited last, can be played back as the reader said it. */
+    fun canPlay(word: WordRecited): Boolean = take != null && takeOf == verse && word.heardFrom >= 0f && word.heardUntil > word.heardFrom
+
+    /** Plays [word] back as the reader said it, with a moment either side: they hear what the phone heard. */
+    fun play(word: WordRecited) {
+        val sound = take ?: return
+        if (canPlay(word)) player.play(sound, word.heardFrom - BEFORE_SECONDS, word.heardUntil + AFTER_SECONDS)
+    }
+
+    /** Lets go of what it holds for playing back: when its screen goes. */
+    fun release() {
+        player.stop()
+        take = null
+    }
 
     private var surah = 0
     private var only: Drill? = null
@@ -143,6 +165,7 @@ class Reciter(private val context: Context, private val scope: CoroutineScope, p
 
     /** Lets go of whatever it is at: for the screen moving to another verse. */
     fun rest() {
+        player.stop()
         job?.cancel()
         state = Reciting.Idle
         reached = -1
@@ -155,6 +178,8 @@ class Reciter(private val context: Context, private val scope: CoroutineScope, p
             this.surah = surah
         }
         job?.cancel()
+        player.stop()
+        take = null
         this.verse = verse
         heard.remove(verse)
         state = Reciting.Listening
@@ -186,11 +211,15 @@ class Reciter(private val context: Context, private val scope: CoroutineScope, p
                             if (at != null) reached = at
                         }
                     }
-                    // Until the reader says they are done, or the model has as much as it takes at once.
+                    // Until the reader is done, or the model has as much as it takes at once. The reader needn't say
+                    // so: they are done when they fall silent after reciting, sooner if the verse's last word has
+                    // been reached, and when no voice has come at all (see Ending).
+                    val ending = Ending()
                     Mic.sound().takeWhile { !done }.collect { block ->
                         blocks += block
                         samples += block.size
-                        if (samples >= LONGEST) done = true
+                        ending.add(block)
+                        if (samples >= LONGEST || ending.over(atEnd = forms != null && reached >= forms.size - 1, found = reached >= 0)) done = true
                     }
                     following.cancel()
                 }
@@ -215,6 +244,9 @@ class Reciter(private val context: Context, private val scope: CoroutineScope, p
                 Reciting.Failed(says.failed.format(e.message ?: e.javaClass.simpleName))
             }
             (state as? Reciting.Heard)?.let {
+                // Kept in memory until the next verse is recited, so a word of it can be played back.
+                take = sound
+                takeOf = verse
                 heard[verse] = it.words
                 // Kept for the exercises: what was corrected, and what has been put right.
                 Mistakes.get(context).note(surah, verse, it.words, only)
@@ -369,6 +401,7 @@ fun rememberReciter(): Reciter {
         failed = stringResource(R.string.recite_failed, "%s"),
     )
     val reciter = remember { Reciter(context, scope, says) }
+    DisposableEffect(reciter) { onDispose { reciter.release() } }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { reciter.allowed(it) }
     reciter.ask = { ask.launch(Manifest.permission.RECORD_AUDIO) }
     return reciter
@@ -460,6 +493,10 @@ private const val LONGEST = TajweedEar.LONGEST_SECONDS * Mel.SAMPLE_RATE
 
 /** How often, while the reader recites, the word they have reached is looked for. */
 private const val FOLLOW_EVERY_MS = 900L
+
+/** How much is played either side of a word played back, in seconds: enough to hear how it was come to and left. */
+private const val BEFORE_SECONDS = 0.15f
+private const val AFTER_SECONDS = 0.25f
 
 /** How often, between two looks, it is asked whether the reader is done. */
 private const val LOOK_STEP_MS = 100L

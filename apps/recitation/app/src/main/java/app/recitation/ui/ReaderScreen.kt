@@ -1501,9 +1501,16 @@ private fun WordTile(
                 },
                 tween(320), label = "meaning",
             )
+            // In Arabic letters (Arabic, Urdu, Persian) a meaning is set a little larger, for the signs on its
+            // letters; and one that is a whole sentence, as the Arabic ones can be, is given more room across.
+            val arabicLetters = word.meaning.firstOrNull { it.isLetter() }?.let { it in '\u0600'..'\u06FF' } == true
             Text(
-                word.meaning, Modifier.widthIn(max = 132.dp * textScale).padding(bottom = 4.dp), textAlign = TextAlign.Center,
-                style = TextStyle(fontSize = 12.sp * textScale, lineHeight = 15.sp * textScale, textDirection = TextDirection.Ltr),
+                word.meaning, Modifier.widthIn(max = (if (word.meaning.length > 48) 196.dp else 132.dp) * textScale).padding(bottom = 4.dp), textAlign = TextAlign.Center,
+                style = TextStyle(
+                    fontSize = (if (arabicLetters) 14.sp else 12.sp) * textScale, lineHeight = (if (arabicLetters) 22.sp else 15.sp) * textScale,
+                    // From the side its own language reads from, whatever the phone's.
+                    textDirection = TextDirection.Content,
+                ),
                 color = meaningInk,
             )
         }
