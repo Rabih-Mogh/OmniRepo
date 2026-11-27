@@ -490,14 +490,54 @@ What to expect of it, and what not:
 
 **The app teaches before it tests.** The Practise tab opens on the lessons: the ten rules
 in the order a learner meets them, each by its own name with the dot of its colour, and
-a tick on the ones learned. A lesson (`ui/Lessons.kt`) says when the rule comes (the
-letters that bring it about), how it is said (where the tongue and lips are, what goes
-through the nose, how many counts), and the slip most often made with it; shows words of
-the Quran that have it; and plays words from the reader's own recordings that have it,
-at a tap, so it is heard as a reciter does it. Only then comes **Practise it**, which
-opens the rule's exercise. A lesson counts as learned once its exercise goes well: three
-verses in four sound for the rule. A pair of letters has a lesson too (the two letters,
-where each is made, and how they differ), and so has stopping on a word.
+a tick on the ones learned. A lesson (`ui/Lessons.kt`) shows the rule in pictures; plays
+words from the reader's own recordings that have it, at a tap, so it is heard as a
+reciter does it; says when the rule comes (the letters that bring it about), how it is
+said (where the tongue and lips are, what goes through the nose, how many counts), and
+the slip most often made with it; and shows words of the Quran that have it, the letters
+it falls on in its colour. Only then comes **Practise it**, which opens the rule's
+exercise. A pair of letters has a lesson too (the two mouths side by side, where each
+letter is made, and how they differ), and so has stopping on a word.
+
+**What the count of rules learned counts.** "2 of 10 learned" counts exercises that went
+well, not lessons that were opened. A rule's exercise is eight verses that have the rule
+(fewer where the short surahs have fewer), recited one after another and judged for that
+rule alone. The rule is ticked once three goes in four are sound in one sitting: six of
+eight (`Drills.needed`). A go whose rule wasn't heard, and a verse passed over, are not
+sound. A verse may be recited again and counts as it last went. The tick comes the moment
+the sixth is sound and is kept from then on; until then the list shows the best the
+exercise has gone ("5/8"), and the exercise shows its goes as a row of dots with how many
+are sound of the number needed. The rule is said in a line under the count.
+
+**The pictures** (`ui/RulePictures.kt`) are drawn by the app, not stored:
+
+- **The mouth, from the side**, for the rules that are a matter of where: a nun and a mim
+  held through the nose (the tongue's tip on the gum, or the lips shut, the soft palate
+  down, and the way the sound takes out of the nose), the hidden nun beside the clear one
+  (the tip just off the gum), the nun turned to a mim, the five places the letters of
+  qalqalah shut the sound off; and for a pair of letters, the two mouths side by side,
+  with the place each is made and the back of the tongue raised for the heavy one.
+- **An example laid out in time**, for every rule: what is said, each sound as wide as it
+  is long, read from the right; under it what of that goes through the nose; under the
+  sound the rule is about, its counts; and over it, where the mushaf writes something
+  else than is said (a nun turned or merged), what it writes. A madd of four or five, or
+  of two, four or six, has the counts it may also be held for left open. Its button
+  sends a line across at a measured pace (0.45 s a count), so two counts and six are seen
+  for how long they are.
+- A lesson on a madd has **Count it with your voice**, which opens the counting of a madd
+  set to that madd's counts; Back returns to the lesson.
+
+These are schematic: they show where and how long, drawn from what the lessons say, and
+have not been looked over by a teacher of tajweed any more than the lessons' words have.
+
+**In Arabic or in English, whichever the phone is in** (`ui/Teaching.kt`). The lessons,
+the exercises and every correction can be turned to Arabic on a phone set to English,
+and to English on one set to Arabic: a switch in the top bar of a lesson, of an exercise
+and of reciting a verse, on the lessons' card on the Practise tab, and on the card of
+corrections on the page of a surah. It is one choice for all of them, kept from then on;
+the rest of the app stays in the phone's language. Inside what is taught the app's own
+strings of that language are used and the page is laid out from the side that language
+reads from.
 
 **It is taught in the voice of the reciter on the phone.** Wherever a recording that has
 been listened to has the words, they are played from it, a stretch at a time, apart from
@@ -516,8 +556,9 @@ the player the recitations go through (which is paused meanwhile):
 Where no recording has the words (none has been listened to yet, or not that surah), the
 lesson and the exercise are as they are without the voice.
 
-The teaching goes on inside the exercises. A verse that wasn't sound for its rule has how
-the rule is said under its verdict, there and then. Spotting the rule names the rule at
+The teaching goes on inside the exercises. Under the verse stands what to do, in a line,
+and the rule's example in time. A verse that wasn't sound for its rule has how the rule
+is said under its verdict, there and then. Spotting the rule names the rule at
 work in the word once it is answered and says what that rule is. Counting a madd has the
 length of every madd set out above the counting.
 
@@ -528,12 +569,30 @@ English and in Arabic, and has not been read over by a teacher of tajweed: it sh
 before it is relied on.
 
 The Practise tab has seven exercises on top of reciting a verse. Four of them are verses
-to recite one after another, each judged for one thing alone: the verse is heard and
-gone over as any verse is, and marked as ever, but the verdict at its head is about the
-exercise's topic and nothing else, and the exercise ends with how many of its verses
-were sound for it. The verses come from Al-Fatihah and the last part of the Quran
-(surahs 78 to 114), three to ten words long, chosen afresh each time
+to recite one after another, each judged for one thing alone, and the exercise ends with
+how many of its verses were sound for it. The verses come from Al-Fatihah and the last
+part of the Quran (surahs 78 to 114), three to ten words long, chosen afresh each time
 (`core/Drills.kt`): they are the ones most widely known by heart, and a breath or two each.
+
+**Only the exercise's own thing is judged, shown and kept** (`Drills.only`). The whole
+verse is heard, since the rule can't be found in it otherwise, but of what was heard only
+what the exercise is about is left:
+
+- Before the verse is recited, the letters the rule falls on are in the rule's colour
+  (`Drills.letters`: the rules as the page marks them, in the words where the checker
+  listens for the rule; for the natural madd, the ordinary long vowels too, which the
+  page gives no colour).
+- Afterwards, no other word is marked, no count of sound words is given, and nothing is
+  said of a madd in an exercise on the ghunnah. In place of that, each place of the rule
+  is told as it was heard (`Measure`, `ui/RuleResults`): a madd as beads, one a count,
+  filled as far as it was held ("1 of 4 counts"); a nasal sound as a bar, filled as far
+  as it was kept; an echo, a nun turned or merged, as heard or not. A place the model
+  wasn't sure of is shown as sound, as it is judged.
+- What is kept for **Your weak spots** is the exercise's thing alone: another mistake in
+  the verse is not counted against the reader, and one noted there earlier is not taken
+  as put right (`Mistakes.note(only)`).
+- A pair of letters and a stop are told word by word, as for any verse, but only for the
+  pair's letters, or for the word to stop on.
 
 A rule is judged only where its words were said. If none of the words that carry the
 exercise's rule were said (the verse was cut short before them, say), the verdict is

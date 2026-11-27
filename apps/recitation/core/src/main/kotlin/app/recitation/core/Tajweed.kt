@@ -216,6 +216,30 @@ object Tajweed {
         return stops
     }
 
+    /**
+     * The ordinary long vowels of each of [words] that are written with a letter of their
+     * own, under no sign: an alif after a fatha, a w after a damma, a y after a kasra. The
+     * page gives them no colour, since nothing is done to them; a lesson on the natural madd
+     * points at them. One at the end of a word that runs into a joining alif is not among
+     * them: there it is not held.
+     */
+    fun longVowels(words: List<String>, stops: BooleanArray): List<List<IntRange>> = words.mapIndexed { w, word ->
+        val units = Phonemizer.units(word).map { Unit(word, it) }
+        val stop = w == words.lastIndex || stops.getOrElse(w) { false }
+        val runsIntoJoining = !stop && words[w + 1].firstOrNull() == WASLA
+        units.indices.filter { k ->
+            val u = units[k]
+            val before = units.getOrNull(k - 1)
+            val long = before != null && u.bare && !u.unsounded && !u.drawnOut && !u.has(SOUNDED_AT_A_STOP) && u.smallAt < 0 && when (u.base) {
+                ALIF -> before.vowel == FATHA
+                'و' -> before.vowel == DAMMA
+                'ي', 'ى' -> before.vowel == KASRA
+                else -> false
+            }
+            long && !(runsIntoJoining && units.drop(k + 1).all { it.unsounded })
+        }.map { units[it].start until units[it].end }
+    }
+
     /** Where the doubled l of the name of Allah is in [word] ("Allah", "lillah", "Allahumma"), or -1. */
     private fun nameOfAllah(word: List<Unit>): Int {
         for (j in 1 until word.size - 1) {

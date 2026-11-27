@@ -21,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import app.recitation.R
 import app.recitation.core.Corrections
+import app.recitation.core.Drill
 import app.recitation.core.Expected
 import app.recitation.core.Follower
 import app.recitation.core.Mel
@@ -77,6 +78,7 @@ class Reciter(private val context: Context, private val scope: CoroutineScope, p
     var ask: () -> Unit = {}
 
     private var surah = 0
+    private var only: Drill? = null
     private var done = false
     private var job: Job? = null
     private var waiting: Pair<Int, Int>? = null
@@ -87,8 +89,11 @@ class Reciter(private val context: Context, private val scope: CoroutineScope, p
     /**
      * The microphone button of [verse] of [surah]: opens the microphone on it, or, with the
      * microphone open, says the reader is done. Asks for the microphone the first time.
+     * Recited for an exercise on one thing ([only]), only that thing is kept of what was
+     * corrected (see [Mistakes.note]).
      */
-    fun toggle(surah: Int, verse: Int) {
+    fun toggle(surah: Int, verse: Int, only: Drill? = null) {
+        this.only = only
         when {
             listening -> done = true
             state == Reciting.Checking -> {}
@@ -212,7 +217,7 @@ class Reciter(private val context: Context, private val scope: CoroutineScope, p
             (state as? Reciting.Heard)?.let {
                 heard[verse] = it.words
                 // Kept for the exercises: what was corrected, and what has been put right.
-                Mistakes.get(context).note(surah, verse, it.words)
+                Mistakes.get(context).note(surah, verse, it.words, only)
             }
         }
     }

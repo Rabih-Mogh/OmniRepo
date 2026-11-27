@@ -48,9 +48,20 @@ object Drills {
     /** The pairs of letters that are made close to each other and are the ones most often said for each other. */
     val PAIRS = listOf("صس", "ضد", "طت", "ظذ", "قك", "حه", "عء")
 
+    /** How many verses an exercise on a topic is made of. */
+    const val GOES = 8
+
+    /**
+     * How many goes of an exercise of [of] have to be sound for its lesson to count as
+     * learned: three in four, so six of eight.
+     */
+    fun needed(of: Int): Int = (of * 3 + 3) / 4
+
     /** The topic a correction falls under: what a reader who was given it should practise. Null for the rest. */
-    fun topicOf(correction: Correction): Topic? = when (correction.fault) {
-        Fault.MADD_SHORT, Fault.MADD_LONG, Fault.MADD_MISSING, Fault.MADD_UNEVEN -> topicOf(correction.madd)
+    fun topicOf(correction: Correction): Topic? = topicOf(correction.fault, correction.madd)
+
+    private fun topicOf(fault: Fault, madd: Madd?): Topic? = when (fault) {
+        Fault.MADD_SHORT, Fault.MADD_LONG, Fault.MADD_MISSING, Fault.MADD_UNEVEN -> topicOf(madd)
         Fault.MADD_ADDED -> Topic.MADD_NATURAL
         Fault.GHUNNAH_SHORT -> Topic.GHUNNAH
         Fault.IKHFA_CLEAR, Fault.IKHFA_SHORT -> Topic.IKHFA
@@ -90,7 +101,8 @@ object Drills {
         else -> Expected.breath(verse, 0, verse.size).awaited.filter { topicOf(it) == topic }.map { it.word }.distinct()
     }
 
-    private fun topicOf(awaited: Awaited): Topic? = when (awaited.kind) {
+    /** The topic a thing listened for falls under; null for a doubled letter, which no exercise is about. */
+    fun topicOf(awaited: Awaited): Topic? = when (awaited.kind) {
         Listened.MADD -> topicOf(awaited.madd)
         Listened.QALQALAH -> Topic.QALQALAH
         Listened.IKHFA -> Topic.IKHFA
@@ -98,6 +110,72 @@ object Drills {
         Listened.GHUNNAH -> Topic.GHUNNAH
         Listened.IDGHAM_GHUNNAH, Listened.IDGHAM -> Topic.IDGHAM
         Listened.SHADDA -> null
+    }
+
+    /** The rules of recitation, as the page of a surah marks them on a word's letters, that make up [topic]. */
+    fun rulesOf(topic: Topic): Set<Rule> = when (topic) {
+        Topic.GHUNNAH -> setOf(Rule.GHUNNAH)
+        Topic.IKHFA -> setOf(Rule.IKHFA, Rule.IKHFA_SHAFAWI)
+        Topic.IQLAB -> setOf(Rule.IQLAB)
+        Topic.IDGHAM -> setOf(Rule.IDGHAM_GHUNNAH, Rule.IDGHAM_BILA_GHUNNAH, Rule.IDGHAM_SHAFAWI)
+        Topic.QALQALAH -> setOf(Rule.QALQALAH)
+        Topic.MADD_NATURAL -> setOf(Rule.MADD_TABII, Rule.MADD_SILAH_SUGHRA, Rule.MADD_IWAD)
+        Topic.MADD_MUNFASIL -> setOf(Rule.MADD_MUNFASIL, Rule.MADD_SILAH_KUBRA)
+        Topic.MADD_MUTTASIL -> setOf(Rule.MADD_MUTTASIL)
+        Topic.MADD_LAZIM -> setOf(Rule.MADD_LAZIM)
+        Topic.MADD_ARID -> setOf(Rule.MADD_ARID, Rule.MADD_LIN)
+        Topic.STOP, Topic.LETTERS -> emptySet()
+    }
+
+    /**
+     * The letters of [words] (a verse, or a few words, as the mushaf writes them, recited in
+     * one breath) that [topic] is about: for each word, the stretches of it to point at. For
+     * letters, every one of [letters]; for a stop, the whole of the word [stopAfter].
+     * [stopped] says the reciter stops on the last of the words, as at the end of a verse;
+     * otherwise they are taken as recited on into whatever follows.
+     */
+    fun letters(words: List<String>, topic: Topic, letters: String = "", stopAfter: Int = -1, stopped: Boolean = true): List<List<IntRange>> = when (topic) {
+        Topic.STOP -> words.indices.map { w -> if (w == stopAfter) listOf(words[w].indices) else emptyList() }
+        Topic.LETTERS -> words.map { word ->
+            word.indices.filter { word[it] in letters }.map { at ->
+                // The letter with the signs written on it.
+                var end = at + 1
+                while (end < word.length && Character.getType(word[end]) == Character.NON_SPACING_MARK.toInt()) end++
+                at until end
+            }
+        }
+        else -> {
+            // Recited on, the last word is followed by another: any word that no rule joins it to.
+            val all = if (stopped) words else words + "وَ"
+            val stops = BooleanArray(all.size).also { if (it.isNotEmpty()) it[it.lastIndex] = true }
+            val marks = Tajweed.marks(all, stops)
+            val rules = rulesOf(topic)
+            val plain = if (topic == Topic.MADD_NATURAL) Tajweed.longVowels(all, stops) else null
+            words.indices.map { w ->
+                val ruled = marks[w].filter { it.rule in rules }.map { it.from until it.to }
+                // An ordinary long vowel is under no sign: it is told by its letters, where no other rule has it.
+                val more = plain?.get(w).orEmpty().filter { long -> marks[w].none { it.from <= long.last && long.first < it.to && it.rule.family != Family.HEAVY } }
+                (ruled + more).sortedBy { it.first }
+            }
+        }
+    }
+
+    /**
+     * [words] as an exercise on [drill]'s topic sees them: only what the exercise is about is
+     * left to correct in them, and only what it listens for. A word that wasn't said isn't
+     * among them: it is neither sound nor to go over. For a stop, the word to stop on keeps
+     * all that was corrected in it, since it has to sound as it does at a stop.
+     */
+    fun only(drill: Drill, words: List<WordRecited>): List<WordRecited> = words.filter { !it.unsaid }.map { word ->
+        val kept = when (drill.topic) {
+            Topic.STOP -> if (word.index == drill.stopAfter) word.corrections else emptyList()
+            Topic.LETTERS -> word.corrections.filter { c -> c.fault == Fault.LETTER && (c.wanted.any { it in drill.letters } || c.heard.any { it in drill.letters }) }
+            else -> word.corrections.filter { topicOf(it) == drill.topic }
+        }
+        val measures = word.measures.filter { topicOf(it.awaited) == drill.topic }
+            // Something else wrong at the same place (a doubled letter said once) is not this exercise's to tell.
+            .map { m -> if (m.fault == null || topicOf(m.fault, m.awaited.madd) == drill.topic) m else Measure(m.awaited, m.wanted, m.wanted, null) }
+        WordRecited(word.index, word.stopped, kept, if (drill.topic == Topic.STOP) word.madds else emptyList(), word.wanted, word.listened.filter { topicOf(it) == drill.topic }, measures)
     }
 
     /**

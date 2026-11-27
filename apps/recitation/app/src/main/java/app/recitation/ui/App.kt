@@ -94,7 +94,10 @@ fun App(model: AppModel, choices: Choices) {
     var explaining by remember { mutableStateOf<VerseRef?>(null) }
     val choosing = remember(model.chosen, choices.script) { Choosing(model.chosen + (Kind.SCRIPT to Pack.of(choices.script))) { picking = it } }
     val explain: (Int) -> Unit = { verse -> model.reading?.let { explaining = VerseRef(it.surah, verse) } }
-    CompositionLocalProvider(LocalSurahNames provides surahNames, LocalTajweedRules provides { rules = true }, LocalChoosing provides choosing, LocalExplain provides explain) {
+    val teaching = remember(model.teaching) { Teaching(model.teaching, model::teachIn) }
+    CompositionLocalProvider(
+        LocalSurahNames provides surahNames, LocalTajweedRules provides { rules = true }, LocalChoosing provides choosing, LocalExplain provides explain, LocalTeaching provides teaching,
+    ) {
         Screens(model, choices)
         AnimatedVisibility(rules, enter = fadeIn() + slideInVertically { it / 12 }, exit = fadeOut() + slideOutVertically { it / 12 }) {
             TajweedRulesPage(onBack = { rules = false })
@@ -250,7 +253,7 @@ private fun Screens(model: AppModel, choices: Choices) {
                     Exercise.entries.associateWith { Settings.voiceBest(context, it.name) },
                     onRecite = { choosing = true }, onExercise = { model.openExercise(it.ordinal) }, modifier = modifier,
                     tally = mistakes, canEcho = tracks.any { it.ready },
-                    onLesson = model::openLesson, onWeak = model::openWeak, onMadd = model::openMadd, onSpot = model::openSpot, onEcho = model::openEcho,
+                    onLesson = model::openLesson, onWeak = model::openWeak, onMadd = { model.openMadd() }, onSpot = model::openSpot, onEcho = model::openEcho,
                 )
                 if (choosing) SurahPicker(onPick = { choosing = false; model.openRecite(VerseRef(it, 1)) }, onDismiss = { choosing = false })
             },
@@ -336,8 +339,8 @@ private fun Screens(model: AppModel, choices: Choices) {
                 drills = screen.drills, verseOf = { model.verse(it) },
                 fetching = progress?.takeIf { it.trackId == null && (it.step == Step.TAJWEED || it.step == Step.ENGINE) }?.fraction,
                 onWant = { pressed -> model.wantTajweed(); if (pressed && model.paused) model.resume() }, onBack = { model.back() },
-                // A lesson is learned once its exercise goes well: three goes in four sound.
-                onDone = { sound, of -> screen.topic?.let { if (sound * 4 >= of * 3) model.mistakes.learned(it, screen.letters) } },
+                // How its exercise stands is kept: a lesson is learned once three goes in four are sound.
+                onScore = { sound, of -> screen.topic?.let { model.mistakes.scored(it, screen.letters, sound, of) } },
                 voiceOf = model::voiceOf,
             )
         }
@@ -346,11 +349,12 @@ private fun Screens(model: AppModel, choices: Choices) {
             LessonScreen(
                 screen.topic, screen.letters, screen.hears, learned = mistakes.learned(screen.topic, screen.letters),
                 onPractise = { model.openDrill(screen.topic, screen.letters) }, onBack = { model.back() },
+                onCount = { model.openMadd(screen.topic.countsToHold() ?: 4) },
             )
         }
-        Screen.Madd -> {
+        is Screen.Madd -> {
             LaunchedEffect(Unit) { playback.controller?.pause() }
-            MaddScreen(onBack = { model.back() }, hearOf = model::hearOf)
+            MaddScreen(onBack = { model.back() }, hearOf = model::hearOf, counts = screen.counts)
         }
         is Screen.Spots -> {
             // The words are played apart from the recitation, which is paused for them.

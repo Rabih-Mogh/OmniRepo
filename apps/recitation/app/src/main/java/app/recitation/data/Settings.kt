@@ -24,6 +24,11 @@ object Settings {
 
     fun setTuning(context: Context, tuning: String) = store(context).edit().putString("tuning", tuning).apply()
 
+    /** The language the lessons and corrections are in ("ar" or "en"), where the reader chose one for them; null to follow the app's. */
+    fun teaching(context: Context): String? = store(context).getString("teaching", null)
+
+    fun setTeaching(context: Context, language: String) = store(context).edit().putString("teaching", language).apply()
+
     /** Whether each word's meaning shows under it; [byDefault] until the user has chosen. */
     fun wordMeanings(context: Context, byDefault: Boolean): Boolean = store(context).getBoolean("word_meanings", byDefault)
 

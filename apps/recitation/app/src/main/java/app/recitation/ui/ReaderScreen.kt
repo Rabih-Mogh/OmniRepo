@@ -1097,7 +1097,7 @@ private fun VerseBlock(
             // Kept while it closes, so it doesn't empty first.
             var last by remember { mutableStateOf(chosen) }
             if (chosen != null) last = chosen
-            last?.let { CorrectionsCard(it, Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).testTag("corrections")) }
+            last?.let { CorrectionsCard(it, Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).testTag("corrections"), switch = true) }
         }
         // The verse's translation opens and closes softly rather than popping in.
         AnimatedVisibility(

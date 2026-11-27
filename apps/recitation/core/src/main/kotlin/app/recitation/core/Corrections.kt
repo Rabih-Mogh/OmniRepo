@@ -112,10 +112,22 @@ class Correction(
 class MaddHeard(val rule: Madd, val counts: Int)
 
 /**
+ * One thing listened for, as it was heard. For a madd, [heard] is the counts it was held
+ * for and [wanted] the counts it is due. For a nasal sound both are lengths as the
+ * phonetic script writes them, which are not counts: only how [heard] stands to [wanted]
+ * means anything. For what is there or isn't (an echo, a nun turned or merged), [heard] is
+ * 0 when it wasn't. [fault] is what there is to correct about it, null if nothing: then
+ * [heard] is [wanted], since a length the model wasn't sure of is not held against the
+ * reciter.
+ */
+class Measure(val awaited: Awaited, val heard: Int, val wanted: Int, val fault: Fault?)
+
+/**
  * A word as it was recited: which word of the verse ([index]), whether the reciter stopped
  * on it mid-verse ([stopped]), what to correct in it, and how long its madds were held.
- * [wanted] is how it should have sounded, and [listened] what was listened for in it. A
- * word that wasn't said has nothing listened for: it is told as not said, and nothing else.
+ * [wanted] is how it should have sounded, [listened] what was listened for in it, and
+ * [measures] how each of those was heard. A word that wasn't said has nothing listened
+ * for: it is told as not said, and nothing else.
  */
 class WordRecited(
     val index: Int,
@@ -124,6 +136,7 @@ class WordRecited(
     val madds: List<MaddHeard>,
     val wanted: String = "",
     val listened: List<Awaited> = emptyList(),
+    val measures: List<Measure> = emptyList(),
 ) {
     val sound: Boolean get() = corrections.isEmpty()
 
@@ -160,6 +173,9 @@ object Corrections {
     /** How many words either side of a word are looked at with it, to tell whether it was said. */
     private const val AROUND = 3
 
+    /** The most counts a sound is shown as having been held for: a madd is written with no more. */
+    private const val MOST_SHOWN = 8
+
     /** How many sounds either side of where a word wasn't said aren't judged sound by sound: how a word ends and begins goes by its neighbour. */
     private const val GAP = 2
 
@@ -186,7 +202,7 @@ object Corrections {
             } else {
                 // Stopped on, if a breath ended on it and it isn't the last word there is.
                 val word = said[j]
-                WordRecited(word.index, j++ in ends && k != expected.words - 1, word.corrections, word.madds, word.wanted, word.listened)
+                WordRecited(word.index, j++ in ends && k != expected.words - 1, word.corrections, word.madds, word.wanted, word.listened, word.measures)
             }
         }
     }
@@ -246,6 +262,7 @@ object Corrections {
         val notes = List(words) { ArrayList<Correction>() }
         val madds = List(words) { ArrayList<MaddHeard>() }
         val listened = List(words) { ArrayList<Awaited>() }
+        val measures = List(words) { ArrayList<Measure>() }
         val covered = BooleanArray(ref.length)
         // A word whose sounds are all but all missing was passed over: nothing is listened for in it.
         val passed = BooleanArray(words) { k ->
@@ -276,6 +293,10 @@ object Corrections {
             val hs = at[u.from]
             val he = at[u.until]
             fun add(correction: Correction) { if (!unsure(hs, he)) notes[u.word] += correction }
+            // How it was heard: the counts it was held for and is due, or whether it was there.
+            val before = notes[u.word].size
+            var held = 0
+            var due = max(1, u.counts)
             when (u.kind) {
                 Listened.MADD -> {
                     val rule = u.madd!!
@@ -290,15 +311,16 @@ object Corrections {
                         shown = if (counts >= SIX) 6 else 4
                     }
                     val near = rule.allowed.sorted().minBy { abs(it - n) }
+                    held = n
+                    due = near
                     seen.getOrPut(rule) { ArrayList() } += u.word to symbols
                     if (shown != 0 && rule != Madd.NATURAL) madds[u.word] += MaddHeard(rule, shown)
                     if (n == 0 && rule != Madd.LIN) {
+                        due = u.counts
                         add(Correction(Fault.MADD_MISSING, clear = true, madd = rule, wantedCounts = u.counts))
                     } else if (abs(n - near) > 1 && !unsure(hs, he)) {
-                        notes[u.word] += Correction(
-                            if (n > near) Fault.MADD_LONG else Fault.MADD_SHORT, clear = false, madd = rule,
-                            wantedCounts = if (u.counts in rule.allowed) u.counts else near, heardCounts = n,
-                        )
+                        due = if (u.counts in rule.allowed) u.counts else near
+                        notes[u.word] += Correction(if (n > near) Fault.MADD_LONG else Fault.MADD_SHORT, clear = false, madd = rule, wantedCounts = due, heardCounts = n)
                     }
                 }
                 Listened.QALQALAH -> if ('ڇ' !in slice(hs - 1, he + 1)) {
@@ -306,12 +328,14 @@ object Corrections {
                 }
                 Listened.IKHFA -> {
                     val n = run(got, hs, max(he, hs + 1), 'ں')[0]
+                    held = n
                     if (n == 0 && 'ن' in slice(hs, he + 1)) add(Correction(Fault.IKHFA_CLEAR, clear = false))
                     else if (n != 0 && n < u.counts - 1) add(Correction(Fault.IKHFA_SHORT, clear = false))
                 }
                 Listened.IQLAB -> if ('۾' !in slice(hs - 1, he + 1)) add(Correction(Fault.IQLAB_MISSED, clear = false))
                 Listened.GHUNNAH, Listened.IDGHAM_GHUNNAH -> {
                     val n = run(got, max(0, hs - 1), min(got.length, he + 1), u.symbol)[0]
+                    held = n
                     if (u.kind == Listened.IDGHAM_GHUNNAH && u.symbol != 'ن' && moreNun(u, hs, he)) {
                         add(Correction(Fault.IDGHAM_MISSED, clear = false, wanted = u.symbol.toString()))
                     } else if (n < u.counts) {
@@ -324,6 +348,10 @@ object Corrections {
                     else if (n == 1) add(Correction(Fault.SHADDA_MISSING, clear = true, wanted = u.symbol.toString()))
                 }
             }
+            val fault = notes[u.word].getOrNull(before)?.fault
+            // A nun said clearly where it should have gone into the next letter: nothing of the rule was heard.
+            if (fault == Fault.IDGHAM_MISSED || fault == Fault.IKHFA_CLEAR) held = 0
+            measures[u.word] += Measure(u, if (fault == null) due else min(held, MOST_SHOWN), due, fault)
         }
 
         // Whatever the rules didn't explain: other letters, other vowels, sounds dropped or added. Clear mistakes.
@@ -370,6 +398,7 @@ object Corrections {
             val a = expected.spans[2 * k]
             val z = expected.spans[2 * k + 1]
             notes[k].clear()
+            measures[k].clear()
             notes[k] += Correction(Fault.WORD_MISSING, clear = true, wanted = ref.substring(a, z), heard = got.substring(at[a], at[z]))
         }
 
@@ -385,7 +414,7 @@ object Corrections {
         }
 
         val stops = expected.ends.dropLast(1).toSet()
-        return List(words) { k -> WordRecited(expected.index[k], k in stops, notes[k], madds[k], ref.substring(expected.spans[2 * k], expected.spans[2 * k + 1]), listened[k]) }
+        return List(words) { k -> WordRecited(expected.index[k], k in stops, notes[k], madds[k], ref.substring(expected.spans[2 * k], expected.spans[2 * k + 1]), listened[k], measures[k]) }
     }
 
     /** For each place in the expected script, the place in the heard one that answers to it. */

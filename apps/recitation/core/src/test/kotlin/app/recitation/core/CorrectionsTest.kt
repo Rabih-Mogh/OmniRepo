@@ -110,6 +110,42 @@ class CorrectionsTest {
     private fun faults(word: WordRecited) = word.corrections.map { it.fault }
 
     @Test
+    fun `each thing listened for is told as it was heard, and what is corrected is what was measured`() {
+        var measured = 0
+        var faulted = 0
+        for (case in cases()) {
+            val words = Corrections.of(Expected.recited(TajweedReference.verse(case.reference), case.heard.symbols), case.heard)
+            for (word in words) {
+                // A word that wasn't said has nothing measured in it; one that was has every thing listened for measured.
+                if (word.unsaid) assertTrue(word.measures.isEmpty(), case.name)
+                assertEquals(word.listened.size, word.measures.size, case.name)
+                for (m in word.measures) {
+                    measured++
+                    if (m.fault == null) {
+                        // Nothing to correct: it is told as held for what it is due.
+                        assertEquals(m.wanted, m.heard, case.name)
+                    } else {
+                        faulted++
+                        assertTrue(word.corrections.any { it.fault == m.fault }, "${case.name}: ${m.fault} measured but not corrected")
+                        assertTrue(m.heard != m.wanted || m.awaited.kind != Listened.MADD, "${case.name}: a madd held as due is corrected")
+                    }
+                }
+                // And the other way: a correction about a rule's place is one of the things measured there.
+                for (c in word.corrections) {
+                    if (Drills.topicOf(c) == null || c.fault in setOf(Fault.LETTER, Fault.MADD_UNEVEN, Fault.MADD_ADDED)) continue
+                    assertTrue(word.measures.any { it.fault == c.fault }, "${case.name}: ${c.fault} corrected but not measured")
+                }
+            }
+        }
+        assertTrue(measured > 2_000 && faulted > 50, "$measured measured, $faulted of them to correct")
+        // Al-Fatihah's second verse as an expert recites it: the madd it ends on, held for one of its lengths.
+        val fatihah = cases().first { it.name.contains(" 1:2 as recited") }
+        val last = Corrections.of(Expected.recited(TajweedReference.verse(fatihah.reference), fatihah.heard.symbols), fatihah.heard).last()
+        val madd = last.measures.single { it.awaited.madd == Madd.ARID }
+        assertTrue(madd.fault == null && madd.heard in Madd.ARID.allowed, "held for ${madd.heard}")
+    }
+
+    @Test
     fun `a word that was not said is told as not said, and judged for nothing`() {
         var tried = 0
         var blamed = 0

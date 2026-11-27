@@ -68,6 +68,85 @@ class DrillsTest {
     }
 
     @Test
+    fun `an exercise sees of a recitation only what it is about`() {
+        val short = Correction(Fault.GHUNNAH_SHORT, clear = false, wanted = "ن")
+        val madd = Correction(Fault.MADD_SHORT, clear = false, madd = Madd.MUTTASIL, wantedCounts = 4, heardCounts = 2)
+        val vowel = Correction(Fault.VOWEL, clear = true, wanted = "َ", heard = "ِ")
+        val ghunnah = Awaited(0, 4, Listened.GHUNNAH, 1, 4, symbol = 'ن')
+        val held = Awaited(4, 8, Listened.MADD, 1, 4, Madd.MUTTASIL, 'ا')
+        val heard = listOf(
+            word(0, vowel),
+            WordRecited(1, false, listOf(short, madd), listOf(MaddHeard(Madd.MUTTASIL, 2)), "", listOf(ghunnah, held), listOf(Measure(ghunnah, 2, 4, Fault.GHUNNAH_SHORT), Measure(held, 2, 4, Fault.MADD_SHORT))),
+            unsaid(2),
+        )
+        // For the ghunnah: the other vowel and the madd are gone, and so is the word that wasn't said.
+        val seen = Drills.only(Drill(67, 2, Topic.GHUNNAH), heard)
+        assertEquals(listOf(0, 1), seen.map { it.index })
+        assertTrue(seen[0].sound)
+        assertEquals(listOf(Fault.GHUNNAH_SHORT), seen[1].corrections.map { it.fault })
+        assertEquals(listOf(Listened.GHUNNAH), seen[1].measures.map { it.awaited.kind })
+        assertTrue(seen[1].madds.isEmpty())
+        // For the madd, the ghunnah is gone.
+        val forMadd = Drills.only(Drill(67, 2, Topic.MADD_MUTTASIL), heard)
+        assertEquals(listOf(Fault.MADD_SHORT), forMadd[1].corrections.map { it.fault })
+        assertEquals(2, forMadd[1].measures.single().heard)
+        // For a rule that was sound, nothing is left to go over at all.
+        assertTrue(Drills.only(Drill(67, 2, Topic.QALQALAH), heard).all { it.sound && it.measures.isEmpty() })
+        // A doubled letter said once where a nun is merged is not the merging's to tell: its place reads as sound.
+        val merged = Awaited(0, 2, Listened.IDGHAM, 0, 2, symbol = 'ر')
+        val once = WordRecited(0, false, listOf(Correction(Fault.SHADDA_MISSING, clear = true, wanted = "ر")), emptyList(), "", listOf(merged), listOf(Measure(merged, 0, 2, Fault.SHADDA_MISSING)))
+        val idgham = Drills.only(Drill(2, 5, Topic.IDGHAM), listOf(once)).single()
+        assertTrue(idgham.sound && idgham.measures.single().fault == null)
+        // A stop keeps all that was corrected in the word to stop on, and nothing of the others.
+        val stop = Drills.only(Drill(2, 8, Topic.STOP, stopAfter = 1), heard)
+        assertTrue(stop[0].sound)
+        assertEquals(2, stop[1].corrections.size)
+    }
+
+    @Test
+    fun `the letters a topic falls on are the ones to colour`() {
+        fun coloured(words: String, topic: Topic, letters: String = "", stopped: Boolean = true) = words.split(' ').let { each ->
+            Drills.letters(each, topic, letters, stopped = stopped).mapIndexed { w, ranges -> ranges.joinToString("+") { each[w].substring(it.first, it.last + 1) } }
+        }
+        // The nun hidden before a ق, turned before a ب, merged into a ي (which is coloured with it) and into a ر.
+        assertEquals(listOf("ن", ""), coloured("مِن قَبْلِ", Topic.IKHFA))
+        assertEquals(listOf("ن"), coloured("أَنتُمْ", Topic.IKHFA))
+        assertEquals(listOf("ً", ""), coloured("عَلِيمًا قَدِيرًا", Topic.IKHFA))
+        assertEquals(listOf("نۢ", ""), coloured("مِنۢ بَعْدِ", Topic.IQLAB))
+        assertEquals(listOf("ن", "يَ"), coloured("مَن يَقُولُ", Topic.IDGHAM))
+        assertEquals(listOf("ن", ""), coloured("مِن رَّبِّهِمْ", Topic.IDGHAM))
+        assertEquals(listOf("نَّ"), coloured("إِنَّ", Topic.GHUNNAH))
+        // The echo, in the middle of a word and on the word stopped on.
+        assertEquals(listOf("", "دْ"), coloured("لَمْ يَلِدْ", Topic.QALQALAH))
+        assertEquals(listOf("قِ"), coloured("ٱلْفَلَقِ", Topic.QALQALAH))
+        assertEquals(listOf(""), coloured("ٱلْفَلَقِ", Topic.QALQALAH, stopped = false))
+        // An ordinary long vowel is under no sign, and is told by its letters.
+        assertEquals(listOf("ا"), coloured("قَالَ", Topic.MADD_NATURAL, stopped = false))
+        assertEquals(listOf("و", "ا"), coloured("يَقُولُ يَا", Topic.MADD_NATURAL, stopped = false))
+        // Before the last letter of the word stopped on it is the madd of the stop, not the natural one.
+        assertEquals(listOf("ي"), coloured("نَسْتَعِينُ", Topic.MADD_ARID))
+        assertEquals(listOf(""), coloured("نَسْتَعِينُ", Topic.MADD_NATURAL))
+        // Recited on, the same vowel is a natural madd again.
+        assertEquals(listOf("ي"), coloured("نَسْتَعِينُ", Topic.MADD_NATURAL, stopped = false))
+        assertEquals(listOf("آ", ""), coloured("بِمَآ أُنزِلَ", Topic.MADD_MUNFASIL))
+        assertEquals(listOf("آ"), coloured("جَآءَ", Topic.MADD_MUTTASIL))
+        // A letter of a pair with its signs; the whole word for a stop.
+        assertEquals(listOf("صِّ"), coloured("ٱلصِّرَٰطَ", Topic.LETTERS, "صس"))
+        assertEquals(listOf(listOf("قَالَ".indices), emptyList()), Drills.letters(listOf("قَالَ", "لَا"), Topic.STOP, stopAfter = 0))
+        // Every topic of a rule names the rules it is made of, and no rule is under two topics.
+        val all = Topic.entries.flatMap { Drills.rulesOf(it) }
+        assertEquals(all.size, all.toSet().size)
+    }
+
+    @Test
+    fun `three goes in four make a lesson learned`() {
+        assertEquals(6, Drills.needed(Drills.GOES))
+        assertEquals(3, Drills.needed(4))
+        assertEquals(3, Drills.needed(3))
+        assertEquals(1, Drills.needed(1))
+    }
+
+    @Test
     fun `letters are judged by the pair being practised`() {
         val drill = Drill(1, 6, Topic.LETTERS, letters = "صس")
         val said = Correction(Fault.LETTER, clear = true, wanted = "ص", heard = "س")

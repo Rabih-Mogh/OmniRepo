@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +41,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.recitation.R
@@ -86,19 +90,32 @@ private val PAIR_WORDS = listOf(
 @Composable
 fun Topic.ink(): Color? = rule()?.let { LocalTajweed.current.ink(it.family) }
 
+/** The counts to aim for when a madd is counted aloud from its lesson; null for what isn't a madd. */
+fun Topic.countsToHold(): Int? = when (this) {
+    Topic.MADD_NATURAL -> 2
+    Topic.MADD_MUNFASIL, Topic.MADD_MUTTASIL, Topic.MADD_ARID -> 4
+    Topic.MADD_LAZIM -> 6
+    else -> null
+}
+
 /**
- * A lesson: the rule by name with its colour; words from the reader's own recordings that
- * show it, to hear it in their reciter's voice before anything is said about it
- * ([hears]); then when it comes, how it is said, the slip most often made, and words of
- * the Quran that show it. At its foot, the way to practising it.
- * [learned] is whether an exercise on it has gone well already.
+ * A lesson: the rule by name with its colour; the rule in pictures (the mouth as it is
+ * made, and an example laid out in time: see [RulePicture]); words from the reader's own
+ * recordings that show it, to hear it in their reciter's voice ([hears]); then when it
+ * comes, how it is said, the slip most often made, and words of the Quran that show it,
+ * the letters it falls on in its colour. At its foot, the way to practising it; a madd can
+ * be counted aloud first ([onCount]). [learned] is whether an exercise on it has gone well
+ * already. It is in the language chosen for teaching (see [Taught]), which its top bar
+ * changes.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun LessonContent(topic: Topic, letters: String, hears: List<Hear>, learned: Boolean, onHear: (Hear) -> Unit, onPractise: () -> Unit, onBack: () -> Unit) {
+fun LessonContent(topic: Topic, letters: String, hears: List<Hear>, learned: Boolean, onHear: (Hear) -> Unit, onPractise: () -> Unit, onBack: () -> Unit, onCount: (() -> Unit)? = null) = Taught {
     val colors = MaterialTheme.colorScheme
     val arabic = LocalConfiguration.current.locales[0].language == "ar"
     val lesson = lessonOf(topic, letters)
     val rule: Rule? = topic.rule()
+    val ink = topic.ink() ?: colors.primary
     Column(Modifier.fillMaxSize()) {
         Banner {
             Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -108,28 +125,30 @@ fun LessonContent(topic: Topic, letters: String, hears: List<Hear>, learned: Boo
                     // Under the name in Latin letters, the rule's own name.
                     if (!arabic && rule != null) Text(rule.named().arabic, style = MaterialTheme.typography.bodySmall, color = LocalBanner.current.quiet, maxLines = 1)
                 }
-                if (learned) Icon(AppIcons.Check, stringResource(R.string.lesson_learned), Modifier.padding(end = 12.dp).size(22.dp))
+                if (learned) Icon(AppIcons.Check, stringResource(R.string.lesson_learned), Modifier.padding(end = 10.dp).size(22.dp))
+                TeachSwitch(Modifier.padding(end = 10.dp))
             }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp).testTag("lesson"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             // The rule by its own name, in the colour it has on the page.
             if (rule != null) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    topic.ink()?.let { Box(Modifier.size(14.dp).background(it, CircleShape)) }
-                    Text(rule.named().arabic, fontFamily = QuranFont, fontSize = 26.sp, lineHeight = 44.sp, color = topic.ink() ?: colors.primary)
+                    Box(Modifier.size(14.dp).background(ink, CircleShape))
+                    Text(rule.named().arabic, fontFamily = QuranFont, fontSize = 26.sp, lineHeight = 44.sp, color = ink)
                 }
+            }
+            // First, the rule in pictures: how the mouth makes it, and how long it lasts.
+            if (hasPicture(topic, letters)) {
+                Text(stringResource(R.string.lesson_see), Modifier.semantics { heading() }, style = MaterialTheme.typography.labelLarge, color = colors.primary)
+                RulePicture(topic, letters, ink)
+                if (onCount != null && topic.countsToHold() != null) ThemeButton(stringResource(R.string.lesson_count_it), onCount, Modifier.testTag("lesson-count"), icon = AppIcons.Steady)
             }
             if (topic == Topic.LETTERS) {
-                // The two letters, large, and where each is made.
+                // Where each of the two is made.
                 val tips = stringArrayResource(R.array.letter_tips)
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally)) {
-                        for (letter in letters) Text(letter.toString(), fontFamily = QuranFont, fontSize = 64.sp, lineHeight = 96.sp, color = colors.primary)
-                    }
-                }
                 for (letter in letters) TIP_LETTERS.indexOf(letter).takeIf { it >= 0 }?.let { Text(tips[it], style = MaterialTheme.typography.bodyLarge) }
             }
-            // First, how it sounds: words from the reader's own recordings that show it, in their
+            // Then how it sounds: words from the reader's own recordings that show it, in their
             // reciter's voice, each played at a tap. Nothing is played until one is tapped.
             Text(stringResource(R.string.lesson_hear), Modifier.semantics { heading() }, style = MaterialTheme.typography.labelLarge, color = colors.primary)
             if (hears.isEmpty()) {
@@ -143,7 +162,7 @@ fun LessonContent(topic: Topic, letters: String, hears: List<Hear>, learned: Boo
                     ) {
                         Icon(AppIcons.Sound, null, Modifier.size(22.dp), tint = colors.primary)
                         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                            Text(hear.words, Modifier.weight(1f), fontFamily = QuranFont, fontSize = 26.sp, lineHeight = 54.sp, color = colors.onSurface)
+                            FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) { Shown(hear.words, topic, letters, ink, 26.sp, 54.sp) }
                         }
                     }
                 }
@@ -151,16 +170,36 @@ fun LessonContent(topic: Topic, letters: String, hears: List<Hear>, learned: Boo
             lesson.whenItComes?.let { Part(stringResource(R.string.lesson_when), stringResource(it)) }
             Part(stringResource(if (topic == Topic.LETTERS) R.string.lesson_differ else R.string.lesson_how), stringResource(lesson.how))
             lesson.slip?.let { Part(stringResource(R.string.lesson_slip), stringResource(it), mark = colors.error) }
-            // Words of the Quran that show it, from the right whatever the phone's language.
+            // Words of the Quran that show it, from the right whatever the phone's language, the letters it falls on in its colour.
             Text(stringResource(R.string.lesson_examples), Modifier.semantics { heading() }, style = MaterialTheme.typography.labelLarge, color = colors.primary)
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                Text(lesson.examples, Modifier.fillMaxWidth(), fontFamily = QuranFont, fontSize = 28.sp, lineHeight = 58.sp, color = colors.onSurface)
+                FlowRow(Modifier.fillMaxWidth().testTag("lesson-examples"), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for ((i, example) in lesson.examples.split(" · ").withIndex()) {
+                        if (i > 0) Text("·", fontFamily = QuranFont, fontSize = 28.sp, lineHeight = 58.sp, color = colors.outline)
+                        Shown(example, topic, letters, ink, 28.sp, 58.sp)
+                    }
+                }
             }
         }
         Box(Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars).padding(12.dp)) {
             ThemeButton(stringResource(R.string.lesson_practise), onPractise, Modifier.fillMaxWidth().testTag("lesson-practise"), icon = AppIcons.Mic, filled = true)
         }
     }
+}
+
+/**
+ * A few words of the Quran ([words], with spaces between) that show [topic], each as a
+ * piece of a row, the letters the topic falls on in [ink]. Words that show a stop are
+ * left as they are: there the whole word is the point.
+ */
+@Composable
+private fun Shown(words: String, topic: Topic, letters: String, ink: Color, fontSize: TextUnit, lineHeight: TextUnit) {
+    val each = words.split(' ').filter { it.isNotEmpty() }
+    val ranges = remember(words, topic, letters) {
+        // A natural madd is shown recited on: stopped on, a long vowel before the last letter is another madd.
+        if (topic == Topic.STOP) emptyList() else runCatching { Drills.letters(each, topic, letters, stopped = topic != Topic.MADD_NATURAL) }.getOrDefault(emptyList())
+    }
+    for ((w, word) in each.withIndex()) RuledWord(word, ranges.getOrNull(w).orEmpty(), ink, fontSize = fontSize, lineHeight = lineHeight)
 }
 
 /** A part of a lesson: its heading and what it says. */
@@ -174,7 +213,7 @@ private fun Part(heading: String, text: String, mark: Color = MaterialTheme.colo
 
 /** A lesson, with its words played from the reader's recordings: each when it is tapped, and none before. */
 @Composable
-fun LessonScreen(topic: Topic, letters: String, hears: List<Hear>, learned: Boolean, onPractise: () -> Unit, onBack: () -> Unit) {
+fun LessonScreen(topic: Topic, letters: String, hears: List<Hear>, learned: Boolean, onPractise: () -> Unit, onBack: () -> Unit, onCount: () -> Unit = {}) {
     val clip = rememberClip()
-    LessonContent(topic, letters, hears, learned, onHear = { clip.play(it.sound, it.fromMs, it.untilMs) }, onPractise = onPractise, onBack = onBack)
+    LessonContent(topic, letters, hears, learned, onHear = { clip.play(it.sound, it.fromMs, it.untilMs) }, onPractise = onPractise, onBack = onBack, onCount = onCount)
 }

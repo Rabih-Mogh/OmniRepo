@@ -90,8 +90,8 @@ sealed interface Screen {
     /** The lesson on [topic] (for letters, on the pair [letters]), with words of the reader's recordings to hear it in. */
     data class Lesson(val topic: Topic, val letters: String, val hears: List<Hear>) : Screen
 
-    /** Counting a madd as it is held. */
-    data object Madd : Screen
+    /** Counting a madd as it is held, aiming for [counts] to begin with. [from] is where Back goes. */
+    data class Madd(val counts: Int = 4, val from: Screen = Home) : Screen
 
     /** Spotting the rule at work in a word. */
     data class Spots(val spots: List<Spot>) : Screen
@@ -306,6 +306,15 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     /** What the reader has been corrected on, for the exercises that go over it. */
     val mistakes = Mistakes.get(app)
 
+    /** The language the lessons and corrections are in, where the reader chose one for them ("ar" or "en"); null to follow the app's. */
+    var teaching by mutableStateOf(Settings.teaching(app))
+        private set
+
+    fun teachIn(language: String) {
+        teaching = language
+        Settings.setTeaching(getApplication(), language)
+    }
+
     // The verses the exercises choose among, as a correct recitation of each sounds: read once.
     private var pool: Map<Int, List<List<WordForms>>>? = null
 
@@ -424,8 +433,9 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         screen = Screen.Drills(null, "", mistakes.tally.value.open.take(GOES))
     }
 
-    fun openMadd() {
-        screen = Screen.Madd
+    /** Opens the counting of a madd, aiming for [counts]; from a lesson, Back returns to it. */
+    fun openMadd(counts: Int = 4) {
+        screen = Screen.Madd(counts, (screen as? Screen.Lesson) ?: Screen.Home)
     }
 
     /** Opens spotting the rule, with words chosen afresh from the short surahs that are on the phone. */
@@ -690,7 +700,8 @@ class AppModel(app: Application) : AndroidViewModel(app) {
             is Screen.Collection -> Screen.Home
             is Screen.Surah -> s.from
             is Screen.Recite -> s.from
-            is Screen.Drills, is Screen.Lesson, Screen.Madd, is Screen.Spots, is Screen.Echoes -> Screen.Home
+            is Screen.Madd -> s.from
+            is Screen.Drills, is Screen.Lesson, is Screen.Spots, is Screen.Echoes -> Screen.Home
             is Screen.Voice -> Screen.Home
         }
         return true

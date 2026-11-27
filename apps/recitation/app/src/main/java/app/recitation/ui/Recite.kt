@@ -22,6 +22,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -94,10 +95,17 @@ sealed interface Reciting {
  * isn't being fetched already.
  *
  * An exercise uses it too, a verse at a time: with its own [title] and [subtitle] in the
- * top bar, its own word on what to do ([how]), its own judgement over the general one
- * ([verdict]), a mark on the word to stop on ([stopAfter], counted from 0), and its own
- * say over whether there is a verse before and after ([canPrevious], [canNext]). Where a
- * reciter's recording has the verse, [onHear] plays it: the verse is heard before it is recited.
+ * top bar, its own word on what to do ([how], or a picture of it: [guide]), its own
+ * judgement over the general one ([verdict]), a mark on the word to stop on ([stopAfter],
+ * counted from 0), and its own say over whether there is a verse before and after
+ * ([canPrevious], [canNext]). Where a reciter's recording has the verse, [onHear] plays
+ * it: the verse is heard before it is recited. An exercise on one rule has the letters
+ * the rule falls on in the rule's colour ([focus], for each word the stretches of it, in
+ * [focusInk]), stands how far it has got over the verse ([top]), and judges that rule
+ * alone: it leaves out the count of sound words ([summary]) and, where it tells what was
+ * heard in its own way, what there is to go over word by word ([card]).
+ *
+ * It is in the language chosen for teaching (see [Taught]), which its top bar changes.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -121,7 +129,13 @@ fun ReciteContent(
     canPrevious: Boolean = verseNumber > 1,
     canNext: Boolean = verseNumber < surah.verses,
     onHear: (() -> Unit)? = null,
-) {
+    focus: List<List<IntRange>> = emptyList(),
+    focusInk: Color? = null,
+    top: (@Composable () -> Unit)? = null,
+    guide: (@Composable () -> Unit)? = null,
+    summary: Boolean = true,
+    card: Boolean = true,
+) = Taught {
     val colors = MaterialTheme.colorScheme
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     // A word said twice (the reciter went back) is judged by the last time it was said.
@@ -138,9 +152,11 @@ fun ReciteContent(
                     Text(subtitle ?: stringResource(R.string.recite_verse, surahName(surah), verseNumber), style = MaterialTheme.typography.bodySmall, color = LocalBanner.current.quiet, maxLines = 1)
                 }
                 DoingChip()
+                TeachSwitch(Modifier.padding(horizontal = 10.dp))
             }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            top?.invoke()
             // The verse, from the right whatever the phone's language.
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                 FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -157,15 +173,16 @@ fun ReciteContent(
                             reciting && i > reached -> colors.outline
                             else -> colors.onSurface
                         }
-                        Text(
-                            word.arabic,
+                        // In an exercise on a rule, the letters the rule falls on are in its colour.
+                        RuledWord(
+                            word.arabic, focus.getOrNull(i).orEmpty(), focusInk ?: colors.primary,
                             (if (marked) {
                                 Modifier.clip(RoundedCornerShape(10.dp)).background(ink.copy(alpha = if (i == chosen) 0.22f else 0.1f))
                                     .clickable(role = Role.Button) { chosen = i }
                             } else if (reciting && i == reached) {
                                 Modifier.background(colors.primary.copy(alpha = 0.2f)).testTag("reciting-word")
                             } else Modifier).padding(horizontal = 6.dp),
-                            fontFamily = QuranFont, fontSize = 30.sp, lineHeight = 62.sp, color = ink,
+                            color = ink,
                         )
                         // Where an exercise asks for a stop: the sign for pausing, after the word to stop on.
                         if (i == stopAfter) {
@@ -176,7 +193,7 @@ fun ReciteContent(
             }
             when (state) {
                 Reciting.Idle -> {
-                    Text(how ?: stringResource(R.string.recite_how), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                    if (guide != null) guide() else Text(how ?: stringResource(R.string.recite_how), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                     // How it should go, in the reciter's own voice.
                     if (onHear != null) ThemeButton(stringResource(R.string.echo_play), onHear, Modifier.testTag("hear-reciter"), icon = AppIcons.Sound)
                 }
@@ -192,17 +209,20 @@ fun ReciteContent(
                 is Reciting.Heard -> {
                     verdict?.invoke()
                     val sound = byWord.values.count { it.sound }
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(if (sound == byWord.size) AppIcons.Check else AppIcons.Ear, null, Modifier.size(20.dp), tint = colors.primary)
-                        Text(
-                            if (sound == byWord.size) stringResource(R.string.recite_all_sound) else stringResource(R.string.recite_sound_words, sound, byWord.size),
-                            style = MaterialTheme.typography.titleMedium,
-                        )
+                    if (summary) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(if (sound == byWord.size) AppIcons.Check else AppIcons.Ear, null, Modifier.size(20.dp), tint = colors.primary)
+                            Text(
+                                if (sound == byWord.size) stringResource(R.string.recite_all_sound) else stringResource(R.string.recite_sound_words, sound, byWord.size),
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                        }
                     }
                     val picked = byWord[chosen]?.takeIf { !it.sound }
-                    if (picked != null) CorrectionsCard(picked) else if (sound != byWord.size) {
+                    if (picked != null && card) CorrectionsCard(picked) else if (sound != byWord.size && card) {
                         Text(stringResource(R.string.recite_tap), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                     }
+                    guide?.invoke()
                 }
             }
             if (needsModel && state !is Reciting.Fetching) {
@@ -265,10 +285,11 @@ internal fun WordRecited.colour(): Color? {
  * What to go over in one word: each correction with its kind, what was heard, and how to
  * put it right; then its madds as they were held. A point of tajweed is headed by its
  * family of rules, with the dot of its colour as in the legend: tapping that opens the
- * page that sets the rules out.
+ * page that sets the rules out. It is in the language chosen for teaching (see [Taught]);
+ * where it stands by itself on a page, [switch] gives it the way to change that.
  */
 @Composable
-internal fun CorrectionsCard(word: WordRecited, modifier: Modifier = Modifier) {
+internal fun CorrectionsCard(word: WordRecited, modifier: Modifier = Modifier, switch: Boolean = false) = Taught {
     val colors = MaterialTheme.colorScheme
     val amber = LocalHighlight.current
     val tajweed = LocalTajweed.current
@@ -277,6 +298,7 @@ internal fun CorrectionsCard(word: WordRecited, modifier: Modifier = Modifier) {
     val madds = stringArrayResource(R.array.madd_names)
     Card(modifier, colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLow)) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (switch) CompositionLocalProvider(LocalContentColor provides colors.onSurfaceVariant) { TeachSwitch(Modifier.align(Alignment.End)) }
             for (correction in word.corrections) {
                 val (title, how) = said(correction)
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -317,7 +339,7 @@ internal const val TIP_LETTERS = "ءهعحغخقكجشيضلنرطدتصزسظذ
 
 /** A correction in words: what is wrong, and how to put it right. */
 @Composable
-private fun said(c: Correction): Pair<String, String> {
+internal fun said(c: Correction): Pair<String, String> {
     val madds = stringArrayResource(R.array.madd_names)
     val tips = stringArrayResource(R.array.letter_tips)
     val name = c.madd?.let { madds[it.ordinal] }.orEmpty()

@@ -86,6 +86,49 @@ class MistakesTest {
     }
 
     @Test
+    fun aVerseRecitedForOneRuleIsNotedForThatRuleAlone() {
+        val mistakes = Mistakes(file())
+        // 78:5 recited freely: its madd and its ghunnah are both to go over.
+        mistakes.note(78, 5, listOf(word(0, madd), word(1, ghunnah)))
+        // Recited again in an exercise on the ghunnah, with the ghunnah sound and another madd held short:
+        // the ghunnah is off the list; the madd is neither counted again nor taken as put right.
+        mistakes.note(78, 5, listOf(word(0, madd), word(1)), only = Drill(78, 5, Topic.GHUNNAH))
+        var tally = mistakes.tally.value
+        assertEquals(listOf(Drill(78, 5, Topic.MADD_MUTTASIL)), tally.open)
+        assertEquals(mapOf(Topic.MADD_MUTTASIL to 1, Topic.GHUNNAH to 1), tally.counts)
+        // And in an exercise on the ghunnah where the ghunnah is cut short, only that is noted.
+        mistakes.note(78, 6, listOf(word(0, madd), word(1, ghunnah)), only = Drill(78, 6, Topic.GHUNNAH))
+        tally = mistakes.tally.value
+        assertEquals(listOf(Drill(78, 6, Topic.GHUNNAH), Drill(78, 5, Topic.MADD_MUTTASIL)), tally.open)
+        assertEquals(mapOf(Topic.MADD_MUTTASIL to 1, Topic.GHUNNAH to 2), tally.counts)
+    }
+
+    @Test
+    fun aLessonIsLearnedOnceThreeGoesInFourOfItsExerciseAreSound() {
+        val mistakes = Mistakes(file())
+        // Five of eight: not yet. The best so far is kept.
+        mistakes.scored(Topic.IKHFA, "", 5, 8)
+        assertEquals(false, mistakes.tally.value.learned(Topic.IKHFA))
+        assertEquals(5 to 8, mistakes.tally.value.best(Topic.IKHFA))
+        // A worse go doesn't take it away.
+        mistakes.scored(Topic.IKHFA, "", 2, 8)
+        assertEquals(5 to 8, mistakes.tally.value.best(Topic.IKHFA))
+        // Six of eight: learned, and it stays learned and is there next time.
+        mistakes.scored(Topic.IKHFA, "", 6, 8)
+        mistakes.scored(Topic.IKHFA, "", 1, 8)
+        val again = Mistakes(file()).tally.value
+        assertEquals(true, again.learned(Topic.IKHFA))
+        assertEquals(6 to 8, again.best(Topic.IKHFA))
+        // A rule with few verses to practise on: three of three.
+        mistakes.scored(Topic.MADD_LAZIM, "", 2, 3)
+        assertEquals(false, mistakes.tally.value.learned(Topic.MADD_LAZIM))
+        mistakes.scored(Topic.MADD_LAZIM, "", 3, 3)
+        assertEquals(true, mistakes.tally.value.learned(Topic.MADD_LAZIM))
+        // Nothing recited yet is no score at all.
+        assertEquals(null, mistakes.tally.value.best(Topic.QALQALAH))
+    }
+
+    @Test
     fun itIsStillThereNextTime() {
         Mistakes(file()).note(78, 2, listOf(word(1, ghunnah)))
         val again = Mistakes(file()).tally.value
