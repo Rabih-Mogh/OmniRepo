@@ -218,6 +218,10 @@ at the bottom of the main screen.
   the update downloads either way.
 - If Android needs your yes to install and the app isn't on screen by then, a notification
   says the update is downloaded. Open the app and tap **Install**; nothing is fetched again.
+- If Android's install prompt is closed without an answer, the app notices when you come
+  back to it and offers the downloaded update again with **Install**.
+- It looks for a newer build again each time you come back to it, at most every ten
+  minutes. A build newer than the one the pop-up was closed on brings the pop-up back.
 - A download that stops halfway (no signal, the app closed) carries on from where it
   stopped on the next try. A finished download isn't fetched again if the install is put off.
 - The download sits in the app's cache until it is installed and is deleted right after.
