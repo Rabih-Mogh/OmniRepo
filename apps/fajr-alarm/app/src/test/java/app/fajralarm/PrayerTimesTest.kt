@@ -397,6 +397,7 @@ class PrayerTimesTest {
                 rows(small).first().findViewById<TextView>(R.id.row_time).textSize,
                 it.findViewById<TextView>(R.id.row_countdown).textSize,
             )
+            assertTrue("on a filled pill", it.findViewById<ImageView>(R.id.row_left_frame).drawable != null)
             val row = it.findViewById<View>(R.id.row_left).parent as ViewGroup
             assertTrue("after the name, not beside it", row.indexOfChild(it.findViewById(R.id.row_left)) > row.indexOfChild(it.findViewById(R.id.row_name)))
         }
@@ -551,7 +552,7 @@ class PrayerTimesTest {
             assertEquals("$theme background", palette.backgroundAlpha, view.findViewById<ImageView>(R.id.widget_background).imageAlpha)
             val gold = rows(view).single { it.gold() }
             assertEquals("$theme gold row", palette.onGold.light, gold.nameColor())
-            assertEquals("$theme gold row countdown", palette.onGold.light, gold.color(R.id.row_countdown))
+            assertEquals("$theme time left, on its pill", palette.highlight.light, gold.color(R.id.row_countdown))
             assertTrue(gold.counts())
             assertEquals("$theme passed", palette.passed.light, rows(view).first().nameColor())
             assertEquals("$theme to come", palette.text.light, rows(view).single { it.name() == "Maghrib" }.nameColor())
@@ -584,6 +585,9 @@ class PrayerTimesTest {
         assertEquals(0xFF8AB4F8.toInt(), own.color(R.id.widget_headline))
         assertEquals(102, own.findViewById<ImageView>(R.id.widget_background).imageAlpha)
         assertEquals("dark text on a pale highlight", 0xFF1A2340.toInt(), rows(own).single { it.gold() }.nameColor())
+        val clear = times(state, 300, 200, mine.copy(widgetColors = mine.widgetColors.copy(backgroundOpacity = 0)))
+        assertEquals("no background at all", 0, clear.findViewById<ImageView>(R.id.widget_background).imageAlpha)
+        picture("widget-theme-transparent", times(now(), 300, 200, beirut.copy(widgetTheme = WidgetTheme.CUSTOM, widgetColors = WidgetColors(backgroundOpacity = 0))), 300, 200)
         val dark = times(state, 300, 200, mine.copy(widgetColors = mine.widgetColors.copy(highlight = 0x4A1F2A)))
         assertEquals("white text on a dark one", 0xFFFFFFFF.toInt(), rows(dark).single { it.gold() }.nameColor())
         picture("widget-theme-custom-green", times(now(), 300, 200, mine), 300, 200)

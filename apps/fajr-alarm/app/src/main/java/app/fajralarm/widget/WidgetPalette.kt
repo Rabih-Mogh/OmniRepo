@@ -103,6 +103,18 @@ internal class WidgetPalette(
             WidgetTheme.CUSTOM -> custom(settings.widgetColors)
         }
 
+        /** The three colours and the background's strength in use now: the ones to start your own from. */
+        fun colorsOf(settings: AlarmSettings): WidgetColors {
+            if (settings.widgetTheme == WidgetTheme.CUSTOM) return settings.widgetColors
+            val theme = of(settings)
+            return WidgetColors(
+                background = theme.background.light and 0xFFFFFF,
+                backgroundOpacity = Math.round(theme.backgroundAlpha * 100 / 255f),
+                text = theme.text.light and 0xFFFFFF,
+                highlight = theme.highlight.light and 0xFFFFFF,
+            )
+        }
+
         /**
          * A theme from the three colours you picked. The quieter shades are the text
          * colour mixed towards the background, and what sits on the highlight is dark

@@ -17,12 +17,14 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.fajralarm.core.AlarmSettings
 import app.fajralarm.core.DismissMission
+import app.fajralarm.core.WidgetTheme
 import app.fajralarm.data.SettingsStore
 import app.fajralarm.data.StopReason
 import app.fajralarm.ui.AlarmActivity
 import app.fajralarm.ui.MainActivity
 import app.fajralarm.ui.SinkSetupActivity
 import com.github.takahirom.roborazzi.captureScreenRoboImage
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -145,6 +147,35 @@ class LanguageTest {
             compose.onNodeWithText("Current prayer on the lock screen").assertIsDisplayed()
             compose.onNodeWithText("Add the “All times” widget").assertIsDisplayed()
             compose.onNodeWithText("Frost: white with blue").assertIsDisplayed()
+            // Each of the widget's colours is picked from a palette, starting from the theme in use.
+            compose.onNodeWithText("Highlight: the current prayer").performScrollTo().performClick()
+            compose.waitForIdle()
+            compose.onNodeWithContentDescription("#000000").performClick()
+            compose.waitForIdle()
+            SettingsStore(context).load().let {
+                assertEquals(WidgetTheme.CUSTOM, it.widgetTheme)
+                assertEquals("the picked colour", 0x000000, it.widgetColors.highlight)
+                assertEquals("the rest is the theme it started from", 0xFFFFFF, it.widgetColors.background)
+                assertEquals(0x0B2A6F, it.widgetColors.text)
+            }
+            compose.onNodeWithText("Your own colours").assertIsDisplayed()
+            // The background can also be none at all; a colour picked after that brings it back.
+            compose.onNodeWithText("Background").performScrollTo().performClick()
+            compose.waitForIdle()
+            compose.onNodeWithText("Transparent: no background").performClick()
+            compose.waitForIdle()
+            assertEquals(0, SettingsStore(context).load().widgetColors.backgroundOpacity)
+            compose.onNodeWithText("Background strength: 0%").assertIsDisplayed()
+            compose.onNodeWithText("Background").performScrollTo().performClick()
+            compose.waitForIdle()
+            compose.onNodeWithContentDescription("#000000").performClick()
+            compose.waitForIdle()
+            SettingsStore(context).load().widgetColors.let {
+                assertEquals(0x000000, it.background)
+                assertEquals(90, it.backgroundOpacity)
+            }
+            compose.onNodeWithText("Background").performScrollTo().performClick()
+            compose.waitForIdle()
         }
     }
 

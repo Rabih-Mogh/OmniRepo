@@ -297,7 +297,7 @@
     <string name="menu">القائمة</string>
     <string name="tab_prayers">الصلوات</string>
     <string name="tab_fajr_alarm">منبّه الفجر</string>
-    <!-- Main screen: Moon. %1$d a percentage or a day number, %1$s a phase and %2$s a date -->
+    <!-- Main screen: Moon. moon_lit: a percentage. moon_day: the day of the cycle and how many it has. moon_picture: a phase -->
     <string name="section_moon">القمر</string>
     <string name="moon_new">محاق</string>
     <string name="moon_waxing_crescent">هلال متزايد</string>
@@ -308,7 +308,7 @@
     <string name="moon_last_quarter">تربيع أخير</string>
     <string name="moon_waning_crescent">هلال متناقص</string>
     <string name="moon_lit">مضاء %1$d%%</string>
-    <string name="moon_day">اليوم %1$d منذ المحاق</string>
+    <string name="moon_day">اليوم %1$d من %2$d</string>
     <string name="moon_picture">القمر: %1$s</string>
     <string name="time_left">بقي %1$s</string>
     <string name="starts_in">بعد %1$s</string>
@@ -373,6 +373,7 @@
     <string name="widget_theme_custom">ألوانك الخاصة</string>
     <!-- Your own widget colours. %1$d a percentage -->
     <string name="widget_color_background">الخلفية</string>
+    <string name="widget_color_transparent">شفّاف: بلا خلفية</string>
     <string name="widget_color_opacity">قوة الخلفية: %1$d%%</string>
     <string name="widget_color_text">النص</string>
     <string name="widget_color_highlight">التمييز: الصلاة الحالية</string>

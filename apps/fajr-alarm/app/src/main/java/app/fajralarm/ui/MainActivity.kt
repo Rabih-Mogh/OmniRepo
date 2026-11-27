@@ -22,9 +22,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -117,7 +115,6 @@ import app.fajralarm.core.AsrEnd
 import app.fajralarm.core.AsrRule
 import app.fajralarm.core.IshaEnd
 import app.fajralarm.core.LockScreenCountdown
-import app.fajralarm.core.WidgetColors
 import app.fajralarm.core.WidgetTheme
 import app.fajralarm.core.CalculationMethod
 import app.fajralarm.core.DismissMission
@@ -663,8 +660,9 @@ private fun SettingsScreen() {
                             label = { stringResource(it.label) },
                             stacked = true,
                         ) { update(settings.copy(widgetTheme = it)) }
-                        if (settings.widgetTheme == WidgetTheme.CUSTOM) {
-                            WidgetColorPicker(settings.widgetColors) { update(settings.copy(widgetColors = it)) }
+                        // Any of its colours can be picked from a palette; doing so makes the theme your own.
+                        WidgetColorsEditor(settings) { colors ->
+                            update(settings.copy(widgetTheme = WidgetTheme.CUSTOM, widgetColors = colors))
                         }
                         // Which times the widgets' table lists.
                         Text(
@@ -975,51 +973,6 @@ private fun FoldArrow(open: Boolean) {
         tint = MaterialTheme.colorScheme.primary,
         modifier = Modifier.size(20.dp),
     )
-}
-
-/** The colours offered for a widget of your own, as 0xRRGGBB. */
-private val WIDGET_SWATCHES = listOf(
-    0x000000, 0x17223F, 0x0B2A6F, 0x2F3B52, 0x1F3D2B, 0x4A1F2A, 0xFFFFFF, 0xFBF8F1,
-    0xFFD27A, 0xF2994A, 0xE6B3C9, 0x1B5FE0, 0x8AB4F8, 0x7FD1C7, 0x6EDB6E,
-)
-
-/** Picks the three colours of your own widget theme and how solid its background is. */
-@Composable
-private fun WidgetColorPicker(colors: WidgetColors, onChange: (WidgetColors) -> Unit) {
-    SwatchRow(stringResource(R.string.widget_color_background), colors.background) { onChange(colors.copy(background = it)) }
-    var opacity by remember(colors.backgroundOpacity) { mutableIntStateOf(colors.backgroundOpacity) }
-    Text(stringResource(R.string.widget_color_opacity, opacity), style = MaterialTheme.typography.labelLarge)
-    Slider(
-        value = opacity.toFloat(),
-        onValueChange = { opacity = (it / 5f).roundToInt() * 5 },
-        onValueChangeFinished = { onChange(colors.copy(backgroundOpacity = opacity)) },
-        valueRange = 0f..100f,
-    )
-    SwatchRow(stringResource(R.string.widget_color_text), colors.text) { onChange(colors.copy(text = it)) }
-    SwatchRow(stringResource(R.string.widget_color_highlight), colors.highlight) { onChange(colors.copy(highlight = it)) }
-}
-
-@Composable
-private fun SwatchRow(title: String, selected: Int, onSelect: (Int) -> Unit) {
-    Text(title, style = MaterialTheme.typography.labelLarge)
-    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        WIDGET_SWATCHES.forEach { rgb ->
-            val name = "$title #%06X".format(Locale.US, rgb).leftToRight()
-            Box(
-                Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF000000 or rgb.toLong()))
-                    .border(
-                        width = if (rgb == selected) 3.dp else 1.dp,
-                        color = if (rgb == selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                        shape = CircleShape,
-                    )
-                    .selectable(selected = rgb == selected, role = Role.RadioButton) { onSelect(rgb) }
-                    .semantics { contentDescription = name },
-            )
-        }
-    }
 }
 
 @Composable

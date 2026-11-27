@@ -207,9 +207,10 @@ object PrayerWidgets {
                 },
                 countdown = true,
                 roomy = size.width >= if (oneColumn) ROOMY_ONE_COLUMN else ROOMY_TWO_COLUMNS,
+                // Two columns stay at the smaller size, or the framed time left would crowd the prayer's name.
                 textSp = when {
                     footer -> 14f
-                    oneColumn || size.height >= NEXT_LINE_HEIGHT -> 13f
+                    oneColumn -> 13f
                     else -> 12f
                 },
             )
@@ -338,7 +339,7 @@ object PrayerWidgets {
      * columns they read down the first and then down the second. In one column there is
      * room for what the phone does at each time, and for when each prayer ends.
      * Each prayer has its icon before its name, pink for a voluntary one. With
-     * [countdown] the gold row has the time left at its right, behind an hourglass:
+     * [countdown] the gold row has the time left at its right, on a filled pill behind an hourglass:
      * to the prayer's end, or to its start where the gold row is the next prayer.
      * Unless the row is [roomy] that takes the place of its clock time.
      */
@@ -419,8 +420,12 @@ object PrayerWidgets {
                     setCountdown(R.id.row_countdown, until)
                     // As big as the clock times it sits among.
                     setTextViewTextSize(R.id.row_countdown, TypedValue.COMPLEX_UNIT_SP, textSp)
-                    paint(context, R.id.row_left_icon, TINT, palette.onGold)
-                    paint(context, R.id.row_countdown, TEXT, palette.onGold)
+                    // On a pill filled with the colour of the row's text, and itself in the row's own colour.
+                    paint(context, R.id.row_left_frame, TINT, palette.onGold)
+                    // In a tight row of two columns the pill alone marks it: the hourglass would cost the name its room.
+                    setViewVisibility(R.id.row_left_icon, if (roomy || oneColumn) View.VISIBLE else View.GONE)
+                    paint(context, R.id.row_left_icon, TINT, palette.highlight)
+                    paint(context, R.id.row_countdown, TEXT, palette.highlight)
                 }
             }
             addView(if (index < firstColumn) R.id.table_start else R.id.table_end, cell)

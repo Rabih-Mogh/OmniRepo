@@ -28,33 +28,55 @@
         android:textColor="@color/widget_text"
         android:textSize="12sp" />
 
-    <!-- On the current prayer's row: the time it has left, at the right behind an hourglass. -->
-    <LinearLayout
+    <!-- On the current prayer's row: the time it has left, at the right, behind an hourglass on a filled pill. -->
+    <RelativeLayout
         android:id="@+id/row_left"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
         android:visibility="gone">
 
+        <!-- The filled pill behind it, in the colour of the row's text; the time left is then in the row's own colour.
+             It takes its size from the words it sits behind. -->
         <ImageView
-            android:id="@+id/row_left_icon"
-            android:layout_width="13dp"
-            android:layout_height="13dp"
-            android:importantForAccessibility="no"
-            android:src="@drawable/ic_hourglass" />
-
-        <Chronometer
-            android:id="@+id/row_countdown"
+            android:id="@+id/row_left_frame"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="1dp"
-            android:includeFontPadding="false"
-            android:maxLines="1"
-            android:textColor="@color/widget_on_gold"
-            android:textSize="12sp"
-            android:textStyle="bold" />
-    </LinearLayout>
+            android:layout_alignBottom="@+id/row_left_content"
+            android:layout_alignEnd="@+id/row_left_content"
+            android:layout_alignStart="@+id/row_left_content"
+            android:layout_alignTop="@+id/row_left_content"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY"
+            android:src="@drawable/widget_chip" />
+
+        <LinearLayout
+            android:id="@+id/row_left_content"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="4dp"
+            android:paddingVertical="1dp">
+
+            <ImageView
+                android:id="@+id/row_left_icon"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_hourglass" />
+
+            <Chronometer
+                android:id="@+id/row_countdown"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="1dp"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:textColor="@color/widget_on_gold"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </RelativeLayout>
 
     <ImageView
         android:id="@+id/row_bell"
