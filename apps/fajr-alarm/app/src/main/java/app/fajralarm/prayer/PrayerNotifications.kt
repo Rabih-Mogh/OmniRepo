@@ -9,6 +9,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import app.fajralarm.FajrAlarmApp
 import app.fajralarm.R
+import app.fajralarm.core.AlarmSettings
 import app.fajralarm.core.AlertSound
 import app.fajralarm.core.PrayerMoment
 import app.fajralarm.core.PrayerNow
@@ -27,16 +28,24 @@ object PrayerNotifications {
     private const val REQ_OPEN = 22
     private const val REQ_ALERT_SCREEN = 25
 
-    /** A time has stayed up this long with nobody looking: take the notification down. */
-    private const val ALERT_TIMEOUT_MS = 60 * 60_000L
+    /** A notification posted late still stays up at least this long. */
+    private const val ALERT_SHORTEST_MS = 60_000L
 
     /**
      * A notification that [moment] has arrived, heard the way [sound] says: the phone's
      * notification sound, a vibration, or neither. With [fullScreen] it also opens
      * [PrayerAlertActivity] over a locked or sleeping phone; on a phone in use Android
-     * shows it as a banner instead.
+     * shows it as a banner instead. Either way the notification stays in the shade until
+     * it is cleared, or until [keepMinutes] after the time itself.
      */
-    fun alert(context: Context, moment: PrayerMoment, fullScreen: Boolean = false, sound: AlertSound = AlertSound.SOUND) {
+    fun alert(
+        context: Context,
+        moment: PrayerMoment,
+        fullScreen: Boolean = false,
+        sound: AlertSound = AlertSound.SOUND,
+        keepMinutes: Int = AlarmSettings.DEFAULT_ALERT_KEEP_MINUTES,
+    ) {
+        val leaves = moment.at.toInstant().toEpochMilli() + keepMinutes * 60_000L
         val screen = PendingIntent.getActivity(
             context, REQ_ALERT_SCREEN,
             PrayerAlertActivity.intent(context, moment),
@@ -58,15 +67,12 @@ object PrayerNotifications {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setWhen(moment.at.toInstant().toEpochMilli())
             .setAutoCancel(true)
-            .setTimeoutAfter(ALERT_TIMEOUT_MS)
+            .setTimeoutAfter((leaves - System.currentTimeMillis()).coerceAtLeast(ALERT_SHORTEST_MS))
             .setContentIntent(if (fullScreen) screen else openApp(context))
             .apply { if (fullScreen) setFullScreenIntent(screen, true) }
             .build()
         post(context, ALERT_ID, n)
     }
-
-    /** Takes the arriving-time notification down, once its full-screen alert has been answered. */
-    fun dismissAlert(context: Context) = NotificationManagerCompat.from(context).cancel(ALERT_ID)
 
     /**
      * Shows the current prayer and counts down the time it has left, silently and for as

@@ -60,6 +60,7 @@ class SettingsStore(context: Context) {
                         ),
                     )
                 },
+            alertKeepMinutes = prefs.getInt(K_ALERT_KEEP, d.alertKeepMinutes),
             lockScreenCountdown = enumOr(
                 prefs.getString(K_LOCK_NOTICE, null),
                 // Earlier versions stored it as an on/off switch.
@@ -117,6 +118,7 @@ class SettingsStore(context: Context) {
             }
             remove(K_FULL_SCREEN_ALERTS)
             remove(K_ALERT_SOUND)
+            putInt(K_ALERT_KEEP, s.alertKeepMinutes)
             putStringSet(K_WIDGET_TIMES, s.widgetTimes.map { it.name }.toSet())
             putString(K_LOCK_NOTICE, s.lockScreenCountdown.name)
             remove(K_LOCK_SCREEN)
@@ -228,6 +230,7 @@ class SettingsStore(context: Context) {
         const val K_ALERT_FULL = "alert_full_" // + the time's name
         const val K_ALERT_SOUND_OF = "alert_sound_" // + the time's name
         const val K_WIDGET_TIMES = "widget_times"
+        const val K_ALERT_KEEP = "alert_keep_minutes"
         const val K_AWAITED = "awaited_prayer"
         const val K_AWAITED_AT = "awaited_prayer_at"
         const val K_NEXT_AT = "next_alarm_at"

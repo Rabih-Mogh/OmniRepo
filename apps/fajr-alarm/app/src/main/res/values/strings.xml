@@ -302,12 +302,13 @@
     <string name="duration_hours_minutes">%1$d h %2$d min</string>
     <string name="duration_minutes">%1$d min</string>
     <string name="alert_at">Notify at %1$s</string>
-    <string name="alerts_hint">Tap the icon beside a time to choose what the phone does when it arrives: nothing, a notification or a full-screen notice, and with a sound, a vibration or silently. The full-screen notice is black with the clock time, over the lock screen too; on a phone in use it is a banner. None of this is the alarm: Fajr has the alarm.</string>
+    <string name="alerts_hint">Tap the icon beside a time to choose what the phone does when it arrives: nothing, a notification, or a notification with a full-screen notice, and with a sound, a vibration or silently. The full-screen notice is black with the clock time, over the lock screen too; on a phone in use only the notification shows, as a banner. The notification stays until you clear it, or for the time set under the list. None of this is the alarm: Fajr has the alarm.</string>
     <!-- What the phone does at a time, chosen from the icon beside it -->
     <string name="alert_none">Nothing</string>
-    <string name="alert_notification">Notification</string>
-    <string name="alert_full_screen">Full-screen notice</string>
+    <string name="alert_notification">Notification only</string>
+    <string name="alert_full_screen">Notification + full-screen notice</string>
     <string name="alert_alarm">The alarm rings</string>
+    <string name="alert_keep">Keep a notification for</string>
     <string name="optional_times_hint">Duha starts 15 minutes after sunrise. Midnight and the last third of the night are measured from sunset to the next Fajr.</string>
     <!-- The icon before each prayer in the list: what kind of prayer it is, read out by a screen reader -->
     <string name="mark_obligatory">Obligatory</string>

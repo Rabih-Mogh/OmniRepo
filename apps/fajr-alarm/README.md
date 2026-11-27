@@ -91,12 +91,12 @@ The prayer stays the current one until its time is really over: the countdown ru
 | A bell | A notification with the phone's notification sound |
 | A phone with lines either side | Vibration only |
 | A bell in outline | Silent: it only shows |
-| Four corners, before one of the three above | A full-screen notice instead of a plain notification |
-| An alarm clock, on Fajr | The alarm rings (while it is on); Fajr has no notice of its own |
+| Four corners, before one of the three above | A full-screen notice as well as the notification |
+| An alarm clock, on Fajr | The alarm rings (while it is on); Fajr has no notice of its own. Before it, the mission that turns the alarm off: a calculator for the sum, a drop of water for the sink |
 
-Each time has its own setting. The menu has two groups, **Notification** or **Full-screen notice**, and **Sound**, **Vibration only** or **Silent**, and stays open so both can be set in one go; **Nothing** turns the time off. None of it is the alarm: nothing rings on the alarm stream, there is no mission, and the notification goes away on its own after an hour. One that would be more than 10 minutes late (the phone was off) is skipped.
+These icons are in the app only; the widgets don't show them. Each time has its own setting. The menu has two groups, **Notification only** or **Notification + full-screen notice**, and **Sound**, **Vibration only** or **Silent**, and stays open so both can be set in one go; **Nothing** turns the time off. None of it is the alarm: nothing rings on the alarm stream and there is no mission. The notification stays in the shade until it is cleared, or until 30 minutes after the time itself; **Keep a notification for**, under the list, changes that. One that would be more than 10 minutes late (the phone was off) is skipped.
 
-**Full-screen notice.** It opens over the whole screen, lock screen included. The screen is black with a few pale marks, like a phone's always-on clock: the prayer's icon and name, its clock time large and thin, the date, and an **OK** button. On a phone that is unlocked and in use Android shows a banner instead. It needs the same "full-screen" permission as the alarm, which the warnings at the top ask for.
+**Full-screen notice.** It comes with the notification, never instead of it, and opens over the whole screen, lock screen included. The screen is black with a few pale marks, like a phone's always-on clock: the prayer's icon and name, its clock time large and thin, the date, and an **OK** button, which closes the screen and leaves the notification where it is. On a phone that is unlocked and in use Android shows only the notification, as a banner. It needs the same "full-screen" permission as the alarm, which the warnings at the top ask for.
 
 Android fixes a notification category's sound when the category is first made, so sound, vibration and silence each have a category of their own under the phone's settings for the app. Which sound plays is set there, under **Prayer time notifications**.
 
@@ -112,7 +112,7 @@ Both show more when you make them bigger (touch and hold the widget, then drag i
 |---|---|
 | 110 dp tall | The table in two columns, read down the first and then the second, with each time's start. Clock times are shown without AM/PM to fit |
 | 170 dp tall | Also a countdown to the next prayer, when the current one ends before it starts: Fajr, which ends at sunrise, or an end chosen in the settings |
-| 250 dp tall | The table in one column, each prayer with its start and end as "4:52 – 6:20", and beside each time the icon of what the phone does when it arrives |
+| 250 dp tall | The table in one column, each prayer with its start and end as "4:52 – 6:20" |
 | 250 dp tall and 340 dp wide | The same with AM/PM: "4:52 AM – 6:20 AM" |
 | 330 dp tall | Also a bottom line with the next alarm |
 

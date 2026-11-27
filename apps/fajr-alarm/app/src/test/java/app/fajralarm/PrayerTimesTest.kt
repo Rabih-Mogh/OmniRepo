@@ -35,6 +35,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.fajralarm.core.AlarmSettings
 import app.fajralarm.core.AlertSound
 import app.fajralarm.core.AsrEnd
+import app.fajralarm.core.DismissMission
 import app.fajralarm.core.IshaEnd
 import app.fajralarm.core.LockScreenCountdown
 import app.fajralarm.core.PrayerAlert
@@ -131,6 +132,7 @@ class PrayerTimesTest {
             // Fajr has the alarm, not a notice of its own: its icon says the alarm rings.
             compose.onNodeWithContentDescription("Notify at Fajr").assertDoesNotExist()
             compose.onNodeWithContentDescription("The alarm rings").assertIsDisplayed()
+            compose.onNodeWithContentDescription("Solve a sum").assertDoesNotExist()
 
             // The icon beside a time opens the choice of what the phone does when it arrives.
             fun choose(what: String) {
@@ -141,24 +143,25 @@ class PrayerTimesTest {
             dhuhr.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Nothing"))
             dhuhr.performScrollTo().performClick()
             compose.waitForIdle()
-            listOf("Nothing", "Notification", "Full-screen notice", "Sound", "Vibration only", "Silent").forEach {
+            listOf("Nothing", "Notification only", "Notification + full-screen notice", "Sound", "Vibration only", "Silent").forEach {
                 compose.onNodeWithText(it).assertIsDisplayed()
             }
-            choose("Notification")
+            choose("Notification only")
             assertEquals(mapOf(PrayerTime.DHUHR to PrayerAlert(fullScreen = false, sound = AlertSound.SOUND)), store.load().alerts)
             // The menu stays open, so the sound and the kind of notice are set in one go.
             choose("Vibration only")
-            choose("Full-screen notice")
+            choose("Notification + full-screen notice")
             assertEquals(mapOf(PrayerTime.DHUHR to PrayerAlert(fullScreen = true, sound = AlertSound.VIBRATE)), store.load().alerts)
-            dhuhr.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Full-screen notice, Vibration only"))
+            dhuhr.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Notification + full-screen notice, Vibration only"))
             captureScreenRoboImage("build/screens/en-alert-menu.png")
             choose("Nothing")
             assertEquals(emptyMap<PrayerTime, PrayerAlert>(), store.load().alerts)
             compose.onNodeWithText("Vibration only").assertDoesNotExist()
 
-            // A few set, for the picture.
+            // A few set, for the picture, and a mission for the alarm: its icon goes beside the alarm clock on Fajr's row.
             store.save(
                 beirut.copy(
+                    dismissMission = DismissMission.SINK_PHOTO,
                     alerts = mapOf(
                         PrayerTime.DHUHR to PrayerAlert(),
                         PrayerTime.ASR to PrayerAlert(sound = AlertSound.VIBRATE),
@@ -170,6 +173,8 @@ class PrayerTimesTest {
         }
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.waitForIdle()
+            compose.onNodeWithContentDescription("Find a sink").assertIsDisplayed()
+            compose.onNodeWithContentDescription("The alarm rings").assertIsDisplayed()
             captureScreenRoboImage("build/screens/en-prayers.png")
         }
     }
@@ -292,7 +297,16 @@ class PrayerTimesTest {
         )
         arrive(PrayerAlert(fullScreen = true))
 
-        // The screen names the prayer and its time, and answering it takes the notification down too.
+        // How long it stays is a setting: ten minutes here, counted from the time itself, which came a second ago.
+        store.save(store.load().copy(alerts = mapOf(PrayerTime.ASR to PrayerAlert(fullScreen = true)), alertKeepMinutes = 10))
+        store.awaitedPrayer = PrayerTime.ASR to System.currentTimeMillis() - 1_000
+        PrayerTicker.refresh(app)
+        assertTrue(notifications.single { it.fullScreenIntent != null }.timeoutAfter in 9 * 60_000L..10 * 60_000L)
+        assertEquals(10, store.load().alertKeepMinutes)
+        assertEquals("half an hour unless changed", 30, AlarmSettings().alertKeepMinutes)
+        arrive(PrayerAlert(fullScreen = true))
+
+        // The screen names the prayer and its time; answering it closes the screen and leaves the notification.
         ActivityScenario.launch<PrayerAlertActivity>(screen).use { scenario ->
             compose.waitForIdle()
             compose.onNodeWithText("Asr").assertIsDisplayed()
@@ -300,8 +314,10 @@ class PrayerTimesTest {
             captureScreenRoboImage("build/screens/en-prayer-alert.png")
             compose.onNodeWithText("OK").performClick()
             compose.waitForIdle()
-            assertTrue(notifications.none { it.fullScreenIntent != null })
             scenario.onActivity { assertTrue(it.isFinishing) }
+            // OK closes the screen only: the notification stays behind it, for half an hour from the time itself.
+            val kept = notifications.single { it.fullScreenIntent != null }
+            assertTrue("leaves after ${kept.timeoutAfter} ms", kept.timeoutAfter in 29 * 60_000L..30 * 60_000L)
         }
     }
 
@@ -460,13 +476,14 @@ class PrayerTimesTest {
         assertEquals("Fajr ends at sunrise", ranges.getValue("Shuruq"), ranges.getValue("Fajr").substringAfter(" – "))
         assertEquals("Maghrib starts when Asr... ends: Isha starts when Maghrib ends", ranges.getValue("Isha").substringBefore(" – "), ranges.getValue("Maghrib").substringAfter(" – "))
         assertEquals("Qiyam ends at Fajr, as Isha does", ranges.getValue("Isha").substringAfter(" – "), ranges.getValue("Qiyam").substringAfter(" – "))
-        // Beside each time that does something, the icon of what: a bell, a shaking phone, or the four corners of the screen.
-        assertEquals(
-            mapOf("Duha" to "ic_alert_vibrate", "Dhuhr" to "ic_alert_sound", "Midnight" to "ic_alert_screen"),
-            rows(tall).filter { it.findViewById<View>(R.id.row_bell).visibility == View.VISIBLE }.associate {
-                it.name() to app.resources.getResourceEntryName(shadowOf(it.findViewById<ImageView>(R.id.row_bell).drawable).createdFromResId)
-            },
-        )
+        // What the phone does at each time is shown in the app only: the widget has no icon for it.
+        fun images(view: View): List<ImageView> = when (view) {
+            is ImageView -> listOf(view)
+            is ViewGroup -> (0 until view.childCount).flatMap { images(view.getChildAt(it)) }
+            else -> emptyList()
+        }
+        val alertIcons = setOf(R.drawable.ic_alert_sound, R.drawable.ic_alert_vibrate, R.drawable.ic_alert_silent, R.drawable.ic_alert_screen)
+        assertTrue(images(tall).none { it.drawable != null && shadowOf(it.drawable).createdFromResId in alertIcons })
         assertEquals(View.GONE, tall.findViewById<View>(R.id.widget_footer).visibility)
 
         // Tall and wide: the range with AM and PM, with no heading over it, and the next alarm at the bottom.

@@ -39,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import app.fajralarm.R
 import app.fajralarm.core.PrayerMoment
 import app.fajralarm.core.PrayerTime
-import app.fajralarm.prayer.PrayerNotifications
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -48,7 +47,7 @@ import java.util.Locale
 
 /**
  * The full-screen alert for a prayer time that has arrived: its name and clock time
- * on a black screen, lock screen included, until it is answered. It is not the Fajr
+ * on a black screen, lock screen included, until it is answered. Its notification stays behind. It is not the Fajr
  * alarm: the notification makes whatever sound was chosen for it and there is no mission.
  */
 class PrayerAlertActivity : ComponentActivity() {
@@ -89,10 +88,8 @@ class PrayerAlertActivity : ComponentActivity() {
         val moment = PrayerMoment(prayer, Instant.ofEpochMilli(at).atZone(ZoneId.systemDefault()))
         setContent {
             FajrTheme {
-                PrayerAlert(moment) {
-                    PrayerNotifications.dismissAlert(this)
-                    finish()
-                }
+                // OK closes this screen only: the notification stays in the shade for as long as the settings keep it.
+                PrayerAlert(moment) { finish() }
             }
         }
     }

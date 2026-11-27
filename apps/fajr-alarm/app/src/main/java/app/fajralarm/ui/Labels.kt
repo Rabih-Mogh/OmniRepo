@@ -43,6 +43,15 @@ val DismissMission.label: Int
         DismissMission.SINK_PHOTO -> R.string.mission_sink
     }
 
+/** The picture for a mission; none where the alarm turns off with a button. */
+@get:DrawableRes
+val DismissMission.icon: Int?
+    get() = when (this) {
+        DismissMission.NONE -> null
+        DismissMission.MATH -> R.drawable.ic_mission_sum
+        DismissMission.SINK_PHOTO -> R.drawable.ic_mission_sink
+    }
+
 @get:StringRes
 val DismissMission.summary: Int
     get() = when (this) {

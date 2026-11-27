@@ -279,7 +279,10 @@ private fun SettingsScreen() {
                 Page.PRAYERS -> {
                     MoonCard(settings.latitude, resumeTick)
 
-                    PrayerTimesCard(settings, resumeTick) { prayer, alert ->
+                    PrayerTimesCard(
+                        settings, resumeTick,
+                        onKeepChange = { update(settings.copy(alertKeepMinutes = it)) },
+                    ) { prayer, alert ->
                         if (alert != null) askForNotifications()
                         update(settings.copy(alerts = if (alert != null) settings.alerts + (prayer to alert) else settings.alerts - prayer))
                     }

@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -60,7 +61,12 @@ import kotlinx.coroutines.delay
  * until a location is set.
  */
 @Composable
-internal fun PrayerTimesCard(settings: AlarmSettings, tick: Int, onAlertChange: (PrayerTime, PrayerAlert?) -> Unit) {
+internal fun PrayerTimesCard(
+    settings: AlarmSettings,
+    tick: Int,
+    onKeepChange: (Int) -> Unit,
+    onAlertChange: (PrayerTime, PrayerAlert?) -> Unit,
+) {
     val context = LocalContext.current
     val params = settings.calcParams() ?: return
     var now by remember(tick) { mutableStateOf(ZonedDateTime.now()) }
@@ -152,9 +158,22 @@ internal fun PrayerTimesCard(settings: AlarmSettings, tick: Int, onAlertChange: 
                         }
                     }
                     if (moment.prayer == PrayerTime.FAJR) {
-                        // Fajr has the alarm instead: its icon says so while the alarm is on.
-                        Box(Modifier.height(44.dp).widthIn(min = 56.dp).padding(horizontal = 6.dp), contentAlignment = Alignment.CenterEnd) {
+                        // Fajr has the alarm instead. While it is on, its icons say so: the mission
+                        // that turns it off, if there is one, and the alarm clock.
+                        Row(
+                            Modifier.height(44.dp).widthIn(min = 56.dp).padding(horizontal = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+                        ) {
                             if (settings.enabled) {
+                                settings.dismissMission.icon?.let {
+                                    Icon(
+                                        painterResource(it),
+                                        contentDescription = stringResource(settings.dismissMission.label),
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
                                 Icon(
                                     painterResource(R.drawable.ic_alert_alarm),
                                     contentDescription = stringResource(R.string.alert_alarm),
@@ -172,6 +191,14 @@ internal fun PrayerTimesCard(settings: AlarmSettings, tick: Int, onAlertChange: 
                 }
             }
         }
+        // How long a time's notification stays in the shade if it isn't cleared.
+        ChoiceRow(
+            title = stringResource(R.string.alert_keep),
+            current = settings.alertKeepMinutes,
+            options = (listOf(5, 10, 15, 30, 45, 60, 120) + settings.alertKeepMinutes).distinct().sorted(),
+            label = { pluralStringResource(R.plurals.minutes, it, it) },
+            onSelect = onKeepChange,
+        )
         // What the bells, the optional times and the icons mean: there when wanted, out of the way otherwise.
         Fold(stringResource(R.string.times_about)) {
             for (hint in listOf(R.string.alerts_hint, R.string.optional_times_hint, R.string.nafl_hint)) {

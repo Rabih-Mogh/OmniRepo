@@ -48,7 +48,8 @@ object PrayerTicker {
                 val alert = settings.alerts[prayer]
                 if (alert != null && nowMillis - at < ALERT_GRACE_MS) {
                     PrayerNotifications.alert(
-                        context, PrayerMoment(prayer, Instant.ofEpochMilli(at).atZone(zone)), alert.fullScreen, alert.sound,
+                        context, PrayerMoment(prayer, Instant.ofEpochMilli(at).atZone(zone)),
+                        alert.fullScreen, alert.sound, settings.alertKeepMinutes,
                     )
                 }
             }

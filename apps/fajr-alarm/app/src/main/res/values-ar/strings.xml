@@ -318,12 +318,13 @@
     <string name="duration_hours_minutes">%1$d س %2$d د</string>
     <string name="duration_minutes">%1$d د</string>
     <string name="alert_at">إشعار عند %1$s</string>
-    <string name="alerts_hint">اضغط على الأيقونة بجانب الوقت لتختار ما يفعله الهاتف عند دخوله: لا شيء، أو إشعار، أو تنبيه بملء الشاشة، مع صوت أو اهتزاز أو بصمت. التنبيه بملء الشاشة أسود مع الساعة ويظهر فوق شاشة القفل أيضاً، وإذا كان الهاتف قيد الاستعمال يظهر شريطاً. هذا كله ليس المنبّه: المنبّه للفجر.</string>
+    <string name="alerts_hint">اضغط على الأيقونة بجانب الوقت لتختار ما يفعله الهاتف عند دخوله: لا شيء، أو إشعار، أو إشعار مع تنبيه بملء الشاشة، مع صوت أو اهتزاز أو بصمت. التنبيه بملء الشاشة أسود مع الساعة ويظهر فوق شاشة القفل أيضاً، وإذا كان الهاتف قيد الاستعمال يظهر الإشعار وحده شريطاً. يبقى الإشعار حتى تمسحه، أو للمدة المحددة تحت القائمة. هذا كله ليس المنبّه: المنبّه للفجر.</string>
     <!-- What the phone does at a time, chosen from the icon beside it -->
     <string name="alert_none">لا شيء</string>
-    <string name="alert_notification">إشعار</string>
-    <string name="alert_full_screen">تنبيه بملء الشاشة</string>
+    <string name="alert_notification">إشعار فقط</string>
+    <string name="alert_full_screen">إشعار + تنبيه بملء الشاشة</string>
     <string name="alert_alarm">يرنّ المنبّه</string>
+    <string name="alert_keep">إبقاء الإشعار لمدة</string>
     <string name="optional_times_hint">يبدأ الضحى بعد الشروق بـ 15 دقيقة. يُحسب منتصف الليل والثلث الأخير من غروب الشمس إلى الفجر التالي.</string>
     <!-- The icon before each prayer in the list: what kind of prayer it is, read out by a screen reader -->
     <string name="mark_obligatory">فريضة</string>

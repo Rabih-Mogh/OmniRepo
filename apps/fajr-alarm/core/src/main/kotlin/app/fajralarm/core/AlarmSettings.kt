@@ -115,6 +115,8 @@ data class AlarmSettings(
     val dismissMission: DismissMission = DismissMission.NONE,
     /** What the phone does when each time arrives; a time that isn't here does nothing. Fajr has the alarm instead. */
     val alerts: Map<PrayerTime, PrayerAlert> = emptyMap(),
+    /** How long after a time arrives its notification stays up if nobody clears it, in minutes. */
+    val alertKeepMinutes: Int = DEFAULT_ALERT_KEEP_MINUTES,
     /** Keep the current prayer and the time it has left in a silent notification, for the lock screen. */
     val lockScreenCountdown: LockScreenCountdown = LockScreenCountdown.OFF,
     val widgetTheme: WidgetTheme = WidgetTheme.FROST,
@@ -161,6 +163,8 @@ data class AlarmSettings(
     }
 
     companion object {
+        const val DEFAULT_ALERT_KEEP_MINUTES = 30
+
         /** Time kept free before sunrise to wash and pray. */
         const val PRAYER_MINUTES = 15L
     }

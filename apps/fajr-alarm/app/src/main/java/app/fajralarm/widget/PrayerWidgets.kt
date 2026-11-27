@@ -27,7 +27,6 @@ import app.fajralarm.ui.hijriDate
 import app.fajralarm.ui.icon
 import app.fajralarm.ui.label
 import app.fajralarm.ui.shortLabel
-import app.fajralarm.ui.soundIcon
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DecimalStyle
@@ -337,7 +336,7 @@ object PrayerWidgets {
     /**
      * Fills the table with the times of the listed day, in the order they come. In two
      * columns they read down the first and then down the second. In one column there is
-     * room for what the phone does at each time, and for when each prayer ends.
+     * room for when each prayer ends.
      * Each prayer has its icon before its name, pink for a voluntary one. With
      * [countdown] the gold row has the time left at its right, on a filled pill behind an hourglass:
      * to the prayer's end, or to its start where the gold row is the next prayer.
@@ -407,13 +406,6 @@ object PrayerWidgets {
                         else -> onGold ?: faded ?: palette.text
                     }
                     paint(context, R.id.row_mark, TINT, tone)
-                }
-                // What the phone does when it arrives: over the whole screen, or else how it is heard.
-                val alert = settings.alerts[moment.prayer]
-                if (oneColumn && alert != null) {
-                    setViewVisibility(R.id.row_bell, View.VISIBLE)
-                    setImageViewResource(R.id.row_bell, if (alert.fullScreen) R.drawable.ic_alert_screen else alert.soundIcon)
-                    paint(context, R.id.row_bell, TINT, onGold ?: faded ?: palette.muted)
                 }
                 if (counting && until != null) {
                     setViewVisibility(R.id.row_left, View.VISIBLE)
