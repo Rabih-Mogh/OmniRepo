@@ -370,7 +370,16 @@ class PrayerTimesTest {
         val small = times(afternoon, 300, 120)
         assertEquals(names.take(5), rows(small, R.id.table_start).map { it.name() })
         assertEquals(names.drop(5), rows(small, R.id.table_end).map { it.name() })
-        assertEquals("Asr ends in", small.text(R.id.widget_headline))
+        // The top line is the two dates; the time left is in the gold row and nowhere else.
+        assertEquals("15 Jumada al-Akhirah 1448", small.text(R.id.widget_headline))
+        assertEquals("Wed 25 Nov", small.text(R.id.widget_date))
+        assertEquals("narrow: without the year", "15 Jumada al-Akhirah", times(afternoon, 250, 120).text(R.id.widget_headline))
+        assertNull(small.findViewById<View>(R.id.widget_countdown))
+        assertEquals("after Maghrib it is the next Hijri day", "16 Jumada al-Akhirah 1448", times(at(17, 0), 300, 120).text(R.id.widget_headline))
+        assertEquals(
+            "a day added where the month was announced a day later",
+            "16 Jumada al-Akhirah 1448", times(afternoon, 300, 120, beirut.copy(hijriAdjustDays = 1)).text(R.id.widget_headline),
+        )
         assertEquals(listOf("Asr"), rows(small).filter { it.gold() }.map { it.name() })
         assertEquals(
             "what came before Asr is faded",
@@ -379,11 +388,17 @@ class PrayerTimesTest {
         assertEquals(View.GONE, small.findViewById<View>(R.id.widget_next_line).visibility)
         assertEquals(View.GONE, small.findViewById<View>(R.id.widget_footer).visibility)
         assertTrue("no room for AM and PM", rows(small).none { it.text(R.id.row_time).endsWith("M") })
-        // The gold row has the time left beside the name; in a row this tight it takes the clock time's place.
+        // The gold row has the time left at its right, as big as the clock times; in a row this tight it takes the clock time's place.
         rows(small).single { it.gold() }.let {
             assertTrue(it.counts())
             assertTrue(it.findViewById<View>(R.id.row_countdown) is Chronometer)
             assertEquals("", it.text(R.id.row_time))
+            assertEquals(
+                rows(small).first().findViewById<TextView>(R.id.row_time).textSize,
+                it.findViewById<TextView>(R.id.row_countdown).textSize,
+            )
+            val row = it.findViewById<View>(R.id.row_left).parent as ViewGroup
+            assertTrue("after the name, not beside it", row.indexOfChild(it.findViewById(R.id.row_left)) > row.indexOfChild(it.findViewById(R.id.row_name)))
         }
         assertEquals("only the gold row counts down", 1, rows(small).count { it.counts() })
         // Each prayer has its icon before its name; Imsak, Shuruq and midnight, which are not prayers, have none.
@@ -397,34 +412,29 @@ class PrayerTimesTest {
         )
 
         // With room to spare the clock time stays beside it.
-        val roomy = times(afternoon, 350, 150)
+        val roomy = times(afternoon, 370, 150)
         rows(roomy).single { it.gold() }.let {
             assertEquals("Asr", it.name())
             assertTrue(it.counts())
             assertTrue(it.text(R.id.row_time).isNotEmpty())
         }
-        // With no prayer current the gold row is the next one. Tight, it keeps its clock time and the
-        // headline does the counting; with room it counts down as well.
+        // With no prayer current the gold row is the next one, counting down to its start.
         val morning = times(at(9, 0), 300, 150)
-        assertEquals("Dhuhr starts in", morning.text(R.id.widget_headline))
         rows(morning).single { it.gold() }.let {
             assertEquals("Dhuhr", it.name())
-            assertFalse(it.counts())
-            assertTrue(it.text(R.id.row_time).isNotEmpty())
+            assertTrue(it.counts())
         }
-        assertTrue(rows(times(at(9, 0), 350, 150)).single { it.gold() }.counts())
         // Every row is one line tall again, so the columns are level without any filling.
         assertEquals(names.take(5), rows(morning, R.id.table_start).map { it.name() })
         assertEquals(names.drop(5), rows(morning, R.id.table_end).map { it.name() })
         // Late at night the table is already the new day's: Fajr is gold and nothing has passed.
         val late = times(at(3, 30), 300, 150)
-        assertEquals("Isha ends in", late.text(R.id.widget_headline))
         assertEquals("Fajr", rows(late).single { it.gold() }.name())
         assertTrue(rows(late).none { it.nameColor() == night.passed.light })
 
         // A little taller: a second countdown, to the next prayer, where the current one ends before it.
         val dawn = times(at(5, 30), 300, 200)
-        assertEquals("Fajr ends in", dawn.text(R.id.widget_headline))
+        assertEquals("Fajr", rows(dawn).single { it.gold() }.name())
         assertEquals(View.VISIBLE, dawn.findViewById<View>(R.id.widget_next_line).visibility)
         assertEquals("Next: Dhuhr in", dawn.text(R.id.widget_next))
         fun nextLine(state: PrayerNow, settings: AlarmSettings = beirut) =
@@ -458,27 +468,28 @@ class PrayerTimesTest {
         )
         assertEquals(View.GONE, tall.findViewById<View>(R.id.widget_footer).visibility)
 
-        // Tall and wide: when each prayer ends, and the alarm and the method at the bottom.
-        val full = times(afternoon, 330, 350, belled)
+        // Tall and wide: the range with AM and PM, with no heading over it, and the next alarm at the bottom.
+        val full = times(afternoon, 350, 350, belled)
         val table = rows(full, R.id.table_start)
-        assertEquals(listOf("", "Begins", "Ends"), listOf(R.id.row_name, R.id.row_time, R.id.row_ends).map { table.first().text(it) })
-        assertEquals(names, table.drop(1).map { it.name() })
-        val ends = table.drop(1).associate { it.name() to it.text(R.id.row_ends) }
-        val begins = table.drop(1).associate { it.name() to it.text(R.id.row_time) }
+        assertEquals("no heading row", names, table.map { it.name() })
+        fun ends(view: View) = rows(view, R.id.table_start).associate { it.name() to it.text(R.id.row_time).substringAfter(" – ", "") }
+        val begins = table.associate { it.name() to it.text(R.id.row_time).substringBefore(" – ") }
+        val ends = ends(full)
+        assertTrue("with AM and PM", begins.getValue("Fajr").endsWith("AM") && ends.getValue("Maghrib").endsWith("PM"))
         assertEquals("Fajr ends at sunrise", begins["Shuruq"], ends["Fajr"])
         assertEquals("Dhuhr ends at Asr", begins["Asr"], ends["Dhuhr"])
         assertEquals("Asr ends at Maghrib", begins["Maghrib"], ends["Asr"])
         assertEquals("Maghrib ends at Isha", begins["Isha"], ends["Maghrib"])
         assertEquals("Imsak, Shuruq and midnight are single moments", listOf("", "", ""), listOf("Imsak", "Shuruq", "Midnight").map(ends::getValue))
         assertEquals("Qiyam ends at the next Fajr", ends.getValue("Isha"), ends.getValue("Qiyam"))
+        assertTrue("room for the time left and the range", table.single { it.gold() }.let { it.counts() && " – " in it.text(R.id.row_time) })
         val footer = full.findViewById<TextView>(R.id.widget_footer)
         assertEquals(View.VISIBLE, footer.visibility)
-        assertTrue(footer.text.toString(), footer.text.startsWith("Alarm: ") && footer.text.endsWith(" · Muslim World League"))
+        assertTrue("the alarm, and not the method again: ${footer.text}", footer.text.startsWith("Alarm: ") && " · " !in footer.text)
 
         // The end a school sets inside a prayer's time is the one the table shows.
         val school = beirut.copy(asrEnd = AsrEnd.SHADOW_TWICE, ishaEnd = IshaEnd.FIRST_THIRD)
-        val chosen = rows(times(at(15, 0, school), 330, 350, school), R.id.table_start).drop(1)
-            .associate { it.name() to it.text(R.id.row_ends) }
+        val chosen = ends(times(at(15, 0, school), 350, 350, school))
         assertTrue("Asr no longer ends at Maghrib: $chosen", chosen["Asr"] != ends["Asr"] && chosen["Asr"] != "")
         assertTrue("Isha no longer ends at Fajr: $chosen", chosen["Isha"] != ends["Isha"] && chosen["Isha"] != "")
         assertEquals("the others are as they were", ends - "Asr" - "Isha", chosen - "Asr" - "Isha")
@@ -491,7 +502,10 @@ class PrayerTimesTest {
         assertEquals("Asr", rows(fewer).single { it.gold() }.name())
         val noAsr = times(afternoon, 300, 150, five.copy(widgetTimes = five.widgetTimes - PrayerTime.ASR))
         assertEquals("the current prayer isn't listed: the next one is gold", "Maghrib", rows(noAsr).single { it.gold() }.name())
-        assertEquals("the headline still names the current one", "Asr ends in", noAsr.text(R.id.widget_headline))
+        // With Fajr current but not listed, the gold row is Dhuhr and counts down to Dhuhr, not to sunrise.
+        val dawnNoFajr = times(at(5, 30), 300, 150, five.copy(widgetTimes = five.widgetTimes - PrayerTime.FAJR))
+        assertEquals("Dhuhr", rows(dawnNoFajr).single { it.gold() }.name())
+        assertTrue(rows(dawnNoFajr).single { it.gold() }.counts())
         val obligatoryOff = times(afternoon, 300, 150, beirut.copy(widgetTimes = setOf(PrayerTime.SUNRISE, PrayerTime.MIDNIGHT)))
         assertTrue("neither is listed: no gold row", rows(obligatoryOff).none { it.gold() })
         assertTrue(rows(times(afternoon, 300, 150, beirut.copy(widgetTimes = emptySet()))).isEmpty())
@@ -506,11 +520,11 @@ class PrayerTimesTest {
 
         // Pictures of this moment, so that the countdowns in them make sense.
         picture("widget-times", times(now(), 300, 150), 300, 150)
-        picture("widget-times-wide", times(now(), 350, 150, belled), 350, 150)
+        picture("widget-times-wide", times(now(), 370, 150, belled), 370, 150)
         picture("widget-times-five", times(now(), 300, 150, five), 300, 150)
         picture("widget-times-medium", times(now(), 300, 200), 300, 200)
         picture("widget-times-tall", times(now(), 250, 270, belled), 250, 270)
-        picture("widget-times-full", times(now(), 330, 350, belled), 330, 350)
+        picture("widget-times-full", times(now(), 350, 350, belled), 350, 350)
         picture(
             "notification-current",
             android.widget.RemoteViews(app.packageName, R.layout.notification_current_prayer).apply {
@@ -532,7 +546,7 @@ class PrayerTimesTest {
             val palette = palette(theme)
             val view = drawn(theme)
             assertEquals("$theme headline", palette.accent.light, view.color(R.id.widget_headline))
-            assertEquals("$theme countdown", palette.text.light, view.color(R.id.widget_countdown))
+            assertEquals("$theme times to come", palette.text.light, rows(view).single { it.name() == "Maghrib" }.color(R.id.row_time))
             assertEquals("$theme date", palette.muted.light, view.color(R.id.widget_date))
             assertEquals("$theme background", palette.backgroundAlpha, view.findViewById<ImageView>(R.id.widget_background).imageAlpha)
             val gold = rows(view).single { it.gold() }
@@ -543,8 +557,22 @@ class PrayerTimesTest {
             assertEquals("$theme to come", palette.text.light, rows(view).single { it.name() == "Maghrib" }.nameColor())
             picture("widget-theme-${theme.name.lowercase()}", times(now(), 300, 200, beirut.copy(widgetTheme = theme)), 300, 200)
         }
-        assertEquals("the default is see-through", WidgetTheme.GLASS, AlarmSettings().widgetTheme)
-        assertTrue("it shows the wallpaper", palette(WidgetTheme.GLASS).backgroundAlpha < 128)
+        assertEquals("the default is white with blue", WidgetTheme.FROST, AlarmSettings().widgetTheme)
+        assertTrue("see-through shows the wallpaper", palette(WidgetTheme.GLASS).backgroundAlpha < 200)
+        // A passed time is quieter than one to come, but still far enough from the background to read.
+        for (theme in WidgetTheme.values().filter { it != WidgetTheme.GLASS && it != WidgetTheme.CUSTOM }) {
+            val p = palette(theme)
+            fun contrast(a: Int, b: Int): Double {
+                fun lum(c: Int): Double = listOf(c shr 16 and 0xFF, c shr 8 and 0xFF, c and 0xFF)
+                    .map { it / 255.0 }.map { if (it <= 0.03928) it / 12.92 else Math.pow((it + 0.055) / 1.055, 2.4) }
+                    .let { (r, g, b) -> 0.2126 * r + 0.7152 * g + 0.0722 * b }
+                val (hi, lo) = listOf(lum(a), lum(b)).sortedDescending()
+                return (hi + 0.05) / (lo + 0.05)
+            }
+            assertTrue("$theme passed", contrast(p.passed.light, p.background.light) >= 3.5)
+            assertTrue("$theme text", contrast(p.text.light, p.background.light) >= 9.0)
+            assertTrue("$theme highlight", contrast(p.onGold.light, p.highlight.light) >= 4.5)
+        }
 
         // Your own colours: the three you pick, and how solid the background is.
         val mine = beirut.copy(
@@ -552,7 +580,7 @@ class PrayerTimesTest {
             widgetColors = WidgetColors(background = 0x1F3D2B, backgroundOpacity = 40, text = 0xFBF8F1, highlight = 0x8AB4F8),
         )
         val own = times(state, 300, 200, mine)
-        assertEquals(0xFFFBF8F1.toInt(), own.color(R.id.widget_countdown))
+        assertEquals(0xFFFBF8F1.toInt(), rows(own).single { it.name() == "Maghrib" }.color(R.id.row_time))
         assertEquals(0xFF8AB4F8.toInt(), own.color(R.id.widget_headline))
         assertEquals(102, own.findViewById<ImageView>(R.id.widget_background).imageAlpha)
         assertEquals("dark text on a pale highlight", 0xFF1A2340.toInt(), rows(own).single { it.gold() }.nameColor())
@@ -561,10 +589,11 @@ class PrayerTimesTest {
         picture("widget-theme-custom-green", times(now(), 300, 200, mine), 300, 200)
 
         // "Follow the phone" is the light theme by day and the night theme once the phone goes dark.
-        assertEquals(palette(WidgetTheme.LIGHT).text.light, drawn(WidgetTheme.SYSTEM).color(R.id.widget_countdown))
+        fun View.toCome() = rows(this).single { it.name() == "Maghrib" }.color(R.id.row_time)
+        assertEquals(palette(WidgetTheme.LIGHT).text.light, drawn(WidgetTheme.SYSTEM).toCome())
         RuntimeEnvironment.setQualifiers("+night")
-        assertEquals(palette(WidgetTheme.NIGHT).text.light, drawn(WidgetTheme.SYSTEM).color(R.id.widget_countdown))
-        assertEquals("the others stay as they are", palette(WidgetTheme.LIGHT).text.light, drawn(WidgetTheme.LIGHT).color(R.id.widget_countdown))
+        assertEquals(palette(WidgetTheme.NIGHT).text.light, drawn(WidgetTheme.SYSTEM).toCome())
+        assertEquals("the others stay as they are", palette(WidgetTheme.LIGHT).text.light, drawn(WidgetTheme.LIGHT).toCome())
 
         // The choice is kept.
         store.save(mine.copy(asrEnd = AsrEnd.SUN_YELLOWS, ishaEnd = IshaEnd.MIDNIGHT, imsakMinutes = 15))
@@ -639,8 +668,8 @@ class PrayerTimesTest {
         picture("ar-widget-times", times(now(), 300, 150), 300, 150)
 
         val full = times(at(15, 0), 330, 350)
-        assertEquals(arabic, rows(full).drop(1).map { it.name() })
-        assertTrue(texts(full).containsAll(listOf("البداية", "النهاية")))
+        assertEquals(arabic, rows(full).map { it.name() })
+        assertTrue(full.text(R.id.widget_headline), full.text(R.id.widget_headline).contains("جمادى الآخرة"))
         assertTrue(full.findViewById<TextView>(R.id.widget_footer).text.startsWith("المنبّه: "))
         picture("ar-widget-times-full", times(now(), 330, 350), 330, 350)
 
@@ -687,8 +716,7 @@ class PrayerTimesTest {
         manager.updateAppWidgetOptions(id, bigger)
         PrayerTimesWidget().onAppWidgetOptionsChanged(app, manager, id, bigger)
         val table = rows(widgets.getViewFor(id), R.id.table_start)
-        assertEquals("one column under its headings", 11, table.size)
-        assertEquals("Ends", table.first().text(R.id.row_ends))
+        assertEquals("one column", 10, table.size)
         assertEquals(View.VISIBLE, widgets.getViewFor(id).findViewById<View>(R.id.widget_footer).visibility)
 
         // One from Android 12 lists the sizes and picks among the drawings itself.

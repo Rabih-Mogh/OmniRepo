@@ -144,7 +144,7 @@ class LanguageTest {
             goTo("Lock screen & widgets")
             compose.onNodeWithText("Current prayer on the lock screen").assertIsDisplayed()
             compose.onNodeWithText("Add the “All times” widget").assertIsDisplayed()
-            compose.onNodeWithText("See-through, for the wallpaper to show").assertIsDisplayed()
+            compose.onNodeWithText("Frost: white with blue").assertIsDisplayed()
         }
     }
 

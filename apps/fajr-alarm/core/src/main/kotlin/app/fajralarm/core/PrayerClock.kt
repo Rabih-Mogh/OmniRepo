@@ -1,5 +1,6 @@
 package app.fajralarm.core
 
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -26,6 +27,8 @@ data class PrayerNow(
     val dayEnds: Map<PrayerTime, ZonedDateTime>,
     /** Every time still to come over the next two days or so, [nextEvent] first. */
     val upcoming: List<PrayerMoment>,
+    /** The calendar day whose Hijri date is in force: the Islamic day starts at Maghrib, so from then on it is tomorrow's. */
+    val hijriDay: LocalDate,
 ) {
     /** When what is shown next goes out of date: at [nextEvent], or sooner if the countdown runs out first. */
     val nextChange: ZonedDateTime
@@ -96,6 +99,8 @@ object PrayerClock {
         val currentEnds = if (current == null) null else shownEndOf(current, started.second)?.takeIf { it.isAfter(now) } ?: ends
         val dayEnds = day.moments().mapNotNull { m -> shownEndOf(m, day)?.let { m.prayer to it } }.toMap()
         val upcoming = timeline.map { it.first }.filter { it.at.isAfter(now) }
-        return PrayerNow(current, currentEnds, next, nextEvent, day, dayEnds, upcoming)
+        val maghribToday = timeline.firstOrNull { (m, itsDay) -> itsDay.date == today && m.prayer == PrayerTime.MAGHRIB }?.first?.at
+        val hijriDay = if (maghribToday != null && !now.isBefore(maghribToday)) today.plusDays(1) else today
+        return PrayerNow(current, currentEnds, next, nextEvent, day, dayEnds, upcoming, hijriDay)
     }
 }

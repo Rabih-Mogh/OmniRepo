@@ -103,7 +103,8 @@ internal fun PrayerTimesCard(settings: AlarmSettings, tick: Int, onAlertChange: 
         }
 
         Text(
-            if (state.day.date == now.toLocalDate()) stringResource(R.string.today) else state.day.date.format(dayFmt),
+            (if (state.day.date == now.toLocalDate()) stringResource(R.string.today) else state.day.date.format(dayFmt)) +
+                " · " + hijriDate(context, state.hijriDay, settings.hijriAdjustDays),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 8.dp),

@@ -21,7 +21,7 @@
         android:layout_height="match_parent"
         android:gravity="center_vertical"
         android:orientation="vertical"
-        android:paddingHorizontal="6dp">
+        android:paddingHorizontal="4dp">
 
         <include layout="@layout/widget_times_cells" />
     </LinearLayout>

@@ -31,6 +31,7 @@ class SettingsStore(context: Context) {
             asrEnd = enumOr(prefs.getString(K_ASR_END, null), d.asrEnd),
             ishaEnd = enumOr(prefs.getString(K_ISHA_END, null), d.ishaEnd),
             imsakMinutes = prefs.getInt(K_IMSAK, d.imsakMinutes),
+            hijriAdjustDays = prefs.getInt(K_HIJRI_ADJUST, d.hijriAdjustDays),
             highLatitudeRule = enumOr(prefs.getString(K_HIGH_LAT, null), d.highLatitudeRule),
             fajrAdjustMinutes = prefs.getInt(K_ADJUST, d.fajrAdjustMinutes),
             adjustMinutes = ADJUSTABLE.associateWith { prefs.getInt(adjustKey(it), 0) }.filterValues { it != 0 },
@@ -89,6 +90,7 @@ class SettingsStore(context: Context) {
             putString(K_ASR_END, s.asrEnd.name)
             putString(K_ISHA_END, s.ishaEnd.name)
             putInt(K_IMSAK, s.imsakMinutes)
+            putInt(K_HIJRI_ADJUST, s.hijriAdjustDays)
             putString(K_HIGH_LAT, s.highLatitudeRule.name)
             putInt(K_ADJUST, s.fajrAdjustMinutes)
             ADJUSTABLE.forEach { putInt(adjustKey(it), s.adjustMinutes[it] ?: 0) }
@@ -205,6 +207,7 @@ class SettingsStore(context: Context) {
         const val K_WIDGET_TEXT = "widget_text"
         const val K_WIDGET_HIGHLIGHT = "widget_highlight"
         const val K_IMSAK = "imsak_minutes"
+        const val K_HIJRI_ADJUST = "hijri_adjust_days"
         const val K_HIGH_LAT = "high_lat_rule"
         const val K_ADJUST = "fajr_adjust"
         const val K_LAT = "lat"

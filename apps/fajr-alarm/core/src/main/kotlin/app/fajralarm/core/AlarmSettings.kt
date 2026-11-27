@@ -51,6 +51,12 @@ enum class WidgetTheme {
     /** See-through, for a wallpaper to show behind it. */
     GLASS,
 
+    /** A white pane with blue text. */
+    FROST,
+
+    /** A deep blue pane with white text and a green highlight. */
+    COBALT,
+
     /** [LIGHT] while the phone is in light mode, [NIGHT] in dark mode. */
     SYSTEM,
 
@@ -88,6 +94,8 @@ data class AlarmSettings(
     /** When Asr and Isha are shown as ending, for the schools that set a point inside their time. */
     val asrEnd: AsrEnd = AsrEnd.MAGHRIB,
     val ishaEnd: IshaEnd = IshaEnd.FAJR,
+    /** Days added to the calculated Hijri date, to follow a local sighting of the moon. */
+    val hijriAdjustDays: Int = 0,
     /** Imsak this many minutes before Fajr; 0 leaves it out of the list. */
     val imsakMinutes: Int = PrayerCalcParams.DEFAULT_IMSAK_MINUTES,
     val highLatitudeRule: HighLatitudeRule = HighLatitudeRule.ANGLE_BASED,
@@ -109,7 +117,7 @@ data class AlarmSettings(
     val alerts: Map<PrayerTime, PrayerAlert> = emptyMap(),
     /** Keep the current prayer and the time it has left in a silent notification, for the lock screen. */
     val lockScreenCountdown: LockScreenCountdown = LockScreenCountdown.OFF,
-    val widgetTheme: WidgetTheme = WidgetTheme.GLASS,
+    val widgetTheme: WidgetTheme = WidgetTheme.FROST,
     /** The colours of [WidgetTheme.CUSTOM]. */
     val widgetColors: WidgetColors = WidgetColors(),
     /** The times the widgets' table lists. */

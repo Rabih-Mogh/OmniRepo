@@ -370,6 +370,16 @@ class PrayerClockTest {
     }
 
     @Test
+    fun theHijriDayTurnsOverAtMaghrib() {
+        assertEquals(date, at(15).hijriDay)
+        assertEquals(date, at(16, 20).hijriDay)
+        // Maghrib is at 16:29.
+        assertEquals(date.plusDays(1), at(16, 40).hijriDay)
+        assertEquals(date.plusDays(1), at(23).hijriDay)
+        assertEquals(date.plusDays(1), at(0, 30, date.plusDays(1)).hijriDay)
+    }
+
+    @Test
     fun fajrEndsAtSunriseAndThenNoPrayerIsCurrent() {
         val dawn = at(5, 30)
         assertEquals(PrayerTime.FAJR, dawn.current?.prayer)

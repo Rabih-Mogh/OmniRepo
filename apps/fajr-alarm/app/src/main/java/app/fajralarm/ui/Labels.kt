@@ -178,6 +178,8 @@ val WidgetTheme.label: Int
         WidgetTheme.BLACK -> R.string.widget_theme_black
         WidgetTheme.LIGHT -> R.string.widget_theme_light
         WidgetTheme.GLASS -> R.string.widget_theme_glass
+        WidgetTheme.FROST -> R.string.widget_theme_frost
+        WidgetTheme.COBALT -> R.string.widget_theme_cobalt
         WidgetTheme.SYSTEM -> R.string.widget_theme_system
         WidgetTheme.CUSTOM -> R.string.widget_theme_custom
     }

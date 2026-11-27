@@ -555,6 +555,7 @@ private fun SettingsScreen() {
                             current = settings.asrEnd,
                             options = AsrEnd.values().toList(),
                             label = { stringResource(it.label) },
+                            stacked = true,
                         ) { update(settings.copy(asrEnd = it)) }
 
                         ChoiceRow(
@@ -562,6 +563,7 @@ private fun SettingsScreen() {
                             current = settings.ishaEnd,
                             options = IshaEnd.values().toList(),
                             label = { stringResource(it.label) },
+                            stacked = true,
                         ) { update(settings.copy(ishaEnd = it)) }
                         Text(
                             stringResource(R.string.ends_hint),
@@ -574,6 +576,7 @@ private fun SettingsScreen() {
                             current = settings.highLatitudeRule,
                             options = HighLatitudeRule.values().toList(),
                             label = { stringResource(it.label) },
+                            stacked = true,
                         ) { update(settings.copy(highLatitudeRule = it)) }
 
                         Stepper(
@@ -584,6 +587,18 @@ private fun SettingsScreen() {
                         ) { update(settings.copy(imsakMinutes = it)) }
                         Text(
                             stringResource(R.string.imsak_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+
+                        Stepper(
+                            title = stringResource(R.string.hijri_adjust),
+                            value = settings.hijriAdjustDays,
+                            suffix = stringResource(R.string.days_short),
+                            range = -2..2,
+                        ) { update(settings.copy(hijriAdjustDays = it)) }
+                        Text(
+                            stringResource(R.string.hijri_adjust_hint),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -626,6 +641,7 @@ private fun SettingsScreen() {
                             current = settings.lockScreenCountdown,
                             options = LockScreenCountdown.values().toList(),
                             label = { stringResource(it.label) },
+                            stacked = true,
                         ) { choice ->
                             if (choice != LockScreenCountdown.OFF) askForNotifications()
                             update(settings.copy(lockScreenCountdown = choice))
@@ -645,6 +661,7 @@ private fun SettingsScreen() {
                             current = settings.widgetTheme,
                             options = WidgetTheme.values().toList(),
                             label = { stringResource(it.label) },
+                            stacked = true,
                         ) { update(settings.copy(widgetTheme = it)) }
                         if (settings.widgetTheme == WidgetTheme.CUSTOM) {
                             WidgetColorPicker(settings.widgetColors) { update(settings.copy(widgetColors = it)) }
@@ -962,8 +979,8 @@ private fun FoldArrow(open: Boolean) {
 
 /** The colours offered for a widget of your own, as 0xRRGGBB. */
 private val WIDGET_SWATCHES = listOf(
-    0x000000, 0x17223F, 0x2F3B52, 0x1F3D2B, 0x4A1F2A, 0xFFFFFF, 0xFBF8F1,
-    0xFFD27A, 0xF2994A, 0xE6B3C9, 0x8AB4F8, 0x7FD1C7, 0x9BD67D,
+    0x000000, 0x17223F, 0x0B2A6F, 0x2F3B52, 0x1F3D2B, 0x4A1F2A, 0xFFFFFF, 0xFBF8F1,
+    0xFFD27A, 0xF2994A, 0xE6B3C9, 0x1B5FE0, 0x8AB4F8, 0x7FD1C7, 0x6EDB6E,
 )
 
 /** Picks the three colours of your own widget theme and how solid its background is. */
@@ -1065,26 +1082,52 @@ private fun ValueWithChevron(value: String) {
     }
 }
 
+/**
+ * A setting chosen from a list: its title and the choice, which opens the list when
+ * tapped. [stacked] puts the choice under the title rather than beside it, for
+ * choices too long to share a line.
+ */
 @Composable
 internal fun <T> ChoiceRow(
     title: String,
     current: T,
     options: List<T>,
     label: @Composable (T) -> String,
+    stacked: Boolean = false,
     onSelect: (T) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable { open = true }
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(title, style = MaterialTheme.typography.bodyLarge)
-        Spacer(Modifier.width(16.dp))
-        ValueWithChevron(label(current))
+    if (stacked) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable { open = true }
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.bodyLarge)
+                Text(label(current), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+            }
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    } else {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable { open = true }
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.width(16.dp))
+            ValueWithChevron(label(current))
+        }
     }
     if (open) {
         AlertDialog(

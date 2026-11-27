@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Every time of the day as a table, under the current prayer and its countdown. The taller lines show as the widget grows. -->
+<!-- Every time of the day as a table, under the Hijri date and the day's date. The taller lines show as the widget grows. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
@@ -26,37 +26,27 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingHorizontal="6dp">
+            android:paddingHorizontal="4dp">
 
+            <!-- The Hijri date; the day's date after it gets what is left of the line. -->
             <TextView
                 android:id="@+id/widget_headline"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
                 android:maxLines="1"
+                android:textAlignment="viewStart"
                 android:textColor="@color/widget_gold"
                 android:textSize="13sp"
                 android:textStyle="bold" />
 
-            <Chronometer
-                android:id="@+id/widget_countdown"
+            <TextView
+                android:id="@+id/widget_date"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="6dp"
                 android:maxLines="1"
-                android:textColor="@color/widget_text"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-
-            <!-- The date gets what is left of the line, so a long one is cut short rather than the countdown. -->
-            <TextView
-                android:id="@+id/widget_date"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textAlignment="viewEnd"
                 android:textColor="@color/widget_muted"
                 android:textSize="12sp" />
         </LinearLayout>
@@ -97,7 +87,7 @@
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:maxLines="1"
-            android:paddingHorizontal="6dp"
+            android:paddingHorizontal="4dp"
             android:paddingTop="2dp"
             android:textAlignment="viewStart"
             android:textColor="@color/widget_muted"

@@ -103,7 +103,7 @@ Android fixes a notification category's sound when the category is first made, s
 **The moon.** The **Moon** card draws tonight's moon as it looks, with its phase, how much of it is lit and the day of its cycle, and the dates of the next new moon, first quarter, full moon and last quarter. It is worked out on the phone from low-precision positions of the sun and the moon; the tests hold the four phases of January 2024 to within 90 minutes of the almanac. South of the equator the moon is drawn mirrored. The day count is from the astronomical new moon and can differ by a day from the Hijri date, which goes by sighting.
 
 **Widgets.** Add them from **Lock screen & widgets** in the app, or by touching and holding the home screen and choosing Widgets.
-- **All times** (4 × 2 to begin with): the current prayer with a countdown and the date, over a table of the day's times in the order they come. The current prayer's row is gold, with the time left beside its name, and the times that have passed are faded.
+- **All times** (4 × 2 to begin with): the Hijri date and the day's date, over a table of the day's times in the order they come. The current prayer's row is highlighted, with the time left at its right, and the times that have passed are quieter.
 - **Current prayer** (2 × 1 to begin with): the current prayer, the countdown, and the next prayer's time. It shrinks to one cell, with just the prayer's name over the countdown.
 
 Both show more when you make them bigger (touch and hold the widget, then drag its edges):
@@ -111,20 +111,22 @@ Both show more when you make them bigger (touch and hold the widget, then drag i
 | "All times" at least | Shows |
 |---|---|
 | 110 dp tall | The table in two columns, read down the first and then the second, with each time's start. Clock times are shown without AM/PM to fit |
-| 170 dp tall | Also a second countdown, to the next prayer, when the current one ends before it starts: Fajr, which ends at sunrise, or an end chosen in the settings |
+| 170 dp tall | Also a countdown to the next prayer, when the current one ends before it starts: Fajr, which ends at sunrise, or an end chosen in the settings |
 | 250 dp tall | The table in one column, each prayer with its start and end as "4:52 – 6:20", and beside each time the icon of what the phone does when it arrives |
-| 250 dp tall and 330 dp wide | The start and the end in columns of their own, **Begins** and **Ends**, with AM/PM |
-| 330 dp tall | Also a bottom line with the next alarm and the calculation method |
+| 250 dp tall and 340 dp wide | The same with AM/PM: "4:52 AM – 6:20 AM" |
+| 330 dp tall | Also a bottom line with the next alarm |
 
-**The time left.** The gold row has an hourglass and a live countdown right after the prayer's name. Where the widget is wide enough (340 dp in two columns, 270 dp in one) the row keeps its clock time as well. Narrower than that, the countdown takes the clock time's place while the prayer is the current one; when the gold row is the next prayer, it keeps its clock time and the line at the top does the counting.
+**The dates.** The top line has the Hijri date, with its year from 280 dp wide, and the day's date. The Hijri date comes from the Umm al-Qura calendar built into Android, which is calculated, and moves on at Maghrib, when the Islamic day begins. **Calculation → Hijri date adjustment** adds or takes off up to two days where a country announced the month differently. The same date is beside **Today** in the app.
 
-**Which times.** **Lock screen & widgets → Times in the widgets** chooses the times both widgets list; they fill two columns as evenly as they come. If the current prayer isn't among them the next one is gold, and the line at the top still names the current one.
+**The time left.** The highlighted row has an hourglass and a live countdown at its right, the size of the clock times: to the end of the prayer's time while it is the current one, or to its start while the highlighted row is the next prayer. Where the widget is wide enough (360 dp in two columns, 280 dp in one) the row keeps its clock time as well; narrower than that, the countdown takes its place. Nothing else in the widget repeats it.
+
+**Which times.** **Lock screen & widgets → Times in the widgets** chooses the times both widgets list; they fill two columns as evenly as they come. If the current prayer isn't among them the next one is highlighted, and the line at the top still names the current one.
 
 In both widgets, at every size, each prayer has the same icon before its name as in the app, pink for a voluntary prayer.
 
-**Colours.** **Lock screen & widgets → Widget colours** chooses the theme for both widgets: See-through (a faint dark pane with white text, for the wallpaper to show; the default), Night (the app's blue and gold), Black, Light, Follow the phone, which is Light in light mode and Night in dark mode, or **Your own colours**. That last one adds three rows of swatches, for the background, the text and the highlight behind the current prayer, and a slider for how solid the background is; the quieter shades are mixed from the text and background colours. On Android 12 and later the home screen switches "Follow the phone" by itself; before that it changes the next time the widget is drawn.
+**Colours.** **Lock screen & widgets → Widget colours** chooses the theme for both widgets: Frost (a white pane with blue text and a blue highlight; the default), Cobalt (deep blue with a green highlight), See-through (a dark pane the wallpaper shows through), Night (the app's blue and gold), Black, Light, Follow the phone, which is Light in light mode and Night in dark mode, or **Your own colours**. That last one adds three rows of swatches, for the background, the text and the highlight behind the current prayer, and a slider for how solid the background is; the quieter shades are mixed from the text and background colours. In every built-in theme a passed time is quieter than one to come but still well clear of the background; a test holds the contrast. On Android 12 and later the home screen switches "Follow the phone" by itself; before that it changes the next time the widget is drawn.
 
-**Current prayer** adds the date at 110 dp tall, the table in two columns at 190 dp tall and 220 dp wide, and the table in one column at 290 dp tall and 160 dp wide (with the prayers' ends from 220 dp wide). How many cells that is depends on the phone: two cells are usually 150 to 220 dp tall.
+**Current prayer** adds the day's date and the Hijri date at 125 dp tall, the table in two columns at 190 dp tall and 220 dp wide, and the table in one column at 290 dp tall and 160 dp wide (with the prayers' ends from 220 dp wide). How many cells that is depends on the phone: two cells are usually 150 to 220 dp tall.
 
 On Android 12 and later the app hands the home screen a drawing for each of these sizes and the home screen shows the biggest one that fits, so resizing costs nothing. A home screen that doesn't do that tells the app the new size, and the widget is drawn again once.
 

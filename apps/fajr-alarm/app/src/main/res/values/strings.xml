@@ -123,6 +123,26 @@
     <string name="adjustments_none">None</string>
     <string name="imsak_minutes">Imsak before Fajr</string>
     <string name="imsak_hint">Imsak is when someone fasting stops eating and drinking. 0 leaves it out of the list.</string>
+    <!-- The Hijri date: %1$d the day, %2$s the month, %3$d the year -->
+    <string name="hijri_date">%1$d %2$s %3$d</string>
+    <string name="hijri_date_short">%1$d %2$s</string>
+    <string-array name="hijri_months">
+        <item>Muharram</item>
+        <item>Safar</item>
+        <item>Rabi\' al-Awwal</item>
+        <item>Rabi\' al-Thani</item>
+        <item>Jumada al-Ula</item>
+        <item>Jumada al-Akhirah</item>
+        <item>Rajab</item>
+        <item>Sha\'ban</item>
+        <item>Ramadan</item>
+        <item>Shawwal</item>
+        <item>Dhu al-Qi\'dah</item>
+        <item>Dhu al-Hijjah</item>
+    </string-array>
+    <string name="hijri_adjust">Hijri date adjustment</string>
+    <string name="hijri_adjust_hint">The Hijri date is calculated (Umm al-Qura). Add or take off a day here if your country announced the month differently.</string>
+    <string name="days_short">d</string>
 
     <!-- Main screen: Sound & wake-up -->
     <string name="section_sound">Sound &amp; wake-up</string>
@@ -331,6 +351,8 @@
     <string name="widget_theme_black">Black</string>
     <string name="widget_theme_light">Light</string>
     <string name="widget_theme_glass">See-through, for the wallpaper to show</string>
+    <string name="widget_theme_frost">Frost: white with blue</string>
+    <string name="widget_theme_cobalt">Cobalt: deep blue with green</string>
     <string name="widget_theme_system">Follow the phone: light or night</string>
     <string name="widget_theme_custom">Your own colours</string>
     <!-- Your own widget colours. %1$d a percentage -->
@@ -338,9 +360,7 @@
     <string name="widget_color_opacity">Background strength: %1$d%%</string>
     <string name="widget_color_text">Text</string>
     <string name="widget_color_highlight">Highlight: the current prayer</string>
-    <!-- The widgets' table, where it is big enough: the headings over a prayer's two clock times, and the bottom line. %1$s a day and a clock time -->
-    <string name="widget_begins">Begins</string>
-    <string name="widget_ends">Ends</string>
+    <!-- The widgets' bottom line, where there is room for it. %1$s a day and a clock time -->
     <string name="widget_alarm">Alarm: %1$s</string>
     <string name="widget_alarm_off">Alarm off</string>
 

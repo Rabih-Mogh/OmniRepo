@@ -131,6 +131,26 @@
     <string name="adjustments_none">لا يوجد</string>
     <string name="imsak_minutes">الإمساك قبل الفجر</string>
     <string name="imsak_hint">الإمساك هو وقت توقّف الصائم عن الطعام والشراب. القيمة 0 تحذفه من القائمة.</string>
+    <!-- The Hijri date: %1$d the day, %2$s the month, %3$d the year -->
+    <string name="hijri_date">%1$d %2$s %3$d</string>
+    <string name="hijri_date_short">%1$d %2$s</string>
+    <string-array name="hijri_months">
+        <item>محرّم</item>
+        <item>صفر</item>
+        <item>ربيع الأول</item>
+        <item>ربيع الآخر</item>
+        <item>جمادى الأولى</item>
+        <item>جمادى الآخرة</item>
+        <item>رجب</item>
+        <item>شعبان</item>
+        <item>رمضان</item>
+        <item>شوّال</item>
+        <item>ذو القعدة</item>
+        <item>ذو الحجة</item>
+    </string-array>
+    <string name="hijri_adjust">تعديل التاريخ الهجري</string>
+    <string name="hijri_adjust_hint">التاريخ الهجري محسوب (أم القرى). أضف يوماً أو احذف يوماً هنا إذا أعلن بلدك بداية الشهر في يوم آخر.</string>
+    <string name="days_short">ي</string>
 
     <!-- Main screen: Sound & wake-up -->
     <string name="section_sound">الصوت والإيقاظ</string>
@@ -347,6 +367,8 @@
     <string name="widget_theme_black">أسود</string>
     <string name="widget_theme_light">فاتح</string>
     <string name="widget_theme_glass">شفّاف، لتظهر الخلفية من ورائه</string>
+    <string name="widget_theme_frost">ثلجي: أبيض مع أزرق</string>
+    <string name="widget_theme_cobalt">كوبالت: أزرق داكن مع أخضر</string>
     <string name="widget_theme_system">يتبع الهاتف: فاتح أو ليلي</string>
     <string name="widget_theme_custom">ألوانك الخاصة</string>
     <!-- Your own widget colours. %1$d a percentage -->
@@ -354,9 +376,7 @@
     <string name="widget_color_opacity">قوة الخلفية: %1$d%%</string>
     <string name="widget_color_text">النص</string>
     <string name="widget_color_highlight">التمييز: الصلاة الحالية</string>
-    <!-- The widgets' table, where it is big enough: the headings over a prayer's two clock times, and the bottom line. %1$s a day and a clock time -->
-    <string name="widget_begins">البداية</string>
-    <string name="widget_ends">النهاية</string>
+    <!-- The widgets' bottom line, where there is room for it. %1$s a day and a clock time -->
     <string name="widget_alarm">المنبّه: %1$s</string>
     <string name="widget_alarm_off">المنبّه متوقف</string>
 
