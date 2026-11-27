@@ -1,6 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Deep teal, with a voice spreading out from one corner. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp"
-    android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#FF1F4E5A" android:pathData="M0,0h108v108h-108z" />
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Deep teal -->
+    <path
+        android:pathData="M0,0 h108 v108 h-108 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endX="108"
+                android:endY="108"
+                android:startX="0"
+                android:startY="0"
+                android:type="linear">
+                <item android:color="#FF2D7482" android:offset="0" />
+                <item android:color="#FF0F333C" android:offset="1" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- A voice spreading out -->
+    <path
+        android:pathData="M-4,86 a26,26 0 1,0 52,0 a26,26 0 1,0 -52,0 Z"
+        android:strokeColor="#12FFFFFF"
+        android:strokeWidth="2" />
+    <path
+        android:pathData="M-20,86 a42,42 0 1,0 84,0 a42,42 0 1,0 -84,0 Z"
+        android:strokeColor="#12FFFFFF"
+        android:strokeWidth="2" />
+    <path
+        android:pathData="M-36,86 a58,58 0 1,0 116,0 a58,58 0 1,0 -116,0 Z"
+        android:strokeColor="#12FFFFFF"
+        android:strokeWidth="2" />
+    <path
+        android:pathData="M-52,86 a74,74 0 1,0 148,0 a74,74 0 1,0 -148,0 Z"
+        android:strokeColor="#12FFFFFF"
+        android:strokeWidth="2" />
+    <path
+        android:pathData="M-68,86 a90,90 0 1,0 180,0 a90,90 0 1,0 -180,0 Z"
+        android:strokeColor="#12FFFFFF"
+        android:strokeWidth="2" />
 </vector>

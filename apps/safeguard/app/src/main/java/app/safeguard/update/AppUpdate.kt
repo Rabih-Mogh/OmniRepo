@@ -6,13 +6,16 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.os.Build
+import android.os.SystemClock
 import androidx.core.content.IntentCompat
 import androidx.core.content.pm.PackageInfoCompat
 import app.safeguard.R
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,10 +48,20 @@ import kotlin.coroutines.coroutineContext
  * halfway (no signal, the app closed, the install prompt dismissed) carries on from the
  * bytes already on the phone. Leftovers are deleted as soon as the update is in, and
  * each time the app looks for one.
+ *
+ * Android says nothing when its install prompt is left without an answer. So when the
+ * app's screen is back in front and nothing has been heard, the download goes back on
+ * offer instead of the app waiting for good.
  */
 object AppUpdate {
 
     private const val BASE = "https://raw.githubusercontent.com/Rabih-Mogh/OmniRepo/main/apps/safeguard/apk/"
+
+    // How long Android gets to act on a yes before its silence counts as no answer.
+    private const val UNANSWERED_MS = 4_000L
+
+    // Coming back to the app looks for a newer build again, but not more often than this.
+    private const val RECHECK_MS = 10 * 60_000L
 
     data class Release(val versionCode: Long, val versionName: String, val apk: String, val size: Long, val sha256: String)
 
@@ -76,7 +89,8 @@ object AppUpdate {
     private val _state = MutableStateFlow<State>(State.Idle)
     val state: StateFlow<State> = _state.asStateFlow()
 
-    // False once the user closes the pop-up. Asking for a check, an update or a retry opens it again.
+    // False once the user closes the pop-up. Asking for a check, an update or a retry opens it again,
+    // and so does a newer build.
     private val _prompt = MutableStateFlow(true)
     val prompt: StateFlow<Boolean> = _prompt.asStateFlow()
 
@@ -90,7 +104,21 @@ object AppUpdate {
 
     // Outlives the screen, so leaving the app doesn't cancel a download.
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private var installing: Release? = null
+
+    // The build being fetched or installed. The tests set it too.
+    @Volatile
+    internal var installing: Release? = null
+
+    // The install session Android is asking the user about, and the wait for its answer.
+    @Volatile
+    private var asked: Int? = null
+    private var unanswered: Job? = null
+
+    // The build the pop-up was last closed on. A different one opens it again.
+    private var declined: Release? = null
+
+    // When a check last got an answer, on the clock that counts from the phone's start.
+    private var checkedAt = 0L
 
     // Held while the downloads folder is written to or tidied.
     private val files = Mutex()
@@ -103,8 +131,14 @@ object AppUpdate {
 
     private fun busy(): Boolean = _state.value is State.Downloading || _state.value == State.Installing
 
-    /** Closes the pop-up. A download that is running carries on. */
+    /** Closes the pop-up for the build on offer. A download that is running carries on. */
     fun dismiss() {
+        declined = when (val now = _state.value) {
+            is State.Available -> now.release
+            is State.Ready -> now.release
+            is State.Failed -> now.release
+            else -> installing
+        }
         _prompt.value = false
     }
 
@@ -121,6 +155,7 @@ object AppUpdate {
         val found = try {
             val release = withContext(Dispatchers.IO) { fetchRelease() }
             latest = release
+            checkedAt = SystemClock.elapsedRealtime()
             when {
                 release.versionCode > installedVersionCode(app) -> State.Available(release)
                 quiet -> State.Idle
@@ -134,15 +169,29 @@ object AppUpdate {
         // An update may have started while this was asking.
         if (busy()) return
         // A download that is waiting to be installed stays on offer, unless a newer build has replaced it.
-        _state.value = if (ready != null && (latest == null || latest == ready.release)) ready else found
+        offer(if (ready != null && (latest == null || latest == ready.release)) ready else found)
         val keep = latest
         withContext(Dispatchers.IO) { cleanUp(app, keep) }
+    }
+
+    /** The check made each time the app's screen comes back: quiet, and skipped if the last one was moments ago. */
+    suspend fun checkAgain(context: Context) {
+        if (checkedAt != 0L && SystemClock.elapsedRealtime() - checkedAt < RECHECK_MS) return
+        check(context)
+    }
+
+    /** Puts what a check found on offer. A build other than the one the pop-up was closed on opens it again. */
+    internal fun offer(next: State) {
+        val release = (next as? State.Available)?.release
+        if (release != null && release != declined) _prompt.value = true
+        _state.value = next
     }
 
     fun install(context: Context, release: Release) {
         if (busy()) return
         val app = context.applicationContext
         installing = release
+        forget()
         _prompt.value = true
         _state.value = State.Downloading(0f)
         _working.value = true
@@ -284,6 +333,8 @@ object AppUpdate {
     /** Hands the downloaded APK to Android. The file stays until the install has gone through. */
     private fun commit(context: Context, apk: File) {
         val installer = context.packageManager.packageInstaller
+        // An earlier request that was never answered gives way to this one.
+        for (old in installer.mySessions) abandon(installer, old.sessionId)
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
             setAppPackageName(context.packageName)
             setSize(apk.length())
@@ -332,6 +383,7 @@ object AppUpdate {
         }
 
     internal fun installFailed(message: String) {
+        forget()
         _prompt.value = true
         _state.value = State.Failed(message, installing)
     }
@@ -341,10 +393,61 @@ object AppUpdate {
      * is kept, a notification says it is ready, and the pop-up offers it when the app is opened.
      */
     internal fun waitForUser(context: Context, sessionId: Int) {
+        forget()
         abandon(context.packageManager.packageInstaller, sessionId)
         _prompt.value = true
         _state.value = installing?.let { State.Ready(it) } ?: State.Idle
         UpdateNotice.result(context, context.getString(R.string.update_notice_ready))
+    }
+
+    /** Android's question about [sessionId] is about to cover the app's screen. */
+    internal fun asking(context: Context, sessionId: Int) {
+        asked = sessionId
+        _state.value = State.Installing
+        resumed(context)
+    }
+
+    /**
+     * The app's screen is in front. If Android's question about an update should be on top
+     * of it and nothing is heard, the question was left without an answer, and Android never
+     * says so. The download is kept and goes back on offer.
+     */
+    fun resumed(context: Context) {
+        val session = asked ?: return
+        val installer = context.applicationContext.packageManager.packageInstaller
+        unanswered?.cancel()
+        unanswered = scope.launch {
+            var done = progress(installer, session)
+            while (true) {
+                // A yes takes Android a moment to act on, and then it closes the app to replace it.
+                delay(UNANSWERED_MS)
+                val now = progress(installer, session)
+                if (now == null || done == null || now <= done) break
+                // Android is working on it, so the answer was yes.
+                done = now
+            }
+            if (asked != session) return@launch
+            asked = null
+            _prompt.value = true
+            _state.value = installing?.let { State.Ready(it) } ?: State.Idle
+        }
+    }
+
+    /** The app's screen is covered or left, so its silence about an install says nothing. */
+    fun paused() {
+        unanswered?.cancel()
+    }
+
+    // Android has answered, or is no longer being asked.
+    private fun forget() {
+        asked = null
+        unanswered?.cancel()
+    }
+
+    private fun progress(installer: PackageInstaller, sessionId: Int): Float? = try {
+        installer.getSessionInfo(sessionId)?.progress
+    } catch (_: Exception) {
+        null
     }
 
     private fun abandon(installer: PackageInstaller, sessionId: Int) {
@@ -379,6 +482,7 @@ class UpdateReceiver : BroadcastReceiver() {
                     // Android doesn't let an app open a screen while it is out of sight, so the question waits.
                     !UpdateNotice.appOnScreen() -> AppUpdate.waitForUser(context, sessionId)
                     else -> try {
+                        AppUpdate.asking(context, sessionId)
                         context.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                     } catch (_: Exception) {
                         AppUpdate.installFailed(context.getString(R.string.update_prompt_failed))

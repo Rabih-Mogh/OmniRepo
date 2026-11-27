@@ -54,7 +54,8 @@ Every app updates itself from this repo. When one opens, it reads
 than the one installed, a pop-up offers to download and install the new APK. The download
 runs in the background with its progress in a notification, so it carries on when the
 screen turns off. A download that is interrupted carries on where it stopped, and is
-deleted once it is installed.
+deleted once it is installed. If Android's install prompt is closed without an answer,
+the app offers the downloaded update again when you come back to it.
 
 To publish a build, run this before committing, then commit the `apk/` folder (the APKs
 need `git add -f`):

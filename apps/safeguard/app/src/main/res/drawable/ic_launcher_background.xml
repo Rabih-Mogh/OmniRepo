@@ -1,21 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Deep green, a little lighter towards the top. -->
+<!-- Deep green, lit from one corner. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:pathData="M0,0 H108 V108 H0 Z">
+    <!-- Deep green -->
+    <path
+        android:pathData="M0,0 h108 v108 h-108 Z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:type="linear"
+                android:endX="108"
+                android:endY="108"
                 android:startX="0"
                 android:startY="0"
-                android:endX="0"
-                android:endY="108">
-                <item android:offset="0" android:color="#FF1F6F64" />
-                <item android:offset="1" android:color="#FF0B3B36" />
+                android:type="linear">
+                <item android:color="#FF2A8C7A" android:offset="0" />
+                <item android:color="#FF07302B" android:offset="1" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Light from one corner -->
+    <path
+        android:pathData="M-26,28 a62,62 0 1,0 124,0 a62,62 0 1,0 -124,0 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="36"
+                android:centerY="28"
+                android:gradientRadius="62"
+                android:type="radial">
+                <item android:color="#29FFFFFF" android:offset="0" />
+                <item android:color="#00FFFFFF" android:offset="1" />
             </gradient>
         </aapt:attr>
     </path>

@@ -15,7 +15,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.safeguard.R
 import app.safeguard.update.AppUpdate
@@ -34,14 +34,20 @@ import kotlinx.coroutines.launch
 
 /**
  * Pops up when the repo has a newer build, and stays up while it downloads and installs.
- * Checks once each time the screen opens. Closing it doesn't stop a download.
+ * Checks each time the screen comes back in front. Closing it doesn't stop a download.
  */
 @Composable
 fun UpdateDialog() {
     val context = LocalContext.current
     val state by AppUpdate.state.collectAsStateWithLifecycle()
     val open by AppUpdate.prompt.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { AppUpdate.check(context) }
+    val scope = rememberCoroutineScope()
+    // Android's install prompt covers this screen, so coming back says the prompt has gone.
+    LifecycleResumeEffect(Unit) {
+        AppUpdate.resumed(context)
+        scope.launch { AppUpdate.checkAgain(context) }
+        onPauseOrDispose { AppUpdate.paused() }
+    }
     val install = rememberInstall()
 
     val failed = state as? AppUpdate.State.Failed

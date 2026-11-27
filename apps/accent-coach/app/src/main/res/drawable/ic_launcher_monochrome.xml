@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One colour, for Android 13+ themed icons: the bubble in outline, the sound and the bars. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M36,28 H72 A11,11 0 0,1 83,39 V56 A11,11 0 0,1 72,67 H51.5 L36.5,79.5 V67 H36 A11,11 0 0,1 25,56 V39 A11,11 0 0,1 36,28 Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineJoin="round"
+        android:strokeWidth="3.6" />
+    <path
+        android:pathData="M34.9,47.5 a6.6,10.4 0 1,0 13.2,0 a6.6,10.4 0 1,0 -13.2,0 Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3.4" />
+    <path
+        android:pathData="M35.4,47.5 L47.6,47.5"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3" />
+    <path
+        android:pathData="M56.5,42 L56.5,53"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="4" />
+    <path
+        android:pathData="M62.7,36 L62.7,59"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="4" />
+    <path
+        android:pathData="M68.9,40 L68.9,55"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="4" />
+    <path
+        android:pathData="M75.1,44 L75.1,51"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="4" />
+</vector>

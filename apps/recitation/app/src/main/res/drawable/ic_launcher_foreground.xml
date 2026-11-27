@@ -2,12 +2,12 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <!-- A low pointed arch -->
+    <!-- A pointed arch -->
     <path android:strokeColor="#FFFFFFFF" android:strokeWidth="3"
         android:strokeLineJoin="round" android:strokeLineCap="round"
-        android:pathData="M32,78 V52 Q32,37 54,28 Q76,37 76,52 V78" />
+        android:pathData="M31,80 V51 Q31,35.5 54,25.5 Q77,35.5 77,51 V80" />
     <!-- The bars of sound inside it: a recitation -->
-    <path android:strokeColor="#FFFFB627" android:strokeWidth="3.6"
+    <path android:strokeColor="#FFFFB627" android:strokeWidth="3.8"
         android:strokeLineCap="round"
-        android:pathData="M42,57 V65 M48,52 V70 M54,46 V76 M60,52 V70 M66,57 V65" />
+        android:pathData="M41.5,56.5 V65.5 M47.75,51.5 V70.5 M54,45.5 V76.5 M60.25,51.5 V70.5 M66.5,56.5 V65.5" />
 </vector>

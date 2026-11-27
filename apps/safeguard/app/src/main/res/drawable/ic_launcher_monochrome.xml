@@ -1,19 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The shield in outline with its tick, for themed icons: Android tints it itself. -->
+<!-- One colour, for Android 13+ themed icons: the shield in outline and the clock. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:pathData="M54,29 L74,36 V53 C74,66 65.5,75.5 54,80 C42.5,75.5 34,66 34,53 V36 Z"
+        android:pathData="M54,24 L78,32 V52 C78,68 68,79 54,85 C40,79 30,68 30,52 V32 Z"
         android:strokeColor="#FFFFFFFF"
         android:strokeLineJoin="round"
-        android:strokeWidth="4" />
+        android:strokeWidth="3.6" />
     <path
-        android:pathData="M45,54 L51.5,60.5 L63.5,47.5"
+        android:pathData="M40.6,52.5 a13.4,13.4 0 1,0 26.8,0 a13.4,13.4 0 1,0 -26.8,0 Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3" />
+    <path
+        android:pathData="M54,52.5 L54,43.9"
         android:strokeColor="#FFFFFFFF"
         android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="5" />
+        android:strokeWidth="2.8" />
+    <path
+        android:pathData="M54,52.5 L61.27,56.7"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="2.8" />
 </vector>

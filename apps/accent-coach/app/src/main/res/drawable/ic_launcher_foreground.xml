@@ -1,11 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- A speech bubble holding a sound in phonetic writing and how each sound came out. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp"
-    android:viewportWidth="108" android:viewportHeight="108">
-    <!-- Speech bubble -->
-    <path android:fillColor="#FFF7F4EE"
-        android:pathData="M34,32 h40 a8,8 0 0 1 8,8 v22 a8,8 0 0 1 -8,8 h-22 l-10,9 v-9 h-8 a8,8 0 0 1 -8,-8 v-22 a8,8 0 0 1 8,-8 z" />
-    <!-- Sound wave bars -->
-    <path android:fillColor="#FFF08A5D"
-        android:pathData="M39,48 h4 v6 h-4z M46,43 h4 v16 h-4z M53,38 h4 v26 h-4z M60,44 h4 v14 h-4z M67,47 h4 v8 h-4z" />
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#6606242B"
+        android:pathData="M36,30.5 H72 A11,11 0 0,1 83,41.5 V58.5 A11,11 0 0,1 72,69.5 H52 L36.5,82.5 V69.5 H36 A11,11 0 0,1 25,58.5 V41.5 A11,11 0 0,1 36,30.5 Z" />
+    <!-- What you said -->
+    <path
+        android:pathData="M36,28 H72 A11,11 0 0,1 83,39 V56 A11,11 0 0,1 72,67 H51.5 L36.5,79.5 V67 H36 A11,11 0 0,1 25,56 V39 A11,11 0 0,1 36,28 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endX="0"
+                android:endY="80"
+                android:startX="0"
+                android:startY="28"
+                android:type="linear">
+                <item android:color="#FFFFFFFF" android:offset="0" />
+                <item android:color="#FFEDE5D6" android:offset="1" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- The sound itself, as it is written: TH -->
+    <path
+        android:pathData="M34.9,47.5 a6.6,10.4 0 1,0 13.2,0 a6.6,10.4 0 1,0 -13.2,0 Z"
+        android:strokeColor="#FF1F4E5A"
+        android:strokeWidth="3.7" />
+    <path
+        android:pathData="M35.4,47.5 L47.6,47.5"
+        android:strokeColor="#FF1F4E5A"
+        android:strokeWidth="3.2" />
+    <!-- How each sound came out: native, close, or not yet -->
+    <path
+        android:pathData="M56.5,42 L56.5,53"
+        android:strokeColor="#FF2FA36F"
+        android:strokeLineCap="round"
+        android:strokeWidth="4.2" />
+    <path
+        android:pathData="M62.7,36 L62.7,59"
+        android:strokeColor="#FF2FA36F"
+        android:strokeLineCap="round"
+        android:strokeWidth="4.2" />
+    <path
+        android:pathData="M68.9,40 L68.9,55"
+        android:strokeColor="#FFF0A23B"
+        android:strokeLineCap="round"
+        android:strokeWidth="4.2" />
+    <path
+        android:pathData="M75.1,44 L75.1,51"
+        android:strokeColor="#FFE5533D"
+        android:strokeLineCap="round"
+        android:strokeWidth="4.2" />
 </vector>
